@@ -16,17 +16,17 @@ La infraestructura sobre la que se monta todo lo demás. Sin interfaz todavía.
 - [x] Instalador de un comando (`install.sh`) con generación de secretos.
 - [x] Licencia AGPL-3.0 y documentación base.
 
-## Hito 1 — MVP de extremo a extremo 🚧 (en construcción)
+## Hito 1 — MVP de extremo a extremo ✅ (completado)
 
 El producto mínimo usable: instalar con un comando → configurar → usar como Trello.
 
-- [ ] **Asistente de configuración inicial** (`/setup`): crear el usuario administrador
+- [x] **Asistente de configuración inicial** (`/setup`): crear el usuario administrador
       y el nombre de la instancia; bloqueo una vez completado.
-- [ ] **Autenticación**: sesiones JWT con `jose` (cookie httpOnly), Data Access Layer
+- [x] **Autenticación**: sesiones JWT con `jose` (cookie httpOnly), Data Access Layer
       (`verifySession`), login/logout, protección de rutas con `proxy.ts`.
-- [ ] **Tableros**: crear, listar, abrir y borrar.
-- [ ] **Listas y tarjetas**: crear, renombrar y borrar.
-- [ ] **Arrastrar y soltar** de listas y tarjetas con `@dnd-kit` + fractional indexing
+- [x] **Tableros**: crear, listar, abrir y borrar.
+- [x] **Listas y tarjetas**: crear, renombrar y borrar.
+- [x] **Arrastrar y soltar** de listas y tarjetas con `@dnd-kit` + fractional indexing
       + UI optimista, persistido vía Server Actions.
 
 ## Hito 2 — Detalle de tarjeta
