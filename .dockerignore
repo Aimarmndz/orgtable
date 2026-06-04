@@ -1,0 +1,21 @@
+# No enviar al contexto de build lo que se regenera o no hace falta en la imagen.
+node_modules
+.next
+.git
+.gitignore
+
+# Secretos: NUNCA deben acabar en la imagen (se inyectan por entorno en runtime).
+.env
+.env.*
+!.env.example
+
+# Documentación y herramientas de desarrollo.
+docs
+*.md
+.claude
+.agents
+skills-lock.json
+
+# Logs y temporales
+npm-debug.log*
+*.tsbuildinfo

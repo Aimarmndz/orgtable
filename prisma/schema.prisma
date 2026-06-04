@@ -1,0 +1,132 @@
+// orgtable — esquema de base de datos (Prisma + PostgreSQL)
+// Documentado en docs/database.md. Decisiones: docs/decisions/0001-prisma.md,
+// 0002-fractional-indexing.md.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// En Prisma 7 la `url` ya NO va aquí: se define en prisma.config.ts (para el CLI de
+// Migrate) y en runtime el PrismaClient se conecta mediante el driver adapter
+// @prisma/adapter-pg (ver app/lib/prisma.ts). El query engine es WASM, no binario,
+// por lo que no hace falta `binaryTargets` ni copiar engines a la imagen Docker.
+datasource db {
+  provider = "postgresql"
+}
+
+// Configuración global de la instancia. Es una fila única (id fijo "singleton").
+// `setupCompletedAt` no-nulo es la fuente de verdad de "la instancia ya está
+// configurada"; mientras sea null, el setup wizard (/setup) está activo.
+model InstanceConfig {
+  id               String    @id @default("singleton")
+  instanceName     String
+  setupCompletedAt DateTime?
+  createdAt        DateTime  @default(now())
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+}
+
+enum BoardRole {
+  OWNER
+  EDITOR
+  VIEWER
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  passwordHash String
+  name         String
+  role         Role          @default(MEMBER)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  boards       Board[]
+  memberships  BoardMember[]
+}
+
+model Board {
+  id          String        @id @default(cuid())
+  ownerId     String
+  owner       User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  background  String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  lists       List[]
+  labels      Label[]
+  members     BoardMember[]
+
+  @@index([ownerId])
+}
+
+model List {
+  id        String   @id @default(cuid())
+  boardId   String
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  title     String
+  // Clave de ordenación por fractional indexing (string lexicográfico).
+  // Mover una lista actualiza SOLO su propia fila. Ver docs/drag-and-drop.md.
+  position  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  cards     Card[]
+
+  @@index([boardId])
+}
+
+model Card {
+  id          String      @id @default(cuid())
+  listId      String
+  list        List        @relation(fields: [listId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  // Clave de ordenación por fractional indexing (ver List.position).
+  position    String
+  dueDate     DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  labels      CardLabel[]
+
+  @@index([listId, position])
+}
+
+model Label {
+  id      String      @id @default(cuid())
+  boardId String
+  board   Board       @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  name    String
+  color   String
+  cards   CardLabel[]
+
+  @@index([boardId])
+}
+
+// Tabla de unión muchos-a-muchos entre Card y Label.
+model CardLabel {
+  cardId  String
+  card    Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  labelId String
+  label   Label  @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([cardId, labelId])
+  @@index([labelId])
+}
+
+// Membresía de un usuario en un tablero. Se crea ya en el MVP (single-user) para
+// que la autorización de cada Server Action pase por aquí desde el principio y no
+// haya que re-migrar al llegar el hito multiusuario.
+model BoardMember {
+  boardId String
+  board   Board     @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  userId  String
+  user    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role    BoardRole @default(EDITOR)
+  addedAt DateTime  @default(now())
+
+  @@id([boardId, userId])
+  @@index([userId])
+}
