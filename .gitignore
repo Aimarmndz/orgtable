@@ -20,6 +20,14 @@
 # production
 /build
 
+# adjuntos subidos en desarrollo (en producción es un volumen Docker)
+/uploads
+/data
+
+# backups locales de la base de datos
+/backups
+*.sql.gz
+
 # misc
 .DS_Store
 *.pem

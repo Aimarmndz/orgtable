@@ -33,6 +33,12 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       SESSION_SECRET: ${SESSION_SECRET}
       NODE_ENV: production
+      # Directorio de adjuntos (volumen persistente). Ver docs/attachments.md.
+      ORGTABLE_UPLOAD_DIR: ${ORGTABLE_UPLOAD_DIR:-/data/uploads}
+      # Tiempo real entre varias réplicas (0 = en proceso). Ver docs/realtime.md.
+      ORGTABLE_REALTIME_PG_NOTIFY: ${ORGTABLE_REALTIME_PG_NOTIFY:-0}
+    volumes:
+      - uploads:/data/uploads
     ports:
       - "${APP_PORT:-3000}:3000"
     healthcheck:
@@ -48,6 +54,7 @@ services:
 
 volumes:
   pgdata:
+  uploads:
 
 networks:
   orgtable:

@@ -1,13 +1,19 @@
 "use client";
 
 import {
+  useActionState,
   useEffect,
   useRef,
   useState,
   useTransition,
   type TransitionStartFunction,
 } from "react";
-import type { CardDTO, ChecklistDTO, LabelDTO } from "@/app/lib/types";
+import type {
+  AttachmentDTO,
+  CardDTO,
+  ChecklistDTO,
+  LabelDTO,
+} from "@/app/lib/types";
 import {
   labelBackground,
   LABEL_COLORS,
@@ -22,12 +28,23 @@ import {
   toggleChecklistItem,
   deleteChecklistItem,
 } from "@/app/lib/actions/checklists";
+import {
+  uploadAttachment,
+  deleteAttachment,
+  type AttachmentState,
+} from "@/app/lib/actions/attachments";
 import { Button } from "../ui/button";
 import { Input, Textarea } from "../ui/input";
 import { useBoardPerms } from "../board/board-perms";
 
 const smallInput =
   "w-full rounded-lg border border-border bg-surface px-2.5 py-1.5 text-sm text-ink outline-none transition-colors placeholder:text-ink-muted/70 focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/25";
+
+function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 export function CardModal({
   card,
@@ -216,6 +233,13 @@ export function CardModal({
           {canEdit && <NewChecklistForm cardId={card.id} />}
         </section>
 
+        {/* Adjuntos */}
+        <AttachmentsSection
+          cardId={card.id}
+          attachments={card.attachments}
+          canEdit={canEdit}
+        />
+
         {/* Borrar (solo quien puede editar) */}
         {canEdit && (
           <div className="mt-8 flex justify-end border-t border-border pt-4">
@@ -382,6 +406,116 @@ function ChecklistBlock({
         </form>
       )}
     </div>
+  );
+}
+
+function AttachmentsSection({
+  cardId,
+  attachments,
+  canEdit,
+}: {
+  cardId: string;
+  attachments: AttachmentDTO[];
+  canEdit: boolean;
+}) {
+  const ref = useRef<HTMLFormElement>(null);
+  const firstRender = useRef(true);
+  const [state, action, pending] = useActionState<AttachmentState, FormData>(
+    uploadAttachment,
+    {},
+  );
+
+  // Limpia el formulario tras una subida correcta (sin error).
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    if (!state.error) ref.current?.reset();
+  }, [state]);
+
+  return (
+    <section className="mt-6">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+        Adjuntos
+        {attachments.length > 0 && (
+          <span className="ml-1.5 font-normal normal-case tracking-normal">
+            · {attachments.length}
+          </span>
+        )}
+      </h3>
+
+      {attachments.length > 0 ? (
+        <ul className="mt-2 space-y-1.5">
+          {attachments.map((a) => (
+            <li
+              key={a.id}
+              className="group flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2"
+            >
+              <svg
+                className="size-4 shrink-0 text-ink-muted"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+              </svg>
+              <a
+                href={`/api/attachments/${a.id}`}
+                target="_blank"
+                rel="noreferrer"
+                className="min-w-0 flex-1 truncate text-sm hover:underline"
+              >
+                {a.filename}
+              </a>
+              <span className="shrink-0 text-xs tabular-nums text-ink-muted">
+                {formatBytes(a.size)}
+              </span>
+              {canEdit && (
+                <form action={deleteAttachment}>
+                  <input type="hidden" name="attachmentId" value={a.id} />
+                  <button
+                    className="text-xs text-ink-muted opacity-0 transition hover:text-danger group-hover:opacity-100"
+                    aria-label={`Borrar adjunto ${a.filename}`}
+                  >
+                    ✕
+                  </button>
+                </form>
+              )}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-2 text-sm text-ink-muted">No hay adjuntos.</p>
+      )}
+
+      {canEdit && (
+        <form
+          ref={ref}
+          action={action}
+          className="mt-3 flex flex-wrap items-center gap-2"
+        >
+          <input type="hidden" name="cardId" value={cardId} />
+          <input
+            type="file"
+            name="file"
+            required
+            className="max-w-full text-sm text-ink-muted file:mr-2 file:rounded-lg file:border-0 file:bg-surface-2 file:px-3 file:py-1.5 file:text-sm file:text-ink hover:file:bg-border/40"
+          />
+          <Button type="submit" variant="subtle" disabled={pending}>
+            {pending ? "Subiendo…" : "Adjuntar"}
+          </Button>
+        </form>
+      )}
+
+      {state.error && (
+        <p className="mt-2 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
+          {state.error}
+        </p>
+      )}
+    </section>
   );
 }
 

@@ -65,6 +65,12 @@ export default async function BoardPage({
             done: it.done,
           })),
         })),
+        attachments: card.attachments.map((a) => ({
+          id: a.id,
+          filename: a.filename,
+          mimeType: a.mimeType,
+          size: a.size,
+        })),
       })),
     })),
   };

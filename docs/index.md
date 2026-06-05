@@ -23,6 +23,7 @@ quien quiere **contribuir** al código.
 - [**Arrastrar y soltar**](./drag-and-drop.md) — `@dnd-kit` y fractional indexing.
 - [**Tiempo real**](./realtime.md) — sincronización en vivo con SSE y el bus pub/sub.
 - [**Detalle de tarjeta**](./card-detail.md) — modal, etiquetas, fechas y checklists.
+- [**Adjuntos**](./attachments.md) — archivos en tarjetas, almacenamiento y descarga autorizada.
 - [**Sistema de diseño**](./design-system.md) — tokens OKLCH, tema claro/oscuro, componentes.
 - [**Docker**](./docker.md) — la imagen multi-stage y la orquestación.
 - [**API de Server Actions**](./api/server-actions.md) — catálogo de mutaciones del servidor.
@@ -42,6 +43,7 @@ Las decisiones técnicas importantes y su porqué están registradas en
 - [0007 — PostgreSQL LISTEN/NOTIFY en lugar de Redis](./decisions/0007-pg-notify-over-redis.md)
 - [0008 — Almacén de sesiones en servidor](./decisions/0008-session-store.md)
 - [0009 — Rate limiting en memoria](./decisions/0009-in-memory-rate-limit.md)
+- [0010 — Adjuntos en disco local](./decisions/0010-local-file-storage.md)
 
 ## Hoja de ruta
 

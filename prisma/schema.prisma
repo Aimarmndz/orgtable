@@ -110,8 +110,26 @@ model Card {
   updatedAt   DateTime    @updatedAt
   labels      CardLabel[]
   checklists  Checklist[]
+  attachments Attachment[]
 
   @@index([listId, position])
+}
+
+// Adjuntos de una tarjeta (Hito 5). El binario se guarda en disco (volumen
+// configurable, ver app/lib/storage.ts); aquí solo viven los metadatos. `storedName`
+// es el nombre aleatorio del fichero en disco; `filename` es el nombre original que ve
+// el usuario. Ver docs/attachments.md.
+model Attachment {
+  id         String   @id @default(cuid())
+  cardId     String
+  card       Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  filename   String
+  storedName String   @unique
+  mimeType   String
+  size       Int
+  createdAt  DateTime @default(now())
+
+  @@index([cardId])
 }
 
 model Label {

@@ -19,6 +19,13 @@ export type ChecklistDTO = {
   items: ChecklistItemDTO[];
 };
 
+export type AttachmentDTO = {
+  id: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+};
+
 export type CardDTO = {
   id: string;
   title: string;
@@ -27,6 +34,7 @@ export type CardDTO = {
   dueDate: string | null;
   labels: LabelDTO[];
   checklists: ChecklistDTO[];
+  attachments: AttachmentDTO[];
 };
 
 export type ListDTO = {

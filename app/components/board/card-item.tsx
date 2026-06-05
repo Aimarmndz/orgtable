@@ -50,6 +50,7 @@ export function CardItem({
     (n, c) => n + c.items.filter((i) => i.done).length,
     0,
   );
+  const attachCount = card.attachments.length;
   // Date.now() se lee una vez al montar (no en cada render) para no romper la pureza
   // del render; el badge de "vencida" no necesita actualizarse al segundo.
   const [now] = useState(() => Date.now());
@@ -82,7 +83,7 @@ export function CardItem({
 
       <p className="break-words leading-snug">{card.title}</p>
 
-      {(due || total > 0) && (
+      {(due || total > 0 || attachCount > 0) && (
         <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
           {due && (
             <span
@@ -124,6 +125,21 @@ export function CardItem({
                 <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
               </svg>
               {done}/{total}
+            </span>
+          )}
+          {attachCount > 0 && (
+            <span className="inline-flex items-center gap-1 text-ink-muted">
+              <svg
+                className="size-3"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+              </svg>
+              {attachCount}
             </span>
           )}
         </div>

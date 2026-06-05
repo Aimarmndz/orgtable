@@ -88,6 +88,7 @@ export async function getBoardWithLists(boardId: string, userId: string) {
                 orderBy: { position: "asc" },
                 include: { items: { orderBy: { position: "asc" } } },
               },
+              attachments: { orderBy: { createdAt: "asc" } },
             },
           },
         },

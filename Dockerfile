@@ -30,12 +30,18 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
+# Directorio de adjuntos. En producción es un volumen montado (ver docker-compose.yml);
+# se crea aquí y se cede al usuario sin privilegios para que pueda escribir.
+ENV ORGTABLE_UPLOAD_DIR=/data/uploads
 
 # openssl: requerido por el schema-engine de Prisma para `migrate deploy`.
 RUN apk add --no-cache openssl
 
 # Usuario sin privilegios.
 RUN addgroup -g 1001 nodejs && adduser -u 1001 -G nodejs -S nextjs
+
+# Directorio de adjuntos escribible por el usuario (lo monta un volumen en producción).
+RUN mkdir -p /data/uploads && chown -R nextjs:nodejs /data
 
 # Aplicación Next.js standalone (servidor Node mínimo + assets).
 COPY --from=builder /app/.next/standalone ./
