@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/app/lib/prisma";
 import { requireAdmin } from "@/app/lib/dal";
 import { hashPassword } from "@/app/lib/auth";
+import { revokeAllUserSessions } from "@/app/lib/session";
 import {
   createUserSchema,
   globalRoleSchema,
@@ -97,8 +98,20 @@ export async function resetUserPassword(formData: FormData): Promise<void> {
     where: { id: parsed.data.userId },
     data: { passwordHash },
   });
+  // Al cambiar la contraseña, revocamos todas las sesiones del usuario: cualquier
+  // sesión abierta (p. ej. en un dispositivo comprometido) deja de valer al instante.
+  await revokeAllUserSessions(parsed.data.userId);
   revalidatePath("/admin/users");
   backToUsers({ ok: "password" });
+}
+
+/** Cierra todas las sesiones activas de un usuario (revocación inmediata). */
+export async function revokeUserSessions(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const userId = String(formData.get("userId"));
+  await revokeAllUserSessions(userId);
+  revalidatePath("/admin/users");
+  backToUsers({ ok: "revoked" });
 }
 
 /**

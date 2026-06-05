@@ -46,11 +46,16 @@ El producto mínimo usable: instalar con un comando → configurar → usar como
 - [x] Gestión de usuarios por el administrador (`/admin/users`): altas, roles,
       restablecer contraseña y borrado con salvaguardas. Ver `docs/admin.md`.
 
-## Hito 4 — Tiempo real
+## Hito 4 — Tiempo real ✅ (completado)
 
-- [ ] Sincronización en vivo entre usuarios (WebSockets/SSE).
-- [ ] Redis para pub/sub (ver [ADR 0004](./decisions/0004-no-redis-mvp.md)).
-- [ ] Revocación inmediata de sesiones (tabla de sesiones).
+- [x] Sincronización en vivo entre usuarios con **SSE** (`/api/boards/[id]/stream`) y
+      un bus pub/sub; el cliente recarga con `router.refresh()`. Ver `docs/realtime.md`.
+- [x] Pub/sub **en proceso** por defecto, con puente opcional vía PostgreSQL
+      `LISTEN/NOTIFY` para multi-instancia (no Redis; ver
+      [ADR 0007](./decisions/0007-pg-notify-over-redis.md)).
+- [x] Revocación inmediata de sesiones con tabla `Session` (logout, reset de
+      contraseña, cierre forzado por el admin). Ver
+      [ADR 0008](./decisions/0008-session-store.md).
 
 ## Hito 5 — Operación y pulido
 

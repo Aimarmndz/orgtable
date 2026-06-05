@@ -6,8 +6,9 @@ import { UserRowActions } from "./user-row-actions";
 // Mensajes que devuelven las acciones por fila vía ?ok=… / ?error=… (ver admin.ts).
 const OK_MESSAGES: Record<string, string> = {
   role: "Rol actualizado.",
-  password: "Contraseña restablecida.",
+  password: "Contraseña restablecida. Se han cerrado las sesiones del usuario.",
   delete: "Usuario borrado.",
+  revoked: "Sesiones cerradas.",
 };
 const ERROR_MESSAGES: Record<string, string> = {
   "self-role": "No puedes cambiar tu propio rol.",

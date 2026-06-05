@@ -15,9 +15,22 @@ const INSTANCE_ID = "singleton";
 
 export const verifySession = cache(async () => {
   const token = (await cookies()).get("session")?.value;
-  const session = await decrypt(token);
-  if (!session?.userId) return null;
-  return { userId: session.userId };
+  const payload = await decrypt(token);
+  if (!payload?.userId || !payload.sid) return null;
+
+  // Validación contra el almacén de sesiones: aunque el JWT sea válido, la sesión
+  // puede haber sido revocada (logout, reset de contraseña, cierre forzado) o haber
+  // expirado. Una sola consulta, memoizada por request con cache().
+  const session = await prisma.session.findUnique({
+    where: { id: payload.sid },
+    select: { userId: true, revokedAt: true, expiresAt: true },
+  });
+  if (!session) return null;
+  if (session.userId !== payload.userId) return null;
+  if (session.revokedAt) return null;
+  if (session.expiresAt.getTime() < Date.now()) return null;
+
+  return { userId: payload.userId, sessionId: payload.sid };
 });
 
 export const getCurrentUser = cache(async () => {

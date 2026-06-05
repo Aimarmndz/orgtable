@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/app/lib/dal";
 import { getBoardWithLists, getBoardMembers } from "@/app/lib/queries";
 import { BoardView } from "@/app/components/board/board-view";
+import { BoardRealtime } from "@/app/components/board/board-realtime";
 import type { BoardMemberDTO } from "@/app/components/board/members-panel";
 import type { BoardDTO } from "@/app/lib/types";
 import type { BoardRole } from "@/app/lib/roles";
@@ -68,5 +69,10 @@ export default async function BoardPage({
     })),
   };
 
-  return <BoardView board={dto} viewerRole={viewerRole} members={members} />;
+  return (
+    <>
+      <BoardRealtime boardId={id} />
+      <BoardView board={dto} viewerRole={viewerRole} members={members} />
+    </>
+  );
 }

@@ -1,7 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { prisma } from "@/app/lib/prisma";
+import { revalidateBoard } from "@/app/lib/realtime/notify";
 import { requireBoardAccess } from "@/app/lib/dal";
 import { canEditBoard, canManageBoard } from "@/app/lib/roles";
 import { LABEL_COLORS } from "@/app/lib/colors";
@@ -24,7 +24,7 @@ export async function createLabel(formData: FormData): Promise<void> {
   const color = colorRaw in LABEL_COLORS ? colorRaw : "blue";
 
   await prisma.label.create({ data: { boardId, name, color } });
-  revalidatePath(`/board/${boardId}`);
+  revalidateBoard(boardId);
 }
 
 export async function deleteLabel(formData: FormData): Promise<void> {
@@ -38,7 +38,7 @@ export async function deleteLabel(formData: FormData): Promise<void> {
   if (!canManageBoard(role)) return;
 
   await prisma.label.delete({ where: { id: labelId } });
-  revalidatePath(`/board/${label.boardId}`);
+  revalidateBoard(label.boardId);
 }
 
 /** Asigna o quita una etiqueta a una tarjeta (toggle). */
@@ -62,6 +62,6 @@ export async function toggleCardLabel(input: {
       data: { cardId: input.cardId, labelId: input.labelId },
     });
   }
-  revalidatePath(`/board/${boardId}`);
+  revalidateBoard(boardId);
   return { ok: true };
 }

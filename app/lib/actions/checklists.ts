@@ -1,7 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { prisma } from "@/app/lib/prisma";
+import { revalidateBoard } from "@/app/lib/realtime/notify";
 import { requireBoardAccess } from "@/app/lib/dal";
 import { canEditBoard } from "@/app/lib/roles";
 import { positionAtEnd } from "@/app/lib/ordering";
@@ -51,7 +51,7 @@ export async function createChecklist(formData: FormData): Promise<void> {
   await prisma.checklist.create({
     data: { cardId, title, position: positionAtEnd(last?.position ?? null) },
   });
-  revalidatePath(`/board/${boardId}`);
+  revalidateBoard(boardId);
 }
 
 export async function deleteChecklist(formData: FormData): Promise<void> {
@@ -62,7 +62,7 @@ export async function deleteChecklist(formData: FormData): Promise<void> {
   if (!canEditBoard(role)) return;
 
   await prisma.checklist.delete({ where: { id: checklistId } });
-  revalidatePath(`/board/${boardId}`);
+  revalidateBoard(boardId);
 }
 
 export async function addChecklistItem(formData: FormData): Promise<void> {
@@ -86,7 +86,7 @@ export async function addChecklistItem(formData: FormData): Promise<void> {
       position: positionAtEnd(last?.position ?? null),
     },
   });
-  revalidatePath(`/board/${boardId}`);
+  revalidateBoard(boardId);
 }
 
 /** Marca/desmarca un ítem de checklist. */
@@ -103,7 +103,7 @@ export async function toggleChecklistItem(input: {
     where: { id: input.itemId },
     data: { done: input.done },
   });
-  revalidatePath(`/board/${boardId}`);
+  revalidateBoard(boardId);
   return { ok: true };
 }
 
@@ -115,5 +115,5 @@ export async function deleteChecklistItem(formData: FormData): Promise<void> {
   if (!canEditBoard(role)) return;
 
   await prisma.checklistItem.delete({ where: { id: itemId } });
-  revalidatePath(`/board/${boardId}`);
+  revalidateBoard(boardId);
 }

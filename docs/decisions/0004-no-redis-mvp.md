@@ -24,7 +24,16 @@ Añadir Redis ahora sería complejidad muerta.
 
 ## Consecuencias
 
-- Redis entrará cuando lleguen: (a) tiempo real con pub/sub multi-instancia, o
-  (b) revocación inmediata de sesiones / rate-limiting. Ver `docs/roadmap.md`.
 - La revocación inmediata de sesiones no es posible en el MVP (límite documentado en
   `docs/authentication.md`).
+
+## Actualización (Hito 4)
+
+Al implementar el tiempo real y la revocación de sesiones, **Redis no entró**.
+Reconsideramos la suposición de esta ADR y elegimos reutilizar PostgreSQL:
+
+- Pub/sub: bus en proceso + PostgreSQL `LISTEN/NOTIFY` opcional. Ver
+  [ADR 0007](./0007-pg-notify-over-redis.md).
+- Sesiones: tabla `Session` en PostgreSQL. Ver [ADR 0008](./0008-session-store.md).
+
+`docker-compose.yml` sigue siendo solo `app` + `postgres`.

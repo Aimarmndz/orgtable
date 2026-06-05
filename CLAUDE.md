@@ -24,7 +24,7 @@ el resumen de una línea con el enlace.
 
 ## Estado por hitos
 
-Ver `docs/roadmap.md` para el detalle. Hitos 0–3 completados.
+Ver `docs/roadmap.md` para el detalle. Hitos 0–4 completados.
 
 ## Decisiones (resumen)
 
@@ -35,6 +35,8 @@ Ver `docs/roadmap.md` para el detalle. Hitos 0–3 completados.
 - ADR 0005 — Licencia AGPL-3.0.
 - ADR 0006 — Autorización por rol con guardas explícitas (no `forbidden()`
   experimental). Roles de tablero OWNER/EDITOR/VIEWER en `app/lib/roles.ts`.
+- ADR 0007 — PostgreSQL `LISTEN/NOTIFY` (no Redis) para el pub/sub del tiempo real.
+- ADR 0008 — Tabla `Session` para revocación inmediata de sesiones.
 
 ## Notas de hito
 
@@ -42,3 +44,8 @@ Ver `docs/roadmap.md` para el detalle. Hitos 0–3 completados.
   desde el Hito 0, así que no hizo falta migración. Se añadieron las guardas de rol en
   todas las acciones, el panel de miembros por tablero y `/admin/users` para la gestión
   de cuentas. No hay registro abierto: el admin crea las cuentas.
+- **Hito 4 (tiempo real)**: SSE en `/api/boards/[id]/stream` + bus pub/sub
+  (`app/lib/realtime/`). Toda mutación llama `revalidateBoard()` (revalida + publica).
+  Sesiones respaldadas por la tabla `Session` (el JWT lleva `sid`); revocación inmediata.
+  Migración `20260605100000_sessions` escrita a mano (no había BD local para
+  `migrate dev`); aplicar con `prisma migrate deploy` (lo hace el entrypoint de Docker).

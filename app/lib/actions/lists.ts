@@ -1,7 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { prisma } from "@/app/lib/prisma";
+import { revalidateBoard } from "@/app/lib/realtime/notify";
 import { requireBoardAccess } from "@/app/lib/dal";
 import { canEditBoard } from "@/app/lib/roles";
 import { listTitleSchema } from "@/app/lib/validators";
@@ -26,7 +26,7 @@ export async function createList(formData: FormData): Promise<void> {
       position: positionAtEnd(last?.position ?? null),
     },
   });
-  revalidatePath(`/board/${boardId}`);
+  revalidateBoard(boardId);
 }
 
 export async function renameList(formData: FormData): Promise<void> {
@@ -42,7 +42,7 @@ export async function renameList(formData: FormData): Promise<void> {
   if (!parsed.success) return;
 
   await prisma.list.update({ where: { id: listId }, data: { title: parsed.data } });
-  revalidatePath(`/board/${list.boardId}`);
+  revalidateBoard(list.boardId);
 }
 
 export async function deleteList(formData: FormData): Promise<void> {
@@ -57,7 +57,7 @@ export async function deleteList(formData: FormData): Promise<void> {
 
   // Las tarjetas se borran en cascada (onDelete: Cascade en el esquema).
   await prisma.list.delete({ where: { id: listId } });
-  revalidatePath(`/board/${list.boardId}`);
+  revalidateBoard(list.boardId);
 }
 
 /**
@@ -81,6 +81,6 @@ export async function reorderList(input: {
     where: { id: input.listId },
     data: { position: input.position },
   });
-  revalidatePath(`/board/${list.boardId}`);
+  revalidateBoard(list.boardId);
   return { ok: true };
 }

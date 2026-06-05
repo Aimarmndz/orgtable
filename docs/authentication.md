@@ -16,9 +16,12 @@ La autenticación se reparte en cinco piezas, cada una con una responsabilidad c
 | `app/lib/dal.ts` | Verificación **segura** (descifra el JWT y consulta el usuario). |
 | `app/lib/actions/auth.ts` | Server Actions de `login` y `logout`. |
 
-Idea central: el JWT es **stateless** (no hay tabla de sesiones en la base de datos). El token se firma con un secreto, se guarda en una cookie `httpOnly` y se valida criptográficamente en el Data Access Layer (DAL).
+Idea central: el token se firma con un secreto y se guarda en una cookie `httpOnly`.
+Se valida criptográficamente en el Data Access Layer (DAL) y, desde el Hito 4, además
+contra la **tabla de sesiones** (`Session`), lo que permite revocar sesiones al
+instante. Ver [Almacén de sesiones y revocación inmediata](#almacén-de-sesiones-y-revocación-inmediata-hito-4).
 
-## Sesiones JWT stateless con `jose`
+## Sesiones JWT con `jose`
 
 El archivo `app/lib/session.ts` usa la librería [`jose`](https://github.com/panva/jose) para firmar y verificar tokens JWT. El módulo empieza con `import "server-only"`, de modo que nunca puede acabar en el bundle del cliente.
 
@@ -331,15 +334,40 @@ export async function logout(): Promise<void> {
 }
 ```
 
-## Límites conocidos del MVP
+## Almacén de sesiones y revocación inmediata (Hito 4)
 
-Al ser **JWT stateless sin tabla de sesiones**, hay un compromiso importante:
+> **Actualización (Hito 4).** El MVP usaba JWT *stateless* sin tabla de sesiones, lo
+> que impedía revocar un token al instante. Eso ha cambiado.
 
-- **No hay revocación inmediata.** `logout` borra la cookie del navegador actual, pero **no invalida** los tokens ya emitidos en otros dispositivos. Esos tokens siguen siendo válidos hasta que **expiran** (7 días). No existe forma de "cerrar todas las sesiones" ni de revocar un token concreto al instante.
-- No hay rotación de tokens ni lista de revocación.
+Ahora la cookie sigue siendo un JWT firmado, pero **lleva el id de una fila de la
+tabla `Session`** (`sid`). El DAL valida el JWT **y además** comprueba esa fila:
 
-Esta decisión es intencional para el MVP y está documentada en [`docs/decisions/0004-no-redis-mvp.md`](./decisions/0004-no-redis-mvp.md). La revocación de sesiones se abordará junto con el hito de tiempo real descrito en [`docs/roadmap.md`](./roadmap.md), que introducirá la infraestructura de estado necesaria.
+```
+verifySession()  →  descifra el JWT  →  busca la Session por sid
+                 →  null si: no existe · revokedAt ≠ null · expiresAt pasada
+```
+
+Esto da **revocación inmediata** (toma efecto en la siguiente petición, no a los 7
+días):
+
+- **`logout`** revoca la fila de la sesión actual (`revokedAt`) y borra la cookie.
+- **Restablecer la contraseña** (por el administrador) revoca **todas** las sesiones
+  del usuario: cualquier sesión abierta deja de valer al instante.
+- El administrador puede **forzar el cierre de sesión** de un usuario desde
+  `/admin/users` (acción `revokeUserSessions`).
+- **Borrar un usuario** elimina sus sesiones en cascada.
+
+El coste es **una consulta más por petición** (la búsqueda de la sesión), memoizada
+por request con `cache()` de React, así que se ejecuta una sola vez por render. La
+decisión y el porqué están en
+[`docs/decisions/0008-session-store.md`](./decisions/0008-session-store.md).
+
+Los cambios de **rol** no necesitan revocar sesiones: el rol se lee fresco de la base
+de datos en cada petición, así que un cambio de rol surte efecto de inmediato.
 
 ---
 
-**Resumen:** orgtable autentica con sesiones JWT stateless (`jose` + cookie `httpOnly`) y bcryptjs, protegidas por un chequeo optimista en `proxy.ts` y la verificación segura y autoritativa del DAL, a costa de no poder revocar tokens al instante hasta el hito de tiempo real.
+**Resumen:** orgtable autentica con un JWT firmado (`jose` + cookie `httpOnly`) cuyo
+`sid` apunta a una fila de la tabla `Session`, validada en el DAL; junto con bcryptjs,
+el chequeo optimista de `proxy.ts` y la verificación autoritativa del DAL, permite
+revocar sesiones al instante (logout, reset de contraseña, cierre forzado).

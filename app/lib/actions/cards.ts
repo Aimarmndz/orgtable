@@ -1,7 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { prisma } from "@/app/lib/prisma";
+import { revalidateBoard } from "@/app/lib/realtime/notify";
 import { requireBoardAccess } from "@/app/lib/dal";
 import { canEditBoard } from "@/app/lib/roles";
 import { cardTitleSchema } from "@/app/lib/validators";
@@ -38,7 +38,7 @@ export async function createCard(formData: FormData): Promise<void> {
       position: positionAtEnd(last?.position ?? null),
     },
   });
-  revalidatePath(`/board/${boardId}`);
+  revalidateBoard(boardId);
 }
 
 /** Actualiza la descripción y/o la fecha de vencimiento de una tarjeta (Hito 2). */
@@ -63,7 +63,7 @@ export async function updateCard(formData: FormData): Promise<void> {
       dueDate: due && !Number.isNaN(due.getTime()) ? due : null,
     },
   });
-  revalidatePath(`/board/${card.list.boardId}`);
+  revalidateBoard(card.list.boardId);
 }
 
 export async function renameCard(formData: FormData): Promise<void> {
@@ -79,7 +79,7 @@ export async function renameCard(formData: FormData): Promise<void> {
   if (!parsed.success) return;
 
   await prisma.card.update({ where: { id: cardId }, data: { title: parsed.data } });
-  revalidatePath(`/board/${card.list.boardId}`);
+  revalidateBoard(card.list.boardId);
 }
 
 export async function deleteCard(formData: FormData): Promise<void> {
@@ -93,7 +93,7 @@ export async function deleteCard(formData: FormData): Promise<void> {
   if (!canEditBoard(role)) return;
 
   await prisma.card.delete({ where: { id: cardId } });
-  revalidatePath(`/board/${card.list.boardId}`);
+  revalidateBoard(card.list.boardId);
 }
 
 /**
@@ -115,6 +115,6 @@ export async function moveCard(input: {
     where: { id: input.cardId },
     data: { listId: input.toListId, position: input.position },
   });
-  revalidatePath(`/board/${boardId}`);
+  revalidateBoard(boardId);
   return { ok: true };
 }

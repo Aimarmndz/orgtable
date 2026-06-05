@@ -5,6 +5,7 @@ import {
   updateUserRole,
   resetUserPassword,
   deleteUser,
+  revokeUserSessions,
 } from "@/app/lib/actions/admin";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
@@ -86,6 +87,17 @@ export function UserRowActions({
           Restablecer contraseña
         </button>
       )}
+
+      <form action={revokeUserSessions}>
+        <input type="hidden" name="userId" value={userId} />
+        <button
+          type="submit"
+          className="rounded-lg px-2 py-1 text-xs text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
+          title="Cierra todas las sesiones activas de este usuario"
+        >
+          Cerrar sesiones
+        </button>
+      </form>
 
       <form
         action={deleteUser}

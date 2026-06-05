@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/app/lib/prisma";
+import { revalidateBoard } from "@/app/lib/realtime/notify";
 import { requireUser, requireBoardAccess } from "@/app/lib/dal";
 import { canManageBoard } from "@/app/lib/roles";
 import { boardTitleSchema } from "@/app/lib/validators";
@@ -36,7 +37,7 @@ export async function renameBoard(formData: FormData): Promise<void> {
     where: { id: boardId },
     data: { title: parsed.data },
   });
-  revalidatePath(`/board/${boardId}`);
+  revalidateBoard(boardId);
 }
 
 export async function deleteBoard(formData: FormData): Promise<void> {

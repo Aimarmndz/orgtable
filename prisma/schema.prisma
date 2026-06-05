@@ -45,6 +45,24 @@ model User {
   updatedAt    DateTime      @updatedAt
   boards       Board[]
   memberships  BoardMember[]
+  sessions     Session[]
+}
+
+// Sesión de servidor (Hito 4). La cookie sigue siendo un JWT firmado, pero ahora
+// lleva el id de ESTA fila (sid). El DAL valida el JWT y además comprueba que la
+// sesión existe, no está revocada y no ha expirado: así la revocación es INMEDIATA
+// (cerrar sesión, restablecer contraseña por el admin, "cerrar en todos los
+// dispositivos"). Ver docs/authentication.md y docs/decisions/0008-session-store.md.
+model Session {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userAgent String?
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  revokedAt DateTime?
+
+  @@index([userId])
 }
 
 model Board {
