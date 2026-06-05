@@ -1,17 +1,27 @@
 "use client";
 
+import { useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { CardDTO } from "@/app/lib/types";
-import { deleteCard } from "@/app/lib/actions/cards";
+import { labelBackground } from "@/app/lib/colors";
+
+function formatDue(d: Date): string {
+  return new Intl.DateTimeFormat("es", {
+    day: "numeric",
+    month: "short",
+  }).format(d);
+}
 
 export function CardItem({
   card,
   listId,
+  onOpen,
   overlay = false,
 }: {
   card: CardDTO;
   listId: string;
+  onOpen?: (cardId: string) => void;
   overlay?: boolean;
 }) {
   const {
@@ -29,29 +39,88 @@ export function CardItem({
     opacity: isDragging && !overlay ? 0.4 : 1,
   };
 
+  const total = card.checklists.reduce((n, c) => n + c.items.length, 0);
+  const done = card.checklists.reduce(
+    (n, c) => n + c.items.filter((i) => i.done).length,
+    0,
+  );
+  // Date.now() se lee una vez al montar (no en cada render) para no romper la pureza
+  // del render; el badge de "vencida" no necesita actualizarse al segundo.
+  const [now] = useState(() => Date.now());
+  const due = card.dueDate ? new Date(card.dueDate) : null;
+  const overdue = due ? due.getTime() < now : false;
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
-      className={`group flex cursor-grab items-start justify-between gap-2 rounded-lg bg-white px-3 py-2 text-sm shadow-sm ring-1 ring-black/5 active:cursor-grabbing ${
-        overlay ? "shadow-lg" : ""
+      onClick={() => onOpen?.(card.id)}
+      className={`cursor-pointer rounded-lg bg-surface p-2.5 text-sm text-ink shadow-sm ring-1 ring-border/70 transition active:cursor-grabbing hover:ring-accent/50 ${
+        overlay ? "rotate-2 shadow-lg" : ""
       }`}
     >
-      <span className="flex-1 break-words">{card.title}</span>
-      {!overlay && (
-        <form action={deleteCard}>
-          <input type="hidden" name="cardId" value={card.id} />
-          <button
-            // Evita que el botón inicie el arrastre.
-            onPointerDown={(e) => e.stopPropagation()}
-            className="shrink-0 rounded px-1 text-xs text-zinc-300 opacity-0 transition hover:text-red-600 group-hover:opacity-100"
-            aria-label="Borrar tarjeta"
-          >
-            ✕
-          </button>
-        </form>
+      {card.labels.length > 0 && (
+        <div className="mb-1.5 flex flex-wrap gap-1">
+          {card.labels.map((l) => (
+            <span
+              key={l.id}
+              title={l.name}
+              className="h-2 w-9 rounded-full"
+              style={{ background: labelBackground(l.color) }}
+            />
+          ))}
+        </div>
+      )}
+
+      <p className="break-words leading-snug">{card.title}</p>
+
+      {(due || total > 0) && (
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+          {due && (
+            <span
+              className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 ${
+                overdue
+                  ? "bg-danger/15 text-danger"
+                  : "bg-surface-2 text-ink-muted"
+              }`}
+            >
+              <svg
+                className="size-3"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
+                <rect x="3" y="4" width="18" height="18" rx="2" />
+                <path d="M16 2v4M8 2v4M3 10h18" />
+              </svg>
+              {formatDue(due)}
+            </span>
+          )}
+          {total > 0 && (
+            <span
+              className={`inline-flex items-center gap-1 ${
+                done === total ? "text-success" : "text-ink-muted"
+              }`}
+            >
+              <svg
+                className="size-3"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
+                <path d="M9 11l3 3L22 4" />
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+              </svg>
+              {done}/{total}
+            </span>
+          )}
+        </div>
       )}
     </div>
   );

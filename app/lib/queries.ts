@@ -20,10 +20,20 @@ export async function getBoardWithLists(boardId: string, userId: string) {
       OR: [{ ownerId: userId }, { members: { some: { userId } } }],
     },
     include: {
+      labels: { orderBy: { name: "asc" } },
       lists: {
         orderBy: { position: "asc" },
         include: {
-          cards: { orderBy: { position: "asc" } },
+          cards: {
+            orderBy: { position: "asc" },
+            include: {
+              labels: { include: { label: true } },
+              checklists: {
+                orderBy: { position: "asc" },
+                include: { items: { orderBy: { position: "asc" } } },
+              },
+            },
+          },
         },
       },
     },

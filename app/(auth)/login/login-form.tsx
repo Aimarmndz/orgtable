@@ -2,9 +2,8 @@
 
 import { useActionState } from "react";
 import { login, type AuthState } from "@/app/lib/actions/auth";
-
-const inputClass =
-  "mt-1 w-full rounded-md border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20";
+import { Button } from "@/app/components/ui/button";
+import { Input } from "@/app/components/ui/input";
 
 export function LoginForm() {
   const [state, action, pending] = useActionState<AuthState, FormData>(
@@ -15,48 +14,50 @@ export function LoginForm() {
   return (
     <form
       action={action}
-      className="w-full max-w-sm rounded-xl bg-white p-8 shadow-sm ring-1 ring-black/5"
+      className="w-full max-w-sm rounded-2xl border border-border bg-surface p-8"
     >
-      <h1 className="text-2xl font-semibold tracking-tight">Iniciar sesión</h1>
-      <p className="mt-1 text-sm text-zinc-500">
-        Accede a tu instancia de orgtable.
-      </p>
+      <div className="flex items-center gap-2">
+        <span className="grid size-8 place-items-center rounded-lg bg-accent text-accent-ink font-bold">
+          o
+        </span>
+        <span className="text-lg font-bold tracking-tight">orgtable</span>
+      </div>
+
+      <h1 className="mt-6 text-lg font-semibold">Inicia sesión</h1>
+      <p className="mt-1 text-sm text-ink-muted">Accede a tu instancia.</p>
 
       {state.error && (
-        <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p className="mt-4 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
           {state.error}
         </p>
       )}
 
-      <label className="mt-6 block text-sm font-medium">
-        Email
-        <input
-          name="email"
-          type="email"
-          required
-          autoComplete="email"
-          className={inputClass}
-        />
-      </label>
+      <div className="mt-6 space-y-4">
+        <label className="block text-sm font-medium">
+          Email
+          <Input
+            name="email"
+            type="email"
+            required
+            autoComplete="email"
+            className="mt-1.5"
+          />
+        </label>
+        <label className="block text-sm font-medium">
+          Contraseña
+          <Input
+            name="password"
+            type="password"
+            required
+            autoComplete="current-password"
+            className="mt-1.5"
+          />
+        </label>
+      </div>
 
-      <label className="mt-4 block text-sm font-medium">
-        Contraseña
-        <input
-          name="password"
-          type="password"
-          required
-          autoComplete="current-password"
-          className={inputClass}
-        />
-      </label>
-
-      <button
-        type="submit"
-        disabled={pending}
-        className="mt-6 w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
-      >
+      <Button type="submit" disabled={pending} className="mt-6 w-full">
         {pending ? "Entrando…" : "Entrar"}
-      </button>
+      </Button>
     </form>
   );
 }

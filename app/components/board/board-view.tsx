@@ -21,22 +21,20 @@ import { generateKeyBetween } from "fractional-indexing";
 import type { BoardDTO, ListDTO, CardDTO } from "@/app/lib/types";
 import { moveCard } from "@/app/lib/actions/cards";
 import { reorderList } from "@/app/lib/actions/lists";
+import { boardBackgroundFor } from "@/app/lib/colors";
 import { ListColumn } from "./list-column";
 import { CardItem } from "./card-item";
 import { AddListForm } from "./add-list-form";
+import { CardModal } from "../card/card-modal";
 
-// Vista interactiva del tablero. Mantiene un estado local optimista de las listas y
-// tarjetas (inicializado desde el servidor) que se actualiza al instante durante el
-// arrastre; cada movimiento se persiste con una Server Action que calcula nada — el
-// cliente calcula la nueva clave de posición con fractional indexing y solo se
-// actualiza una fila. Ver docs/drag-and-drop.md.
 export function BoardView({ board }: { board: BoardDTO }) {
   const [lists, setLists] = useState<ListDTO[]>(board.lists);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
 
-  // Resincroniza con el servidor cuando llegan datos nuevos (crear/borrar/revalidate).
-  // Patrón "ajustar estado durante el render" recomendado por React (sin useEffect):
-  // `board` solo cambia de referencia cuando el servidor envía datos frescos.
+  // Resincroniza con el servidor cuando llegan datos nuevos (patrón "ajustar estado
+  // durante el render", sin useEffect): `board` solo cambia de referencia con datos
+  // frescos del servidor.
   const [syncedBoard, setSyncedBoard] = useState(board);
   if (board !== syncedBoard) {
     setSyncedBoard(board);
@@ -44,8 +42,6 @@ export function BoardView({ board }: { board: BoardDTO }) {
   }
 
   const sensors = useSensors(
-    // distance: 5 evita que un simple clic (en "añadir tarjeta", borrar...) inicie
-    // un arrastre accidental.
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
 
@@ -62,19 +58,20 @@ export function BoardView({ board }: { board: BoardDTO }) {
     activeId && isList(activeId)
       ? lists.find((l) => l.id === activeId)
       : undefined;
+  const selectedCard: CardDTO | undefined = selectedCardId
+    ? lists.flatMap((l) => l.cards).find((c) => c.id === selectedCardId)
+    : undefined;
 
   function handleDragStart(event: DragStartEvent) {
     setActiveId(String(event.active.id));
   }
 
-  // Mientras se arrastra una tarjeta sobre otra lista, la movemos visualmente entre
-  // contenedores en el estado local (todavía sin persistir).
   function handleDragOver(event: DragOverEvent) {
     const { active, over } = event;
     if (!over) return;
     const activeIdStr = String(active.id);
     const overIdStr = String(over.id);
-    if (isList(activeIdStr)) return; // las listas se reordenan en dragEnd
+    if (isList(activeIdStr)) return;
 
     const from = containerOf(activeIdStr);
     const to = containerOf(overIdStr);
@@ -114,7 +111,7 @@ export function BoardView({ board }: { board: BoardDTO }) {
     const activeIdStr = String(active.id);
     const overIdStr = String(over.id);
 
-    // --- Reordenar listas (columnas) ---
+    // Reordenar listas (columnas)
     if (isList(activeIdStr)) {
       const oldIndex = lists.findIndex((l) => l.id === activeIdStr);
       const newIndex = lists.findIndex((l) => l.id === overIdStr);
@@ -132,14 +129,13 @@ export function BoardView({ board }: { board: BoardDTO }) {
       return;
     }
 
-    // --- Mover/reordenar tarjeta ---
+    // Mover/reordenar tarjeta
     const container = containerOf(activeIdStr);
     if (!container) return;
     let working = lists;
     const list = lists.find((l) => l.id === container);
     if (!list) return;
 
-    // Si se soltó sobre otra tarjeta del mismo contenedor, reordenar dentro.
     if (!isList(overIdStr) && overIdStr !== activeIdStr) {
       if (containerOf(overIdStr) === container) {
         const fromIdx = list.cards.findIndex((c) => c.id === activeIdStr);
@@ -178,39 +174,59 @@ export function BoardView({ board }: { board: BoardDTO }) {
   }
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCorners}
-      onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="flex flex-1 flex-col">
-        <div className="px-4 pt-4">
-          <h1 className="text-xl font-semibold tracking-tight">{board.title}</h1>
-        </div>
-        <div className="flex flex-1 items-start gap-3 overflow-x-auto p-4">
-          <SortableContext
-            items={lists.map((l) => l.id)}
-            strategy={horizontalListSortingStrategy}
-          >
-            {lists.map((list) => (
-              <ListColumn key={list.id} list={list} />
-            ))}
-          </SortableContext>
-          <AddListForm boardId={board.id} />
-        </div>
-      </div>
-
-      <DragOverlay>
-        {activeCard ? (
-          <CardItem card={activeCard} listId="" overlay />
-        ) : activeList ? (
-          <div className="w-72 rounded-xl bg-zinc-100 p-3 opacity-90 shadow-lg">
-            <p className="font-semibold text-zinc-700">{activeList.title}</p>
+    <>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCorners}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+      >
+        <div
+          className="flex flex-1 flex-col overflow-hidden"
+          style={{ background: boardBackgroundFor(board) }}
+        >
+          <div className="shrink-0 px-4 pb-2 pt-4">
+            <h1 className="text-xl font-semibold tracking-tight text-white drop-shadow-sm">
+              {board.title}
+            </h1>
           </div>
-        ) : null}
-      </DragOverlay>
-    </DndContext>
+          <div className="flex flex-1 items-start gap-3 overflow-x-auto px-4 pb-4">
+            <SortableContext
+              items={lists.map((l) => l.id)}
+              strategy={horizontalListSortingStrategy}
+            >
+              {lists.map((list) => (
+                <ListColumn
+                  key={list.id}
+                  list={list}
+                  onOpenCard={setSelectedCardId}
+                />
+              ))}
+            </SortableContext>
+            <AddListForm boardId={board.id} />
+          </div>
+        </div>
+
+        <DragOverlay>
+          {activeCard ? (
+            <CardItem card={activeCard} listId="" overlay />
+          ) : activeList ? (
+            <div className="w-72 rounded-xl bg-column p-3 opacity-95 shadow-lg">
+              <p className="font-semibold">{activeList.title}</p>
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
+
+      {selectedCard && (
+        <CardModal
+          card={selectedCard}
+          boardId={board.id}
+          boardLabels={board.labels}
+          onClose={() => setSelectedCardId(null)}
+        />
+      )}
+    </>
   );
 }

@@ -29,12 +29,14 @@ El producto mínimo usable: instalar con un comando → configurar → usar como
 - [x] **Arrastrar y soltar** de listas y tarjetas con `@dnd-kit` + fractional indexing
       + UI optimista, persistido vía Server Actions.
 
-## Hito 2 — Detalle de tarjeta
+## Hito 2 — Detalle de tarjeta ✅ (completado)
 
-- [ ] Modal de tarjeta con descripción (markdown).
-- [ ] Etiquetas (labels): crear y asignar.
-- [ ] Fechas de vencimiento (due dates).
-- [ ] Checklists.
+- [x] Modal de tarjeta con descripción.
+- [x] Etiquetas (labels): crear y asignar, con badges en la tarjeta.
+- [x] Fechas de vencimiento (due dates), con aviso de vencida.
+- [x] Checklists con ítems marcables y barra de progreso.
+- [x] **Sistema de diseño** (estética Trello colorida) con tema claro y oscuro
+      (toggle persistente). Ver `DESIGN.md` y `PRODUCT.md`.
 
 ## Hito 3 — Multiusuario
 

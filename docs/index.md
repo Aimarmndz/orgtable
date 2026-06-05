@@ -18,6 +18,8 @@ quien quiere **contribuir** al código.
 - [**Base de datos**](./database.md) — el esquema, Prisma 7 y la estrategia de ordenación.
 - [**Autenticación**](./authentication.md) — sesiones JWT, el DAL y la protección de rutas.
 - [**Arrastrar y soltar**](./drag-and-drop.md) — `@dnd-kit` y fractional indexing.
+- [**Detalle de tarjeta**](./card-detail.md) — modal, etiquetas, fechas y checklists.
+- [**Sistema de diseño**](./design-system.md) — tokens OKLCH, tema claro/oscuro, componentes.
 - [**Docker**](./docker.md) — la imagen multi-stage y la orquestación.
 - [**API de Server Actions**](./api/server-actions.md) — catálogo de mutaciones del servidor.
 - [**Contribuir**](./contributing.md) — entorno de desarrollo y convenciones.

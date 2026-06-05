@@ -39,6 +39,30 @@ export async function createCard(formData: FormData): Promise<void> {
   revalidatePath(`/board/${boardId}`);
 }
 
+/** Actualiza la descripción y/o la fecha de vencimiento de una tarjeta (Hito 2). */
+export async function updateCard(formData: FormData): Promise<void> {
+  const cardId = String(formData.get("cardId"));
+  const card = await prisma.card.findUnique({
+    where: { id: cardId },
+    select: { list: { select: { boardId: true } } },
+  });
+  if (!card) return;
+  await requireBoardAccess(card.list.boardId);
+
+  const description = String(formData.get("description") ?? "").trim();
+  const dueRaw = String(formData.get("dueDate") ?? "").trim();
+  const due = dueRaw ? new Date(dueRaw) : null;
+
+  await prisma.card.update({
+    where: { id: cardId },
+    data: {
+      description: description || null,
+      dueDate: due && !Number.isNaN(due.getTime()) ? due : null,
+    },
+  });
+  revalidatePath(`/board/${card.list.boardId}`);
+}
+
 export async function renameCard(formData: FormData): Promise<void> {
   const cardId = String(formData.get("cardId"));
   const card = await prisma.card.findUnique({

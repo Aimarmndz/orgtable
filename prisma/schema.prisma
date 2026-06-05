@@ -90,6 +90,7 @@ model Card {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   labels      CardLabel[]
+  checklists  Checklist[]
 
   @@index([listId, position])
 }
@@ -114,6 +115,32 @@ model CardLabel {
 
   @@id([cardId, labelId])
   @@index([labelId])
+}
+
+// Listas de comprobación dentro de una tarjeta (Hito 2). Una tarjeta puede tener
+// varias checklists; cada una con varios ítems marcables.
+model Checklist {
+  id        String          @id @default(cuid())
+  cardId    String
+  card      Card            @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  title     String
+  position  String
+  createdAt DateTime        @default(now())
+  items     ChecklistItem[]
+
+  @@index([cardId])
+}
+
+model ChecklistItem {
+  id          String    @id @default(cuid())
+  checklistId String
+  checklist   Checklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  text        String
+  done        Boolean   @default(false)
+  position    String
+  createdAt   DateTime  @default(now())
+
+  @@index([checklistId])
 }
 
 // Membresía de un usuario en un tablero. Se crea ya en el MVP (single-user) para

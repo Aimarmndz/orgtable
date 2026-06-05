@@ -2,9 +2,8 @@
 
 import { useActionState } from "react";
 import { completeSetup, type SetupState } from "@/app/lib/actions/setup";
-
-const inputClass =
-  "mt-1 w-full rounded-md border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20";
+import { Button } from "@/app/components/ui/button";
+import { Input } from "@/app/components/ui/input";
 
 export function SetupForm() {
   const [state, action, pending] = useActionState<SetupState, FormData>(
@@ -15,86 +14,91 @@ export function SetupForm() {
   return (
     <form
       action={action}
-      className="w-full max-w-md rounded-xl bg-white p-8 shadow-sm ring-1 ring-black/5"
+      className="w-full max-w-md rounded-2xl border border-border bg-surface p-8"
     >
-      <h1 className="text-2xl font-semibold tracking-tight">
-        Configura tu orgtable
+      <div className="flex items-center gap-2">
+        <span className="grid size-8 place-items-center rounded-lg bg-accent text-accent-ink font-bold">
+          o
+        </span>
+        <span className="text-lg font-bold tracking-tight">orgtable</span>
+      </div>
+
+      <h1 className="mt-6 text-xl font-semibold tracking-tight">
+        Configura tu instancia
       </h1>
-      <p className="mt-1 text-sm text-zinc-500">
+      <p className="mt-1 text-sm text-ink-muted">
         Este asistente solo aparece una vez. Crea tu cuenta de administrador.
       </p>
 
       {state.error && (
-        <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p className="mt-4 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
           {state.error}
         </p>
       )}
 
       <fieldset className="mt-6">
-        <legend className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+        <legend className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
           Instancia
         </legend>
         <label className="mt-3 block text-sm font-medium">
           Nombre de la instancia
-          <input
+          <Input
             name="instanceName"
             type="text"
             required
             maxLength={60}
             placeholder="Mi equipo"
-            className={inputClass}
+            className="mt-1.5"
           />
         </label>
       </fieldset>
 
       <fieldset className="mt-6">
-        <legend className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+        <legend className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
           Administrador
         </legend>
-        <label className="mt-3 block text-sm font-medium">
-          Tu nombre
-          <input
-            name="name"
-            type="text"
-            required
-            maxLength={60}
-            autoComplete="name"
-            className={inputClass}
-          />
-        </label>
-        <label className="mt-4 block text-sm font-medium">
-          Email
-          <input
-            name="email"
-            type="email"
-            required
-            autoComplete="email"
-            className={inputClass}
-          />
-        </label>
-        <label className="mt-4 block text-sm font-medium">
-          Contraseña
-          <input
-            name="password"
-            type="password"
-            required
-            minLength={8}
-            autoComplete="new-password"
-            className={inputClass}
-          />
-          <span className="mt-1 block text-xs text-zinc-400">
-            Mínimo 8 caracteres.
-          </span>
-        </label>
+        <div className="mt-3 space-y-4">
+          <label className="block text-sm font-medium">
+            Tu nombre
+            <Input
+              name="name"
+              type="text"
+              required
+              maxLength={60}
+              autoComplete="name"
+              className="mt-1.5"
+            />
+          </label>
+          <label className="block text-sm font-medium">
+            Email
+            <Input
+              name="email"
+              type="email"
+              required
+              autoComplete="email"
+              className="mt-1.5"
+            />
+          </label>
+          <label className="block text-sm font-medium">
+            Contraseña
+            <Input
+              name="password"
+              type="password"
+              required
+              minLength={8}
+              autoComplete="new-password"
+              className="mt-1.5"
+            />
+            <span className="mt-1 block text-xs text-ink-muted">
+              Mínimo 8 caracteres.
+            </span>
+          </label>
+        </div>
       </fieldset>
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="mt-6 w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
-      >
+      <Button type="submit" disabled={pending} className="mt-6 w-full">
         {pending ? "Creando…" : "Crear y entrar"}
-      </button>
+      </Button>
     </form>
   );
 }

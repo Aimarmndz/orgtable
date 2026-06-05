@@ -13,7 +13,7 @@ export function AddCardForm({ listId }: { listId: string }) {
         await createCard(formData);
         ref.current?.reset();
       }}
-      className="mt-1 px-1"
+      className="p-2"
     >
       <input type="hidden" name="listId" value={listId} />
       <input
@@ -21,7 +21,7 @@ export function AddCardForm({ listId }: { listId: string }) {
         required
         maxLength={500}
         placeholder="+ Añadir tarjeta"
-        className="w-full rounded-md bg-transparent px-2 py-1.5 text-sm placeholder:text-zinc-400 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+        className="w-full rounded-lg bg-transparent px-2 py-1.5 text-sm text-ink transition-colors placeholder:text-ink-muted hover:bg-black/5 focus:bg-surface focus:shadow-sm focus:outline-none focus:ring-2 focus:ring-accent/25 dark:hover:bg-white/5"
       />
     </form>
   );
