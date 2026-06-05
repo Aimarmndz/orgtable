@@ -19,18 +19,34 @@ import {
 } from "@dnd-kit/sortable";
 import { generateKeyBetween } from "fractional-indexing";
 import type { BoardDTO, ListDTO, CardDTO } from "@/app/lib/types";
+import type { BoardRole } from "@/app/lib/roles";
+import { canEditBoard, canManageBoard, BOARD_ROLE_LABELS } from "@/app/lib/roles";
 import { moveCard } from "@/app/lib/actions/cards";
 import { reorderList } from "@/app/lib/actions/lists";
 import { boardBackgroundFor } from "@/app/lib/colors";
 import { ListColumn } from "./list-column";
 import { CardItem } from "./card-item";
 import { AddListForm } from "./add-list-form";
+import { BoardPermsProvider } from "./board-perms";
+import { MembersPanel, type BoardMemberDTO } from "./members-panel";
 import { CardModal } from "../card/card-modal";
 
-export function BoardView({ board }: { board: BoardDTO }) {
+export function BoardView({
+  board,
+  viewerRole,
+  members,
+}: {
+  board: BoardDTO;
+  viewerRole: BoardRole;
+  members: BoardMemberDTO[];
+}) {
   const [lists, setLists] = useState<ListDTO[]>(board.lists);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const [membersOpen, setMembersOpen] = useState(false);
+
+  const canEdit = canEditBoard(viewerRole);
+  const canManage = canManageBoard(viewerRole);
 
   // Resincroniza con el servidor cuando llegan datos nuevos (patrón "ajustar estado
   // durante el render", sin useEffect): `board` solo cambia de referencia con datos
@@ -174,7 +190,7 @@ export function BoardView({ board }: { board: BoardDTO }) {
   }
 
   return (
-    <>
+    <BoardPermsProvider role={viewerRole}>
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
@@ -186,10 +202,36 @@ export function BoardView({ board }: { board: BoardDTO }) {
           className="flex flex-1 flex-col overflow-hidden"
           style={{ background: boardBackgroundFor(board) }}
         >
-          <div className="shrink-0 px-4 pb-2 pt-4">
+          <div className="flex shrink-0 items-center justify-between gap-3 px-4 pb-2 pt-4">
             <h1 className="text-xl font-semibold tracking-tight text-white drop-shadow-sm">
               {board.title}
             </h1>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-white/20 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm">
+                {BOARD_ROLE_LABELS[viewerRole]}
+              </span>
+              <button
+                onClick={() => setMembersOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-white/20 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-white/30 backdrop-blur-sm"
+              >
+                <svg
+                  className="size-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  aria-hidden="true"
+                >
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+                {canManage ? "Miembros" : "Ver miembros"}
+                <span className="tabular-nums opacity-80">
+                  · {members.length}
+                </span>
+              </button>
+            </div>
           </div>
           <div className="flex flex-1 items-start gap-3 overflow-x-auto px-4 pb-4">
             <SortableContext
@@ -204,7 +246,7 @@ export function BoardView({ board }: { board: BoardDTO }) {
                 />
               ))}
             </SortableContext>
-            <AddListForm boardId={board.id} />
+            {canEdit && <AddListForm boardId={board.id} />}
           </div>
         </div>
 
@@ -227,6 +269,15 @@ export function BoardView({ board }: { board: BoardDTO }) {
           onClose={() => setSelectedCardId(null)}
         />
       )}
-    </>
+
+      {membersOpen && (
+        <MembersPanel
+          boardId={board.id}
+          members={members}
+          canManage={canManage}
+          onClose={() => setMembersOpen(false)}
+        />
+      )}
+    </BoardPermsProvider>
   );
 }

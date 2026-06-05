@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/app/lib/prisma";
 import { requireBoardAccess } from "@/app/lib/dal";
+import { canEditBoard } from "@/app/lib/roles";
 import { cardTitleSchema } from "@/app/lib/validators";
 import { positionAtEnd } from "@/app/lib/ordering";
 
@@ -20,7 +21,8 @@ export async function createCard(formData: FormData): Promise<void> {
   const listId = String(formData.get("listId"));
   const boardId = await boardIdForList(listId);
   if (!boardId) return;
-  await requireBoardAccess(boardId);
+  const { role } = await requireBoardAccess(boardId);
+  if (!canEditBoard(role)) return;
   const parsed = cardTitleSchema.safeParse(formData.get("title"));
   if (!parsed.success) return;
 
@@ -47,7 +49,8 @@ export async function updateCard(formData: FormData): Promise<void> {
     select: { list: { select: { boardId: true } } },
   });
   if (!card) return;
-  await requireBoardAccess(card.list.boardId);
+  const { role } = await requireBoardAccess(card.list.boardId);
+  if (!canEditBoard(role)) return;
 
   const description = String(formData.get("description") ?? "").trim();
   const dueRaw = String(formData.get("dueDate") ?? "").trim();
@@ -70,7 +73,8 @@ export async function renameCard(formData: FormData): Promise<void> {
     select: { list: { select: { boardId: true } } },
   });
   if (!card) return;
-  await requireBoardAccess(card.list.boardId);
+  const { role } = await requireBoardAccess(card.list.boardId);
+  if (!canEditBoard(role)) return;
   const parsed = cardTitleSchema.safeParse(formData.get("title"));
   if (!parsed.success) return;
 
@@ -85,7 +89,8 @@ export async function deleteCard(formData: FormData): Promise<void> {
     select: { list: { select: { boardId: true } } },
   });
   if (!card) return;
-  await requireBoardAccess(card.list.boardId);
+  const { role } = await requireBoardAccess(card.list.boardId);
+  if (!canEditBoard(role)) return;
 
   await prisma.card.delete({ where: { id: cardId } });
   revalidatePath(`/board/${card.list.boardId}`);
@@ -103,7 +108,8 @@ export async function moveCard(input: {
 }): Promise<{ ok: boolean }> {
   const boardId = await boardIdForList(input.toListId);
   if (!boardId) return { ok: false };
-  await requireBoardAccess(boardId);
+  const { role } = await requireBoardAccess(boardId);
+  if (!canEditBoard(role)) return { ok: false };
 
   await prisma.card.update({
     where: { id: input.cardId },

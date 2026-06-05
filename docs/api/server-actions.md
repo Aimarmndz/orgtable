@@ -376,10 +376,48 @@ Ver [docs/drag-and-drop.md](../drag-and-drop.md).
 
 ---
 
+## Multiusuario (Hito 3)
+
+Toda mutación que ya pasaba por `requireBoardAccess` ahora **comprueba además el
+rol** con los ayudantes de `app/lib/roles.ts` (`canEditBoard`, `canManageBoard`).
+Si el rol no alcanza, la acción no hace nada (formularios) o devuelve `{ ok: false }`
+(drag & drop). Ver [docs/authorization.md](../authorization.md).
+
+### Miembros de tablero — `app/lib/actions/members.ts`
+
+Solo el **propietario** (`OWNER`) del tablero.
+
+- **`addBoardMember(_prev, formData)`** — `{ boardId, email, role }`. Valida con
+  `addMemberSchema`. Busca un usuario existente por email; si no existe, devuelve un
+  error. Crea la fila en `board_members`. Retorno: `{ error?, message? }` para
+  `useActionState`.
+- **`updateBoardMemberRole(formData)`** — `{ boardId, userId, role }`. Cambia el rol
+  de un miembro. No permite tocar el rol del dueño del tablero.
+- **`removeBoardMember(formData)`** — `{ boardId, userId }`. Quita a un miembro. No
+  permite quitar al dueño.
+
+### Administración de usuarios — `app/lib/actions/admin.ts`
+
+Solo el **administrador global** (`requireAdmin`).
+
+- **`createUser(_prev, formData)`** — `{ name, email, password, role }`. Valida con
+  `createUserSchema`, comprueba unicidad del email, hashea la contraseña y crea la
+  cuenta. Retorno: `{ error?, message? }`.
+- **`updateUserRole(formData)`** — `{ userId, role }`. Cambia el rol global. No puedes
+  cambiar tu propio rol. Devuelve el resultado vía redirección con query.
+- **`resetUserPassword(formData)`** — `{ userId, password }`. Restablece la
+  contraseña. Vía redirección con query.
+- **`deleteUser(formData)`** — `{ userId }`. Borra la cuenta. No puedes borrarte a ti
+  mismo ni borrar a un usuario que es propietario de tableros (cascada). Vía
+  redirección con query.
+
+---
+
 ## Véase también
 
 - [docs/authentication.md](../authentication.md) — sesiones, `requireUser`,
   `requireBoardAccess` y el Data Access Layer.
+- [docs/authorization.md](../authorization.md) — modelo de roles y dónde se aplica.
 - [docs/drag-and-drop.md](../drag-and-drop.md) — reordenamiento optimista y
   *fractional indexing* en el cliente.
 - [docs/database.md](../database.md) — esquema Prisma, relaciones y borrado en

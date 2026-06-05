@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/app/lib/prisma";
 import { requireUser, requireBoardAccess } from "@/app/lib/dal";
+import { canManageBoard } from "@/app/lib/roles";
 import { boardTitleSchema } from "@/app/lib/validators";
 
 export async function createBoard(formData: FormData): Promise<void> {
@@ -26,7 +27,8 @@ export async function createBoard(formData: FormData): Promise<void> {
 
 export async function renameBoard(formData: FormData): Promise<void> {
   const boardId = String(formData.get("boardId"));
-  await requireBoardAccess(boardId);
+  const { role } = await requireBoardAccess(boardId);
+  if (!canManageBoard(role)) return;
   const parsed = boardTitleSchema.safeParse(formData.get("title"));
   if (!parsed.success) return;
 

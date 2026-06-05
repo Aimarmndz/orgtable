@@ -46,6 +46,10 @@ export const isSetupComplete = cache(async () => {
 /**
  * Exige que el usuario actual sea miembro del tablero. Redirige a /boards si no
  * tiene acceso. Toda mutación sobre un tablero (listas, tarjetas...) pasa por aquí.
+ *
+ * Devuelve también el ROL del usuario en el tablero (OWNER/EDITOR/VIEWER): la
+ * comprobación de "qué puede hacer" con ese rol se hace en cada Server Action con los
+ * ayudantes de @/app/lib/roles (canEditBoard, canManageBoard). Ver docs/authorization.md.
  */
 export const requireBoardAccess = cache(async (boardId: string) => {
   const user = await requireUser();
@@ -54,4 +58,15 @@ export const requireBoardAccess = cache(async (boardId: string) => {
   });
   if (!membership) redirect("/boards");
   return { user, role: membership.role };
+});
+
+/**
+ * Exige que el usuario actual sea administrador GLOBAL de la instancia (User.role =
+ * ADMIN). Para el panel de administración (/admin). Redirige a /boards si no lo es;
+ * a /login si no hay sesión (vía requireUser).
+ */
+export const requireAdmin = cache(async () => {
+  const user = await requireUser();
+  if (user.role !== "ADMIN") redirect("/boards");
+  return user;
 });

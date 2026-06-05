@@ -38,11 +38,13 @@ El producto mínimo usable: instalar con un comando → configurar → usar como
 - [x] **Sistema de diseño** (estética Trello colorida) con tema claro y oscuro
       (toggle persistente). Ver `DESIGN.md` y `PRODUCT.md`.
 
-## Hito 3 — Multiusuario
+## Hito 3 — Multiusuario ✅ (completado)
 
-- [ ] Invitar miembros a un tablero (`board_members`).
-- [ ] Roles (owner / editor / viewer) y autorización por rol en cada Server Action.
-- [ ] Gestión de usuarios por el administrador.
+- [x] Invitar miembros a un tablero (`board_members`) por email, con rol.
+- [x] Roles (owner / editor / viewer) y autorización por rol en cada Server Action,
+      con la UI en solo lectura para los lectores. Ver `docs/authorization.md`.
+- [x] Gestión de usuarios por el administrador (`/admin/users`): altas, roles,
+      restablecer contraseña y borrado con salvaguardas. Ver `docs/admin.md`.
 
 ## Hito 4 — Tiempo real
 

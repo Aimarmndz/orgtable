@@ -35,6 +35,14 @@ export default async function AppLayout({
           </span>
         </Link>
         <div className="flex items-center gap-1">
+          {user.role === "ADMIN" && (
+            <Link
+              href="/admin/users"
+              className="rounded-lg px-3 py-1.5 text-sm font-medium text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
+            >
+              Administración
+            </Link>
+          )}
           <ThemeToggle />
           <span className="mx-2 hidden text-sm text-ink-muted sm:inline">
             {user.email}

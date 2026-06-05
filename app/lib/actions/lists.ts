@@ -3,12 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/app/lib/prisma";
 import { requireBoardAccess } from "@/app/lib/dal";
+import { canEditBoard } from "@/app/lib/roles";
 import { listTitleSchema } from "@/app/lib/validators";
 import { positionAtEnd } from "@/app/lib/ordering";
 
 export async function createList(formData: FormData): Promise<void> {
   const boardId = String(formData.get("boardId"));
-  await requireBoardAccess(boardId);
+  const { role } = await requireBoardAccess(boardId);
+  if (!canEditBoard(role)) return;
   const parsed = listTitleSchema.safeParse(formData.get("title"));
   if (!parsed.success) return;
 
@@ -34,7 +36,8 @@ export async function renameList(formData: FormData): Promise<void> {
     select: { boardId: true },
   });
   if (!list) return;
-  await requireBoardAccess(list.boardId);
+  const { role } = await requireBoardAccess(list.boardId);
+  if (!canEditBoard(role)) return;
   const parsed = listTitleSchema.safeParse(formData.get("title"));
   if (!parsed.success) return;
 
@@ -49,7 +52,8 @@ export async function deleteList(formData: FormData): Promise<void> {
     select: { boardId: true },
   });
   if (!list) return;
-  await requireBoardAccess(list.boardId);
+  const { role } = await requireBoardAccess(list.boardId);
+  if (!canEditBoard(role)) return;
 
   // Las tarjetas se borran en cascada (onDelete: Cascade en el esquema).
   await prisma.list.delete({ where: { id: listId } });
@@ -70,7 +74,8 @@ export async function reorderList(input: {
     select: { boardId: true },
   });
   if (!list) return { ok: false };
-  await requireBoardAccess(list.boardId);
+  const { role } = await requireBoardAccess(list.boardId);
+  if (!canEditBoard(role)) return { ok: false };
 
   await prisma.list.update({
     where: { id: input.listId },

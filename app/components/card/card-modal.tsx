@@ -24,6 +24,7 @@ import {
 } from "@/app/lib/actions/checklists";
 import { Button } from "../ui/button";
 import { Input, Textarea } from "../ui/input";
+import { useBoardPerms } from "../board/board-perms";
 
 const smallInput =
   "w-full rounded-lg border border-border bg-surface px-2.5 py-1.5 text-sm text-ink outline-none transition-colors placeholder:text-ink-muted/70 focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/25";
@@ -39,6 +40,7 @@ export function CardModal({
   boardLabels: LabelDTO[];
   onClose: () => void;
 }) {
+  const { canEdit, canManage } = useBoardPerms();
   const [, startTransition] = useTransition();
 
   useEffect(() => {
@@ -88,71 +90,108 @@ export function CardModal({
           <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
             Etiquetas
           </h3>
-          {boardLabels.length > 0 ? (
+          {canEdit ? (
+            boardLabels.length > 0 ? (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {boardLabels.map((l) => {
+                  const on = assigned.has(l.id);
+                  return (
+                    <button
+                      key={l.id}
+                      onClick={() =>
+                        startTransition(() => {
+                          toggleCardLabel({ cardId: card.id, labelId: l.id });
+                        })
+                      }
+                      style={{ background: labelBackground(l.color) }}
+                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium text-white transition ${
+                        on
+                          ? "ring-2 ring-ink/40 ring-offset-1 ring-offset-surface"
+                          : "opacity-55 hover:opacity-100"
+                      }`}
+                    >
+                      {l.name}
+                      {on && " ✓"}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="mt-2 text-sm text-ink-muted">
+                Aún no hay etiquetas en este tablero.
+              </p>
+            )
+          ) : card.labels.length > 0 ? (
             <div className="mt-2 flex flex-wrap gap-1.5">
-              {boardLabels.map((l) => {
-                const on = assigned.has(l.id);
-                return (
-                  <button
-                    key={l.id}
-                    onClick={() =>
-                      startTransition(() => {
-                        toggleCardLabel({ cardId: card.id, labelId: l.id });
-                      })
-                    }
-                    style={{ background: labelBackground(l.color) }}
-                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium text-white transition ${
-                      on
-                        ? "ring-2 ring-ink/40 ring-offset-1 ring-offset-surface"
-                        : "opacity-55 hover:opacity-100"
-                    }`}
-                  >
-                    {l.name}
-                    {on && " ✓"}
-                  </button>
-                );
-              })}
+              {card.labels.map((l) => (
+                <span
+                  key={l.id}
+                  style={{ background: labelBackground(l.color) }}
+                  className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium text-white"
+                >
+                  {l.name}
+                </span>
+              ))}
             </div>
           ) : (
-            <p className="mt-2 text-sm text-ink-muted">
-              Aún no hay etiquetas en este tablero.
-            </p>
+            <p className="mt-2 text-sm text-ink-muted">Sin etiquetas.</p>
           )}
-          <NewLabelForm boardId={boardId} />
+          {canManage && <NewLabelForm boardId={boardId} />}
         </section>
 
         {/* Descripción + fecha */}
-        <form action={updateCard} className="mt-6 space-y-4">
-          <input type="hidden" name="cardId" value={card.id} />
-          <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
-              Descripción
-            </h3>
-            <Textarea
-              name="description"
-              rows={4}
-              defaultValue={card.description ?? ""}
-              placeholder="Añade más detalle…"
-              className="mt-2 resize-y"
-            />
-          </div>
-          <div className="flex flex-wrap items-end gap-3">
-            <label className="text-sm">
-              <span className="block text-xs font-semibold uppercase tracking-wide text-ink-muted">
-                Vencimiento
-              </span>
-              <Input
-                type="date"
-                name="dueDate"
-                defaultValue={dueValue}
-                className="mt-2 w-auto"
+        {canEdit ? (
+          <form action={updateCard} className="mt-6 space-y-4">
+            <input type="hidden" name="cardId" value={card.id} />
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                Descripción
+              </h3>
+              <Textarea
+                name="description"
+                rows={4}
+                defaultValue={card.description ?? ""}
+                placeholder="Añade más detalle…"
+                className="mt-2 resize-y"
               />
-            </label>
-            <Button type="submit" variant="subtle">
-              Guardar cambios
-            </Button>
+            </div>
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="text-sm">
+                <span className="block text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                  Vencimiento
+                </span>
+                <Input
+                  type="date"
+                  name="dueDate"
+                  defaultValue={dueValue}
+                  className="mt-2 w-auto"
+                />
+              </label>
+              <Button type="submit" variant="subtle">
+                Guardar cambios
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <div className="mt-6 space-y-4">
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                Descripción
+              </h3>
+              <p className="mt-2 whitespace-pre-wrap text-sm text-ink-muted">
+                {card.description || "Sin descripción."}
+              </p>
+            </div>
+            {dueValue && (
+              <p className="text-sm">
+                <span className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                  Vencimiento:{" "}
+                </span>
+                {dueValue}
+              </p>
+            )}
           </div>
-        </form>
+        )}
 
         {/* Checklists */}
         <section className="mt-6">
@@ -169,27 +208,30 @@ export function CardModal({
               <ChecklistBlock
                 key={cl.id}
                 checklist={cl}
+                canEdit={canEdit}
                 startTransition={startTransition}
               />
             ))}
           </div>
-          <NewChecklistForm cardId={card.id} />
+          {canEdit && <NewChecklistForm cardId={card.id} />}
         </section>
 
-        {/* Borrar */}
-        <div className="mt-8 flex justify-end border-t border-border pt-4">
-          <form
-            action={async (formData) => {
-              await deleteCard(formData);
-              onClose();
-            }}
-          >
-            <input type="hidden" name="cardId" value={card.id} />
-            <Button variant="danger" type="submit">
-              Borrar tarjeta
-            </Button>
-          </form>
-        </div>
+        {/* Borrar (solo quien puede editar) */}
+        {canEdit && (
+          <div className="mt-8 flex justify-end border-t border-border pt-4">
+            <form
+              action={async (formData) => {
+                await deleteCard(formData);
+                onClose();
+              }}
+            >
+              <input type="hidden" name="cardId" value={card.id} />
+              <Button variant="danger" type="submit">
+                Borrar tarjeta
+              </Button>
+            </form>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -242,9 +284,11 @@ function NewLabelForm({ boardId }: { boardId: string }) {
 
 function ChecklistBlock({
   checklist,
+  canEdit,
   startTransition,
 }: {
   checklist: ChecklistDTO;
+  canEdit: boolean;
   startTransition: TransitionStartFunction;
 }) {
   const itemRef = useRef<HTMLFormElement>(null);
@@ -256,12 +300,14 @@ function ChecklistBlock({
     <div>
       <div className="flex items-center justify-between gap-2">
         <h4 className="text-sm font-semibold">{checklist.title}</h4>
-        <form action={deleteChecklist}>
-          <input type="hidden" name="checklistId" value={checklist.id} />
-          <button className="text-xs text-ink-muted transition-colors hover:text-danger">
-            Eliminar
-          </button>
-        </form>
+        {canEdit && (
+          <form action={deleteChecklist}>
+            <input type="hidden" name="checklistId" value={checklist.id} />
+            <button className="text-xs text-ink-muted transition-colors hover:text-danger">
+              Eliminar
+            </button>
+          </form>
+        )}
       </div>
 
       <div className="mt-1.5 flex items-center gap-2">
@@ -279,15 +325,17 @@ function ChecklistBlock({
           <li key={it.id} className="group flex items-center gap-2">
             <button
               onClick={() =>
+                canEdit &&
                 startTransition(() => {
                   toggleChecklistItem({ itemId: it.id, done: !it.done });
                 })
               }
+              disabled={!canEdit}
               aria-label={it.done ? "Marcar como pendiente" : "Marcar como hecho"}
               className={`grid size-4 shrink-0 place-items-center rounded border text-[10px] text-white transition-colors ${
                 it.done
                   ? "border-success bg-success"
-                  : "border-border hover:border-accent"
+                  : `border-border ${canEdit ? "hover:border-accent" : ""}`
               }`}
             >
               {it.done && "✓"}
@@ -299,36 +347,40 @@ function ChecklistBlock({
             >
               {it.text}
             </span>
-            <form action={deleteChecklistItem}>
-              <input type="hidden" name="itemId" value={it.id} />
-              <button
-                className="text-xs text-ink-muted opacity-0 transition hover:text-danger group-hover:opacity-100"
-                aria-label="Borrar ítem"
-              >
-                ✕
-              </button>
-            </form>
+            {canEdit && (
+              <form action={deleteChecklistItem}>
+                <input type="hidden" name="itemId" value={it.id} />
+                <button
+                  className="text-xs text-ink-muted opacity-0 transition hover:text-danger group-hover:opacity-100"
+                  aria-label="Borrar ítem"
+                >
+                  ✕
+                </button>
+              </form>
+            )}
           </li>
         ))}
       </ul>
 
-      <form
-        ref={itemRef}
-        action={async (formData) => {
-          await addChecklistItem(formData);
-          itemRef.current?.reset();
-        }}
-        className="mt-2"
-      >
-        <input type="hidden" name="checklistId" value={checklist.id} />
-        <input
-          name="text"
-          required
-          maxLength={200}
-          placeholder="+ Añadir ítem"
-          className={smallInput}
-        />
-      </form>
+      {canEdit && (
+        <form
+          ref={itemRef}
+          action={async (formData) => {
+            await addChecklistItem(formData);
+            itemRef.current?.reset();
+          }}
+          className="mt-2"
+        >
+          <input type="hidden" name="checklistId" value={checklist.id} />
+          <input
+            name="text"
+            required
+            maxLength={200}
+            placeholder="+ Añadir ítem"
+            className={smallInput}
+          />
+        </form>
+      )}
     </div>
   );
 }

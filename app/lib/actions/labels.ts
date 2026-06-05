@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/app/lib/prisma";
 import { requireBoardAccess } from "@/app/lib/dal";
+import { canEditBoard, canManageBoard } from "@/app/lib/roles";
 import { LABEL_COLORS } from "@/app/lib/colors";
 
 async function boardIdForCard(cardId: string): Promise<string | null> {
@@ -15,7 +16,8 @@ async function boardIdForCard(cardId: string): Promise<string | null> {
 
 export async function createLabel(formData: FormData): Promise<void> {
   const boardId = String(formData.get("boardId"));
-  await requireBoardAccess(boardId);
+  const { role } = await requireBoardAccess(boardId);
+  if (!canManageBoard(role)) return;
   const name = String(formData.get("name") ?? "").trim().slice(0, 40);
   const colorRaw = String(formData.get("color") ?? "blue");
   if (!name) return;
@@ -32,7 +34,8 @@ export async function deleteLabel(formData: FormData): Promise<void> {
     select: { boardId: true },
   });
   if (!label) return;
-  await requireBoardAccess(label.boardId);
+  const { role } = await requireBoardAccess(label.boardId);
+  if (!canManageBoard(role)) return;
 
   await prisma.label.delete({ where: { id: labelId } });
   revalidatePath(`/board/${label.boardId}`);
@@ -45,7 +48,8 @@ export async function toggleCardLabel(input: {
 }): Promise<{ ok: boolean }> {
   const boardId = await boardIdForCard(input.cardId);
   if (!boardId) return { ok: false };
-  await requireBoardAccess(boardId);
+  const { role } = await requireBoardAccess(boardId);
+  if (!canEditBoard(role)) return { ok: false };
 
   const key = {
     cardId_labelId: { cardId: input.cardId, labelId: input.labelId },

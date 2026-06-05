@@ -5,6 +5,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { CardDTO } from "@/app/lib/types";
 import { labelBackground } from "@/app/lib/colors";
+import { useBoardPerms } from "./board-perms";
 
 function formatDue(d: Date): string {
   return new Intl.DateTimeFormat("es", {
@@ -24,6 +25,7 @@ export function CardItem({
   onOpen?: (cardId: string) => void;
   overlay?: boolean;
 }) {
+  const { canEdit } = useBoardPerms();
   const {
     attributes,
     listeners,
@@ -31,7 +33,11 @@ export function CardItem({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: card.id, data: { type: "card", listId } });
+  } = useSortable({
+    id: card.id,
+    data: { type: "card", listId },
+    disabled: !canEdit,
+  });
 
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -54,12 +60,12 @@ export function CardItem({
     <div
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
+      {...(canEdit ? attributes : {})}
+      {...(canEdit ? listeners : {})}
       onClick={() => onOpen?.(card.id)}
-      className={`cursor-pointer rounded-lg bg-surface p-2.5 text-sm text-ink shadow-sm ring-1 ring-border/70 transition active:cursor-grabbing hover:ring-accent/50 ${
-        overlay ? "rotate-2 shadow-lg" : ""
-      }`}
+      className={`cursor-pointer rounded-lg bg-surface p-2.5 text-sm text-ink shadow-sm ring-1 ring-border/70 transition hover:ring-accent/50 ${
+        canEdit ? "active:cursor-grabbing" : ""
+      } ${overlay ? "rotate-2 shadow-lg" : ""}`}
     >
       {card.labels.length > 0 && (
         <div className="mb-1.5 flex flex-wrap gap-1">

@@ -1,8 +1,10 @@
 import { notFound } from "next/navigation";
 import { requireUser } from "@/app/lib/dal";
-import { getBoardWithLists } from "@/app/lib/queries";
+import { getBoardWithLists, getBoardMembers } from "@/app/lib/queries";
 import { BoardView } from "@/app/components/board/board-view";
+import type { BoardMemberDTO } from "@/app/components/board/members-panel";
 import type { BoardDTO } from "@/app/lib/types";
+import type { BoardRole } from "@/app/lib/roles";
 
 export default async function BoardPage({
   params,
@@ -14,6 +16,19 @@ export default async function BoardPage({
   const user = await requireUser();
   const board = await getBoardWithLists(id, user.id);
   if (!board) notFound();
+
+  // Miembros del tablero y rol del visor (para autorizar la UI). El propietario es
+  // siempre miembro OWNER; si por algún motivo no apareciera, caemos a VIEWER.
+  const memberData = await getBoardMembers(id);
+  const members: BoardMemberDTO[] = (memberData?.members ?? []).map((m) => ({
+    id: m.user.id,
+    name: m.user.name,
+    email: m.user.email,
+    role: m.role,
+    isOwner: m.user.id === memberData?.ownerId,
+  }));
+  const viewerRole: BoardRole =
+    members.find((m) => m.id === user.id)?.role ?? "VIEWER";
 
   // Proyectamos a un DTO mínimo y serializable (las fechas a ISO string).
   const dto: BoardDTO = {
@@ -53,5 +68,5 @@ export default async function BoardPage({
     })),
   };
 
-  return <BoardView board={dto} />;
+  return <BoardView board={dto} viewerRole={viewerRole} members={members} />;
 }

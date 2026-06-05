@@ -39,3 +39,39 @@ export const cardTitleSchema = z
   .trim()
   .min(1, "El título es obligatorio")
   .max(500);
+
+// --- Hito 3: multiusuario ---
+
+// Roles que el propietario puede asignar a un miembro de un tablero (OWNER no se
+// asigna desde la UI: es el creador del tablero). Ver app/lib/roles.ts.
+export const assignableBoardRoleSchema = z.enum(["EDITOR", "VIEWER"]);
+
+// Invitar a un miembro existente a un tablero por email.
+export const addMemberSchema = z.object({
+  email: z.email("Email no válido"),
+  role: assignableBoardRoleSchema,
+});
+
+// Rol global del usuario en la instancia.
+export const globalRoleSchema = z.enum(["ADMIN", "MEMBER"]);
+
+// Contraseña reutilizable (mismo criterio que en el setup wizard).
+const passwordSchema = z
+  .string()
+  .min(8, "La contraseña debe tener al menos 8 caracteres")
+  .max(200);
+
+// Alta de usuario por el administrador (no hay registro abierto: el admin crea las
+// cuentas). Ver docs/authorization.md.
+export const createUserSchema = z.object({
+  name: z.string().trim().min(1, "El nombre es obligatorio").max(60),
+  email: z.email("Email no válido"),
+  password: passwordSchema,
+  role: globalRoleSchema,
+});
+
+// Restablecer la contraseña de un usuario (por el administrador).
+export const resetPasswordSchema = z.object({
+  userId: z.string().min(1),
+  password: passwordSchema,
+});
