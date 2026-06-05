@@ -57,9 +57,18 @@ El producto mínimo usable: instalar con un comando → configurar → usar como
       contraseña, cierre forzado por el admin). Ver
       [ADR 0008](./decisions/0008-session-store.md).
 
-## Hito 5 — Operación y pulido
+## Hito 5 — Operación y pulido ✅ (completado)
 
-- [ ] Backups de PostgreSQL y exportar/importar tableros.
-- [ ] Adjuntos en tarjetas.
-- [ ] Actualizaciones (`docker compose pull && up -d`).
-- [ ] Rate-limiting y registro de auditoría.
+- [x] Backups de PostgreSQL (`scripts/backup.sh` / `restore.sh`) y exportar/importar
+      tableros en JSON. Ver `docs/operations.md`.
+- [x] Adjuntos en tarjetas, en disco (volumen) con descarga autorizada. Ver
+      `docs/attachments.md`.
+- [x] Flujo de actualización (`scripts/update.sh`; migraciones automáticas al arrancar).
+- [x] Rate-limiting del login y registro de auditoría (`/admin/audit`). Ver
+      `docs/operations.md`.
+
+---
+
+> Todos los hitos planificados (0–5) están completados. Las siguientes ideas
+> (notificaciones, búsqueda, vistas de calendario, API pública...) se priorizarán según
+> el uso real.

@@ -20,32 +20,30 @@ docker compose up -d            # levantar de nuevo
 ## Actualizar a una versión nueva
 
 La imagen se construye localmente, así que actualizar es traer el código nuevo y
-reconstruir:
+reconstruir. Hay un script que lo hace:
 
 ```bash
 cd ~/orgtable
-git pull
-docker compose up -d --build
+scripts/update.sh        # git pull --ff-only && docker compose up -d --build
 ```
 
 Las migraciones de base de datos pendientes se aplican **solas** al arrancar el
 contenedor (`prisma migrate deploy` en el entrypoint; es idempotente). No hay pasos
-manuales. Ver [docker.md](./docker.md).
+manuales. Ver [docker.md](./docker.md) y [operations.md](./operations.md).
 
 ## Copias de seguridad
 
-Todos los datos viven en la base de datos PostgreSQL (volumen `pgdata`). Haz copias
-con `pg_dump` a través del contenedor:
+Hay **dos** cosas que respaldar: la base de datos (volumen `pgdata`) y los **adjuntos**
+(volumen `uploads`). El script [`scripts/backup.sh`](../scripts/backup.sh) hace ambas:
 
 ```bash
-# Copia de seguridad (lee las credenciales del .env)
-docker compose exec -T postgres pg_dump -U orgtable orgtable > backup-$(date +%F).sql
-
-# Restaurar
-cat backup-2026-06-05.sql | docker compose exec -T postgres psql -U orgtable orgtable
+scripts/backup.sh                 # genera backups/orgtable-db-*.sql.gz y -uploads-*.tar.gz
+scripts/restore.sh backups/orgtable-db-<fecha>.sql.gz   # restaurar la BD
 ```
 
-> Programa el `pg_dump` con un `cron` del sistema para copias automáticas.
+> Programa `scripts/backup.sh` con un `cron` del sistema y guarda copias fuera del
+> servidor. Detalles completos (incluido exportar/importar tableros sueltos) en
+> [operations.md](./operations.md).
 
 ## El archivo `.env`
 

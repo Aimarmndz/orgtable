@@ -24,7 +24,7 @@ el resumen de una línea con el enlace.
 
 ## Estado por hitos
 
-Ver `docs/roadmap.md` para el detalle. Hitos 0–4 completados.
+Ver `docs/roadmap.md` para el detalle. Hitos 0–5 completados.
 
 ## Decisiones (resumen)
 
@@ -37,6 +37,8 @@ Ver `docs/roadmap.md` para el detalle. Hitos 0–4 completados.
   experimental). Roles de tablero OWNER/EDITOR/VIEWER en `app/lib/roles.ts`.
 - ADR 0007 — PostgreSQL `LISTEN/NOTIFY` (no Redis) para el pub/sub del tiempo real.
 - ADR 0008 — Tabla `Session` para revocación inmediata de sesiones.
+- ADR 0009 — Rate limiting en memoria (sin Redis) para el login.
+- ADR 0010 — Adjuntos en disco local (volumen), no S3.
 
 ## Notas de hito
 
@@ -49,3 +51,10 @@ Ver `docs/roadmap.md` para el detalle. Hitos 0–4 completados.
   Sesiones respaldadas por la tabla `Session` (el JWT lleva `sid`); revocación inmediata.
   Migración `20260605100000_sessions` escrita a mano (no había BD local para
   `migrate dev`); aplicar con `prisma migrate deploy` (lo hace el entrypoint de Docker).
+- **Hito 5 (operación)**: rate-limit del login (`app/lib/rate-limit.ts`, en memoria) +
+  auditoría (`app/lib/audit.ts`, `/admin/audit`); adjuntos en disco
+  (`app/lib/storage.ts`, volumen `/data/uploads`, descarga por route handler con
+  autorización); export/import de tableros (JSON); scripts `scripts/{backup,restore,update}.sh`.
+  Migraciones a mano: `..._audit_log` y `..._attachments`. Todas las migraciones
+  escritas a mano se aplican con `migrate deploy`; al haber BD, `migrate dev` no detecta
+  deriva porque coinciden esquema y SQL.

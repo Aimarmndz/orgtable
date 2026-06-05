@@ -75,3 +75,47 @@ export const resetPasswordSchema = z.object({
   userId: z.string().min(1),
   password: passwordSchema,
 });
+
+// --- Hito 5: importación de tableros (JSON) ---
+// Esquema del fichero que produce GET /api/boards/[id]/export. Tolerante con el sobre
+// `orgtable` (opcional) pero estricto con la forma y los límites de tamaño.
+
+const importChecklistItemSchema = z.object({
+  text: z.string().max(200),
+  done: z.boolean(),
+});
+
+const importChecklistSchema = z.object({
+  title: z.string().max(80),
+  items: z.array(importChecklistItemSchema).max(200).optional(),
+});
+
+const importCardSchema = z.object({
+  title: z.string().min(1).max(500),
+  description: z.string().max(5000).nullable().optional(),
+  dueDate: z.string().max(40).nullable().optional(),
+  labels: z.array(z.string().max(40)).max(50).optional(),
+  checklists: z.array(importChecklistSchema).max(50).optional(),
+});
+
+const importListSchema = z.object({
+  title: z.string().min(1).max(120),
+  cards: z.array(importCardSchema).max(500).optional(),
+});
+
+const importLabelSchema = z.object({
+  name: z.string().min(1).max(40),
+  color: z.string().max(20),
+});
+
+export const boardImportSchema = z.object({
+  orgtable: z
+    .object({ type: z.string().optional(), version: z.number().optional() })
+    .optional(),
+  board: z.object({
+    title: z.string().min(1).max(120),
+    background: z.string().max(20).nullable().optional(),
+    labels: z.array(importLabelSchema).max(50).optional(),
+    lists: z.array(importListSchema).max(50).optional(),
+  }),
+});

@@ -44,3 +44,56 @@ Cada fila guarda quién (usuario, opcional), la IP, el objetivo (`targetType`/
 `onDelete: SetNull`**: borrar una cuenta no borra su rastro de auditoría. El registro
 es *best-effort*: un fallo al escribir el log nunca hace fallar la operación que lo
 origina.
+
+## Copias de seguridad
+
+Hay dos cosas que respaldar: la **base de datos** (PostgreSQL) y los **adjuntos**
+(volumen de disco). El script [`scripts/backup.sh`](../scripts/backup.sh) hace ambas:
+
+```sh
+scripts/backup.sh [directorio_destino]   # por defecto: ./backups
+```
+
+Genera dos ficheros con marca de tiempo:
+
+- `orgtable-db-<fecha>.sql.gz` — volcado de `pg_dump` comprimido.
+- `orgtable-uploads-<fecha>.tar.gz` — los adjuntos del volumen `/data/uploads`.
+
+Para **restaurar** la base de datos (⚠️ sobrescribe los datos actuales):
+
+```sh
+scripts/restore.sh backups/orgtable-db-<fecha>.sql.gz
+```
+
+Los adjuntos se restauran descomprimiendo el `.tar.gz` dentro del volumen `uploads`.
+Automatiza el backup con un `cron` del sistema (p. ej. diario) y guarda copias fuera
+del servidor.
+
+## Exportar e importar tableros
+
+Independiente de las copias de seguridad de toda la instancia, cada tablero se puede
+**exportar a un JSON portable** y volver a **importar** (en la misma instancia o en
+otra):
+
+- **Exportar:** en la galería de tableros, el icono de descarga de cada tablero
+  (`GET /api/boards/[id]/export`). Incluye listas, tarjetas, descripciones, fechas,
+  etiquetas y checklists. **No** incluye los binarios de los adjuntos.
+- **Importar:** el formulario "Importar tablero" de la galería. Crea un tablero
+  **nuevo** del que pasas a ser propietario, regenerando identificadores y posiciones.
+
+Implementación: [`app/api/boards/[id]/export/route.ts`](../app/api/boards/[id]/export/route.ts)
+y la Server Action `importBoard` en
+[`app/lib/actions/boards.ts`](../app/lib/actions/boards.ts).
+
+## Actualizaciones
+
+La imagen de la app se construye localmente, así que actualizar es traer los cambios y
+reconstruir. El script [`scripts/update.sh`](../scripts/update.sh) lo hace:
+
+```sh
+scripts/update.sh        # git pull --ff-only && docker compose up -d --build
+```
+
+Las **migraciones de base de datos se aplican solas** al arrancar: el
+`docker-entrypoint.sh` ejecuta `prisma migrate deploy` antes de levantar el servidor.
+Haz un backup (`scripts/backup.sh`) antes de actualizar.

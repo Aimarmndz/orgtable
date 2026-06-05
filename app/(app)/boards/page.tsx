@@ -5,6 +5,7 @@ import { createBoard, deleteBoard } from "@/app/lib/actions/boards";
 import { boardBackgroundFor } from "@/app/lib/colors";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
+import { ImportBoardForm } from "./import-board-form";
 
 export default async function BoardsPage() {
   const user = await requireUser();
@@ -26,6 +27,10 @@ export default async function BoardsPage() {
         />
         <Button type="submit">Crear tablero</Button>
       </form>
+
+      <div className="mt-3">
+        <ImportBoardForm />
+      </div>
 
       {boards.length === 0 ? (
         <div className="mt-20 flex flex-col items-center text-center">
@@ -51,15 +56,34 @@ export default async function BoardsPage() {
                   {board.title}
                 </span>
               </Link>
-              <form action={deleteBoard} className="absolute right-2 top-2">
-                <input type="hidden" name="boardId" value={board.id} />
-                <button
-                  className="grid size-7 place-items-center rounded-md bg-black/20 text-sm text-white/90 opacity-0 transition hover:bg-black/40 group-hover:opacity-100 focus-visible:opacity-100"
-                  aria-label={`Borrar tablero ${board.title}`}
+              <div className="absolute right-2 top-2 flex gap-1">
+                <a
+                  href={`/api/boards/${board.id}/export`}
+                  className="grid size-7 place-items-center rounded-md bg-black/20 text-white/90 opacity-0 transition hover:bg-black/40 group-hover:opacity-100 focus-visible:opacity-100"
+                  aria-label={`Exportar tablero ${board.title}`}
+                  title="Exportar a JSON"
                 >
-                  ✕
-                </button>
-              </form>
+                  <svg
+                    className="size-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    aria-hidden="true"
+                  >
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                  </svg>
+                </a>
+                <form action={deleteBoard}>
+                  <input type="hidden" name="boardId" value={board.id} />
+                  <button
+                    className="grid size-7 place-items-center rounded-md bg-black/20 text-sm text-white/90 opacity-0 transition hover:bg-black/40 group-hover:opacity-100 focus-visible:opacity-100"
+                    aria-label={`Borrar tablero ${board.title}`}
+                  >
+                    ✕
+                  </button>
+                </form>
+              </div>
             </li>
           ))}
         </ul>
