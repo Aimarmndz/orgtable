@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/app/lib/prisma";
 import { requireBoardAccess } from "@/app/lib/dal";
 import { canManageBoard, BOARD_ROLE_LABELS } from "@/app/lib/roles";
+import { recordAudit } from "@/app/lib/audit";
 import { addMemberSchema, assignableBoardRoleSchema } from "@/app/lib/validators";
 
 // Gestión de miembros de un tablero (Hito 3). Solo el PROPIETARIO (OWNER) puede
@@ -19,7 +20,7 @@ export async function addBoardMember(
   formData: FormData,
 ): Promise<MemberActionState> {
   const boardId = String(formData.get("boardId"));
-  const { role: actorRole } = await requireBoardAccess(boardId);
+  const { user: actor, role: actorRole } = await requireBoardAccess(boardId);
   if (!canManageBoard(actorRole)) {
     return { error: "Solo el propietario puede gestionar los miembros." };
   }
@@ -54,6 +55,13 @@ export async function addBoardMember(
   await prisma.boardMember.create({
     data: { boardId, userId: user.id, role: parsed.data.role },
   });
+  await recordAudit({
+    action: "member.added",
+    userId: actor.id,
+    targetType: "board",
+    targetId: boardId,
+    detail: `${user.id} (${parsed.data.role})`,
+  });
   revalidatePath(`/board/${boardId}`);
   return {
     message: `${user.name} añadido como ${BOARD_ROLE_LABELS[parsed.data.role]}.`,
@@ -64,7 +72,7 @@ export async function addBoardMember(
 export async function updateBoardMemberRole(formData: FormData): Promise<void> {
   const boardId = String(formData.get("boardId"));
   const userId = String(formData.get("userId"));
-  const { role: actorRole } = await requireBoardAccess(boardId);
+  const { user: actor, role: actorRole } = await requireBoardAccess(boardId);
   if (!canManageBoard(actorRole)) return;
 
   const parsed = assignableBoardRoleSchema.safeParse(formData.get("role"));
@@ -81,6 +89,13 @@ export async function updateBoardMemberRole(formData: FormData): Promise<void> {
     where: { boardId, userId },
     data: { role: parsed.data },
   });
+  await recordAudit({
+    action: "member.role_changed",
+    userId: actor.id,
+    targetType: "board",
+    targetId: boardId,
+    detail: `${userId} → ${parsed.data}`,
+  });
   revalidatePath(`/board/${boardId}`);
 }
 
@@ -88,7 +103,7 @@ export async function updateBoardMemberRole(formData: FormData): Promise<void> {
 export async function removeBoardMember(formData: FormData): Promise<void> {
   const boardId = String(formData.get("boardId"));
   const userId = String(formData.get("userId"));
-  const { role: actorRole } = await requireBoardAccess(boardId);
+  const { user: actor, role: actorRole } = await requireBoardAccess(boardId);
   if (!canManageBoard(actorRole)) return;
 
   const board = await prisma.board.findUnique({
@@ -98,5 +113,12 @@ export async function removeBoardMember(formData: FormData): Promise<void> {
   if (!board || board.ownerId === userId) return;
 
   await prisma.boardMember.deleteMany({ where: { boardId, userId } });
+  await recordAudit({
+    action: "member.removed",
+    userId: actor.id,
+    targetType: "board",
+    targetId: boardId,
+    detail: userId,
+  });
   revalidatePath(`/board/${boardId}`);
 }

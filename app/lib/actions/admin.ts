@@ -6,6 +6,7 @@ import { prisma } from "@/app/lib/prisma";
 import { requireAdmin } from "@/app/lib/dal";
 import { hashPassword } from "@/app/lib/auth";
 import { revokeAllUserSessions } from "@/app/lib/session";
+import { recordAudit } from "@/app/lib/audit";
 import {
   createUserSchema,
   globalRoleSchema,
@@ -24,7 +25,7 @@ export async function createUser(
   _prev: CreateUserState,
   formData: FormData,
 ): Promise<CreateUserState> {
-  await requireAdmin();
+  const admin = await requireAdmin();
 
   const parsed = createUserSchema.safeParse({
     name: formData.get("name"),
@@ -46,13 +47,20 @@ export async function createUser(
   }
 
   const passwordHash = await hashPassword(parsed.data.password);
-  await prisma.user.create({
+  const created = await prisma.user.create({
     data: {
       email,
       name: parsed.data.name,
       passwordHash,
       role: parsed.data.role,
     },
+  });
+  await recordAudit({
+    action: "user.created",
+    userId: admin.id,
+    targetType: "user",
+    targetId: created.id,
+    detail: `${email} (${parsed.data.role})`,
   });
   revalidatePath("/admin/users");
   return { message: `Cuenta creada para ${parsed.data.name}.` };
@@ -80,13 +88,20 @@ export async function updateUserRole(formData: FormData): Promise<void> {
     where: { id: userId },
     data: { role: parsed.data },
   });
+  await recordAudit({
+    action: "user.role_changed",
+    userId: admin.id,
+    targetType: "user",
+    targetId: userId,
+    detail: `→ ${parsed.data}`,
+  });
   revalidatePath("/admin/users");
   backToUsers({ ok: "role" });
 }
 
 /** Restablece la contraseña de un usuario (el admin teclea la nueva). */
 export async function resetUserPassword(formData: FormData): Promise<void> {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const parsed = resetPasswordSchema.safeParse({
     userId: formData.get("userId"),
     password: formData.get("password"),
@@ -101,15 +116,27 @@ export async function resetUserPassword(formData: FormData): Promise<void> {
   // Al cambiar la contraseña, revocamos todas las sesiones del usuario: cualquier
   // sesión abierta (p. ej. en un dispositivo comprometido) deja de valer al instante.
   await revokeAllUserSessions(parsed.data.userId);
+  await recordAudit({
+    action: "user.password_reset",
+    userId: admin.id,
+    targetType: "user",
+    targetId: parsed.data.userId,
+  });
   revalidatePath("/admin/users");
   backToUsers({ ok: "password" });
 }
 
 /** Cierra todas las sesiones activas de un usuario (revocación inmediata). */
 export async function revokeUserSessions(formData: FormData): Promise<void> {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const userId = String(formData.get("userId"));
   await revokeAllUserSessions(userId);
+  await recordAudit({
+    action: "user.sessions_revoked",
+    userId: admin.id,
+    targetType: "user",
+    targetId: userId,
+  });
   revalidatePath("/admin/users");
   backToUsers({ ok: "revoked" });
 }
@@ -129,6 +156,12 @@ export async function deleteUser(formData: FormData): Promise<void> {
   if (ownedBoards > 0) backToUsers({ error: "owns-boards" });
 
   await prisma.user.deleteMany({ where: { id: userId } });
+  await recordAudit({
+    action: "user.deleted",
+    userId: admin.id,
+    targetType: "user",
+    targetId: userId,
+  });
   revalidatePath("/admin/users");
   backToUsers({ ok: "delete" });
 }

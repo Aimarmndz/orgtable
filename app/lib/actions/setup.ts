@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/app/lib/prisma";
 import { hashPassword } from "@/app/lib/auth";
 import { createSession } from "@/app/lib/session";
+import { recordAudit } from "@/app/lib/audit";
 import { setupSchema } from "@/app/lib/validators";
 
 const INSTANCE_ID = "singleton";
@@ -72,5 +73,10 @@ export async function completeSetup(
   }
 
   await createSession(outcome.userId);
+  await recordAudit({
+    action: "setup.completed",
+    userId: outcome.userId,
+    detail: instanceName,
+  });
   redirect("/boards");
 }

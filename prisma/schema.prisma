@@ -46,6 +46,7 @@ model User {
   boards       Board[]
   memberships  BoardMember[]
   sessions     Session[]
+  auditLogs    AuditLog[]
 }
 
 // Sesión de servidor (Hito 4). La cookie sigue siendo un JWT firmado, pero ahora
@@ -164,6 +165,25 @@ model ChecklistItem {
 // Membresía de un usuario en un tablero. Se crea ya en el MVP (single-user) para
 // que la autorización de cada Server Action pase por aquí desde el principio y no
 // haya que re-migrar al llegar el hito multiusuario.
+// Registro de auditoría (Hito 5). Una fila por evento relevante de seguridad u
+// operación (login, alta/baja de usuario, cambios de rol, borrado de tablero...). El
+// usuario es opcional y con onDelete: SetNull para conservar el historial aunque la
+// cuenta se borre. Ver app/lib/audit.ts y docs/operations.md.
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action     String
+  targetType String?
+  targetId   String?
+  detail     String?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId])
+}
+
 model BoardMember {
   boardId String
   board   Board     @relation(fields: [boardId], references: [id], onDelete: Cascade)

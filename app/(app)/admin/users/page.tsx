@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireAdmin } from "@/app/lib/dal";
 import { getAllUsers } from "@/app/lib/queries";
 import { CreateUserForm } from "./create-user-form";
@@ -36,7 +37,20 @@ export default async function AdminUsersPage({
 
   return (
     <div className="mx-auto w-full max-w-4xl overflow-y-auto p-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Usuarios</h1>
+      <div className="flex items-center gap-4">
+        <h1 className="text-2xl font-semibold tracking-tight">Usuarios</h1>
+        <nav className="flex gap-1 text-sm">
+          <span className="rounded-lg bg-surface-2 px-2.5 py-1 font-medium">
+            Usuarios
+          </span>
+          <Link
+            href="/admin/audit"
+            className="rounded-lg px-2.5 py-1 text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
+          >
+            Auditoría
+          </Link>
+        </nav>
+      </div>
       <p className="mt-1 text-sm text-ink-muted">
         Administra las cuentas de tu instancia: altas, roles y contraseñas.
       </p>

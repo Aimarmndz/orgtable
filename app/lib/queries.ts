@@ -30,6 +30,24 @@ export async function getAllUsers() {
   });
 }
 
+/** Eventos de auditoría más recientes, para el panel /admin/audit. */
+export async function getRecentAuditLogs(limit = 200) {
+  return prisma.auditLog.findMany({
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    select: {
+      id: true,
+      action: true,
+      targetType: true,
+      targetId: true,
+      detail: true,
+      ip: true,
+      createdAt: true,
+      user: { select: { id: true, name: true, email: true } },
+    },
+  });
+}
+
 /**
  * Miembros de un tablero (con datos del usuario) más el ownerId, para el panel de
  * miembros. El propietario se marca a partir de ownerId.

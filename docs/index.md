@@ -19,6 +19,7 @@ quien quiere **contribuir** al código.
 - [**Autenticación**](./authentication.md) — sesiones JWT, el DAL y la protección de rutas.
 - [**Autorización y roles**](./authorization.md) — roles de tablero, permisos y dónde se aplican.
 - [**Administración de usuarios**](./admin.md) — altas, roles y contraseñas desde `/admin/users`.
+- [**Operación y seguridad**](./operations.md) — rate limiting, auditoría, backups y actualizaciones.
 - [**Arrastrar y soltar**](./drag-and-drop.md) — `@dnd-kit` y fractional indexing.
 - [**Tiempo real**](./realtime.md) — sincronización en vivo con SSE y el bus pub/sub.
 - [**Detalle de tarjeta**](./card-detail.md) — modal, etiquetas, fechas y checklists.
@@ -40,6 +41,7 @@ Las decisiones técnicas importantes y su porqué están registradas en
 - [0006 — Autorización por rol con guardas explícitas](./decisions/0006-rbac-explicit-guards.md)
 - [0007 — PostgreSQL LISTEN/NOTIFY en lugar de Redis](./decisions/0007-pg-notify-over-redis.md)
 - [0008 — Almacén de sesiones en servidor](./decisions/0008-session-store.md)
+- [0009 — Rate limiting en memoria](./decisions/0009-in-memory-rate-limit.md)
 
 ## Hoja de ruta
 
