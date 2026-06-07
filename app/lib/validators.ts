@@ -119,3 +119,29 @@ export const boardImportSchema = z.object({
     lists: z.array(importListSchema).max(50).optional(),
   }),
 });
+
+// --- Hito 9: API pública ---
+// Cuerpos JSON de las peticiones de la API. Reutilizan los mismos límites que las
+// Server Actions (cardTitleSchema, etc.). Ver docs/api/public-api.md.
+
+export const apiTokenNameSchema = z
+  .string()
+  .trim()
+  .min(1, "El nombre es obligatorio")
+  .max(60, "Máximo 60 caracteres");
+
+export const apiCardCreateSchema = z.object({
+  title: cardTitleSchema,
+  description: z.string().max(5000).nullish(),
+  dueDate: z.string().max(40).nullish(),
+});
+
+export const apiCardUpdateSchema = z
+  .object({
+    title: cardTitleSchema.optional(),
+    description: z.string().max(5000).nullable().optional(),
+    dueDate: z.string().max(40).nullable().optional(),
+  })
+  .refine((d) => Object.keys(d).length > 0, {
+    message: "No hay campos que actualizar.",
+  });

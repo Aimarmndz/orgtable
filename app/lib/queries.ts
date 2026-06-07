@@ -94,6 +94,23 @@ export async function getUnreadNotificationCount(userId: string) {
   return prisma.notification.count({ where: { userId, read: false } });
 }
 
+// --- Hito 9: API pública (tokens de acceso) ---
+
+/** Tokens de API del usuario (sin el hash). Para la página /settings. */
+export async function getApiTokensForUser(userId: string) {
+  return prisma.apiToken.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      name: true,
+      prefix: true,
+      lastUsedAt: true,
+      createdAt: true,
+    },
+  });
+}
+
 // --- Hito 6: búsqueda global ---
 
 export type SearchResults = {

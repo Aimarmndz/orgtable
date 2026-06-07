@@ -24,8 +24,7 @@ el resumen de una línea con el enlace.
 
 ## Estado por hitos
 
-Ver `docs/roadmap.md` para el detalle. Hitos 0–8 completados; 9 en construcción
-(API pública).
+Ver `docs/roadmap.md` para el detalle. Hitos 0–9 completados.
 
 ## Decisiones (resumen)
 
@@ -42,6 +41,7 @@ Ver `docs/roadmap.md` para el detalle. Hitos 0–8 completados; 9 en construcci�
 - ADR 0010 — Adjuntos en disco local (volumen), no S3.
 - ADR 0011 — Búsqueda con `ILIKE` acotada en el servidor (sin motor de búsqueda externo).
 - ADR 0012 — Notificaciones in-app sobre el bus pub/sub (sin email ni cola).
+- ADR 0013 — API pública con tokens personales hasheados (Bearer, reutiliza el RBAC).
 
 ## Notas de hito
 
@@ -81,6 +81,14 @@ Ver `docs/roadmap.md` para el detalle. Hitos 0–8 completados; 9 en construcci�
   (`app/components/notifications-bell.tsx`) en la navbar. Eventos: añadido/quitado/cambio
   de rol en un tablero (en `actions/members.ts`). Best-effort como la auditoría. Ver
   `docs/notifications.md`.
+- **Hito 9 (API pública)**: modelo `ApiToken` (migración `..._api_tokens`). REST
+  `/api/v1/**` para boards/lists/cards; helpers en `app/lib/api/` (`auth.ts` Bearer→usuario
+  + rol por tablero, `tokens.ts` hash SHA-256, `respond.ts`, `serialize.ts`). Reutiliza el
+  RBAC (`canEditBoard`/`canManageBoard`) y `revalidateBoard` (tiempo real). Gestión de
+  tokens en `/settings`. Ver `docs/api/public-api.md`. NOTA dev: regenerar el cliente
+  Prisma (`prisma migrate dev`/`generate`) mientras el dev server está vivo lo deja con un
+  cliente obsoleto (errores `findMany of undefined`); hay que **reiniciar `next dev`** tras
+  una migración.
 - **Migraciones (a partir del Hito 7)**: ya hay BD de desarrollo local (Postgres en el
   puerto 5433, contenedor `orgtable-dev-pg`), así que las nuevas migraciones se generan
   con `prisma migrate dev` en vez de a mano. Se siguen aplicando con `migrate deploy` en

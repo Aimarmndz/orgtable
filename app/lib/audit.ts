@@ -22,7 +22,9 @@ export type AuditAction =
   | "board.deleted"
   | "member.added"
   | "member.removed"
-  | "member.role_changed";
+  | "member.role_changed"
+  | "apitoken.created"
+  | "apitoken.revoked";
 
 /** IP del cliente a partir de las cabeceras del proxy inverso (X-Forwarded-For). */
 export async function clientIp(): Promise<string | null> {

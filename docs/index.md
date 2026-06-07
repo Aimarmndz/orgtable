@@ -30,6 +30,7 @@ quien quiere **contribuir** al código.
 - [**Sistema de diseño**](./design-system.md) — tokens OKLCH, tema claro/oscuro, componentes.
 - [**Docker**](./docker.md) — la imagen multi-stage y la orquestación.
 - [**API de Server Actions**](./api/server-actions.md) — catálogo de mutaciones del servidor.
+- [**API pública (REST v1)**](./api/public-api.md) — automatizar tableros con tokens de acceso.
 - [**Contribuir**](./contributing.md) — entorno de desarrollo y convenciones.
 
 ## Decisiones de arquitectura (ADRs)
@@ -49,6 +50,7 @@ Las decisiones técnicas importantes y su porqué están registradas en
 - [0010 — Adjuntos en disco local](./decisions/0010-local-file-storage.md)
 - [0011 — Búsqueda con ILIKE acotada en el servidor](./decisions/0011-search-ilike-scoped.md)
 - [0012 — Notificaciones in-app sobre el bus pub/sub](./decisions/0012-notifications.md)
+- [0013 — API pública con tokens personales hasheados](./decisions/0013-api-tokens.md)
 
 ## Hoja de ruta
 

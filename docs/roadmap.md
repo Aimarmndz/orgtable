@@ -96,6 +96,19 @@ El producto mínimo usable: instalar con un comando → configurar → usar como
       cola ([ADR 0012](./decisions/0012-notifications.md)). Ver
       [`docs/notifications.md`](./notifications.md).
 
+## Hito 9 — API pública ✅ (completado)
+
+- [x] API REST `/api/v1` para tableros, listas y tarjetas (CRUD esencial), autenticada
+      con **tokens de acceso personal** (`Authorization: Bearer`). El token se guarda
+      hasheado (SHA-256) y se muestra una sola vez ([ADR 0013](./decisions/0013-api-tokens.md)).
+- [x] La API **reutiliza la autorización por rol**: un token actúa como su dueño, con su
+      mismo acceso; el rol del tablero se revalida en cada petición. Las mutaciones por
+      API también emiten eventos de tiempo real.
+- [x] Gestión de tokens en `/settings` (crear, ver una vez, revocar), con auditoría. Ver
+      [`docs/api/public-api.md`](./api/public-api.md).
+
 ---
 
-> La siguiente idea (API pública con tokens) está en construcción como hito 9.
+> Todos los hitos planificados (0–9) están completados. Próximas ideas según el uso real:
+> arrastrar tarjetas en el calendario, scopes por token (solo lectura), notificaciones
+> por email/Web Push y búsqueda full-text.

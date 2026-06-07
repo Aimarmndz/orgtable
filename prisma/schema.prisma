@@ -48,6 +48,7 @@ model User {
   sessions      Session[]
   auditLogs     AuditLog[]
   notifications Notification[]
+  apiTokens     ApiToken[]
 }
 
 // Sesión de servidor (Hito 4). La cookie sigue siendo un JWT firmado, pero ahora
@@ -234,4 +235,23 @@ model Notification {
 
   @@index([userId, createdAt])
   @@index([userId, read])
+}
+
+// Token de acceso personal para la API pública (Hito 9). NUNCA se guarda el token en
+// claro: solo su hash SHA-256 (`tokenHash`, único) y un `prefix` visible para que el
+// usuario lo reconozca en la lista. El token completo se muestra UNA sola vez al
+// crearlo. La petición a /api/v1/* lo manda en `Authorization: Bearer <token>` y se
+// resuelve por hash. Ver app/lib/api/tokens.ts, docs/api/public-api.md y
+// docs/decisions/0013-api-tokens.md.
+model ApiToken {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  tokenHash  String    @unique
+  prefix     String
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
 }

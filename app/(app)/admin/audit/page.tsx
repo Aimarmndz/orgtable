@@ -20,6 +20,8 @@ const ACTION_LABELS: Record<AuditAction, string> = {
   "member.added": "Miembro añadido",
   "member.removed": "Miembro quitado",
   "member.role_changed": "Rol de miembro cambiado",
+  "apitoken.created": "Token de API creado",
+  "apitoken.revoked": "Token de API revocado",
 };
 
 // Acciones de riesgo que conviene resaltar.
