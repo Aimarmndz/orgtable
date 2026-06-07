@@ -20,6 +20,7 @@ quien quiere **contribuir** al código.
 - [**Autorización y roles**](./authorization.md) — roles de tablero, permisos y dónde se aplican.
 - [**Administración de usuarios**](./admin.md) — altas, roles y contraseñas desde `/admin/users`.
 - [**Operación y seguridad**](./operations.md) — rate limiting, auditoría, backups y actualizaciones.
+- [**Seguridad (postura y auditoría)**](./security.md) — modelo de amenazas, hallazgos y controles.
 - [**Arrastrar y soltar**](./drag-and-drop.md) — `@dnd-kit` y fractional indexing.
 - [**Tiempo real**](./realtime.md) — sincronización en vivo con SSE y el bus pub/sub.
 - [**Notificaciones**](./notifications.md) — avisos in-app por usuario sobre el mismo bus.

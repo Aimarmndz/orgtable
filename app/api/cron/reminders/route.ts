@@ -25,7 +25,8 @@ function secretMatches(provided: string, expected: string): boolean {
 export async function POST(request: Request): Promise<Response> {
   const expected = process.env.CRON_SECRET;
   if (!expected) {
-    return apiError(503, "Los recordatorios están desactivados (sin CRON_SECRET).");
+    // Mensaje genérico: no revelamos detalles de configuración al cliente.
+    return apiError(503, "Servicio no disponible.");
   }
 
   const header = request.headers.get("authorization") ?? "";

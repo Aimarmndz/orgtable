@@ -15,7 +15,16 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createPrismaClient() {
-  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+  const url = process.env.DATABASE_URL;
+  // Falla rápido y claro si falta DATABASE_URL: sin ella, el adapter caería en silencio a
+  // los defaults de libpq (PGHOST/localhost…), conectando a una BD no deseada. No se valida
+  // durante `next build` (NEXT_PHASE), que no necesita la BD.
+  if (!url && process.env.NEXT_PHASE !== "phase-production-build") {
+    throw new Error(
+      "DATABASE_URL no está configurado. Define la cadena de conexión a PostgreSQL.",
+    );
+  }
+  const adapter = new PrismaPg({ connectionString: url });
   return new PrismaClient({ adapter });
 }
 

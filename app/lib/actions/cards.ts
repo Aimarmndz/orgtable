@@ -5,6 +5,7 @@ import { revalidateBoard } from "@/app/lib/realtime/notify";
 import { requireBoardAccess } from "@/app/lib/dal";
 import { canEditBoard } from "@/app/lib/roles";
 import { cardTitleSchema } from "@/app/lib/validators";
+import { cardBelongsToBoard } from "@/app/lib/services/cards";
 import { positionAtEnd } from "@/app/lib/ordering";
 
 // Helper: dado un listId, devuelve el boardId al que pertenece (para autorizar y
@@ -135,6 +136,12 @@ export async function moveCard(input: {
   if (!boardId) return { ok: false };
   const { role } = await requireBoardAccess(boardId);
   if (!canEditBoard(role)) return { ok: false };
+
+  // Seguridad (IDOR): la tarjeta debe pertenecer YA al MISMO tablero de destino. Sin esta
+  // comprobación, un editor podría mover a su tablero una tarjeta de OTRO tablero al que no
+  // tiene acceso, conociendo solo su id. No se mueven tarjetas entre tableros (la UI tampoco
+  // lo permite: el arrastre es dentro de un único tablero).
+  if (!(await cardBelongsToBoard(input.cardId, boardId))) return { ok: false };
 
   await prisma.card.update({
     where: { id: input.cardId },

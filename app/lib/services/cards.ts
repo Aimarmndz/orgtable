@@ -11,6 +11,21 @@ export type CardContext = {
   boardTitle: string;
 };
 
+/**
+ * ¿La tarjeta pertenece a este tablero? Lo usa moveCard para impedir mover a tu tablero una
+ * tarjeta de OTRO al que no tienes acceso (IDOR). Aislado aquí para poder testearlo.
+ */
+export async function cardBelongsToBoard(
+  cardId: string,
+  boardId: string,
+): Promise<boolean> {
+  const card = await prisma.card.findUnique({
+    where: { id: cardId },
+    select: { list: { select: { boardId: true } } },
+  });
+  return !!card && card.list.boardId === boardId;
+}
+
 export async function cardContext(
   cardId: string,
 ): Promise<CardContext | null> {
