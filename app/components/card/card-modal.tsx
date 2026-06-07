@@ -85,12 +85,12 @@ export function CardModal({
       <div
         role="dialog"
         aria-modal="true"
-        className="my-4 w-full max-w-2xl rounded-2xl border border-border bg-surface p-6 shadow-2xl"
+        className="my-4 w-full max-w-2xl rounded-2xl border border-border bg-surface p-6 shadow-[0_32px_64px_-24px_oklch(0.27_0.022_52/0.45)]"
         style={{ animation: "dialog-in 180ms ease-out" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
-          <h2 className="text-lg font-semibold leading-snug text-balance">
+          <h2 className="font-display text-xl font-bold leading-snug tracking-tight text-balance">
             {card.title}
           </h2>
           <button

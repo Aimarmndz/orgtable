@@ -1,14 +1,15 @@
 // Paletas de color del CONTENIDO (no del cromo): fondos de tablero y etiquetas.
-// Pensadas para Trello clásico: vibrantes y con suficiente luminosidad baja para que
-// el texto blanco encima sea legible (≥4.5:1). Ver DESIGN.md.
+// Estética editorial cálida: tonos apagados y sofisticados (clay, oliva, ciruela,
+// ocre, ladrillo, pizarra) que conviven con el acento terracota. Luminosidad baja
+// (L≤0.54) para que el texto blanco encima sea legible. Ver DESIGN.md.
 
 export const BOARD_COLORS = {
-  blue: "oklch(0.55 0.13 255)",
-  green: "oklch(0.56 0.12 155)",
-  purple: "oklch(0.52 0.15 300)",
-  amber: "oklch(0.62 0.13 70)",
-  rose: "oklch(0.57 0.16 8)",
-  teal: "oklch(0.56 0.09 195)",
+  blue: "oklch(0.5 0.07 248)",
+  green: "oklch(0.5 0.07 150)",
+  purple: "oklch(0.48 0.09 330)",
+  amber: "oklch(0.54 0.09 62)",
+  rose: "oklch(0.52 0.12 33)",
+  teal: "oklch(0.5 0.06 200)",
 } as const;
 
 export type BoardColor = keyof typeof BOARD_COLORS;
@@ -37,16 +38,16 @@ export function boardBackgroundFor(b: {
   return BOARD_COLORS[pickBoardColor(b.id)];
 }
 
-// Etiquetas: todas con L ~0.55-0.64 → texto blanco legible encima.
+// Etiquetas: paleta editorial apagada, L ~0.52-0.57 → texto blanco legible encima.
 export const LABEL_COLORS = {
-  green: "oklch(0.6 0.14 150)",
-  lime: "oklch(0.62 0.14 130)",
-  amber: "oklch(0.64 0.13 70)",
-  red: "oklch(0.58 0.2 25)",
-  purple: "oklch(0.55 0.16 300)",
-  blue: "oklch(0.58 0.15 255)",
-  teal: "oklch(0.58 0.1 195)",
-  pink: "oklch(0.6 0.18 350)",
+  green: "oklch(0.53 0.09 150)",
+  lime: "oklch(0.56 0.1 128)",
+  amber: "oklch(0.56 0.1 65)",
+  red: "oklch(0.53 0.15 30)",
+  purple: "oklch(0.5 0.11 330)",
+  blue: "oklch(0.52 0.09 250)",
+  teal: "oklch(0.52 0.07 200)",
+  pink: "oklch(0.55 0.12 350)",
 } as const;
 
 export type LabelColor = keyof typeof LABEL_COLORS;

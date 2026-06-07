@@ -16,46 +16,77 @@
   --color-accent-ink: var(--accent-ink);
   --color-danger: var(--danger);
   --color-success: var(--success);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-satoshi);
+  --font-display: var(--font-cabinet);
   --font-mono: var(--font-geist-mono);
 }
 
-/* Tema claro (por defecto) */
+/* ───────────────────────────────────────────────────────────────────────────
+   Estética: EDITORIAL CÁLIDO. Cromo en neutros cálidos (arena, papel, espresso)
+   con un único acento terracota. El color del contenido (tableros, etiquetas)
+   vive en una paleta apagada y cohesiva (app/lib/colors.ts). Tokens en OKLCH.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* Tema claro (por defecto) — papel cálido sobre arena */
 :root {
-  --bg: oklch(0.975 0.004 255);
-  --surface: oklch(1 0 0);
-  --surface-2: oklch(0.96 0.005 255);
-  --column: oklch(0.955 0.006 255);
-  --ink: oklch(0.22 0.02 260);
-  --ink-muted: oklch(0.46 0.02 260);
-  --border: oklch(0.9 0.006 255);
-  --accent: oklch(0.55 0.17 255);
-  --accent-hover: oklch(0.5 0.17 255);
-  --accent-ink: oklch(1 0 0);
-  --danger: oklch(0.55 0.2 25);
-  --success: oklch(0.6 0.15 150);
+  --bg: oklch(0.965 0.013 74);
+  --surface: oklch(0.992 0.005 80);
+  --surface-2: oklch(0.94 0.015 74);
+  --column: oklch(0.95 0.014 72);
+  --ink: oklch(0.27 0.022 52);
+  --ink-muted: oklch(0.49 0.026 55);
+  --border: oklch(0.88 0.016 72);
+  --accent: oklch(0.49 0.13 40);
+  --accent-hover: oklch(0.44 0.13 40);
+  --accent-ink: oklch(0.99 0.01 80);
+  --danger: oklch(0.55 0.18 28);
+  --success: oklch(0.57 0.1 145);
 }
 
-/* Tema oscuro */
+/* Tema oscuro — carbón cálido (espresso), mismo acento terracota más luminoso */
 .dark {
-  --bg: oklch(0.17 0.012 260);
-  --surface: oklch(0.255 0.014 260);
-  --surface-2: oklch(0.3 0.015 260);
-  --column: oklch(0.205 0.013 260);
-  --ink: oklch(0.96 0.01 260);
-  --ink-muted: oklch(0.72 0.015 260);
-  --border: oklch(0.34 0.015 260);
-  --accent: oklch(0.68 0.15 255);
-  --accent-hover: oklch(0.74 0.15 255);
-  --accent-ink: oklch(0.17 0.02 260);
-  --danger: oklch(0.7 0.17 25);
-  --success: oklch(0.72 0.14 150);
+  --bg: oklch(0.205 0.012 52);
+  --surface: oklch(0.25 0.014 52);
+  --surface-2: oklch(0.3 0.016 52);
+  --column: oklch(0.23 0.013 52);
+  --ink: oklch(0.95 0.012 75);
+  --ink-muted: oklch(0.73 0.02 68);
+  --border: oklch(0.36 0.016 55);
+  --accent: oklch(0.68 0.115 45);
+  --accent-hover: oklch(0.74 0.115 45);
+  --accent-ink: oklch(0.2 0.02 50);
+  --danger: oklch(0.7 0.16 30);
+  --success: oklch(0.72 0.1 150);
 }
 
 body {
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Titulares con la display (Cabinet Grotesk): carácter editorial, tracking ceñido.
+   Se aplica con la utilidad `font-display`; aquí solo afinamos el render. */
+.font-display {
+  font-feature-settings: "ss01";
+  letter-spacing: -0.02em;
+}
+
+/* Grano de papel sutil: capa fija, sin eventos de puntero y sin repintar al
+   hacer scroll (no se aplica a contenedores scrollables). Aporta textura cálida. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.4;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+}
+.dark body::before {
+  mix-blend-mode: screen;
+  opacity: 0.18;
 }
 
 /* Scrollbars discretas (las columnas del tablero scrollean a menudo). */

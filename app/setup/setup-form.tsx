@@ -14,16 +14,18 @@ export function SetupForm() {
   return (
     <form
       action={action}
-      className="w-full max-w-md rounded-2xl border border-border bg-surface p-8"
+      className="w-full max-w-md rounded-2xl border border-border bg-surface p-8 shadow-[0_24px_48px_-24px_oklch(0.27_0.022_52/0.25)]"
     >
-      <div className="flex items-center gap-2">
-        <span className="grid size-8 place-items-center rounded-lg bg-accent text-accent-ink font-bold">
+      <div className="flex items-center gap-2.5">
+        <span className="grid size-8 place-items-center rounded-lg bg-accent font-display text-lg font-extrabold text-accent-ink">
           o
         </span>
-        <span className="text-lg font-bold tracking-tight">orgtable</span>
+        <span className="font-display text-lg font-bold tracking-tight">
+          orgtable
+        </span>
       </div>
 
-      <h1 className="mt-6 text-xl font-semibold tracking-tight">
+      <h1 className="mt-7 font-display text-2xl font-bold tracking-tight">
         Configura tu instancia
       </h1>
       <p className="mt-1 text-sm text-ink-muted">

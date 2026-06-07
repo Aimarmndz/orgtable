@@ -12,12 +12,15 @@ export default async function BoardsPage() {
   const boards = await getBoardsForUser(user.id);
 
   return (
-    <div className="mx-auto w-full max-w-6xl overflow-y-auto p-6">
-      <h1 className="text-2xl font-semibold tracking-tight text-balance">
+    <div className="relative z-10 mx-auto w-full max-w-6xl overflow-y-auto p-6 sm:p-8">
+      <h1 className="font-display text-3xl font-bold tracking-tight text-balance">
         Tus tableros
       </h1>
+      <p className="mt-1.5 text-sm text-ink-muted">
+        Organiza tu trabajo en listas y tarjetas.
+      </p>
 
-      <form action={createBoard} className="mt-6 flex gap-2">
+      <form action={createBoard} className="mt-7 flex gap-2">
         <Input
           name="title"
           required
@@ -34,11 +37,25 @@ export default async function BoardsPage() {
 
       {boards.length === 0 ? (
         <div className="mt-20 flex flex-col items-center text-center">
-          <div className="grid size-14 place-items-center rounded-2xl bg-surface-2 text-2xl">
-            🗂️
+          <div className="grid size-14 place-items-center rounded-2xl border border-border bg-surface text-accent shadow-[0_8px_24px_-12px_oklch(0.27_0.022_52/0.25)]">
+            <svg
+              className="size-7"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <rect x="3" y="4" width="18" height="16" rx="2" />
+              <path d="M3 9h18M9 9v11" />
+            </svg>
           </div>
-          <p className="mt-4 font-medium">Todavía no tienes tableros</p>
-          <p className="mt-1 max-w-xs text-sm text-ink-muted">
+          <p className="mt-5 font-display text-lg font-bold tracking-tight">
+            Todavía no tienes tableros
+          </p>
+          <p className="mt-1.5 max-w-xs text-sm text-ink-muted">
             Crea el primero con el campo de arriba y empieza a organizar tu
             trabajo en listas y tarjetas.
           </p>
@@ -50,9 +67,13 @@ export default async function BoardsPage() {
               <Link
                 href={`/board/${board.id}`}
                 style={{ background: boardBackgroundFor(board) }}
-                className="flex h-28 flex-col justify-end rounded-xl p-4 text-white transition-transform duration-150 ease-out hover:-translate-y-0.5"
+                className="relative flex h-32 flex-col justify-end overflow-hidden rounded-2xl p-4 text-white shadow-[0_4px_16px_-8px_oklch(0.27_0.022_52/0.3)] ring-1 ring-inset ring-black/10 transition-transform duration-150 ease-out hover:-translate-y-0.5"
               >
-                <span className="font-semibold drop-shadow-sm">
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-white/5"
+                />
+                <span className="relative font-display text-lg font-bold leading-tight tracking-tight drop-shadow-sm">
                   {board.title}
                 </span>
               </Link>

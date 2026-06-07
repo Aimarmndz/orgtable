@@ -203,7 +203,7 @@ export function BoardView({
           style={{ background: boardBackgroundFor(board) }}
         >
           <div className="flex shrink-0 items-center justify-between gap-3 px-4 pb-2 pt-4">
-            <h1 className="text-xl font-semibold tracking-tight text-white drop-shadow-sm">
+            <h1 className="font-display text-2xl font-bold tracking-tight text-white drop-shadow-sm">
               {board.title}
             </h1>
             <div className="flex items-center gap-2">

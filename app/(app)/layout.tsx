@@ -25,12 +25,12 @@ export default async function AppLayout({
 
   return (
     <div className="flex min-h-full flex-col">
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-surface px-4">
-        <Link href="/boards" className="flex items-center gap-2">
-          <span className="grid size-7 place-items-center rounded-md bg-accent text-sm font-bold text-accent-ink">
+      <header className="relative z-20 flex h-14 shrink-0 items-center justify-between border-b border-border bg-surface/80 px-4 backdrop-blur-sm">
+        <Link href="/boards" className="flex items-center gap-2.5">
+          <span className="grid size-7 place-items-center rounded-md bg-accent font-display text-sm font-extrabold text-accent-ink">
             o
           </span>
-          <span className="font-semibold tracking-tight">
+          <span className="font-display font-bold tracking-tight">
             {config?.instanceName ?? "orgtable"}
           </span>
         </Link>

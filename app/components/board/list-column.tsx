@@ -39,19 +39,19 @@ export function ListColumn({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex max-h-full w-72 shrink-0 flex-col rounded-xl bg-column shadow-sm"
+      className="flex max-h-full w-72 shrink-0 flex-col rounded-2xl border border-border/50 bg-column/95 shadow-[0_2px_8px_-4px_oklch(0.27_0.022_52/0.2)] backdrop-blur-sm"
     >
-      <div className="flex items-center gap-1 px-3 py-2.5">
+      <div className="flex items-center gap-1.5 px-3.5 py-3">
         <span
           {...(canEdit ? attributes : {})}
           {...(canEdit ? listeners : {})}
-          className={`flex-1 text-sm font-semibold ${
+          className={`flex-1 text-xs font-semibold uppercase tracking-wide ${
             canEdit ? "cursor-grab active:cursor-grabbing" : ""
           }`}
         >
           {list.title}
         </span>
-        <span className="rounded bg-black/5 px-1.5 text-xs tabular-nums text-ink-muted dark:bg-white/10">
+        <span className="rounded-full bg-black/5 px-1.5 font-mono text-[11px] tabular-nums text-ink-muted dark:bg-white/10">
           {list.cards.length}
         </span>
         {canEdit && (

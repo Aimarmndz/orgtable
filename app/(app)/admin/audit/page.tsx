@@ -46,9 +46,11 @@ export default async function AdminAuditPage() {
   const logs = await getRecentAuditLogs();
 
   return (
-    <div className="mx-auto w-full max-w-4xl overflow-y-auto p-6">
+    <div className="relative z-10 mx-auto w-full max-w-4xl overflow-y-auto p-6 sm:p-8">
       <div className="flex items-center gap-4">
-        <h1 className="text-2xl font-semibold tracking-tight">Auditoría</h1>
+        <h1 className="font-display text-3xl font-bold tracking-tight">
+          Auditoría
+        </h1>
         <nav className="flex gap-1 text-sm">
           <Link
             href="/admin/users"

@@ -1,12 +1,33 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
+import { Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
+// Satoshi (Fontshare) — sans de interfaz y cuerpo. Auto-alojada en app/fonts para no
+// depender de ningún CDN en runtime (instancia self-hosted). Ver DESIGN.md.
+const satoshi = localFont({
+  variable: "--font-satoshi",
+  display: "swap",
+  src: [
+    { path: "./fonts/Satoshi-400.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/Satoshi-500.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/Satoshi-700.woff2", weight: "700", style: "normal" },
+    { path: "./fonts/Satoshi-900.woff2", weight: "900", style: "normal" },
+  ],
 });
 
+// Cabinet Grotesk (Fontshare) — display para titulares con carácter editorial.
+const cabinet = localFont({
+  variable: "--font-cabinet",
+  display: "swap",
+  src: [
+    { path: "./fonts/CabinetGrotesk-700.woff2", weight: "700", style: "normal" },
+    { path: "./fonts/CabinetGrotesk-800.woff2", weight: "800", style: "normal" },
+    { path: "./fonts/CabinetGrotesk-900.woff2", weight: "900", style: "normal" },
+  ],
+});
+
+// Geist Mono — solo para números tabulares, metadatos y detalles técnicos.
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
@@ -31,7 +52,7 @@ export default function RootLayout({
     <html
       lang="es"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${satoshi.variable} ${cabinet.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />

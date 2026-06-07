@@ -59,13 +59,15 @@ export function MembersPanel({
       <div
         role="dialog"
         aria-modal="true"
-        className="my-4 w-full max-w-lg rounded-2xl border border-border bg-surface p-6 shadow-2xl"
+        className="my-4 w-full max-w-lg rounded-2xl border border-border bg-surface p-6 shadow-[0_32px_64px_-24px_oklch(0.27_0.022_52/0.45)]"
         style={{ animation: "dialog-in 180ms ease-out" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold leading-snug">Miembros</h2>
+            <h2 className="font-display text-xl font-bold leading-snug tracking-tight">
+              Miembros
+            </h2>
             <p className="mt-1 text-sm text-ink-muted">
               {canManage
                 ? "Invita a personas y elige qué pueden hacer en este tablero."
