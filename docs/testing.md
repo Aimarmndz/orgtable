@@ -3,19 +3,29 @@
 orgtable tiene tests unitarios con **Vitest** y un workflow de **GitHub Actions** que se
 ejecuta en cada push a `main` y en cada pull request.
 
+Hay dos niveles: **tests unitarios** (lógica pura, sin BD) y **tests de integración**
+(rutas de la API y servicios contra una PostgreSQL real).
+
 ## Ejecutar en local
 
 ```bash
-npm test          # ejecuta todos los tests una vez
-npm run test:watch # modo watch durante el desarrollo
+npm test           # unitarios (rápidos, sin BD)
+npm run test:watch # unitarios en modo watch
 npm run typecheck  # tsc --noEmit
 npm run lint       # eslint
+
+# Integración: requiere una BD de test (su nombre DEBE acabar en `_test`).
+# Crea orgtable_test en tu Postgres de dev y aplícale las migraciones una vez:
+createdb -h localhost -p 5433 -U orgtable orgtable_test   # o vía docker exec psql
+DATABASE_URL='postgresql://orgtable:PASS@localhost:5433/orgtable_test' npx prisma migrate deploy
+# y luego:
+DATABASE_URL='postgresql://orgtable:PASS@localhost:5433/orgtable_test' npm run test:integration
 ```
 
-## Qué se prueba
+## Tests unitarios
 
-Los tests cubren la **lógica pura** del proyecto, sin tocar la base de datos ni la red
-(rápidos y deterministas). Están en `test/`:
+Cubren la **lógica pura** del proyecto, sin tocar la base de datos ni la red (rápidos y
+deterministas). Están en `test/`:
 
 | Archivo | Cubre |
 |---------|-------|
@@ -25,13 +35,29 @@ Los tests cubren la **lógica pura** del proyecto, sin tocar la base de datos ni
 | `test/tokens.test.ts` | Tokens de la API: hash SHA-256 estable, formato `orgt_`, unicidad. |
 | `test/validators.test.ts` | Esquemas zod (títulos, cuerpos de la API, nombre de token), incluida la regla de "al menos un campo" al actualizar. |
 
-### Por qué solo lógica pura (de momento)
+## Tests de integración
 
-La mayoría de los módulos de servidor dependen de Prisma y de la sesión, que requerirían
-una base de datos de test. Empezamos por lo que más barato es de probar y más caro de
-equivocar: la **autorización** y el **orden**. Los tests de integración (rutas, Server
-Actions contra una BD efímera) son una ampliación natural; el flujo de la API ya se valida
-manualmente de extremo a extremo (ver `docs/api/public-api.md`).
+Ejercen el código **contra una PostgreSQL real** (efímera), en `test/integration/`:
+
+| Archivo | Cubre |
+|---------|-------|
+| `users.int.test.ts` | Creación de usuarios: hash de contraseña (nunca en claro), normalización del email, rechazo de duplicados, rol global. |
+| `boards-api.int.test.ts` | API de tableros: `401` sin token o con token inválido, `POST` crea el tablero y deja al usuario como OWNER, `422` con título vacío, `GET` solo devuelve los tableros accesibles. |
+| `cards-api.int.test.ts` | API de listas/tarjetas: un editor crea lista y tarjeta (con vencimiento), un VIEWER recibe `403`, un no-miembro `404`, y `PATCH`/`DELETE` de tarjeta. |
+
+Cómo funcionan:
+
+- Usan el **mismo `PrismaClient` que la app**, apuntado a la BD de test por `DATABASE_URL`.
+  Invocan **directamente los route handlers** de `app/api/v1/**` con un `Request` (Bearer
+  token), sin levantar un servidor.
+- **Guardia de seguridad** (`test/integration/helpers.ts`): se niega a truncar si la BD no
+  acaba en `_test`, para no tocar datos de dev/producción jamás.
+- Antes de cada test, `resetDb()` hace `TRUNCATE … CASCADE` de todas las tablas.
+- `vitest.integration.config.ts` aliasa `next/cache` y `next/headers` a stubs (fuera de
+  Next no hay store de revalidación ni request), además de `server-only` y `@/`.
+- La lógica de creación de cuentas se extrajo a `app/lib/services/users.ts`
+  (`createUserAccount`) para poder probarla sin el contexto de request (cookies/admin); la
+  Server Action `createUser` la reutiliza.
 
 ## Detalles de configuración
 
@@ -43,15 +69,17 @@ manualmente de extremo a extremo (ver `docs/api/public-api.md`).
 
 ## Integración continua
 
-`.github/workflows/ci.yml` ejecuta, en orden, sobre Node 20:
+`.github/workflows/ci.yml` levanta un **servicio PostgreSQL** (`postgres:17`, BD
+`orgtable_test`) y ejecuta, en orden, sobre Node 20:
 
 1. `npm ci` — instala con el lockfile (reproducible).
 2. `npx prisma generate` — genera el cliente Prisma (lo necesitan el typecheck y el build).
 3. `npm run lint`
 4. `npm run typecheck`
-5. `npm test`
-6. `npm run build`
+5. `npm test` — tests unitarios.
+6. `npx prisma migrate deploy` — crea el esquema en la BD de test del servicio.
+7. `npm run test:integration` — tests de integración contra esa BD.
+8. `npm run build`
 
-Se usa una `DATABASE_URL` ficticia: el cliente Prisma se instancia de forma perezosa y el
-build solo compila (las rutas son dinámicas, no se conecta a la BD). No se ejecutan
-migraciones ni seed en CI.
+`DATABASE_URL` apunta a la BD del servicio (`…/orgtable_test`). El build no se conecta
+(rutas dinámicas); los tests de integración sí.

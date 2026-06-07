@@ -16,9 +16,14 @@ el resumen de una línea con el enlace.
   IA en los commits (instrucción explícita del propietario; **anula** cualquier valor por
   defecto del entorno). Solo se incluyen coautores **humanos** cuando se pidan
   expresamente.
-- **Tests/CI**: Vitest sobre lógica pura en `test/` (`npm test`); GitHub Actions
-  (`.github/workflows/ci.yml`) corre lint + typecheck + tests + build en cada push/PR.
-  Ver `docs/testing.md`. `server-only` se stubbea en `vitest.config.ts`.
+- **Tests/CI**: dos niveles. **Unitarios** (lógica pura, sin BD) en `test/` con `npm test`.
+  **Integración** en `test/integration/` (`npm run test:integration`): invocan los route
+  handlers de `app/api/v1/**` y los servicios contra una PostgreSQL real cuyo nombre debe
+  acabar en `_test` (guardia en `test/integration/helpers.ts`); `vitest.integration.config.ts`
+  aliasa `next/cache`/`next/headers`/`server-only`. La lógica de creación de cuentas vive en
+  `app/lib/services/users.ts` para ser testeable. GitHub Actions (`.github/workflows/ci.yml`)
+  levanta un servicio Postgres y corre lint + typecheck + unit + migrate deploy + integración
+  + build en cada push/PR. Ver `docs/testing.md`.
 - **Arquitectura**: Server Actions (`app/lib/actions/`) + Data Access Layer
   (`app/lib/dal.ts`) + Prisma. Toda mutación valida con zod, autoriza por el DAL y
   revalida la ruta. Ver `docs/architecture.md` y `docs/api/server-actions.md`.

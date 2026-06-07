@@ -24,5 +24,7 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["test/**/*.test.ts"],
+    // Los tests de integración (DB real) tienen su propia config: vitest.integration.config.ts.
+    exclude: ["test/integration/**", "node_modules/**"],
   },
 });

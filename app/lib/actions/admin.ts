@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/app/lib/prisma";
 import { requireAdmin } from "@/app/lib/dal";
 import { hashPassword } from "@/app/lib/auth";
+import { createUserAccount } from "@/app/lib/services/users";
 import { revokeAllUserSessions } from "@/app/lib/session";
 import { recordAudit } from "@/app/lib/audit";
 import {
@@ -37,30 +38,18 @@ export async function createUser(
     return { error: parsed.error.issues[0]?.message ?? "Datos no válidos." };
   }
 
-  const email = parsed.data.email.toLowerCase();
-  const exists = await prisma.user.findUnique({
-    where: { email },
-    select: { id: true },
-  });
-  if (exists) {
+  // La lógica de creación (normalizar email, rechazar duplicados, hashear) vive en el
+  // servicio reutilizable y testeable; aquí solo autorizamos y auditamos.
+  const result = await createUserAccount(parsed.data);
+  if (!result.ok) {
     return { error: "Ya existe un usuario con ese email." };
   }
-
-  const passwordHash = await hashPassword(parsed.data.password);
-  const created = await prisma.user.create({
-    data: {
-      email,
-      name: parsed.data.name,
-      passwordHash,
-      role: parsed.data.role,
-    },
-  });
   await recordAudit({
     action: "user.created",
     userId: admin.id,
     targetType: "user",
-    targetId: created.id,
-    detail: `${email} (${parsed.data.role})`,
+    targetId: result.user.id,
+    detail: `${result.user.email} (${parsed.data.role})`,
   });
   revalidatePath("/admin/users");
   return { message: `Cuenta creada para ${parsed.data.name}.` };

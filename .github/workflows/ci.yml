@@ -13,11 +13,29 @@ concurrency:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+
+    # PostgreSQL efímero para los tests de integración. La base de datos se llama
+    # `orgtable_test` (el guardia de los tests exige que acabe en `_test`).
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: orgtable
+          POSTGRES_PASSWORD: orgtable
+          POSTGRES_DB: orgtable_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U orgtable"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     env:
-      # DATABASE_URL ficticia: el cliente Prisma se instancia de forma perezosa y el
-      # build solo compila (las rutas son dinámicas, no se conecta a la BD). No se
-      # ejecutan migraciones ni seed en CI.
-      DATABASE_URL: postgresql://orgtable:orgtable@localhost:5432/orgtable
+      # Apunta al Postgres de servicio. El build no se conecta (rutas dinámicas); los
+      # tests de integración sí, y `prisma migrate deploy` crea el esquema ahí.
+      DATABASE_URL: postgresql://orgtable:orgtable@localhost:5432/orgtable_test
+
     steps:
       - uses: actions/checkout@v5
 
@@ -40,6 +58,12 @@ jobs:
 
       - name: Unit tests
         run: npm test
+
+      - name: Apply migrations to the test database
+        run: npx prisma migrate deploy
+
+      - name: Integration tests
+        run: npm run test:integration
 
       - name: Build
         run: npm run build
