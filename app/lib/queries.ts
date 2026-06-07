@@ -83,6 +83,7 @@ export async function getNotificationsForUser(userId: string, limit = 20) {
       title: true,
       body: true,
       boardId: true,
+      cardId: true,
       read: true,
       createdAt: true,
     },

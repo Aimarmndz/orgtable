@@ -234,6 +234,9 @@ model Notification {
   title     String
   body      String?
   boardId   String?
+  // Referencia suave a la tarjeta (sin FK): permite el deep-link `?card=` y deduplicar
+  // los recordatorios de vencimiento (Hito 11).
+  cardId    String?
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
 

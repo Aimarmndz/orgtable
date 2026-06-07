@@ -109,8 +109,8 @@ El producto mínimo usable: instalar con un comando → configurar → usar como
 
 ---
 
-> **Hitos 0–9 completados.** A partir de aquí van los **próximos hitos planificados**
-> (10–20): pendientes, con el alcance pensado y dónde encajan en la arquitectura actual,
+> **Hitos 0–11 completados.** A partir de aquí van los **próximos hitos planificados**
+> (12–20): pendientes, con el alcance pensado y dónde encajan en la arquitectura actual,
 > para poder arrancar cada uno directamente. El orden es orientativo; se priorizará según
 > el uso real. Mantener la filosofía del proyecto: self-hosted, sin servicios externos
 > obligatorios, el servidor como única autoridad, y reutilizar lo que ya existe
@@ -130,22 +130,20 @@ El producto mínimo usable: instalar con un comando → configurar → usar como
       [ADR 0014](./decisions/0014-card-collaboration.md). Ver
       [`docs/card-collaboration.md`](./card-collaboration.md).
 
-## Hito 11 — Fechas, recordatorios y correo 🔜 (planificado)
+## Hito 11 — Fechas y recordatorios de vencimiento ✅ (completado)
 
-Cerrar el ciclo de las fechas de vencimiento y abrir un segundo canal de entrega.
+- [x] **Recordatorios de vencimiento**: `generateDueReminders` (servicio testeable) genera
+      notificaciones `due.reminder` para los asignados de tarjetas que vencen en 24 h o
+      están vencidas, **idempotente por día**. Lo dispara un **cron externo** vía el
+      endpoint protegido `POST /api/cron/reminders` (secreto en `Authorization: Bearer`,
+      comparado en tiempo constante), sin scheduler en proceso
+      ([ADR 0015](./decisions/0015-reminders-cron.md)).
+- [x] **Arrastrar en el calendario** a otro día cambia el vencimiento (`@dnd-kit` +
+      `setCardDueDate`). Notificaciones con **deep-link** a la tarjeta (`Notification.cardId`).
+      Ver [`docs/reminders.md`](./reminders.md).
 
-- [ ] **Recordatorios de vencimiento**: generar notificaciones para tarjetas que vencen
-      pronto o están vencidas (a quien las tenga asignadas, del Hito 10). Necesita una
-      ejecución periódica: un endpoint protegido tipo cron (`/api/cron/...` con secreto)
-      invocable por el `docker-compose` o un cron externo, sin añadir un scheduler en
-      proceso.
-- [ ] **Email opcional** como segundo consumidor de `notify()`: SMTP configurable por
-      variables de entorno (desactivado por defecto). Mantener best-effort. ADR para "SMTP
-      opcional, sin proveedor obligatorio".
-- [ ] **Preferencias por usuario** (qué notifico y por dónde) en `/settings`.
-- [ ] **Arrastrar una tarjeta en el calendario** a otro día para cambiar su vencimiento
-      (hoy el calendario es de lectura + abrir). Reutilizar `@dnd-kit` y `updateCard`.
-- [ ] Migración para preferencias; docs: ampliar `docs/notifications.md` y `docs/calendar.md`.
+> Diferido al **backlog**: email/Web Push (otro consumidor de `notify()`, SMTP opcional) y
+> preferencias de notificación por usuario. No bloquean el resto del roadmap.
 
 ## Hito 12 — Búsqueda y filtros avanzados 🔜 (planificado)
 
@@ -250,6 +248,8 @@ servicios externos.
 
 ### Backlog continuo (mejoras menores, sin hito propio)
 
+- **Email / Web Push** para notificaciones y recordatorios (otro consumidor de `notify()`,
+  SMTP opcional por entorno) + **preferencias de notificación por usuario** (diferido del Hito 11).
 - Portadas/colores por tarjeta; descripción con **Markdown**.
 - Exportar el tablero también a **CSV** (hoy solo JSON).
 - Reacciones/emoji en comentarios (tras el Hito 10).

@@ -34,8 +34,13 @@ tablero: no añade datos nuevos ni cambia el modelo.
 - `app/components/board/calendar-view.tsx` — la rejilla mensual.
 - `app/components/board/board-view.tsx` — el conmutador y el render condicional.
 
+## Reprogramar arrastrando (Hito 11)
+
+Si tienes permiso de edición, puedes **arrastrar una tarjeta a otro día** para cambiar su
+fecha de vencimiento. Usa `@dnd-kit` (chips arrastrables, celdas como zonas de soltar) y
+una acción enfocada `setCardDueDate` que **solo** toca la fecha (no pisa la descripción).
+El tablero se resincroniza por el tiempo real tras revalidar.
+
 ## Evolución posible
 
-- Arrastrar una tarjeta a otro día para cambiar su vencimiento (hoy el calendario es de
-  lectura + abrir).
 - Un calendario **global** que cruce todos los tableros del usuario (hoy es por tablero).

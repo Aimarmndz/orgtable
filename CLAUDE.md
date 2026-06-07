@@ -36,14 +36,13 @@ el resumen de una línea con el enlace.
 
 ## Estado por hitos
 
-Ver `docs/roadmap.md` para el detalle. Hitos 0–10 completados. **Próximos hitos
-planificados (11–20)**, con alcance y puntos de anclaje en el roadmap, listos para
-arrancar: 11 recordatorios de vencimiento + email opcional + arrastrar en el calendario,
-12 búsqueda full-text + filtros, 13 API v1 completa + scopes de token, 14 PWA/móvil, 15
-automatizaciones (reglas tipo Butler), 16 vistas de tabla y swimlanes, 17
+Ver `docs/roadmap.md` para el detalle. Hitos 0–11 completados. **Próximos hitos
+planificados (12–20)**, con alcance y puntos de anclaje en el roadmap, listos para
+arrancar: 12 búsqueda full-text + filtros, 13 API v1 completa + scopes de token, 14
+PWA/móvil, 15 automatizaciones (reglas tipo Butler), 16 vistas de tabla y swimlanes, 17
 plantillas/duplicar/archivar, 18 actividad e historial de tarjeta, 19 webhooks e
-integraciones, 20 i18n + accesibilidad. Más candidatos sin cerrar tras el 20 (SSO/OIDC,
-2FA, observabilidad, backups programados).
+integraciones, 20 i18n + accesibilidad. Diferido al backlog: email/Web Push + preferencias
+de notificación. Más candidatos tras el 20 (SSO/OIDC, 2FA, observabilidad, backups).
 
 ## Decisiones (resumen)
 
@@ -62,6 +61,7 @@ integraciones, 20 i18n + accesibilidad. Más candidatos sin cerrar tras el 20 (S
 - ADR 0012 — Notificaciones in-app sobre el bus pub/sub (sin email ni cola).
 - ADR 0013 — API pública con tokens personales hasheados (Bearer, reutiliza el RBAC).
 - ADR 0014 — Colaboración en la tarjeta: asignados (solo miembros) y comentarios (hilo plano, cascade).
+- ADR 0015 — Recordatorios de vencimiento por endpoint cron externo (secreto, sin scheduler en proceso).
 
 ## Notas de hito
 
@@ -115,6 +115,11 @@ integraciones, 20 i18n + accesibilidad. Más candidatos sin cerrar tras el 20 (S
   `services/cards.ts` (`cardContext`). UI en `card-modal.tsx` (secciones Asignados y
   Comentarios) y avatares en `card-item.tsx`. Notifica `card.assigned`/`comment.added`.
   Tests en `test/integration/collaboration.int.test.ts`. Ver `docs/card-collaboration.md`.
+- **Hito 11 (recordatorios)**: `Notification.cardId` (migración `..._notification_card_ref`)
+  para deep-link y dedup. `services/reminders.ts` (`generateDueReminders(now)`, idempotente
+  por día) disparado por `POST /api/cron/reminders` (secreto Bearer, `timingSafeEqual`, 503
+  si no hay `CRON_SECRET`). Arrastre en el calendario con `setCardDueDate`. Tests en
+  `test/integration/reminders.int.test.ts`. Email/prefs → backlog. Ver `docs/reminders.md`.
 - **Migraciones (a partir del Hito 7)**: ya hay BD de desarrollo local (Postgres en el
   puerto 5433, contenedor `orgtable-dev-pg`), así que las nuevas migraciones se generan
   con `prisma migrate dev` en vez de a mano. Se siguen aplicando con `migrate deploy` en

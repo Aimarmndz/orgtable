@@ -13,7 +13,8 @@ export type NotificationType =
   | "member.removed"
   | "member.role_changed"
   | "card.assigned"
-  | "comment.added";
+  | "comment.added"
+  | "due.reminder";
 
 export async function notify(params: {
   userId: string;
@@ -21,6 +22,7 @@ export async function notify(params: {
   title: string;
   body?: string;
   boardId?: string;
+  cardId?: string;
 }): Promise<void> {
   try {
     await prisma.notification.create({
@@ -30,6 +32,7 @@ export async function notify(params: {
         title: params.title.slice(0, 300),
         body: params.body?.slice(0, 500) ?? null,
         boardId: params.boardId ?? null,
+        cardId: params.cardId ?? null,
       },
     });
     await publishUserEvent(params.userId);

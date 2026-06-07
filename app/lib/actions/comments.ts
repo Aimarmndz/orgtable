@@ -41,6 +41,7 @@ export async function addComment(formData: FormData): Promise<void> {
           title: `Nuevo comentario en «${ctx.cardTitle}»`,
           body: parsed.data.slice(0, 140),
           boardId: ctx.boardId,
+          cardId,
         }),
       ),
   );

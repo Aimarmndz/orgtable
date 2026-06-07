@@ -32,6 +32,9 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    // Zona horaria fija: la lógica de fechas (recordatorios) usa la hora local; UTC la
+    // hace determinista en cualquier máquina y en CI.
+    env: { TZ: "UTC" },
     include: ["test/integration/**/*.int.test.ts"],
     // Una sola conexión a la BD: los tests comparten un PrismaClient y resetean entre
     // cada uno, así que no deben correr en paralelo entre archivos.

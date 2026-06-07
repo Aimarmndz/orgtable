@@ -285,7 +285,11 @@ export function BoardView({
               {canEdit && <AddListForm boardId={board.id} />}
             </div>
           ) : (
-            <CalendarView lists={lists} onOpenCard={setSelectedCardId} />
+            <CalendarView
+              lists={lists}
+              onOpenCard={setSelectedCardId}
+              canEdit={canEdit}
+            />
           )}
         </div>
 

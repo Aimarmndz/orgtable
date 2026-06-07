@@ -13,6 +13,7 @@ export type NotificationDTO = {
   title: string;
   body: string | null;
   boardId: string | null;
+  cardId: string | null;
   read: boolean;
   createdAt: string; // ISO
 };
@@ -82,7 +83,13 @@ export function NotificationsBell({
         if (!n.boardId) router.refresh();
       });
     }
-    if (n.boardId) router.push(`/board/${n.boardId}`);
+    if (n.boardId) {
+      // Si la notificación apunta a una tarjeta, la abre directamente (deep-link ?card=).
+      const href = n.cardId
+        ? `/board/${n.boardId}?card=${n.cardId}`
+        : `/board/${n.boardId}`;
+      router.push(href);
+    }
   };
 
   const markAll = () => {

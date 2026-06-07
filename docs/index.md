@@ -27,6 +27,7 @@ quien quiere **contribuir** al código.
 - [**Colaboración en la tarjeta**](./card-collaboration.md) — asignados y comentarios.
 - [**Búsqueda**](./search.md) — búsqueda global de tableros y tarjetas, acotada por acceso.
 - [**Vista de calendario**](./calendar.md) — las tarjetas con vencimiento en una rejilla mensual.
+- [**Recordatorios de vencimiento**](./reminders.md) — el cron de avisos y el arrastre para reprogramar.
 - [**Adjuntos**](./attachments.md) — archivos en tarjetas, almacenamiento y descarga autorizada.
 - [**Sistema de diseño**](./design-system.md) — tokens OKLCH, tema claro/oscuro, componentes.
 - [**Docker**](./docker.md) — la imagen multi-stage y la orquestación.
@@ -54,6 +55,7 @@ Las decisiones técnicas importantes y su porqué están registradas en
 - [0012 — Notificaciones in-app sobre el bus pub/sub](./decisions/0012-notifications.md)
 - [0013 — API pública con tokens personales hasheados](./decisions/0013-api-tokens.md)
 - [0014 — Modelo de colaboración en la tarjeta (asignados y comentarios)](./decisions/0014-card-collaboration.md)
+- [0015 — Recordatorios por endpoint cron externo](./decisions/0015-reminders-cron.md)
 
 ## Hoja de ruta
 

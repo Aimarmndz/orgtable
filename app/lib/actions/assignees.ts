@@ -32,6 +32,7 @@ export async function assignMember(formData: FormData): Promise<void> {
       title: `Te han asignado «${ctx.cardTitle}»`,
       body: `En el tablero «${ctx.boardTitle}».`,
       boardId: ctx.boardId,
+      cardId,
     });
   }
   revalidateBoard(ctx.boardId);

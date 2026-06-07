@@ -1,12 +1,22 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import {
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  useDraggable,
+  useDroppable,
+  type DragEndEvent,
+} from "@dnd-kit/core";
 import type { ListDTO } from "@/app/lib/types";
 import { labelBackground } from "@/app/lib/colors";
+import { setCardDueDate } from "@/app/lib/actions/cards";
 
-// Vista de calendario mensual (Hito 7): coloca las tarjetas con fecha de vencimiento en
-// la rejilla del mes. Solo lectura visual; al pulsar una tarjeta se abre su modal (el
-// mismo de la vista de tablero). Ver docs/calendar.md.
+// Vista de calendario mensual (Hito 7) con arrastre para reprogramar (Hito 11): coloca las
+// tarjetas con fecha de vencimiento en la rejilla del mes; al pulsar una se abre su modal y
+// (si puedes editar) arrastrarla a otro día cambia su vencimiento. Ver docs/calendar.md.
 
 type DayCard = {
   id: string;
@@ -26,18 +36,104 @@ function dayKey(d: Date): string {
   ).padStart(2, "0")}`;
 }
 
+function CardChip({
+  card,
+  canEdit,
+  onOpen,
+}: {
+  card: DayCard;
+  canEdit: boolean;
+  onOpen: (id: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: card.id,
+    disabled: !canEdit,
+  });
+  return (
+    <button
+      ref={setNodeRef}
+      {...(canEdit ? attributes : {})}
+      {...(canEdit ? listeners : {})}
+      onClick={() => onOpen(card.id)}
+      title={`${card.title} · ${card.listTitle}`}
+      className={`flex items-center gap-1.5 rounded-md border border-border bg-surface px-1.5 py-1 text-left text-xs leading-tight transition-colors hover:border-accent/50 ${
+        canEdit ? "cursor-grab active:cursor-grabbing" : ""
+      } ${isDragging ? "opacity-40" : ""}`}
+    >
+      <span
+        aria-hidden
+        className="size-1.5 shrink-0 rounded-full"
+        style={{ background: card.color ?? "var(--ink-muted)" }}
+      />
+      <span className="min-w-0 flex-1 truncate">{card.title}</span>
+    </button>
+  );
+}
+
+function DayCell({
+  dayKeyStr,
+  date,
+  inMonth,
+  isToday,
+  canEdit,
+  children,
+}: {
+  dayKeyStr: string;
+  date: Date;
+  inMonth: boolean;
+  isToday: boolean;
+  canEdit: boolean;
+  children: React.ReactNode;
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: dayKeyStr,
+    disabled: !canEdit,
+  });
+  return (
+    <div
+      ref={setNodeRef}
+      className={`flex min-h-20 flex-col gap-1 rounded-lg border p-1.5 transition-colors ${
+        inMonth
+          ? "border-border/70 bg-bg/40"
+          : "border-transparent bg-transparent text-ink-muted/60"
+      } ${isToday ? "ring-2 ring-accent/50" : ""} ${
+        isOver ? "border-accent bg-accent/10" : ""
+      }`}
+    >
+      <span
+        className={`px-0.5 font-mono text-[11px] tabular-nums ${
+          isToday
+            ? "font-bold text-accent"
+            : inMonth
+              ? "text-ink-muted"
+              : "text-ink-muted/50"
+        }`}
+      >
+        {date.getDate()}
+      </span>
+      <div className="flex flex-col gap-1">{children}</div>
+    </div>
+  );
+}
+
 export function CalendarView({
   lists,
   onOpenCard,
+  canEdit,
 }: {
   lists: ListDTO[];
   onOpenCard: (cardId: string) => void;
+  canEdit: boolean;
 }) {
   // Mes mostrado (primer día del mes). Arranca en el mes actual.
   const [month, setMonth] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  );
 
   const todayKey = useMemo(() => dayKey(new Date()), []);
 
@@ -100,6 +196,21 @@ export function CalendarView({
   };
   const shift = (delta: number) =>
     setMonth((m) => new Date(m.getFullYear(), m.getMonth() + delta, 1));
+
+  // Soltar una tarjeta en un día reprograma su vencimiento; el tablero se resincroniza
+  // por el tiempo real tras revalidar.
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over) return;
+    const cardId = String(active.id);
+    const newKey = String(over.id);
+    const current = lists
+      .flatMap((l) => l.cards)
+      .find((c) => c.id === cardId)
+      ?.dueDate?.slice(0, 10);
+    if (current === newKey) return;
+    void setCardDueDate({ cardId, dueDate: newKey });
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-4">
@@ -167,52 +278,30 @@ export function CalendarView({
           ))}
         </div>
 
-        {/* Rejilla de días */}
-        <div className="grid flex-1 auto-rows-fr grid-cols-7 gap-1">
-          {days.map(({ date, key, inMonth }) => {
-            const cards = byDay.get(key) ?? [];
-            const isToday = key === todayKey;
-            return (
-              <div
+        {/* Rejilla de días (con arrastre para reprogramar si puedes editar) */}
+        <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+          <div className="grid flex-1 auto-rows-fr grid-cols-7 gap-1">
+            {days.map(({ date, key, inMonth }) => (
+              <DayCell
                 key={key}
-                className={`flex min-h-20 flex-col gap-1 rounded-lg border p-1.5 ${
-                  inMonth
-                    ? "border-border/70 bg-bg/40"
-                    : "border-transparent bg-transparent text-ink-muted/60"
-                } ${isToday ? "ring-2 ring-accent/50" : ""}`}
+                dayKeyStr={key}
+                date={date}
+                inMonth={inMonth}
+                isToday={key === todayKey}
+                canEdit={canEdit}
               >
-                <span
-                  className={`px-0.5 font-mono text-[11px] tabular-nums ${
-                    isToday
-                      ? "font-bold text-accent"
-                      : inMonth
-                        ? "text-ink-muted"
-                        : "text-ink-muted/50"
-                  }`}
-                >
-                  {date.getDate()}
-                </span>
-                <div className="flex flex-col gap-1">
-                  {cards.map((c) => (
-                    <button
-                      key={c.id}
-                      onClick={() => onOpenCard(c.id)}
-                      title={`${c.title} · ${c.listTitle}`}
-                      className="flex items-center gap-1.5 rounded-md border border-border bg-surface px-1.5 py-1 text-left text-xs leading-tight transition-colors hover:border-accent/50"
-                    >
-                      <span
-                        aria-hidden
-                        className="size-1.5 shrink-0 rounded-full"
-                        style={{ background: c.color ?? "var(--ink-muted)" }}
-                      />
-                      <span className="min-w-0 flex-1 truncate">{c.title}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                {(byDay.get(key) ?? []).map((c) => (
+                  <CardChip
+                    key={c.id}
+                    card={c}
+                    canEdit={canEdit}
+                    onOpen={onOpenCard}
+                  />
+                ))}
+              </DayCell>
+            ))}
+          </div>
+        </DndContext>
 
         {undated > 0 && (
           <p className="px-1 pt-3 text-xs text-ink-muted">

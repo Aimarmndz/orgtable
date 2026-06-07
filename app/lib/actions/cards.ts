@@ -66,6 +66,31 @@ export async function updateCard(formData: FormData): Promise<void> {
   revalidateBoard(card.list.boardId);
 }
 
+/**
+ * Cambia SOLO la fecha de vencimiento (sin tocar la descripción). La usa el arrastre en
+ * la vista de calendario (Hito 11). `dueDate` es "YYYY-MM-DD" o null para quitarla.
+ */
+export async function setCardDueDate(input: {
+  cardId: string;
+  dueDate: string | null;
+}): Promise<{ ok: boolean }> {
+  const card = await prisma.card.findUnique({
+    where: { id: input.cardId },
+    select: { list: { select: { boardId: true } } },
+  });
+  if (!card) return { ok: false };
+  const { role } = await requireBoardAccess(card.list.boardId);
+  if (!canEditBoard(role)) return { ok: false };
+
+  const due = input.dueDate ? new Date(input.dueDate) : null;
+  await prisma.card.update({
+    where: { id: input.cardId },
+    data: { dueDate: due && !Number.isNaN(due.getTime()) ? due : null },
+  });
+  revalidateBoard(card.list.boardId);
+  return { ok: true };
+}
+
 export async function renameCard(formData: FormData): Promise<void> {
   const cardId = String(formData.get("cardId"));
   const card = await prisma.card.findUnique({
