@@ -41,13 +41,13 @@ el resumen de una línea con el enlace.
 
 ## Estado por hitos
 
-Ver `docs/roadmap.md` para el detalle. Hitos 0–11 completados. **Próximos hitos
-planificados (12–20)**, con alcance y puntos de anclaje en el roadmap, listos para
-arrancar: 12 búsqueda full-text + filtros, 13 API v1 completa + scopes de token, 14
-PWA/móvil, 15 automatizaciones (reglas tipo Butler), 16 vistas de tabla y swimlanes, 17
-plantillas/duplicar/archivar, 18 actividad e historial de tarjeta, 19 webhooks e
-integraciones, 20 i18n + accesibilidad. Diferido al backlog: email/Web Push + preferencias
-de notificación. Más candidatos tras el 20 (SSO/OIDC, 2FA, observabilidad, backups).
+Ver `docs/roadmap.md` para el detalle. Hitos 0–12 completados. **Próximos hitos
+planificados (13–20)**, con alcance y puntos de anclaje en el roadmap, listos para
+arrancar: 13 API v1 completa + scopes de token, 14 PWA/móvil, 15 automatizaciones (reglas
+tipo Butler), 16 vistas de tabla y swimlanes, 17 plantillas/duplicar/archivar, 18 actividad
+e historial de tarjeta, 19 webhooks e integraciones, 20 i18n + accesibilidad. Diferido al
+backlog: email/Web Push + preferencias, búsqueda full-text. Tras el 20: SSO/OIDC, 2FA,
+observabilidad, backups.
 
 ## Decisiones (resumen)
 
@@ -125,6 +125,10 @@ de notificación. Más candidatos tras el 20 (SSO/OIDC, 2FA, observabilidad, bac
   por día) disparado por `POST /api/cron/reminders` (secreto Bearer, `timingSafeEqual`, 503
   si no hay `CRON_SECRET`). Arrastre en el calendario con `setCardDueDate`. Tests en
   `test/integration/reminders.int.test.ts`. Email/prefs → backlog. Ver `docs/reminders.md`.
+- **Hito 12 (filtros de tablero)**: `app/lib/board-filters.ts` (puro, `cardMatchesFilters`,
+  test unitario), `FilterBar` desplegable en la cabecera; `BoardView` filtra las tarjetas y
+  desactiva el arrastre con `sortingDisabled` (propagado a `ListColumn`/`CardItem`). Solo
+  presentación, sin migración. Full-text → backlog (ILIKE basta, ADR 0011). Ver `docs/filters.md`.
 - **Migraciones (a partir del Hito 7)**: ya hay BD de desarrollo local (Postgres en el
   puerto 5433, contenedor `orgtable-dev-pg`), así que las nuevas migraciones se generan
   con `prisma migrate dev` en vez de a mano. Se siguen aplicando con `migrate deploy` en

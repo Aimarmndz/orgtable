@@ -109,8 +109,8 @@ El producto mínimo usable: instalar con un comando → configurar → usar como
 
 ---
 
-> **Hitos 0–11 completados.** A partir de aquí van los **próximos hitos planificados**
-> (12–20): pendientes, con el alcance pensado y dónde encajan en la arquitectura actual,
+> **Hitos 0–12 completados.** A partir de aquí van los **próximos hitos planificados**
+> (13–20): pendientes, con el alcance pensado y dónde encajan en la arquitectura actual,
 > para poder arrancar cada uno directamente. El orden es orientativo; se priorizará según
 > el uso real. Mantener la filosofía del proyecto: self-hosted, sin servicios externos
 > obligatorios, el servidor como única autoridad, y reutilizar lo que ya existe
@@ -145,17 +145,18 @@ El producto mínimo usable: instalar con un comando → configurar → usar como
 > Diferido al **backlog**: email/Web Push (otro consumidor de `notify()`, SMTP opcional) y
 > preferencias de notificación por usuario. No bloquean el resto del roadmap.
 
-## Hito 12 — Búsqueda y filtros avanzados 🔜 (planificado)
+## Hito 12 — Filtros de tablero ✅ (completado)
 
-- [ ] **Full-text de PostgreSQL** (columna `tsvector` + índice GIN) detrás de la **misma
-      interfaz** `searchForUser`, con ranking por relevancia. Es la evolución natural del
-      `ILIKE` (ya prevista en [ADR 0011](./decisions/0011-search-ilike-scoped.md));
-      escribir un ADR de seguimiento. Alternativa más barata: extensión `pg_trgm`.
-- [ ] **Filtros en el tablero**: por etiqueta, asignado (Hito 10), fecha de vencimiento y
-      estado de checklist. Barra de filtros que oculta tarjetas sin recargar (estado de
-      cliente en `BoardView`).
-- [ ] **Filtros rápidos guardados** (opcional) por tablero.
-- [ ] Docs: ampliar `docs/search.md`.
+- [x] **Filtros en el tablero** por etiqueta, asignado (Hito 10) y estado de vencimiento
+      (cualquiera / vencidas / con fecha / sin fecha). Barra desplegable en la cabecera que
+      oculta las tarjetas que no encajan, sin recargar; el arrastre se desactiva mientras se
+      filtra. Lógica pura testeable en `app/lib/board-filters.ts`. Ver
+      [`docs/filters.md`](./filters.md).
+
+> Diferido al **backlog**: búsqueda **full-text** de PostgreSQL (`tsvector` + GIN) detrás de
+> `searchForUser` y filtros rápidos guardados. El `ILIKE` actual es adecuado a la escala
+> self-hosted ([ADR 0011](./decisions/0011-search-ilike-scoped.md)); el full-text es una
+> optimización, no un bloqueo.
 
 ## Hito 13 — API v1 completa y scopes 🔜 (planificado)
 

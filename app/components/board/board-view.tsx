@@ -28,6 +28,12 @@ import { ListColumn } from "./list-column";
 import { CardItem } from "./card-item";
 import { AddListForm } from "./add-list-form";
 import { CalendarView } from "./calendar-view";
+import { FilterBar } from "./filter-bar";
+import {
+  EMPTY_FILTERS,
+  filtersActive,
+  cardMatchesFilters,
+} from "@/app/lib/board-filters";
 import { BoardPermsProvider } from "./board-perms";
 import { MembersPanel, type BoardMemberDTO } from "./members-panel";
 import { CardModal } from "../card/card-modal";
@@ -54,9 +60,13 @@ export function BoardView({
   const [membersOpen, setMembersOpen] = useState(false);
   // Vista activa: tablero (columnas) o calendario mensual (Hito 7).
   const [view, setView] = useState<"board" | "calendar">("board");
+  // Filtros del tablero (Hito 12): solo presentación. `now` estable para "vencidas".
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [now] = useState(() => Date.now());
 
   const canEdit = canEditBoard(viewerRole);
   const canManage = canManageBoard(viewerRole);
+  const filtering = filtersActive(filters);
 
   // Resincroniza con el servidor cuando llegan datos nuevos (patrón "ajustar estado
   // durante el render", sin useEffect): `board` solo cambia de referencia con datos
@@ -217,6 +227,14 @@ export function BoardView({
               {board.title}
             </h1>
             <div className="flex items-center gap-2">
+              {view === "board" && (
+                <FilterBar
+                  labels={board.labels}
+                  members={members}
+                  filters={filters}
+                  onChange={setFilters}
+                />
+              )}
               {/* Conmutador Tablero / Calendario */}
               <div className="flex items-center rounded-lg bg-white/20 p-0.5 backdrop-blur-sm">
                 <button
@@ -274,11 +292,20 @@ export function BoardView({
                 items={lists.map((l) => l.id)}
                 strategy={horizontalListSortingStrategy}
               >
-                {lists.map((list) => (
+                {(filtering
+                  ? lists.map((l) => ({
+                      ...l,
+                      cards: l.cards.filter((c) =>
+                        cardMatchesFilters(c, filters, now),
+                      ),
+                    }))
+                  : lists
+                ).map((list) => (
                   <ListColumn
                     key={list.id}
                     list={list}
                     onOpenCard={setSelectedCardId}
+                    sortingDisabled={filtering}
                   />
                 ))}
               </SortableContext>

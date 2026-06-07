@@ -15,9 +15,11 @@ import { useBoardPerms } from "./board-perms";
 export function ListColumn({
   list,
   onOpenCard,
+  sortingDisabled = false,
 }: {
   list: ListDTO;
   onOpenCard: (cardId: string) => void;
+  sortingDisabled?: boolean;
 }) {
   const { canEdit } = useBoardPerms();
   const {
@@ -27,7 +29,11 @@ export function ListColumn({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: list.id, data: { type: "list" }, disabled: !canEdit });
+  } = useSortable({
+    id: list.id,
+    data: { type: "list" },
+    disabled: !canEdit || sortingDisabled,
+  });
 
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -78,6 +84,7 @@ export function ListColumn({
               card={card}
               listId={list.id}
               onOpen={onOpenCard}
+              sortingDisabled={sortingDisabled}
             />
           ))}
         </div>

@@ -27,6 +27,7 @@ quien quiere **contribuir** al código.
 - [**Detalle de tarjeta**](./card-detail.md) — modal, etiquetas, fechas y checklists.
 - [**Colaboración en la tarjeta**](./card-collaboration.md) — asignados y comentarios.
 - [**Búsqueda**](./search.md) — búsqueda global de tableros y tarjetas, acotada por acceso.
+- [**Filtros de tablero**](./filters.md) — acotar las tarjetas visibles por etiqueta, asignado y vencimiento.
 - [**Vista de calendario**](./calendar.md) — las tarjetas con vencimiento en una rejilla mensual.
 - [**Recordatorios de vencimiento**](./reminders.md) — el cron de avisos y el arrastre para reprogramar.
 - [**Adjuntos**](./attachments.md) — archivos en tarjetas, almacenamiento y descarga autorizada.

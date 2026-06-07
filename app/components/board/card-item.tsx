@@ -19,13 +19,16 @@ export function CardItem({
   listId,
   onOpen,
   overlay = false,
+  sortingDisabled = false,
 }: {
   card: CardDTO;
   listId: string;
   onOpen?: (cardId: string) => void;
   overlay?: boolean;
+  sortingDisabled?: boolean;
 }) {
   const { canEdit } = useBoardPerms();
+  const draggable = canEdit && !sortingDisabled;
   const {
     attributes,
     listeners,
@@ -36,7 +39,7 @@ export function CardItem({
   } = useSortable({
     id: card.id,
     data: { type: "card", listId },
-    disabled: !canEdit,
+    disabled: !draggable,
   });
 
   // Regla lateral tintada con el color de la primera etiqueta (o el borde si no hay).
@@ -65,11 +68,11 @@ export function CardItem({
     <div
       ref={setNodeRef}
       style={style}
-      {...(canEdit ? attributes : {})}
-      {...(canEdit ? listeners : {})}
+      {...(draggable ? attributes : {})}
+      {...(draggable ? listeners : {})}
       onClick={() => onOpen?.(card.id)}
       className={`group cursor-pointer rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-ink shadow-[0_1px_2px_oklch(0.27_0.022_52/0.06)] transition hover:border-accent/40 hover:shadow-[0_4px_12px_-4px_oklch(0.27_0.022_52/0.15)] ${
-        canEdit ? "active:cursor-grabbing" : ""
+        draggable ? "active:cursor-grabbing" : ""
       } ${overlay ? "rotate-2 shadow-lg" : ""}`}
     >
       {card.labels.length > 0 && (
