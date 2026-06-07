@@ -26,6 +26,19 @@ export type AttachmentDTO = {
   size: number;
 };
 
+export type AssigneeDTO = {
+  id: string;
+  name: string;
+};
+
+export type CommentDTO = {
+  id: string;
+  text: string;
+  authorId: string;
+  authorName: string;
+  createdAt: string;
+};
+
 export type CardDTO = {
   id: string;
   title: string;
@@ -35,6 +48,8 @@ export type CardDTO = {
   labels: LabelDTO[];
   checklists: ChecklistDTO[];
   attachments: AttachmentDTO[];
+  assignees: AssigneeDTO[];
+  comments: CommentDTO[];
 };
 
 export type ListDTO = {

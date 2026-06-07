@@ -18,6 +18,11 @@ const cardInclude = {
     include: { items: { orderBy: { position: "asc" as const } } },
   },
   attachments: { orderBy: { createdAt: "asc" as const } },
+  assignees: { include: { user: { select: { id: true, name: true } } } },
+  comments: {
+    orderBy: { createdAt: "asc" as const },
+    include: { author: { select: { id: true, name: true } } },
+  },
 };
 
 // Carga la tarjeta con sus relaciones y el boardId de su lista (para autorizar).

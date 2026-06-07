@@ -116,24 +116,19 @@ El producto mínimo usable: instalar con un comando → configurar → usar como
 > obligatorios, el servidor como única autoridad, y reutilizar lo que ya existe
 > (Server Actions + DAL + Prisma, RBAC, bus de tiempo real).
 
-## Hito 10 — Colaboración en la tarjeta: asignados y comentarios 🔜 (planificado)
+## Hito 10 — Colaboración en la tarjeta: asignados y comentarios ✅ (completado)
 
-Lo que más se echa en falta para trabajar en equipo dentro de una tarjeta.
-
-- [ ] **Asignados**: modelo de unión `CardAssignee` (tarjeta ↔ usuario miembro del
-      tablero). Asignar/quitar miembros desde el modal; avatares en la tarjeta y filtro
-      "mis tarjetas". Solo se puede asignar a miembros del tablero (validar contra
-      `board_members`).
-- [ ] **Comentarios**: modelo `Comment` (tarjeta, autor, texto, `createdAt`). Hilo en el
-      modal de tarjeta; crear y borrar (autor o OWNER). Emitir `revalidateBoard` para el
-      tiempo real.
-- [ ] **Notificaciones** nuevas reutilizando `notify()`: `card.assigned` y
-      `comment.added` (y, opcional, @menciones parseadas del texto). Añadir los tipos a
-      `NotificationType` y las etiquetas a `/admin/audit` si se auditan.
-- [ ] **API**: exponer asignados y comentarios en `/api/v1` (otro recurso más que
-      reutiliza `authenticateApiToken` + `apiBoardRole`).
-- [ ] Migración con `prisma migrate dev`; ADR solo si hay una decisión real (p. ej.
-      formato de menciones). Docs: `docs/card-collaboration.md`.
+- [x] **Asignados**: modelo de unión `CardAssignee`. Asignar/quitar miembros desde el
+      modal (avatares también en la cara de la tarjeta). Solo se puede asignar a miembros
+      del tablero (servicio testeable `assignMemberToCard`).
+- [x] **Comentarios**: modelo `Comment`, hilo plano en el modal; comentar requiere
+      edición, borrar lo hace el autor o el OWNER. `revalidateBoard` para el tiempo real.
+- [x] **Notificaciones** reutilizando `notify()`: `card.assigned` y `comment.added` (a los
+      asignados). Tipos añadidos a `NotificationType`.
+- [x] La **API** expone asignados y comentarios en las respuestas de tarjeta (lectura);
+      crear/borrar por API queda como ampliación. Decisión en
+      [ADR 0014](./decisions/0014-card-collaboration.md). Ver
+      [`docs/card-collaboration.md`](./card-collaboration.md).
 
 ## Hito 11 — Fechas, recordatorios y correo 🔜 (planificado)
 

@@ -155,6 +155,46 @@ export function CardItem({
           )}
         </div>
       )}
+
+      {(card.assignees.length > 0 || card.comments.length > 0) && (
+        <div className="mt-2 flex items-center justify-between gap-2">
+          {card.comments.length > 0 ? (
+            <span className="inline-flex items-center gap-1 text-xs text-ink-muted">
+              <svg
+                className="size-3"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+              {card.comments.length}
+            </span>
+          ) : (
+            <span />
+          )}
+          {card.assignees.length > 0 && (
+            <div className="flex -space-x-1.5">
+              {card.assignees.slice(0, 4).map((a) => (
+                <span
+                  key={a.id}
+                  title={a.name}
+                  className="grid size-5 place-items-center rounded-full bg-surface-2 text-[10px] font-semibold uppercase text-ink-muted ring-2 ring-surface"
+                >
+                  {a.name.charAt(0)}
+                </span>
+              ))}
+              {card.assignees.length > 4 && (
+                <span className="grid size-5 place-items-center rounded-full bg-surface-2 text-[9px] font-semibold text-ink-muted ring-2 ring-surface">
+                  +{card.assignees.length - 4}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

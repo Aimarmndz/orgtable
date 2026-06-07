@@ -9,9 +9,11 @@ import {
   type TransitionStartFunction,
 } from "react";
 import type {
+  AssigneeDTO,
   AttachmentDTO,
   CardDTO,
   ChecklistDTO,
+  CommentDTO,
   LabelDTO,
 } from "@/app/lib/types";
 import {
@@ -33,9 +35,12 @@ import {
   deleteAttachment,
   type AttachmentState,
 } from "@/app/lib/actions/attachments";
+import { assignMember, unassignMember } from "@/app/lib/actions/assignees";
+import { addComment, deleteComment } from "@/app/lib/actions/comments";
 import { Button } from "../ui/button";
 import { Input, Textarea } from "../ui/input";
 import { useBoardPerms } from "../board/board-perms";
+import type { BoardMemberDTO } from "../board/members-panel";
 
 const smallInput =
   "w-full rounded-lg border border-border bg-surface px-2.5 py-1.5 text-sm text-ink outline-none transition-colors placeholder:text-ink-muted/70 focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/25";
@@ -50,11 +55,15 @@ export function CardModal({
   card,
   boardId,
   boardLabels,
+  members,
+  currentUserId,
   onClose,
 }: {
   card: CardDTO;
   boardId: string;
   boardLabels: LabelDTO[];
+  members: BoardMemberDTO[];
+  currentUserId: string;
   onClose: () => void;
 }) {
   const { canEdit, canManage } = useBoardPerms();
@@ -156,6 +165,14 @@ export function CardModal({
           {canManage && <NewLabelForm boardId={boardId} />}
         </section>
 
+        {/* Asignados */}
+        <AssigneesSection
+          cardId={card.id}
+          assignees={card.assignees}
+          members={members}
+          canEdit={canEdit}
+        />
+
         {/* Descripción + fecha */}
         {canEdit ? (
           <form action={updateCard} className="mt-6 space-y-4">
@@ -238,6 +255,15 @@ export function CardModal({
           cardId={card.id}
           attachments={card.attachments}
           canEdit={canEdit}
+        />
+
+        {/* Comentarios */}
+        <CommentsSection
+          cardId={card.id}
+          comments={card.comments}
+          canEdit={canEdit}
+          canManage={canManage}
+          currentUserId={currentUserId}
         />
 
         {/* Borrar (solo quien puede editar) */}
@@ -542,5 +568,181 @@ function NewChecklistForm({ cardId }: { cardId: string }) {
         Añadir checklist
       </Button>
     </form>
+  );
+}
+
+// Avatar simple: círculo con la inicial del nombre. Sin imágenes (no las tenemos).
+function Avatar({ name, size = 7 }: { name: string; size?: 6 | 7 | 8 }) {
+  const cls = { 6: "size-6 text-[11px]", 7: "size-7 text-xs", 8: "size-8 text-sm" };
+  return (
+    <span
+      className={`grid ${cls[size]} shrink-0 place-items-center rounded-full bg-surface-2 font-semibold uppercase text-ink-muted`}
+      aria-hidden
+    >
+      {name.charAt(0)}
+    </span>
+  );
+}
+
+function AssigneesSection({
+  cardId,
+  assignees,
+  members,
+  canEdit,
+}: {
+  cardId: string;
+  assignees: AssigneeDTO[];
+  members: BoardMemberDTO[];
+  canEdit: boolean;
+}) {
+  const assignedIds = new Set(assignees.map((a) => a.id));
+  const unassigned = members.filter((m) => !assignedIds.has(m.id));
+
+  return (
+    <section className="mt-6">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+        Asignados
+      </h3>
+
+      {assignees.length > 0 ? (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {assignees.map((a) => (
+            <span
+              key={a.id}
+              className="inline-flex items-center gap-1.5 rounded-full bg-surface-2 py-0.5 pl-0.5 pr-2.5 text-sm"
+            >
+              <Avatar name={a.name} size={6} />
+              {a.name}
+              {canEdit && (
+                <form action={unassignMember} className="contents">
+                  <input type="hidden" name="cardId" value={cardId} />
+                  <input type="hidden" name="userId" value={a.id} />
+                  <button
+                    className="text-ink-muted transition-colors hover:text-danger"
+                    aria-label={`Quitar a ${a.name}`}
+                  >
+                    ✕
+                  </button>
+                </form>
+              )}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-2 text-sm text-ink-muted">Nadie asignado.</p>
+      )}
+
+      {canEdit && unassigned.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {unassigned.map((m) => (
+            <form key={m.id} action={assignMember}>
+              <input type="hidden" name="cardId" value={cardId} />
+              <input type="hidden" name="userId" value={m.id} />
+              <button className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-border py-0.5 pl-0.5 pr-2.5 text-sm text-ink-muted transition-colors hover:border-accent hover:text-ink">
+                <Avatar name={m.name} size={6} />+ {m.name}
+              </button>
+            </form>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function formatCommentTime(iso: string): string {
+  return new Intl.DateTimeFormat("es", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(iso));
+}
+
+function CommentsSection({
+  cardId,
+  comments,
+  canEdit,
+  canManage,
+  currentUserId,
+}: {
+  cardId: string;
+  comments: CommentDTO[];
+  canEdit: boolean;
+  canManage: boolean;
+  currentUserId: string;
+}) {
+  const ref = useRef<HTMLFormElement>(null);
+
+  return (
+    <section className="mt-6">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+        Comentarios
+        {comments.length > 0 && (
+          <span className="ml-1.5 font-normal normal-case tracking-normal">
+            · {comments.length}
+          </span>
+        )}
+      </h3>
+
+      {comments.length > 0 ? (
+        <ul className="mt-3 space-y-3">
+          {comments.map((c) => (
+            <li key={c.id} className="group flex gap-2.5">
+              <Avatar name={c.authorName} />
+              <div className="min-w-0 flex-1">
+                <p className="flex items-baseline gap-2">
+                  <span className="text-sm font-medium">{c.authorName}</span>
+                  <time className="text-[11px] text-ink-muted">
+                    {formatCommentTime(c.createdAt)}
+                  </time>
+                </p>
+                <p className="mt-0.5 whitespace-pre-wrap break-words text-sm">
+                  {c.text}
+                </p>
+              </div>
+              {(c.authorId === currentUserId || canManage) && (
+                <form action={deleteComment}>
+                  <input type="hidden" name="commentId" value={c.id} />
+                  <button
+                    className="text-xs text-ink-muted opacity-0 transition hover:text-danger group-hover:opacity-100"
+                    aria-label="Borrar comentario"
+                  >
+                    ✕
+                  </button>
+                </form>
+              )}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-2 text-sm text-ink-muted">
+          Sé el primero en comentar.
+        </p>
+      )}
+
+      {canEdit && (
+        <form
+          ref={ref}
+          action={async (formData) => {
+            await addComment(formData);
+            ref.current?.reset();
+          }}
+          className="mt-3"
+        >
+          <input type="hidden" name="cardId" value={cardId} />
+          <Textarea
+            name="text"
+            rows={2}
+            required
+            maxLength={2000}
+            placeholder="Escribe un comentario…"
+            className="resize-y"
+          />
+          <div className="mt-2 flex justify-end">
+            <Button type="submit" variant="subtle">
+              Comentar
+            </Button>
+          </div>
+        </form>
+      )}
+    </section>
   );
 }

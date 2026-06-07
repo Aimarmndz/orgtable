@@ -24,6 +24,7 @@ quien quiere **contribuir** al código.
 - [**Tiempo real**](./realtime.md) — sincronización en vivo con SSE y el bus pub/sub.
 - [**Notificaciones**](./notifications.md) — avisos in-app por usuario sobre el mismo bus.
 - [**Detalle de tarjeta**](./card-detail.md) — modal, etiquetas, fechas y checklists.
+- [**Colaboración en la tarjeta**](./card-collaboration.md) — asignados y comentarios.
 - [**Búsqueda**](./search.md) — búsqueda global de tableros y tarjetas, acotada por acceso.
 - [**Vista de calendario**](./calendar.md) — las tarjetas con vencimiento en una rejilla mensual.
 - [**Adjuntos**](./attachments.md) — archivos en tarjetas, almacenamiento y descarga autorizada.
@@ -52,6 +53,7 @@ Las decisiones técnicas importantes y su porqué están registradas en
 - [0011 — Búsqueda con ILIKE acotada en el servidor](./decisions/0011-search-ilike-scoped.md)
 - [0012 — Notificaciones in-app sobre el bus pub/sub](./decisions/0012-notifications.md)
 - [0013 — API pública con tokens personales hasheados](./decisions/0013-api-tokens.md)
+- [0014 — Modelo de colaboración en la tarjeta (asignados y comentarios)](./decisions/0014-card-collaboration.md)
 
 ## Hoja de ruta
 

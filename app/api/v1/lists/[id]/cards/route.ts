@@ -20,6 +20,11 @@ const cardInclude = {
     include: { items: { orderBy: { position: "asc" as const } } },
   },
   attachments: { orderBy: { createdAt: "asc" as const } },
+  assignees: { include: { user: { select: { id: true, name: true } } } },
+  comments: {
+    orderBy: { createdAt: "asc" as const },
+    include: { author: { select: { id: true, name: true } } },
+  },
 };
 
 /** GET /api/v1/lists/:id/cards — las tarjetas de la lista, en orden. */

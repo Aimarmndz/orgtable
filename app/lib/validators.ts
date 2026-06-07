@@ -40,6 +40,13 @@ export const cardTitleSchema = z
   .min(1, "El título es obligatorio")
   .max(500);
 
+// Hito 10: comentarios de tarjeta.
+export const commentTextSchema = z
+  .string()
+  .trim()
+  .min(1, "El comentario no puede estar vacío")
+  .max(2000, "Máximo 2000 caracteres");
+
 // --- Hito 3: multiusuario ---
 
 // Roles que el propietario puede asignar a un miembro de un tablero (OWNER no se

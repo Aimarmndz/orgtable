@@ -25,6 +25,14 @@ type CardRow = {
     mimeType: string;
     size: number;
   }[];
+  assignees: { user: { id: string; name: string } }[];
+  comments: {
+    id: string;
+    text: string;
+    authorId: string;
+    createdAt: Date;
+    author: { name: string };
+  }[];
 };
 
 type ListRow = {
@@ -86,6 +94,17 @@ export function serializeCard(c: CardRow) {
       filename: a.filename,
       mimeType: a.mimeType,
       size: a.size,
+    })),
+    assignees: c.assignees.map((a) => ({
+      id: a.user.id,
+      name: a.user.name,
+    })),
+    comments: c.comments.map((cm) => ({
+      id: cm.id,
+      text: cm.text,
+      authorId: cm.authorId,
+      authorName: cm.author.name,
+      createdAt: cm.createdAt.toISOString(),
     })),
   };
 }

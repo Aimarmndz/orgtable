@@ -36,11 +36,13 @@ export function BoardView({
   board,
   viewerRole,
   members,
+  currentUserId,
   initialCardId = null,
 }: {
   board: BoardDTO;
   viewerRole: BoardRole;
   members: BoardMemberDTO[];
+  currentUserId: string;
   initialCardId?: string | null;
 }) {
   const [lists, setLists] = useState<ListDTO[]>(board.lists);
@@ -303,6 +305,8 @@ export function BoardView({
           card={selectedCard}
           boardId={board.id}
           boardLabels={board.labels}
+          members={members}
+          currentUserId={currentUserId}
           onClose={() => setSelectedCardId(null)}
         />
       )}

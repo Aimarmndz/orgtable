@@ -36,14 +36,14 @@ el resumen de una línea con el enlace.
 
 ## Estado por hitos
 
-Ver `docs/roadmap.md` para el detalle. Hitos 0–9 completados. **Próximos hitos
-planificados (10–20)**, con alcance y puntos de anclaje en el roadmap, listos para
-arrancar: 10 colaboración en la tarjeta (asignados + comentarios), 11 recordatorios de
-vencimiento + email opcional + arrastrar en el calendario, 12 búsqueda full-text +
-filtros, 13 API v1 completa + scopes de token, 14 PWA/móvil, 15 automatizaciones (reglas
-tipo Butler), 16 vistas de tabla y swimlanes, 17 plantillas/duplicar/archivar, 18
-actividad e historial de tarjeta, 19 webhooks e integraciones, 20 i18n + accesibilidad.
-Más candidatos sin cerrar tras el 20 (SSO/OIDC, 2FA, observabilidad, backups programados).
+Ver `docs/roadmap.md` para el detalle. Hitos 0–10 completados. **Próximos hitos
+planificados (11–20)**, con alcance y puntos de anclaje en el roadmap, listos para
+arrancar: 11 recordatorios de vencimiento + email opcional + arrastrar en el calendario,
+12 búsqueda full-text + filtros, 13 API v1 completa + scopes de token, 14 PWA/móvil, 15
+automatizaciones (reglas tipo Butler), 16 vistas de tabla y swimlanes, 17
+plantillas/duplicar/archivar, 18 actividad e historial de tarjeta, 19 webhooks e
+integraciones, 20 i18n + accesibilidad. Más candidatos sin cerrar tras el 20 (SSO/OIDC,
+2FA, observabilidad, backups programados).
 
 ## Decisiones (resumen)
 
@@ -61,6 +61,7 @@ Más candidatos sin cerrar tras el 20 (SSO/OIDC, 2FA, observabilidad, backups pr
 - ADR 0011 — Búsqueda con `ILIKE` acotada en el servidor (sin motor de búsqueda externo).
 - ADR 0012 — Notificaciones in-app sobre el bus pub/sub (sin email ni cola).
 - ADR 0013 — API pública con tokens personales hasheados (Bearer, reutiliza el RBAC).
+- ADR 0014 — Colaboración en la tarjeta: asignados (solo miembros) y comentarios (hilo plano, cascade).
 
 ## Notas de hito
 
@@ -108,6 +109,12 @@ Más candidatos sin cerrar tras el 20 (SSO/OIDC, 2FA, observabilidad, backups pr
   Prisma (`prisma migrate dev`/`generate`) mientras el dev server está vivo lo deja con un
   cliente obsoleto (errores `findMany of undefined`); hay que **reiniciar `next dev`** tras
   una migración.
+- **Hito 10 (colaboración en la tarjeta)**: modelos `CardAssignee` y `Comment` (migración
+  `..._card_collaboration`). Acciones `actions/assignees.ts` y `actions/comments.ts`;
+  lógica testeable en `services/assignees.ts` (`assignMemberToCard`, solo miembros) y
+  `services/cards.ts` (`cardContext`). UI en `card-modal.tsx` (secciones Asignados y
+  Comentarios) y avatares en `card-item.tsx`. Notifica `card.assigned`/`comment.added`.
+  Tests en `test/integration/collaboration.int.test.ts`. Ver `docs/card-collaboration.md`.
 - **Migraciones (a partir del Hito 7)**: ya hay BD de desarrollo local (Postgres en el
   puerto 5433, contenedor `orgtable-dev-pg`), así que las nuevas migraciones se generan
   con `prisma migrate dev` en vez de a mano. Se siguen aplicando con `migrate deploy` en

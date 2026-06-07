@@ -11,7 +11,9 @@ import { publishUserEvent } from "@/app/lib/realtime/bus";
 export type NotificationType =
   | "member.added"
   | "member.removed"
-  | "member.role_changed";
+  | "member.role_changed"
+  | "card.assigned"
+  | "comment.added";
 
 export async function notify(params: {
   userId: string;

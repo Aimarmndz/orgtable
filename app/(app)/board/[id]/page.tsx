@@ -76,6 +76,17 @@ export default async function BoardPage({
           mimeType: a.mimeType,
           size: a.size,
         })),
+        assignees: card.assignees.map((a) => ({
+          id: a.user.id,
+          name: a.user.name,
+        })),
+        comments: card.comments.map((c) => ({
+          id: c.id,
+          text: c.text,
+          authorId: c.author.id,
+          authorName: c.author.name,
+          createdAt: c.createdAt.toISOString(),
+        })),
       })),
     })),
   };
@@ -87,6 +98,7 @@ export default async function BoardPage({
         board={dto}
         viewerRole={viewerRole}
         members={members}
+        currentUserId={user.id}
         initialCardId={initialCardId ?? null}
       />
     </>

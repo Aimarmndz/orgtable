@@ -223,6 +223,13 @@ export async function getBoardWithLists(boardId: string, userId: string) {
                 include: { items: { orderBy: { position: "asc" } } },
               },
               attachments: { orderBy: { createdAt: "asc" } },
+              assignees: {
+                include: { user: { select: { id: true, name: true } } },
+              },
+              comments: {
+                orderBy: { createdAt: "asc" },
+                include: { author: { select: { id: true, name: true } } },
+              },
             },
           },
         },

@@ -121,6 +121,21 @@ export async function seedList(
   });
 }
 
+export async function seedCard(
+  listId: string,
+  title = "Tarjeta de prueba",
+): Promise<{ id: string }> {
+  const last = await prisma.card.findFirst({
+    where: { listId },
+    orderBy: { position: "desc" },
+    select: { position: true },
+  });
+  return prisma.card.create({
+    data: { listId, title, position: positionAtEnd(last?.position ?? null) },
+    select: { id: true },
+  });
+}
+
 // --- Petición a un route handler --------------------------------------------------------
 
 /** Construye un `Request` con (opcional) Bearer y cuerpo JSON, para invocar un handler. */

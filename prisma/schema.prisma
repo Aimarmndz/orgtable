@@ -49,6 +49,8 @@ model User {
   auditLogs     AuditLog[]
   notifications Notification[]
   apiTokens     ApiToken[]
+  assignedCards CardAssignee[]
+  comments      Comment[]
 }
 
 // Sesión de servidor (Hito 4). La cookie sigue siendo un JWT firmado, pero ahora
@@ -113,6 +115,8 @@ model Card {
   labels      CardLabel[]
   checklists  Checklist[]
   attachments Attachment[]
+  assignees   CardAssignee[]
+  comments    Comment[]
 
   @@index([listId, position])
 }
@@ -254,4 +258,32 @@ model ApiToken {
   createdAt  DateTime  @default(now())
 
   @@index([userId])
+}
+
+// Asignación de una tarjeta a un miembro del tablero (Hito 10). Tabla de unión: una
+// persona puede tener varias tarjetas y una tarjeta varios asignados. La autorización
+// (que el asignado sea miembro del tablero) la garantiza la Server Action. Ver
+// docs/card-collaboration.md.
+model CardAssignee {
+  cardId String
+  card   Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([cardId, userId])
+  @@index([userId])
+}
+
+// Comentario en una tarjeta (Hito 10). Hilo simple, sin anidación. Se borra en cascada
+// con la tarjeta o con el autor. Ver docs/card-collaboration.md.
+model Comment {
+  id        String   @id @default(cuid())
+  cardId    String
+  card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  text      String
+  createdAt DateTime @default(now())
+
+  @@index([cardId, createdAt])
 }
