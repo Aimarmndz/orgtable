@@ -19,9 +19,9 @@ jobs:
       # ejecutan migraciones ni seed en CI.
       DATABASE_URL: postgresql://orgtable:orgtable@localhost:5432/orgtable
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: "20"
           cache: npm
