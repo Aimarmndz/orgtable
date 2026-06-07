@@ -10,10 +10,22 @@ import { prisma } from "@/app/lib/prisma";
 // REVOCACIÓN INMEDIATA (logout, restablecer contraseña, cerrar en todos los
 // dispositivos). Ver docs/authentication.md y docs/decisions/0008-session-store.md.
 
-const SECRET = process.env.SESSION_SECRET;
-const encodedKey = new TextEncoder().encode(SECRET);
 const COOKIE_NAME = "session";
 const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 días
+
+// La clave se deriva en el momento de usarse (no al importar el módulo, para no romper el
+// build) y se EXIGE: sin SESSION_SECRET, `TextEncoder().encode(undefined)` daría una clave
+// vacía/predecible con la que se podrían FORJAR sesiones. Fallar ruidosamente es lo seguro.
+function getKey(): Uint8Array {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret || secret.length < 16) {
+    throw new Error(
+      "SESSION_SECRET no está configurado o es demasiado corto (mínimo 16 caracteres). " +
+        "Genera uno con: openssl rand -hex 32",
+    );
+  }
+  return new TextEncoder().encode(secret);
+}
 
 export type SessionPayload = { userId: string; sid: string };
 
@@ -22,7 +34,7 @@ async function encrypt(payload: SessionPayload): Promise<string> {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
-    .sign(encodedKey);
+    .sign(getKey());
 }
 
 export async function decrypt(
@@ -30,7 +42,7 @@ export async function decrypt(
 ): Promise<SessionPayload | null> {
   if (!token) return null;
   try {
-    const { payload } = await jwtVerify(token, encodedKey, {
+    const { payload } = await jwtVerify(token, getKey(), {
       algorithms: ["HS256"],
     });
     if (typeof payload.userId !== "string" || typeof payload.sid !== "string") {
