@@ -24,8 +24,8 @@ el resumen de una línea con el enlace.
 
 ## Estado por hitos
 
-Ver `docs/roadmap.md` para el detalle. Hitos 0–7 completados; 8–9 en construcción
-(notificaciones, API pública).
+Ver `docs/roadmap.md` para el detalle. Hitos 0–8 completados; 9 en construcción
+(API pública).
 
 ## Decisiones (resumen)
 
@@ -41,6 +41,7 @@ Ver `docs/roadmap.md` para el detalle. Hitos 0–7 completados; 8–9 en constru
 - ADR 0009 — Rate limiting en memoria (sin Redis) para el login.
 - ADR 0010 — Adjuntos en disco local (volumen), no S3.
 - ADR 0011 — Búsqueda con `ILIKE` acotada en el servidor (sin motor de búsqueda externo).
+- ADR 0012 — Notificaciones in-app sobre el bus pub/sub (sin email ni cola).
 
 ## Notas de hito
 
@@ -73,6 +74,13 @@ Ver `docs/roadmap.md` para el detalle. Hitos 0–7 completados; 8–9 en constru
   vencimiento en una rejilla mensual; al pulsarlas reutiliza el modal de tarjeta.
   Indexación por `dueDate.slice(0,10)` para evitar desfases de zona horaria. Sin
   migración. Ver `docs/calendar.md`.
+- **Hito 8 (notificaciones)**: modelo `Notification` (migración `..._notifications`,
+  generada con `prisma migrate dev`). `notify()` en `app/lib/notifications.ts` escribe y
+  publica por un canal **por usuario** (`user:<id>`) añadido al bus de tiempo real
+  (`app/lib/realtime/bus.ts`); stream SSE `/api/notifications/stream` + campana
+  (`app/components/notifications-bell.tsx`) en la navbar. Eventos: añadido/quitado/cambio
+  de rol en un tablero (en `actions/members.ts`). Best-effort como la auditoría. Ver
+  `docs/notifications.md`.
 - **Migraciones (a partir del Hito 7)**: ya hay BD de desarrollo local (Postgres en el
   puerto 5433, contenedor `orgtable-dev-pg`), así que las nuevas migraciones se generan
   con `prisma migrate dev` en vez de a mano. Se siguen aplicando con `migrate deploy` en

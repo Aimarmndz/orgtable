@@ -5,9 +5,14 @@ import {
   isSetupComplete,
   requireUser,
 } from "@/app/lib/dal";
+import {
+  getNotificationsForUser,
+  getUnreadNotificationCount,
+} from "@/app/lib/queries";
 import { logout } from "@/app/lib/actions/auth";
 import { ThemeToggle } from "@/app/components/theme-toggle";
 import { SearchBox } from "@/app/components/search-box";
+import { NotificationsBell } from "@/app/components/notifications-bell";
 import { Button } from "@/app/components/ui/button";
 
 // Todo el área autenticada depende de la sesión y de la base de datos: nunca se
@@ -22,7 +27,11 @@ export default async function AppLayout({
 }) {
   if (!(await isSetupComplete())) redirect("/setup");
   const user = await requireUser();
-  const config = await getInstanceConfig();
+  const [config, notifications, unreadCount] = await Promise.all([
+    getInstanceConfig(),
+    getNotificationsForUser(user.id),
+    getUnreadNotificationCount(user.id),
+  ]);
 
   return (
     <div className="flex min-h-full flex-col">
@@ -70,6 +79,13 @@ export default async function AppLayout({
               Administración
             </Link>
           )}
+          <NotificationsBell
+            notifications={notifications.map((n) => ({
+              ...n,
+              createdAt: n.createdAt.toISOString(),
+            }))}
+            unreadCount={unreadCount}
+          />
           <ThemeToggle />
           <span className="mx-2 hidden text-sm text-ink-muted sm:inline">
             {user.email}

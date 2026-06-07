@@ -36,8 +36,12 @@ const INSTANCE_ID =
 g.__orgtableInstanceId = INSTANCE_ID;
 
 export type BoardEvent = { type: "board:changed"; boardId: string; at: number };
+// Evento por usuario (Hito 8): un "ping" para que la pestaña recargue sus
+// notificaciones. No lleva el contenido, solo avisa de que hay algo nuevo.
+export type UserEvent = { type: "notification:new"; userId: string; at: number };
 
 const channelFor = (boardId: string) => `board:${boardId}`;
+const channelForUser = (userId: string) => `user:${userId}`;
 
 function emitLocal(boardId: string): void {
   const event: BoardEvent = {
@@ -46,6 +50,15 @@ function emitLocal(boardId: string): void {
     at: Date.now(),
   };
   emitter.emit(channelFor(boardId), event);
+}
+
+function emitLocalUser(userId: string): void {
+  const event: UserEvent = {
+    type: "notification:new",
+    userId,
+    at: Date.now(),
+  };
+  emitter.emit(channelForUser(userId), event);
 }
 
 /** Suscribe a los cambios de un tablero. Devuelve la función para cancelar. */
@@ -58,12 +71,32 @@ export function subscribeBoard(
   return () => emitter.off(channelFor(boardId), handler);
 }
 
+/** Suscribe a los eventos de un usuario (notificaciones). Devuelve cómo cancelar. */
+export function subscribeUser(
+  userId: string,
+  handler: (event: UserEvent) => void,
+): () => void {
+  emitter.on(channelForUser(userId), handler);
+  void ensurePgBridge();
+  return () => emitter.off(channelForUser(userId), handler);
+}
+
 /** Publica que un tablero cambió. Lo llaman las Server Actions tras cada mutación. */
 export async function publishBoardEvent(boardId: string): Promise<void> {
   emitLocal(boardId);
   if (PG_NOTIFY_ENABLED) {
-    await publishCrossInstance(boardId).catch(() => {
+    await publishCrossInstance({ kind: "board", id: boardId }).catch(() => {
       // Un fallo del puente nunca debe romper la mutación: el modo en proceso sigue.
+    });
+  }
+}
+
+/** Publica que un usuario tiene una notificación nueva (entrega en vivo). */
+export async function publishUserEvent(userId: string): Promise<void> {
+  emitLocalUser(userId);
+  if (PG_NOTIFY_ENABLED) {
+    await publishCrossInstance({ kind: "user", id: userId }).catch(() => {
+      // Best-effort: el modo en proceso ya emitió localmente.
     });
   }
 }
@@ -83,12 +116,14 @@ async function ensurePgBridge(): Promise<void> {
       if (!msg.payload) return;
       try {
         const data = JSON.parse(msg.payload) as {
-          boardId: string;
+          kind: "board" | "user";
+          id: string;
           origin: string;
         };
         // Ignora los eventos originados en esta instancia: ya se emitieron localmente.
         if (data.origin === INSTANCE_ID) return;
-        emitLocal(data.boardId);
+        if (data.kind === "user") emitLocalUser(data.id);
+        else emitLocal(data.id);
       } catch {
         // Payload no válido: se ignora.
       }
@@ -107,10 +142,13 @@ async function ensurePgBridge(): Promise<void> {
   }
 }
 
-async function publishCrossInstance(boardId: string): Promise<void> {
+async function publishCrossInstance(target: {
+  kind: "board" | "user";
+  id: string;
+}): Promise<void> {
   await ensurePgBridge();
   const client = g.__orgtablePgClient;
   if (!client) return;
-  const payload = JSON.stringify({ boardId, origin: INSTANCE_ID });
+  const payload = JSON.stringify({ ...target, origin: INSTANCE_ID });
   await client.query("SELECT pg_notify($1, $2)", [CHANNEL, payload]);
 }

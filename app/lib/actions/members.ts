@@ -5,6 +5,7 @@ import { prisma } from "@/app/lib/prisma";
 import { requireBoardAccess } from "@/app/lib/dal";
 import { canManageBoard, BOARD_ROLE_LABELS } from "@/app/lib/roles";
 import { recordAudit } from "@/app/lib/audit";
+import { notify } from "@/app/lib/notifications";
 import { addMemberSchema, assignableBoardRoleSchema } from "@/app/lib/validators";
 
 // Gestión de miembros de un tablero (Hito 3). Solo el PROPIETARIO (OWNER) puede
@@ -62,6 +63,18 @@ export async function addBoardMember(
     targetId: boardId,
     detail: `${user.id} (${parsed.data.role})`,
   });
+  // Notifica al invitado (Hito 8).
+  const board = await prisma.board.findUnique({
+    where: { id: boardId },
+    select: { title: true },
+  });
+  await notify({
+    userId: user.id,
+    type: "member.added",
+    title: `Te han añadido a «${board?.title ?? "un tablero"}»`,
+    body: `Como ${BOARD_ROLE_LABELS[parsed.data.role]}.`,
+    boardId,
+  });
   revalidatePath(`/board/${boardId}`);
   return {
     message: `${user.name} añadido como ${BOARD_ROLE_LABELS[parsed.data.role]}.`,
@@ -81,7 +94,7 @@ export async function updateBoardMemberRole(formData: FormData): Promise<void> {
   // El propietario del tablero (Board.ownerId) siempre conserva el rol OWNER.
   const board = await prisma.board.findUnique({
     where: { id: boardId },
-    select: { ownerId: true },
+    select: { ownerId: true, title: true },
   });
   if (!board || board.ownerId === userId) return;
 
@@ -96,6 +109,13 @@ export async function updateBoardMemberRole(formData: FormData): Promise<void> {
     targetId: boardId,
     detail: `${userId} → ${parsed.data}`,
   });
+  await notify({
+    userId,
+    type: "member.role_changed",
+    title: `Tu rol en «${board.title}» ha cambiado`,
+    body: `Ahora eres ${BOARD_ROLE_LABELS[parsed.data]}.`,
+    boardId,
+  });
   revalidatePath(`/board/${boardId}`);
 }
 
@@ -108,7 +128,7 @@ export async function removeBoardMember(formData: FormData): Promise<void> {
 
   const board = await prisma.board.findUnique({
     where: { id: boardId },
-    select: { ownerId: true },
+    select: { ownerId: true, title: true },
   });
   if (!board || board.ownerId === userId) return;
 
@@ -119,6 +139,12 @@ export async function removeBoardMember(formData: FormData): Promise<void> {
     targetType: "board",
     targetId: boardId,
     detail: userId,
+  });
+  // Sin boardId: el usuario ya no tiene acceso, así que la notificación no enlaza.
+  await notify({
+    userId,
+    type: "member.removed",
+    title: `Te han quitado de «${board.title}»`,
   });
   revalidatePath(`/board/${boardId}`);
 }

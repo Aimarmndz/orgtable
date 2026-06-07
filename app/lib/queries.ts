@@ -69,6 +69,31 @@ export async function getBoardMembers(boardId: string) {
   return board;
 }
 
+// --- Hito 8: notificaciones ---
+
+/** Notificaciones del usuario, más recientes primero (para la campana de la navbar). */
+export async function getNotificationsForUser(userId: string, limit = 20) {
+  return prisma.notification.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    select: {
+      id: true,
+      type: true,
+      title: true,
+      body: true,
+      boardId: true,
+      read: true,
+      createdAt: true,
+    },
+  });
+}
+
+/** Cuántas notificaciones sin leer tiene el usuario (badge de la campana). */
+export async function getUnreadNotificationCount(userId: string) {
+  return prisma.notification.count({ where: { userId, read: false } });
+}
+
 // --- Hito 6: búsqueda global ---
 
 export type SearchResults = {

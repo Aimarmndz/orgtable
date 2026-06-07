@@ -86,7 +86,16 @@ El producto mínimo usable: instalar con un comando → configurar → usar como
       tiempo real). Indexación por fecha sin desfases de zona horaria. Ver
       [`docs/calendar.md`](./calendar.md).
 
+## Hito 8 — Notificaciones ✅ (completado)
+
+- [x] Notificaciones in-app por usuario (te añaden / te cambian el rol / te quitan de un
+      tablero), con campana y contador de no leídas en la barra superior, marcar una o
+      todas como leídas, y enlace al tablero.
+- [x] **Entrega en vivo reutilizando el bus pub/sub** del Hito 4 con un canal por
+      usuario (`user:<id>`) y un stream SSE `/api/notifications/stream`; sin email ni
+      cola ([ADR 0012](./decisions/0012-notifications.md)). Ver
+      [`docs/notifications.md`](./notifications.md).
+
 ---
 
-> Las siguientes ideas (notificaciones, API pública...) están en construcción como
-> hitos 8–9.
+> La siguiente idea (API pública con tokens) está en construcción como hito 9.

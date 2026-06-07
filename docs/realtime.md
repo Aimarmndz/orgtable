@@ -4,6 +4,11 @@ Cuando varias personas tienen el mismo tablero abierto, los cambios de una apare
 en la pantalla de las demás **sin recargar**. orgtable lo consigue con
 **Server-Sent Events (SSE)** y un bus de publicación/suscripción en el servidor.
 
+> El mismo bus tiene dos tipos de canal: **por tablero** (`board:<id>`, esta página) y
+> **por usuario** (`user:<id>`), que usan las notificaciones del Hito 8. El patrón es
+> idéntico (publicar un "ping" → SSE → `router.refresh()`); ver
+> [docs/notifications.md](./notifications.md).
+
 ## Cómo funciona, de punta a punta
 
 ```

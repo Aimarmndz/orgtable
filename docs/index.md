@@ -22,6 +22,7 @@ quien quiere **contribuir** al código.
 - [**Operación y seguridad**](./operations.md) — rate limiting, auditoría, backups y actualizaciones.
 - [**Arrastrar y soltar**](./drag-and-drop.md) — `@dnd-kit` y fractional indexing.
 - [**Tiempo real**](./realtime.md) — sincronización en vivo con SSE y el bus pub/sub.
+- [**Notificaciones**](./notifications.md) — avisos in-app por usuario sobre el mismo bus.
 - [**Detalle de tarjeta**](./card-detail.md) — modal, etiquetas, fechas y checklists.
 - [**Búsqueda**](./search.md) — búsqueda global de tableros y tarjetas, acotada por acceso.
 - [**Vista de calendario**](./calendar.md) — las tarjetas con vencimiento en una rejilla mensual.
@@ -47,6 +48,7 @@ Las decisiones técnicas importantes y su porqué están registradas en
 - [0009 — Rate limiting en memoria](./decisions/0009-in-memory-rate-limit.md)
 - [0010 — Adjuntos en disco local](./decisions/0010-local-file-storage.md)
 - [0011 — Búsqueda con ILIKE acotada en el servidor](./decisions/0011-search-ilike-scoped.md)
+- [0012 — Notificaciones in-app sobre el bus pub/sub](./decisions/0012-notifications.md)
 
 ## Hoja de ruta
 

@@ -43,10 +43,11 @@ model User {
   role         Role          @default(MEMBER)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
-  boards       Board[]
-  memberships  BoardMember[]
-  sessions     Session[]
-  auditLogs    AuditLog[]
+  boards        Board[]
+  memberships   BoardMember[]
+  sessions      Session[]
+  auditLogs     AuditLog[]
+  notifications Notification[]
 }
 
 // Sesión de servidor (Hito 4). La cookie sigue siendo un JWT firmado, pero ahora
@@ -212,4 +213,25 @@ model BoardMember {
 
   @@id([boardId, userId])
   @@index([userId])
+}
+
+// Notificaciones in-app por usuario (Hito 8). El texto se precalcula en español al
+// crearlas (no se guarda un payload estructurado: la app es monolingüe y así el render
+// es trivial). `boardId` es una referencia SUAVE (string, sin FK): si el tablero se
+// borra, la notificación sobrevive y el enlace simplemente no resuelve. La entrega en
+// vivo va por el bus pub/sub (canal por usuario). Ver app/lib/notifications.ts,
+// docs/notifications.md y docs/decisions/0012-notifications.md.
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  body      String?
+  boardId   String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, read])
 }
