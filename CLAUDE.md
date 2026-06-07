@@ -24,7 +24,8 @@ el resumen de una línea con el enlace.
 
 ## Estado por hitos
 
-Ver `docs/roadmap.md` para el detalle. Hitos 0–5 completados.
+Ver `docs/roadmap.md` para el detalle. Hitos 0–6 completados; 7–9 en construcción
+(calendario, notificaciones, API pública).
 
 ## Decisiones (resumen)
 
@@ -39,6 +40,7 @@ Ver `docs/roadmap.md` para el detalle. Hitos 0–5 completados.
 - ADR 0008 — Tabla `Session` para revocación inmediata de sesiones.
 - ADR 0009 — Rate limiting en memoria (sin Redis) para el login.
 - ADR 0010 — Adjuntos en disco local (volumen), no S3.
+- ADR 0011 — Búsqueda con `ILIKE` acotada en el servidor (sin motor de búsqueda externo).
 
 ## Notas de hito
 
@@ -58,3 +60,15 @@ Ver `docs/roadmap.md` para el detalle. Hitos 0–5 completados.
   Migraciones a mano: `..._audit_log` y `..._attachments`. Todas las migraciones
   escritas a mano se aplican con `migrate deploy`; al haber BD, `migrate dev` no detecta
   deriva porque coinciden esquema y SQL.
+- **Rediseño visual (Editorial cálido)**: el cromo pasó de "Trello colorido" a una
+  estética editorial cálida (arena/papel/espresso + acento terracota). Fuentes Cabinet
+  Grotesk + Satoshi auto-alojadas en `app/fonts` (Fontshare, vía `next/font/local`).
+  Solo presentación; sin cambios de lógica. Tokens en `app/globals.css`; ver `DESIGN.md`.
+- **Hito 6 (búsqueda)**: `searchForUser` en `app/lib/queries.ts` (ILIKE acotado por
+  acceso), página `/search`, caja en la navbar (`app/components/search-box.tsx`) y
+  deep-link `?card=` para abrir una tarjeta. Sin migración (solo lectura). Ver
+  `docs/search.md`.
+- **Migraciones (a partir del Hito 7)**: ya hay BD de desarrollo local (Postgres en el
+  puerto 5433, contenedor `orgtable-dev-pg`), así que las nuevas migraciones se generan
+  con `prisma migrate dev` en vez de a mano. Se siguen aplicando con `migrate deploy` en
+  el arranque del contenedor.

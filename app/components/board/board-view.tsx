@@ -35,14 +35,19 @@ export function BoardView({
   board,
   viewerRole,
   members,
+  initialCardId = null,
 }: {
   board: BoardDTO;
   viewerRole: BoardRole;
   members: BoardMemberDTO[];
+  initialCardId?: string | null;
 }) {
   const [lists, setLists] = useState<ListDTO[]>(board.lists);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  // Tarjeta abierta. Puede venir preseleccionada por deep-link (?card=…) desde /search.
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(
+    initialCardId,
+  );
   const [membersOpen, setMembersOpen] = useState(false);
 
   const canEdit = canEditBoard(viewerRole);

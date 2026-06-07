@@ -9,11 +9,16 @@ import type { BoardRole } from "@/app/lib/roles";
 
 export default async function BoardPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ card?: string }>;
 }) {
-  // En Next.js 16 `params` es asíncrono.
+  // En Next.js 16 `params` y `searchParams` son asíncronos.
   const { id } = await params;
+  // Deep-link para abrir una tarjeta directamente (p. ej. desde /search). Si el id no
+  // existe en el tablero, BoardView simplemente no abre nada. Ver docs/search.md.
+  const { card: initialCardId } = await searchParams;
   const user = await requireUser();
   const board = await getBoardWithLists(id, user.id);
   if (!board) notFound();
@@ -78,7 +83,12 @@ export default async function BoardPage({
   return (
     <>
       <BoardRealtime boardId={id} />
-      <BoardView board={dto} viewerRole={viewerRole} members={members} />
+      <BoardView
+        board={dto}
+        viewerRole={viewerRole}
+        members={members}
+        initialCardId={initialCardId ?? null}
+      />
     </>
   );
 }

@@ -67,8 +67,17 @@ El producto mínimo usable: instalar con un comando → configurar → usar como
 - [x] Rate-limiting del login y registro de auditoría (`/admin/audit`). Ver
       `docs/operations.md`.
 
+## Hito 6 — Búsqueda global ✅ (completado)
+
+- [x] Búsqueda de **tableros** y **tarjetas** por `title`/`description`, acotada en el
+      servidor a lo que el usuario puede ver (mismo patrón de acceso que
+      `getBoardsForUser`). Coincidencia `ILIKE`, sin motor de búsqueda externo
+      ([ADR 0011](./decisions/0011-search-ilike-scoped.md)).
+- [x] Caja de búsqueda en la barra superior + página `/search` (formulario GET, sin
+      depender de JavaScript) y **deep-link** `?card=` para abrir una tarjeta desde un
+      resultado. Ver [`docs/search.md`](./search.md).
+
 ---
 
-> Todos los hitos planificados (0–5) están completados. Las siguientes ideas
-> (notificaciones, búsqueda, vistas de calendario, API pública...) se priorizarán según
-> el uso real.
+> Las siguientes ideas (vista de calendario, notificaciones, API pública...) están en
+> construcción como hitos 7–9.

@@ -7,6 +7,7 @@ import {
 } from "@/app/lib/dal";
 import { logout } from "@/app/lib/actions/auth";
 import { ThemeToggle } from "@/app/components/theme-toggle";
+import { SearchBox } from "@/app/components/search-box";
 import { Button } from "@/app/components/ui/button";
 
 // Todo el área autenticada depende de la sesión y de la base de datos: nunca se
@@ -34,7 +35,33 @@ export default async function AppLayout({
             {config?.instanceName ?? "orgtable"}
           </span>
         </Link>
+
+        {/* Búsqueda — centrada y solo en pantallas medianas hacia arriba; en móvil se
+            llega a /search desde el icono de la derecha. */}
+        <div className="mx-6 hidden max-w-sm flex-1 sm:block">
+          <SearchBox />
+        </div>
+
         <div className="flex items-center gap-1">
+          <Link
+            href="/search"
+            aria-label="Buscar"
+            className="grid size-9 place-items-center rounded-lg text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink sm:hidden"
+          >
+            <svg
+              className="size-[18px]"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path d="M21 21l-4.3-4.3" />
+            </svg>
+          </Link>
           {user.role === "ADMIN" && (
             <Link
               href="/admin/users"

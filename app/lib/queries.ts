@@ -69,6 +69,98 @@ export async function getBoardMembers(boardId: string) {
   return board;
 }
 
+// --- Hito 6: búsqueda global ---
+
+export type SearchResults = {
+  boards: { id: string; title: string; background: string | null }[];
+  cards: {
+    id: string;
+    title: string;
+    boardId: string;
+    boardTitle: string;
+    boardBackground: string | null;
+    listTitle: string;
+  }[];
+};
+
+/**
+ * Búsqueda global acotada a lo que el usuario puede ver: tableros donde es dueño o
+ * miembro, y tarjetas dentro de esos tableros. Coincidencia por subcadena insensible
+ * a mayúsculas (ILIKE, vía Prisma `contains` + `mode: "insensitive"`). El filtro de
+ * acceso se repite en el WHERE de cada consulta, igual que en getBoardsForUser: el
+ * servidor es la única autoridad, nunca confiamos en el cliente. Ver docs/search.md.
+ */
+export async function searchForUser(
+  userId: string,
+  query: string,
+): Promise<SearchResults> {
+  const q = query.trim();
+  // Evita consultas con un único carácter (demasiado ruido y carga).
+  if (q.length < 2) return { boards: [], cards: [] };
+
+  const [boards, cards] = await Promise.all([
+    prisma.board.findMany({
+      where: {
+        AND: [
+          { OR: [{ ownerId: userId }, { members: { some: { userId } } }] },
+          {
+            OR: [
+              { title: { contains: q, mode: "insensitive" } },
+              { description: { contains: q, mode: "insensitive" } },
+            ],
+          },
+        ],
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 12,
+      select: { id: true, title: true, background: true },
+    }),
+    prisma.card.findMany({
+      where: {
+        AND: [
+          {
+            list: {
+              board: {
+                OR: [{ ownerId: userId }, { members: { some: { userId } } }],
+              },
+            },
+          },
+          {
+            OR: [
+              { title: { contains: q, mode: "insensitive" } },
+              { description: { contains: q, mode: "insensitive" } },
+            ],
+          },
+        ],
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 30,
+      select: {
+        id: true,
+        title: true,
+        list: {
+          select: {
+            title: true,
+            board: { select: { id: true, title: true, background: true } },
+          },
+        },
+      },
+    }),
+  ]);
+
+  return {
+    boards,
+    cards: cards.map((c) => ({
+      id: c.id,
+      title: c.title,
+      boardId: c.list.board.id,
+      boardTitle: c.list.board.title,
+      boardBackground: c.list.board.background,
+      listTitle: c.list.title,
+    })),
+  };
+}
+
 export async function getBoardWithLists(boardId: string, userId: string) {
   return prisma.board.findFirst({
     where: {
