@@ -24,8 +24,8 @@ el resumen de una línea con el enlace.
 
 ## Estado por hitos
 
-Ver `docs/roadmap.md` para el detalle. Hitos 0–6 completados; 7–9 en construcción
-(calendario, notificaciones, API pública).
+Ver `docs/roadmap.md` para el detalle. Hitos 0–7 completados; 8–9 en construcción
+(notificaciones, API pública).
 
 ## Decisiones (resumen)
 
@@ -68,6 +68,11 @@ Ver `docs/roadmap.md` para el detalle. Hitos 0–6 completados; 7–9 en constru
   acceso), página `/search`, caja en la navbar (`app/components/search-box.tsx`) y
   deep-link `?card=` para abrir una tarjeta. Sin migración (solo lectura). Ver
   `docs/search.md`.
+- **Hito 7 (calendario)**: conmutador Tablero/Calendario en `BoardView` (estado local,
+  no en la URL). `app/components/board/calendar-view.tsx` coloca las tarjetas con
+  vencimiento en una rejilla mensual; al pulsarlas reutiliza el modal de tarjeta.
+  Indexación por `dueDate.slice(0,10)` para evitar desfases de zona horaria. Sin
+  migración. Ver `docs/calendar.md`.
 - **Migraciones (a partir del Hito 7)**: ya hay BD de desarrollo local (Postgres en el
   puerto 5433, contenedor `orgtable-dev-pg`), así que las nuevas migraciones se generan
   con `prisma migrate dev` en vez de a mano. Se siguen aplicando con `migrate deploy` en

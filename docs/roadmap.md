@@ -77,7 +77,16 @@ El producto mínimo usable: instalar con un comando → configurar → usar como
       depender de JavaScript) y **deep-link** `?card=` para abrir una tarjeta desde un
       resultado. Ver [`docs/search.md`](./search.md).
 
+## Hito 7 — Vista de calendario ✅ (completado)
+
+- [x] Conmutador **Tablero / Calendario** en cada tablero. La vista de calendario
+      coloca las tarjetas con fecha de vencimiento en una rejilla mensual (lunes
+      primero), con navegación entre meses y resalte del día de hoy.
+- [x] Al pulsar una tarjeta se abre su modal (se reutiliza el detalle de tarjeta y el
+      tiempo real). Indexación por fecha sin desfases de zona horaria. Ver
+      [`docs/calendar.md`](./calendar.md).
+
 ---
 
-> Las siguientes ideas (vista de calendario, notificaciones, API pública...) están en
-> construcción como hitos 7–9.
+> Las siguientes ideas (notificaciones, API pública...) están en construcción como
+> hitos 8–9.

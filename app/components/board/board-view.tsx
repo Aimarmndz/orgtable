@@ -27,6 +27,7 @@ import { boardBackgroundFor } from "@/app/lib/colors";
 import { ListColumn } from "./list-column";
 import { CardItem } from "./card-item";
 import { AddListForm } from "./add-list-form";
+import { CalendarView } from "./calendar-view";
 import { BoardPermsProvider } from "./board-perms";
 import { MembersPanel, type BoardMemberDTO } from "./members-panel";
 import { CardModal } from "../card/card-modal";
@@ -49,6 +50,8 @@ export function BoardView({
     initialCardId,
   );
   const [membersOpen, setMembersOpen] = useState(false);
+  // Vista activa: tablero (columnas) o calendario mensual (Hito 7).
+  const [view, setView] = useState<"board" | "calendar">("board");
 
   const canEdit = canEditBoard(viewerRole);
   const canManage = canManageBoard(viewerRole);
@@ -212,6 +215,31 @@ export function BoardView({
               {board.title}
             </h1>
             <div className="flex items-center gap-2">
+              {/* Conmutador Tablero / Calendario */}
+              <div className="flex items-center rounded-lg bg-white/20 p-0.5 backdrop-blur-sm">
+                <button
+                  onClick={() => setView("board")}
+                  aria-pressed={view === "board"}
+                  className={`rounded-md px-2.5 py-1 text-sm font-medium transition-colors ${
+                    view === "board"
+                      ? "bg-white/90 text-ink shadow-sm"
+                      : "text-white hover:bg-white/10"
+                  }`}
+                >
+                  Tablero
+                </button>
+                <button
+                  onClick={() => setView("calendar")}
+                  aria-pressed={view === "calendar"}
+                  className={`rounded-md px-2.5 py-1 text-sm font-medium transition-colors ${
+                    view === "calendar"
+                      ? "bg-white/90 text-ink shadow-sm"
+                      : "text-white hover:bg-white/10"
+                  }`}
+                >
+                  Calendario
+                </button>
+              </div>
               <span className="rounded-full bg-white/20 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm">
                 {BOARD_ROLE_LABELS[viewerRole]}
               </span>
@@ -238,21 +266,25 @@ export function BoardView({
               </button>
             </div>
           </div>
-          <div className="flex flex-1 items-start gap-3 overflow-x-auto px-4 pb-4">
-            <SortableContext
-              items={lists.map((l) => l.id)}
-              strategy={horizontalListSortingStrategy}
-            >
-              {lists.map((list) => (
-                <ListColumn
-                  key={list.id}
-                  list={list}
-                  onOpenCard={setSelectedCardId}
-                />
-              ))}
-            </SortableContext>
-            {canEdit && <AddListForm boardId={board.id} />}
-          </div>
+          {view === "board" ? (
+            <div className="flex flex-1 items-start gap-3 overflow-x-auto px-4 pb-4">
+              <SortableContext
+                items={lists.map((l) => l.id)}
+                strategy={horizontalListSortingStrategy}
+              >
+                {lists.map((list) => (
+                  <ListColumn
+                    key={list.id}
+                    list={list}
+                    onOpenCard={setSelectedCardId}
+                  />
+                ))}
+              </SortableContext>
+              {canEdit && <AddListForm boardId={board.id} />}
+            </div>
+          ) : (
+            <CalendarView lists={lists} onOpenCard={setSelectedCardId} />
+          )}
         </div>
 
         <DragOverlay>

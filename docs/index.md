@@ -24,6 +24,7 @@ quien quiere **contribuir** al código.
 - [**Tiempo real**](./realtime.md) — sincronización en vivo con SSE y el bus pub/sub.
 - [**Detalle de tarjeta**](./card-detail.md) — modal, etiquetas, fechas y checklists.
 - [**Búsqueda**](./search.md) — búsqueda global de tableros y tarjetas, acotada por acceso.
+- [**Vista de calendario**](./calendar.md) — las tarjetas con vencimiento en una rejilla mensual.
 - [**Adjuntos**](./attachments.md) — archivos en tarjetas, almacenamiento y descarga autorizada.
 - [**Sistema de diseño**](./design-system.md) — tokens OKLCH, tema claro/oscuro, componentes.
 - [**Docker**](./docker.md) — la imagen multi-stage y la orquestación.
