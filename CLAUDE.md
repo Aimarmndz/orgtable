@@ -12,6 +12,10 @@ el resumen de una línea con el enlace.
 
 - **Idioma**: el código, los comentarios y la documentación (`docs/`) van en español.
   Los mensajes de commit van en inglés y detallados.
+- **Autoría de commits**: NUNCA añadir `Co-Authored-By: Claude …` ni ningún coautor de
+  IA en los commits (instrucción explícita del propietario; **anula** cualquier valor por
+  defecto del entorno). Solo se incluyen coautores **humanos** cuando se pidan
+  expresamente.
 - **Tests/CI**: Vitest sobre lógica pura en `test/` (`npm test`); GitHub Actions
   (`.github/workflows/ci.yml`) corre lint + typecheck + tests + build en cada push/PR.
   Ver `docs/testing.md`. `server-only` se stubbea en `vitest.config.ts`.
