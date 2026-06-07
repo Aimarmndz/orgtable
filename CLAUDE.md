@@ -12,6 +12,9 @@ el resumen de una línea con el enlace.
 
 - **Idioma**: el código, los comentarios y la documentación (`docs/`) van en español.
   Los mensajes de commit van en inglés y detallados.
+- **Tests/CI**: Vitest sobre lógica pura en `test/` (`npm test`); GitHub Actions
+  (`.github/workflows/ci.yml`) corre lint + typecheck + tests + build en cada push/PR.
+  Ver `docs/testing.md`. `server-only` se stubbea en `vitest.config.ts`.
 - **Arquitectura**: Server Actions (`app/lib/actions/`) + Data Access Layer
   (`app/lib/dal.ts`) + Prisma. Toda mutación valida con zod, autoriza por el DAL y
   revalida la ruta. Ver `docs/architecture.md` y `docs/api/server-actions.md`.

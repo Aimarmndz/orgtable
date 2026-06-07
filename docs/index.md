@@ -32,6 +32,7 @@ quien quiere **contribuir** al código.
 - [**API de Server Actions**](./api/server-actions.md) — catálogo de mutaciones del servidor.
 - [**API pública (REST v1)**](./api/public-api.md) — automatizar tableros con tokens de acceso.
 - [**Contribuir**](./contributing.md) — entorno de desarrollo y convenciones.
+- [**Tests e integración continua**](./testing.md) — Vitest y el workflow de GitHub Actions.
 
 ## Decisiones de arquitectura (ADRs)
 
