@@ -109,8 +109,8 @@ El producto mínimo usable: instalar con un comando → configurar → usar como
 
 ---
 
-> **Hitos 0–12 completados.** A partir de aquí van los **próximos hitos planificados**
-> (13–20): pendientes, con el alcance pensado y dónde encajan en la arquitectura actual,
+> **Hitos 0–13 completados.** A partir de aquí van los **próximos hitos planificados**
+> (14–20): pendientes, con el alcance pensado y dónde encajan en la arquitectura actual,
 > para poder arrancar cada uno directamente. El orden es orientativo; se priorizará según
 > el uso real. Mantener la filosofía del proyecto: self-hosted, sin servicios externos
 > obligatorios, el servidor como única autoridad, y reutilizar lo que ya existe
@@ -158,16 +158,17 @@ El producto mínimo usable: instalar con un comando → configurar → usar como
 > self-hosted ([ADR 0011](./decisions/0011-search-ilike-scoped.md)); el full-text es una
 > optimización, no un bloqueo.
 
-## Hito 13 — API v1 completa y scopes 🔜 (planificado)
+## Hito 13 — Scopes y caducidad de tokens de API ✅ (completado)
 
-- [ ] **Ampliar la superficie** de `/api/v1`: checklists e ítems, etiquetas, adjuntos,
-      miembros y **mover/reordenar** listas y tarjetas (reutilizando `positionBetween`).
-- [ ] **Scopes y caducidad por token**: columnas en `ApiToken` (p. ej. `scope`
-      read-only, `expiresAt`) y un chequeo extra en `authenticateApiToken`. Sin cambiar el
-      modelo de autenticación ([ADR 0013](./decisions/0013-api-tokens.md) ya lo anticipa).
-- [ ] **Rate limiting** de la API (reutilizar `app/lib/rate-limit.ts`) y una **referencia
-      OpenAPI** generada o escrita a mano.
-- [ ] Docs: ampliar `docs/api/public-api.md`.
+- [x] **Scope por token**: `full` (lectura+escritura) o `read` (solo lectura). Los tokens
+      de solo lectura reciben `403` en todo `POST`/`PATCH`/`DELETE` (`isReadOnly` en cada
+      handler de escritura). Columna `scope` en `ApiToken`.
+- [x] **Caducidad opcional** (`expiresAt`): un token caducado se rechaza con `401`. Elección
+      de scope/caducidad en `/settings`; estado «Caducado» visible. Extiende
+      [ADR 0013](./decisions/0013-api-tokens.md). Ver [`docs/api/public-api.md`](./api/public-api.md).
+
+> Diferido al **backlog**: ampliar la superficie de la API (checklists, etiquetas, adjuntos,
+> miembros, mover/reordenar), **rate limiting** de la API y una **referencia OpenAPI**.
 
 ## Hito 14 — PWA y experiencia móvil 🔜 (planificado)
 

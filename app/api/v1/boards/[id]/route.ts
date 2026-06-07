@@ -5,7 +5,7 @@ import { revalidateBoard } from "@/app/lib/realtime/notify";
 import { canManageBoard } from "@/app/lib/roles";
 import { recordAudit } from "@/app/lib/audit";
 import { boardTitleSchema } from "@/app/lib/validators";
-import { authenticateApiToken, apiBoardRole } from "@/app/lib/api/auth";
+import { authenticateApiToken, apiBoardRole, isReadOnly } from "@/app/lib/api/auth";
 import { apiError, apiOk } from "@/app/lib/api/respond";
 import {
   serializeBoardFull,
@@ -39,6 +39,7 @@ export async function PATCH(
 ) {
   const auth = await authenticateApiToken(request);
   if (!auth) return apiError(401, "Token de API no válido o ausente.");
+  if (isReadOnly(auth)) return apiError(403, "Token de solo lectura.");
   const { id } = await params;
 
   const role = await apiBoardRole(auth.userId, id);
@@ -68,6 +69,7 @@ export async function DELETE(
 ) {
   const auth = await authenticateApiToken(request);
   if (!auth) return apiError(401, "Token de API no válido o ausente.");
+  if (isReadOnly(auth)) return apiError(403, "Token de solo lectura.");
   const { id } = await params;
 
   const role = await apiBoardRole(auth.userId, id);

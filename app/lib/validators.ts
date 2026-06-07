@@ -137,6 +137,12 @@ export const apiTokenNameSchema = z
   .min(1, "El nombre es obligatorio")
   .max(60, "Máximo 60 caracteres");
 
+// Alcance del token: "full" (lectura+escritura) o "read" (solo lectura). Hito 13.
+export const apiTokenScopeSchema = z.enum(["full", "read"]);
+
+// Caducidad elegida en /settings: nunca o un número de días.
+export const apiTokenExpirySchema = z.enum(["0", "30", "90", "365"]);
+
 export const apiCardCreateSchema = z.object({
   title: cardTitleSchema,
   description: z.string().max(5000).nullish(),

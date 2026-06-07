@@ -41,12 +41,12 @@ el resumen de una línea con el enlace.
 
 ## Estado por hitos
 
-Ver `docs/roadmap.md` para el detalle. Hitos 0–12 completados. **Próximos hitos
-planificados (13–20)**, con alcance y puntos de anclaje en el roadmap, listos para
-arrancar: 13 API v1 completa + scopes de token, 14 PWA/móvil, 15 automatizaciones (reglas
-tipo Butler), 16 vistas de tabla y swimlanes, 17 plantillas/duplicar/archivar, 18 actividad
-e historial de tarjeta, 19 webhooks e integraciones, 20 i18n + accesibilidad. Diferido al
-backlog: email/Web Push + preferencias, búsqueda full-text. Tras el 20: SSO/OIDC, 2FA,
+Ver `docs/roadmap.md` para el detalle. Hitos 0–13 completados. **Próximos hitos
+planificados (14–20)**, con alcance y puntos de anclaje en el roadmap, listos para
+arrancar: 14 PWA/móvil, 15 automatizaciones (reglas tipo Butler), 16 vistas de tabla y
+swimlanes, 17 plantillas/duplicar/archivar, 18 actividad e historial de tarjeta, 19 webhooks
+e integraciones, 20 i18n + accesibilidad. Diferido al backlog: email/Web Push + preferencias,
+búsqueda full-text, ampliar superficie API + rate-limit + OpenAPI. Tras el 20: SSO/OIDC, 2FA,
 observabilidad, backups.
 
 ## Decisiones (resumen)
@@ -129,6 +129,11 @@ observabilidad, backups.
   test unitario), `FilterBar` desplegable en la cabecera; `BoardView` filtra las tarjetas y
   desactiva el arrastre con `sortingDisabled` (propagado a `ListColumn`/`CardItem`). Solo
   presentación, sin migración. Full-text → backlog (ILIKE basta, ADR 0011). Ver `docs/filters.md`.
+- **Hito 13 (scopes/caducidad de tokens)**: columnas `scope` (full/read) y `expiresAt` en
+  `ApiToken` (migración `..._api_token_scopes`). `authenticateApiToken` devuelve `scope` y
+  rechaza caducados; `isReadOnly(auth)` da 403 en cada handler de escritura. Selección en
+  `/settings`. Tests `test/integration/api-scopes.int.test.ts`. Ampliar superficie API +
+  rate-limit + OpenAPI → backlog. Ver `docs/api/public-api.md`.
 - **Migraciones (a partir del Hito 7)**: ya hay BD de desarrollo local (Postgres en el
   puerto 5433, contenedor `orgtable-dev-pg`), así que las nuevas migraciones se generan
   con `prisma migrate dev` en vez de a mano. Se siguen aplicando con `migrate deploy` en

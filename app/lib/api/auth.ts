@@ -8,13 +8,15 @@ import { hashToken } from "./tokens";
 // códigos HTTP. El servidor sigue siendo la única autoridad: el rol del tablero se
 // vuelve a comprobar contra board_members en cada petición. Ver docs/api/public-api.md.
 
+export type ApiAuth = { userId: string; scope: string };
+
 /**
- * Resuelve el usuario a partir de la cabecera Authorization. Devuelve `{ userId }` o
- * null si no hay token válido. De paso, marca `lastUsedAt` (best-effort).
+ * Resuelve el usuario a partir de la cabecera Authorization. Devuelve `{ userId, scope }`
+ * o null si no hay token válido o está CADUCADO. De paso, marca `lastUsedAt` (best-effort).
  */
 export async function authenticateApiToken(
   request: Request,
-): Promise<{ userId: string } | null> {
+): Promise<ApiAuth | null> {
   const header = request.headers.get("authorization");
   if (!header || !header.startsWith("Bearer ")) return null;
   const token = header.slice(7).trim();
@@ -22,16 +24,23 @@ export async function authenticateApiToken(
 
   const record = await prisma.apiToken.findUnique({
     where: { tokenHash: hashToken(token) },
-    select: { id: true, userId: true },
+    select: { id: true, userId: true, scope: true, expiresAt: true },
   });
   if (!record) return null;
+  // Token caducado: deja de valer (no se borra; el usuario lo verá expirado en /settings).
+  if (record.expiresAt && record.expiresAt.getTime() < Date.now()) return null;
 
   // Marca de último uso; nunca debe hacer fallar la petición.
   await prisma.apiToken
     .update({ where: { id: record.id }, data: { lastUsedAt: new Date() } })
     .catch(() => {});
 
-  return { userId: record.userId };
+  return { userId: record.userId, scope: record.scope };
+}
+
+/** true si el token es de solo lectura (no puede escribir). */
+export function isReadOnly(auth: ApiAuth): boolean {
+  return auth.scope === "read";
 }
 
 /** Rol del usuario en un tablero, o null si no es miembro (= sin acceso). */

@@ -3,7 +3,7 @@ import { revalidateBoard } from "@/app/lib/realtime/notify";
 import { canEditBoard } from "@/app/lib/roles";
 import { apiCardCreateSchema } from "@/app/lib/validators";
 import { positionAtEnd } from "@/app/lib/ordering";
-import { authenticateApiToken, apiBoardRole } from "@/app/lib/api/auth";
+import { authenticateApiToken, apiBoardRole, isReadOnly } from "@/app/lib/api/auth";
 import { apiError, apiOk } from "@/app/lib/api/respond";
 import { serializeCard } from "@/app/lib/api/serialize";
 
@@ -59,6 +59,7 @@ export async function POST(
 ) {
   const auth = await authenticateApiToken(request);
   if (!auth) return apiError(401, "Token de API no válido o ausente.");
+  if (isReadOnly(auth)) return apiError(403, "Token de solo lectura.");
   const { id: listId } = await params;
 
   const list = await prisma.list.findUnique({

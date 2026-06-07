@@ -3,7 +3,7 @@ import { prisma } from "@/app/lib/prisma";
 import { getBoardsForUser } from "@/app/lib/queries";
 import { recordAudit } from "@/app/lib/audit";
 import { boardTitleSchema } from "@/app/lib/validators";
-import { authenticateApiToken } from "@/app/lib/api/auth";
+import { authenticateApiToken, isReadOnly } from "@/app/lib/api/auth";
 import { apiError, apiOk } from "@/app/lib/api/respond";
 import { serializeBoardSummary } from "@/app/lib/api/serialize";
 
@@ -25,6 +25,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const auth = await authenticateApiToken(request);
   if (!auth) return apiError(401, "Token de API no válido o ausente.");
+  if (isReadOnly(auth)) return apiError(403, "Token de solo lectura.");
 
   const body = await request.json().catch(() => null);
   const parsed = boardTitleSchema.safeParse((body as { title?: unknown })?.title);

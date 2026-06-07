@@ -50,7 +50,7 @@ export function CreateTokenForm() {
       )}
 
       <form action={action} className="flex flex-wrap items-end gap-2">
-        <label className="flex-1 text-sm">
+        <label className="min-w-48 flex-1 text-sm">
           <span className="block text-xs font-semibold uppercase tracking-wide text-ink-muted">
             Nombre del token
           </span>
@@ -61,6 +61,34 @@ export function CreateTokenForm() {
             placeholder="p. ej. Script de backup"
             className="mt-1.5"
           />
+        </label>
+        <label className="text-sm">
+          <span className="block text-xs font-semibold uppercase tracking-wide text-ink-muted">
+            Permisos
+          </span>
+          <select
+            name="scope"
+            defaultValue="full"
+            className="mt-1.5 h-9 rounded-lg border border-border bg-surface px-2.5 text-sm text-ink outline-none focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/25"
+          >
+            <option value="full">Lectura y escritura</option>
+            <option value="read">Solo lectura</option>
+          </select>
+        </label>
+        <label className="text-sm">
+          <span className="block text-xs font-semibold uppercase tracking-wide text-ink-muted">
+            Caduca
+          </span>
+          <select
+            name="expiry"
+            defaultValue="0"
+            className="mt-1.5 h-9 rounded-lg border border-border bg-surface px-2.5 text-sm text-ink outline-none focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/25"
+          >
+            <option value="0">Nunca</option>
+            <option value="30">30 días</option>
+            <option value="90">90 días</option>
+            <option value="365">1 año</option>
+          </select>
         </label>
         <Button type="submit" disabled={pending}>
           {pending ? "Creando…" : "Crear token"}

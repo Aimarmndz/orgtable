@@ -10,6 +10,11 @@ function formatDate(d: Date): string {
   return new Intl.DateTimeFormat("es", { dateStyle: "medium" }).format(d);
 }
 
+// Fuera del componente: leer la hora dentro del render rompería la regla de pureza.
+function isExpired(d: Date | null): boolean {
+  return d !== null && d.getTime() < Date.now();
+}
+
 export default async function SettingsPage() {
   const user = await requireUser();
   const tokens = await getApiTokensForUser(user.id);
@@ -55,11 +60,27 @@ export default async function SettingsPage() {
                 className="flex items-center gap-3 bg-surface px-4 py-3"
               >
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{t.name}</p>
+                  <p className="flex items-center gap-2">
+                    <span className="truncate text-sm font-medium">
+                      {t.name}
+                    </span>
+                    <span className="shrink-0 rounded-full bg-surface-2 px-2 py-0.5 text-[11px] font-medium text-ink-muted">
+                      {t.scope === "read" ? "Solo lectura" : "Escritura"}
+                    </span>
+                    {isExpired(t.expiresAt) && (
+                      <span className="shrink-0 rounded-full bg-danger/10 px-2 py-0.5 text-[11px] font-medium text-danger">
+                        Caducado
+                      </span>
+                    )}
+                  </p>
                   <p className="mt-0.5 font-mono text-xs text-ink-muted">
                     {t.prefix}… · creado {formatDate(t.createdAt)} ·{" "}
+                    {t.expiresAt
+                      ? `caduca ${formatDate(t.expiresAt)}`
+                      : "no caduca"}{" "}
+                    ·{" "}
                     {t.lastUsedAt
-                      ? `usado por última vez ${formatDate(t.lastUsedAt)}`
+                      ? `usado ${formatDate(t.lastUsedAt)}`
                       : "sin usar"}
                   </p>
                 </div>

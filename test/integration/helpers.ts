@@ -74,10 +74,20 @@ export async function seedUser(opts?: {
 }
 
 /** Crea un token de API para un usuario y devuelve el token EN CLARO (para el Bearer). */
-export async function seedApiToken(userId: string, name = "test"): Promise<string> {
+export async function seedApiToken(
+  userId: string,
+  opts?: { name?: string; scope?: "full" | "read"; expiresAt?: Date | null },
+): Promise<string> {
   const { token, hash, prefix } = generateApiToken();
   await prisma.apiToken.create({
-    data: { userId, name, tokenHash: hash, prefix },
+    data: {
+      userId,
+      name: opts?.name ?? "test",
+      tokenHash: hash,
+      prefix,
+      scope: opts?.scope ?? "full",
+      expiresAt: opts?.expiresAt ?? null,
+    },
   });
   return token;
 }

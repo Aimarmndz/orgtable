@@ -257,6 +257,10 @@ model ApiToken {
   name       String
   tokenHash  String    @unique
   prefix     String
+  // Alcance del token (Hito 13): "full" (lectura+escritura) o "read" (solo lectura).
+  scope      String    @default("full")
+  // Caducidad opcional (Hito 13): si está y ya pasó, el token deja de valer.
+  expiresAt  DateTime?
   lastUsedAt DateTime?
   createdAt  DateTime  @default(now())
 

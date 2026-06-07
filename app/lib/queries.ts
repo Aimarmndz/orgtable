@@ -106,6 +106,8 @@ export async function getApiTokensForUser(userId: string) {
       id: true,
       name: true,
       prefix: true,
+      scope: true,
+      expiresAt: true,
       lastUsedAt: true,
       createdAt: true,
     },

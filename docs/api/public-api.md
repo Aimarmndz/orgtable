@@ -17,6 +17,11 @@ Authorization: Bearer orgt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
   **una sola vez**; guárdalo bien. En la base de datos solo vive su hash SHA-256.
 - Un token actúa **como tú**: tiene tu mismo acceso a los tableros (mismo rol). El
   servidor vuelve a comprobar el rol del tablero en cada petición.
+- **Alcance (scope)**: al crear el token eliges **Lectura y escritura** o **Solo lectura**.
+  Un token de solo lectura puede hacer `GET` pero recibe `403` en cualquier `POST`/`PATCH`/
+  `DELETE`.
+- **Caducidad**: opcionalmente el token caduca (30/90/365 días). Un token caducado se
+  rechaza con `401` (no se borra; lo verás marcado «Caducado» en Ajustes).
 - Revocar un token (borrarlo en Ajustes) lo invalida al instante.
 
 ## Convenciones
@@ -112,7 +117,9 @@ navegadores con el tablero abierto ven los cambios en vivo (ver
 
 ## Límites y evolución
 
-- Un token tiene **todo** el acceso del usuario (sin scopes ni solo-lectura por token).
+- Los tokens soportan **scope** (solo lectura) y **caducidad** (Hito 13); aún no hay scope
+  por tablero.
 - La superficie cubre tableros, listas y tarjetas; checklists, etiquetas, adjuntos y
-  miembros quedan como ampliación. Añadir un recurso es un route handler más que reutiliza
-  `authenticateApiToken` + `apiBoardRole`.
+  miembros quedan como ampliación (backlog). Añadir un recurso es un route handler más que
+  reutiliza `authenticateApiToken` + `apiBoardRole` + `isReadOnly`.
+- **Rate limiting** de la API y una referencia **OpenAPI** quedan en el backlog.
