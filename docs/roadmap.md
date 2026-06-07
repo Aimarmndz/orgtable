@@ -109,6 +109,89 @@ El producto mínimo usable: instalar con un comando → configurar → usar como
 
 ---
 
-> Todos los hitos planificados (0–9) están completados. Próximas ideas según el uso real:
-> arrastrar tarjetas en el calendario, scopes por token (solo lectura), notificaciones
-> por email/Web Push y búsqueda full-text.
+> **Hitos 0–9 completados.** A partir de aquí van los **próximos hitos planificados**
+> (10–14): pendientes, con el alcance pensado y dónde encajan en la arquitectura actual,
+> para poder arrancar cada uno directamente. El orden es orientativo; se priorizará según
+> el uso real. Mantener la filosofía del proyecto: self-hosted, sin servicios externos
+> obligatorios, el servidor como única autoridad, y reutilizar lo que ya existe
+> (Server Actions + DAL + Prisma, RBAC, bus de tiempo real).
+
+## Hito 10 — Colaboración en la tarjeta: asignados y comentarios 🔜 (planificado)
+
+Lo que más se echa en falta para trabajar en equipo dentro de una tarjeta.
+
+- [ ] **Asignados**: modelo de unión `CardAssignee` (tarjeta ↔ usuario miembro del
+      tablero). Asignar/quitar miembros desde el modal; avatares en la tarjeta y filtro
+      "mis tarjetas". Solo se puede asignar a miembros del tablero (validar contra
+      `board_members`).
+- [ ] **Comentarios**: modelo `Comment` (tarjeta, autor, texto, `createdAt`). Hilo en el
+      modal de tarjeta; crear y borrar (autor o OWNER). Emitir `revalidateBoard` para el
+      tiempo real.
+- [ ] **Notificaciones** nuevas reutilizando `notify()`: `card.assigned` y
+      `comment.added` (y, opcional, @menciones parseadas del texto). Añadir los tipos a
+      `NotificationType` y las etiquetas a `/admin/audit` si se auditan.
+- [ ] **API**: exponer asignados y comentarios en `/api/v1` (otro recurso más que
+      reutiliza `authenticateApiToken` + `apiBoardRole`).
+- [ ] Migración con `prisma migrate dev`; ADR solo si hay una decisión real (p. ej.
+      formato de menciones). Docs: `docs/card-collaboration.md`.
+
+## Hito 11 — Fechas, recordatorios y correo 🔜 (planificado)
+
+Cerrar el ciclo de las fechas de vencimiento y abrir un segundo canal de entrega.
+
+- [ ] **Recordatorios de vencimiento**: generar notificaciones para tarjetas que vencen
+      pronto o están vencidas (a quien las tenga asignadas, del Hito 10). Necesita una
+      ejecución periódica: un endpoint protegido tipo cron (`/api/cron/...` con secreto)
+      invocable por el `docker-compose` o un cron externo, sin añadir un scheduler en
+      proceso.
+- [ ] **Email opcional** como segundo consumidor de `notify()`: SMTP configurable por
+      variables de entorno (desactivado por defecto). Mantener best-effort. ADR para "SMTP
+      opcional, sin proveedor obligatorio".
+- [ ] **Preferencias por usuario** (qué notifico y por dónde) en `/settings`.
+- [ ] **Arrastrar una tarjeta en el calendario** a otro día para cambiar su vencimiento
+      (hoy el calendario es de lectura + abrir). Reutilizar `@dnd-kit` y `updateCard`.
+- [ ] Migración para preferencias; docs: ampliar `docs/notifications.md` y `docs/calendar.md`.
+
+## Hito 12 — Búsqueda y filtros avanzados 🔜 (planificado)
+
+- [ ] **Full-text de PostgreSQL** (columna `tsvector` + índice GIN) detrás de la **misma
+      interfaz** `searchForUser`, con ranking por relevancia. Es la evolución natural del
+      `ILIKE` (ya prevista en [ADR 0011](./decisions/0011-search-ilike-scoped.md));
+      escribir un ADR de seguimiento. Alternativa más barata: extensión `pg_trgm`.
+- [ ] **Filtros en el tablero**: por etiqueta, asignado (Hito 10), fecha de vencimiento y
+      estado de checklist. Barra de filtros que oculta tarjetas sin recargar (estado de
+      cliente en `BoardView`).
+- [ ] **Filtros rápidos guardados** (opcional) por tablero.
+- [ ] Docs: ampliar `docs/search.md`.
+
+## Hito 13 — API v1 completa y scopes 🔜 (planificado)
+
+- [ ] **Ampliar la superficie** de `/api/v1`: checklists e ítems, etiquetas, adjuntos,
+      miembros y **mover/reordenar** listas y tarjetas (reutilizando `positionBetween`).
+- [ ] **Scopes y caducidad por token**: columnas en `ApiToken` (p. ej. `scope`
+      read-only, `expiresAt`) y un chequeo extra en `authenticateApiToken`. Sin cambiar el
+      modelo de autenticación ([ADR 0013](./decisions/0013-api-tokens.md) ya lo anticipa).
+- [ ] **Rate limiting** de la API (reutilizar `app/lib/rate-limit.ts`) y una **referencia
+      OpenAPI** generada o escrita a mano.
+- [ ] Docs: ampliar `docs/api/public-api.md`.
+
+## Hito 14 — PWA y experiencia móvil 🔜 (planificado)
+
+- [ ] **PWA instalable**: `manifest`, iconos, service worker con shell offline básico.
+- [ ] **Pulido móvil** del tablero (arrastre táctil, columnas a pantalla completa,
+      objetivos de toque ≥44px) y de los modales.
+- [ ] Docs: `docs/pwa.md`.
+
+---
+
+### Backlog continuo (mejoras menores, sin hito propio)
+
+- Plantillas de tablero al crear; duplicar tablero.
+- Archivar (en vez de borrar) tableros, listas y tarjetas.
+- Portadas/colores por tarjeta; descripción con Markdown.
+- Exportar el tablero también a CSV (hoy solo JSON).
+- Accesibilidad: revisión de foco y lectores de pantalla en DnD y modales.
+
+> Al cerrar cada hito: marcar sus casillas, mover el encabezado a "✅ (completado)",
+> actualizar `docs/index.md`, `CLAUDE.md` (decisiones + notas de hito) y escribir el ADR
+> correspondiente si hubo una decisión técnica con su porqué.
