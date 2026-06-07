@@ -110,7 +110,7 @@ El producto mínimo usable: instalar con un comando → configurar → usar como
 ---
 
 > **Hitos 0–9 completados.** A partir de aquí van los **próximos hitos planificados**
-> (10–14): pendientes, con el alcance pensado y dónde encajan en la arquitectura actual,
+> (10–20): pendientes, con el alcance pensado y dónde encajan en la arquitectura actual,
 > para poder arrancar cada uno directamente. El orden es orientativo; se priorizará según
 > el uso real. Mantener la filosofía del proyecto: self-hosted, sin servicios externos
 > obligatorios, el servidor como única autoridad, y reutilizar lo que ya existe
@@ -182,15 +182,82 @@ Cerrar el ciclo de las fechas de vencimiento y abrir un segundo canal de entrega
       objetivos de toque ≥44px) y de los modales.
 - [ ] Docs: `docs/pwa.md`.
 
+## Hito 15 — Automatizaciones (reglas tipo Butler) 🔜 (planificado)
+
+Reglas "cuando pase X, haz Y" dentro de un tablero, al estilo de Butler de Trello, sin
+servicios externos.
+
+- [ ] Modelo `AutomationRule` (tablero, **disparador**, **condición** y **acción** en
+      JSON). Disparadores: tarjeta movida a una lista, etiqueta añadida/quitada,
+      vencimiento próximo/cumplido, checklist completada. Acciones: mover, asignar, poner
+      etiqueta/fecha, crear checklist, notificar.
+- [ ] **Ejecución enganchada al bus de eventos existente** (no un proceso aparte): cuando
+      una mutación publica su evento, el motor evalúa las reglas del tablero. Ejecutar
+      como el sistema, respetando los permisos del tablero.
+- [ ] UI por tablero para crear/activar reglas (solo OWNER); auditoría de ejecuciones y
+      **tope por evento** para evitar bucles (regla que se dispara a sí misma).
+- [ ] Migración; ADR (formato de reglas y prevención de bucles). Docs: `docs/automations.md`.
+
+## Hito 16 — Vistas adicionales: tabla y swimlanes 🔜 (planificado)
+
+- [ ] **Vista de tabla**: todas las tarjetas del tablero en una tabla ordenable y
+      filtrable (título, lista, asignado, vencimiento, etiquetas). Conmutador junto a
+      Tablero / Calendario en `BoardView`.
+- [ ] **Swimlanes**: agrupar el tablero en filas por etiqueta o por asignado (Hito 10).
+      Estado de cliente, sin tocar el modelo de datos.
+- [ ] Reutiliza los filtros del Hito 12. Docs: `docs/views.md`.
+
+## Hito 17 — Plantillas, duplicar y archivar 🔜 (planificado)
+
+- [ ] **Plantillas de tablero** y **duplicar** tablero/lista/tarjeta, regenerando ids y
+      posiciones (reutilizando la lógica de `importBoard` en `actions/boards.ts`).
+- [ ] **Archivar** en vez de borrar (tableros, listas y tarjetas): columna `archivedAt`
+      nullable; ocultas por defecto, con una vista de archivados y opción de **restaurar**.
+      Migración aditiva (columnas nullable, sin romper datos existentes).
+- [ ] Docs: `docs/templates-archive.md`.
+
+## Hito 18 — Actividad e historial de tarjeta 🔜 (planificado)
+
+- [ ] Registro de **actividad por tarjeta** visible para los miembros (creada, movida,
+      renombrada, comentario, asignación, cambio de vencimiento…). Modelo `CardActivity`
+      propio (el `AuditLog` actual es de seguridad/operación y solo lo ve el admin).
+- [ ] Sección de actividad en el modal de tarjeta y, opcional, un feed por tablero.
+      Tiempo real reutilizando el bus. Migración. Docs: `docs/activity.md`.
+
+## Hito 19 — Webhooks e integraciones 🔜 (planificado)
+
+- [ ] **Webhooks salientes** por tablero: modelo `Webhook` (URL, secreto, eventos) y
+      entrega como **otro consumidor del bus** de eventos, con **firma HMAC** del payload
+      y reintentos best-effort (sin añadir una cola; coherente con ADR 0004/0007).
+- [ ] **Entrada**: crear tarjetas vía **webhook entrante** con secreto (y, opcional,
+      email-to-card si hay buzón configurado).
+- [ ] Gestión en los ajustes del tablero (solo OWNER). ADR (firma HMAC, reintentos sin
+      cola). Docs: `docs/webhooks.md`.
+
+## Hito 20 — Internacionalización (i18n) y accesibilidad 🔜 (planificado)
+
+- [ ] **i18n**: extraer los textos (hoy en español embebido) a un catálogo, selector de
+      idioma por usuario y un **locale en inglés** como segundo idioma. Las notificaciones
+      dejarían de precalcular texto fijo y pasarían a clave + datos (revisar
+      [ADR 0012](./decisions/0012-notifications.md)).
+- [ ] **Accesibilidad**: pasada de foco, roles ARIA y lectores de pantalla en el
+      arrastrar y soltar, los modales y la campana; verificar contraste.
+- [ ] ADR (estrategia i18n e impacto en notificaciones). Docs: `docs/i18n.md`.
+
 ---
+
+### Más allá del Hito 20 (candidatos, sin alcance cerrado)
+
+- **SSO / OIDC** opcional (OpenID Connect) además del login propio.
+- **Doble factor (TOTP)** para endurecer el acceso.
+- **Observabilidad**: endpoint de métricas (Prometheus), logs estructurados, readiness.
+- **Backups programados desde la UI** y restauración guiada.
 
 ### Backlog continuo (mejoras menores, sin hito propio)
 
-- Plantillas de tablero al crear; duplicar tablero.
-- Archivar (en vez de borrar) tableros, listas y tarjetas.
-- Portadas/colores por tarjeta; descripción con Markdown.
-- Exportar el tablero también a CSV (hoy solo JSON).
-- Accesibilidad: revisión de foco y lectores de pantalla en DnD y modales.
+- Portadas/colores por tarjeta; descripción con **Markdown**.
+- Exportar el tablero también a **CSV** (hoy solo JSON).
+- Reacciones/emoji en comentarios (tras el Hito 10).
 
 > Al cerrar cada hito: marcar sus casillas, mover el encabezado a "✅ (completado)",
 > actualizar `docs/index.md`, `CLAUDE.md` (decisiones + notas de hito) y escribir el ADR

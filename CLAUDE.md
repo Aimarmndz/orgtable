@@ -25,10 +25,13 @@ el resumen de una línea con el enlace.
 ## Estado por hitos
 
 Ver `docs/roadmap.md` para el detalle. Hitos 0–9 completados. **Próximos hitos
-planificados (10–14)**, con alcance y puntos de anclaje en el roadmap, listos para
+planificados (10–20)**, con alcance y puntos de anclaje en el roadmap, listos para
 arrancar: 10 colaboración en la tarjeta (asignados + comentarios), 11 recordatorios de
 vencimiento + email opcional + arrastrar en el calendario, 12 búsqueda full-text +
-filtros, 13 API v1 completa + scopes de token, 14 PWA/móvil.
+filtros, 13 API v1 completa + scopes de token, 14 PWA/móvil, 15 automatizaciones (reglas
+tipo Butler), 16 vistas de tabla y swimlanes, 17 plantillas/duplicar/archivar, 18
+actividad e historial de tarjeta, 19 webhooks e integraciones, 20 i18n + accesibilidad.
+Más candidatos sin cerrar tras el 20 (SSO/OIDC, 2FA, observabilidad, backups programados).
 
 ## Decisiones (resumen)
 
