@@ -42,7 +42,7 @@ Piezas:
 | [`app/api/boards/[id]/stream/route.ts`](../app/api/boards/[id]/stream/route.ts) | El endpoint SSE: autoriza, se suscribe al bus y emite eventos al navegador. |
 | [`app/lib/realtime/sse.ts`](../app/lib/realtime/sse.ts) | Ciclo de vida común de los streams SSE: latido, revalidación del acceso, vida máxima y limpieza. |
 | [`app/components/board/board-realtime.tsx`](../app/components/board/board-realtime.tsx) | Cliente: abre el `EventSource` y hace `router.refresh()` al recibir un evento o al reconectar. |
-| [`app/lib/realtime/reconnect.ts`](../app/lib/realtime/reconnect.ts) | `createReconnectRefresher`: refresca en cada reapertura del `EventSource` salvo la primera. |
+| [`app/lib/realtime/reconnect.ts`](../app/lib/realtime/reconnect.ts) | `keepEventSourceOpen`: refresca en cada reapertura salvo la primera y recrea el `EventSource` con backoff si queda `CLOSED`. |
 
 ## Por qué SSE (y no WebSockets)
 
@@ -57,9 +57,16 @@ Límite conocido: el servidor **no guarda ni reenvía** eventos (no hay `Last-Ev
 Lo que cambie mientras la conexión está caída (suspensión del portátil, reinicio del
 servidor, corte de red) no llega como evento. Para no quedarse con datos viejos, el
 cliente hace `router.refresh()` **cada vez que el `EventSource` se reabre** (todas menos
-la primera, en la que la página acaba de renderizarse). Si el navegador deja de
-reintentar (`readyState === CLOSED`, p. ej. un 401/403), también refresca para que la
-página redirija a `/login` o `/boards`. Lo mismo hace la campana de notificaciones.
+la primera, en la que la página acaba de renderizarse).
+
+`EventSource` solo reintenta por su cuenta si la conexión se corta; si el servidor
+responde algo que no es un 200 (401/403 por sesión o acceso revocados, o el 502 de un
+proxy TLS mientras `scripts/update.sh` reinicia la app), queda en `CLOSED` para
+siempre. En ese caso el cliente hace `router.refresh()` —si se revocó el acceso, la
+página redirige a `/login` o `/boards` y el componente se desmonta— y además crea un
+`EventSource` nuevo con backoff exponencial de 3 s a 30 s (`keepEventSourceOpen` en
+`app/lib/realtime/reconnect.ts`); al abrirse vuelve a refrescar y el backoff se
+reinicia. Lo mismo hace la campana de notificaciones.
 
 ## El bus: en proceso por defecto, Postgres opcional
 

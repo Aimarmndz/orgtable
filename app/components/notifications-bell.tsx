@@ -7,7 +7,7 @@ import {
   useTransition,
 } from "react";
 import { useRouter } from "next/navigation";
-import { createReconnectRefresher } from "@/app/lib/realtime/reconnect";
+import { keepEventSourceOpen } from "@/app/lib/realtime/reconnect";
 import {
   markNotificationRead,
   markAllNotificationsRead,
@@ -72,29 +72,25 @@ export function NotificationsBell({
 
   // Entrega en vivo: refresca (con un pequeño debounce) cuando el bus avisa.
   useEffect(() => {
-    const source = new EventSource("/api/notifications/stream");
     let timer: ReturnType<typeof setTimeout> | null = null;
     const onEvent = () => {
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => router.refresh(), 200);
     };
-    // Al reconectar, trae las notificaciones que llegaron durante el corte (el servidor
-    // no las reenvía). Ver app/lib/realtime/reconnect.ts.
-    const onOpen = createReconnectRefresher(onEvent);
-    // CLOSED: el servidor rechazó la conexión (401 si se revocó la sesión) y el
-    // navegador no reintentará; el refresh deja que el layout redirija a /login.
-    const onError = () => {
-      if (source.readyState === EventSource.CLOSED) router.refresh();
-    };
-    source.addEventListener("notification", onEvent);
-    source.addEventListener("open", onOpen);
-    source.addEventListener("error", onError);
+    const stop = keepEventSourceOpen({
+      create: () => new EventSource("/api/notifications/stream"),
+      events: { notification: onEvent },
+      // Al reconectar, trae las notificaciones que llegaron durante el corte (el
+      // servidor no las reenvía). Ver app/lib/realtime/reconnect.ts.
+      onReconnect: onEvent,
+      // CLOSED: el navegador no reintentará (401 si se revocó la sesión, o un 502 del
+      // proxy durante un reinicio). El refresh deja que el layout redirija a /login; si
+      // no redirige, el helper recrea la fuente con backoff.
+      onClosed: () => router.refresh(),
+    });
     return () => {
       if (timer) clearTimeout(timer);
-      source.removeEventListener("notification", onEvent);
-      source.removeEventListener("open", onOpen);
-      source.removeEventListener("error", onError);
-      source.close();
+      stop();
     };
   }, [router]);
 

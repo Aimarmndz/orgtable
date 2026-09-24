@@ -419,6 +419,35 @@ del usuario).
 suma los avisos guardados. Test en `test/integration/notifications.int.test.ts`.
 
 ---
+## 2026-09-24 — Recrear el EventSource cuando el navegador deja de reintentar
+
+**Contexto.** Detrás de un proxy TLS (nginx, Caddy), un reinicio con
+`scripts/update.sh` hace que el proxy responda 502 al stream SSE. Ante una respuesta
+que no es 200, el navegador deja el `EventSource` en `CLOSED` y no reintenta. El
+cliente solo hacía `router.refresh()`: como la sesión seguía siendo válida la página no
+redirigía y el tablero y la campana se quedaban sin tiempo real hasta recargar.
+
+**Decisión.** `keepEventSourceOpen` (`app/lib/realtime/reconnect.ts`) gestiona el
+ciclo de vida del `EventSource` en `BoardRealtime` y `NotificationsBell`: registra los
+manejadores, refresca en cada apertura salvo la primera (también en fuentes recreadas)
+y, si la fuente queda `CLOSED`, hace `router.refresh()`, la cierra y crea otra tras un
+backoff exponencial de 3 s a 30 s que se reinicia al abrir. La limpieza del efecto
+cierra la fuente y cancela el reintento pendiente. Si el acceso se revocó, el refresh
+redirige y el desmontaje corta los reintentos. Se prueba con un doble de
+`EventSource` en `test/realtime-reconnect.test.ts` (no hay jsdom).
+
+**Alternativas descartadas.**
+- Recrear la fuente dentro de cada componente: duplica la lógica del temporizador en
+  dos sitios y no se puede probar sin navegador.
+- Reintentar sin backoff o con intervalo fijo corto: martillea al servidor mientras
+  arranca.
+- Solo documentar el límite: el reinicio con `update.sh` es la operación habitual.
+
+**Consecuencias.** Si el servidor rechaza con 401/403 y por lo que sea la página no
+redirige, se reintenta cada 30 s como máximo (petición barata que el servidor vuelve a
+rechazar). Cada reapertura tras `CLOSED` provoca dos refresh (el de `CLOSED` y el de
+la reapertura); se acepta por simplicidad.
+
 ## 2026-09-24 — Hora de las notificaciones solo tras montar
 
 **Contexto.** El tiempo relativo de la campana depende de la hora y la zona del
@@ -472,8 +501,8 @@ hace `router.refresh()` para que la página redirija.
 - Refrescar en cada `open`, incluido el primero: un render extra al cargar la página.
 
 **Consecuencias.** Un `router.refresh()` por reconexión (también cada 15 min por la
-vida máxima del stream). Si un proxy responde 5xx durante un reinicio, el EventSource
-queda `CLOSED` y el tiempo real no vuelve hasta recargar; se deja como mejora.
+vida máxima del stream). El caso `CLOSED` por un 5xx del proxy se resuelve en la
+entrada «Recrear el EventSource cuando el navegador deja de reintentar».
 
 ## 2026-09-24 — Puente LISTEN/NOTIFY: cierre, reconexión y validación del payload
 
