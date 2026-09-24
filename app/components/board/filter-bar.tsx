@@ -94,10 +94,14 @@ export function FilterBar({
             aria-hidden
             onClick={() => setOpen(false)}
           />
+          {/* Anclado a la izquierda a cualquier ancho: «Filtrar» es el primer botón de su
+              grupo, así que a su derecha siempre caben los 288 px (con la cabecera en una
+              fila, el resto del grupo es más ancho; partida, el grupo empieza en el borde).
+              Anclado a la derecha se salía por la izquierda al partirse la cabecera. */}
           <div
             role="dialog"
             aria-label="Filtros"
-            className="absolute left-0 top-11 z-40 sm:left-auto sm:right-0 w-72 max-w-[calc(100vw-2rem)] space-y-4 rounded-xl border border-border bg-surface p-4 text-ink shadow-[0_24px_48px_-24px_oklch(0.27_0.022_52/0.4)]"
+            className="absolute left-0 top-11 z-40 w-72 max-w-[calc(100vw-2rem)] space-y-4 rounded-xl border border-border bg-surface p-4 text-ink shadow-[0_24px_48px_-24px_oklch(0.27_0.022_52/0.4)]"
           >
             {/* Etiquetas */}
             <div>

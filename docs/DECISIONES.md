@@ -1415,8 +1415,10 @@ componente si solo cambian los searchParams.
   sin seleccionar: texto de tinta con borde del color; seleccionada: relleno con ✓ y
   anillo.
 - `aria-label` en los campos: «Nombre de la nueva lista» y «Nueva tarjeta en <lista>».
-- Popover de filtros anclado a la izquierda en móvil (`left-0 sm:right-0`) para que no
-  se salga a 375 px.
+- Popover de filtros anclado a la izquierda a cualquier ancho (`left-0`): «Filtrar» es
+  el primer botón de su grupo y a su derecha siempre caben los 288 px. Anclado a la
+  derecha se salía por la izquierda a 375 px y también hacia 768 px con un título largo,
+  cuando la cabecera se parte en dos filas.
 - Borrar lista pide un segundo clic en línea («¿Borrar? Sí / No», el foco va a «No»),
   sin `window.confirm`.
 - `boardCollisionDetection` (`app/lib/board-collision.ts`): `closestCorners` filtrado a
@@ -1448,6 +1450,8 @@ componente si solo cambian los searchParams.
   resuelve lo mismo con menos cambios. Un aviso visible al fallar un movimiento en el
   tablero: queda pendiente de que el propietario decida el texto (hoy se deshace en
   silencio y se refresca).
+- Anclar el popover a la derecha solo en `lg`: depende de que la cabecera no se parta,
+  que varía con la longitud del título.
 - `router.replace` con `?card`: cada apertura pediría la página al servidor. Sincronizar
   `initialCardId` durante el render: seguiría sin abrir la misma notificación dos veces.
 
