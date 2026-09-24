@@ -43,15 +43,18 @@ El tablero se resincroniza por el tiempo real tras revalidar.
 
 - Mientras se arrastra, una copia de la pastilla (`DragOverlay`) sigue al puntero; la
   original se queda atenuada en su día (moverla con `transform` la recortaba el
-  `overflow-y-auto` del calendario).
+  `overflow-y-auto` del calendario). La copia se pinta en un portal a `document.body`
+  porque el panel lleva `backdrop-blur`, y un `backdrop-filter` crea un bloque contenedor
+  que desplazaría la copia `position: fixed` respecto al puntero.
 - **Teclado**: con el foco en una pastilla, Espacio la coge, las flechas la llevan al día
   vecino (izquierda/derecha) o a la misma columna de la semana anterior/siguiente
   (arriba/abajo), y Espacio o Intro la sueltan; Escape cancela. Intro sin arrastrar abre
   la tarjeta. Las coordenadas las calcula `calendarKeyboardCoordinates`
   (`app/lib/board-collision.ts`); anuncios para lectores de pantalla en español.
 - Si el servidor no guarda la nueva fecha (rechazo o fallo de red), la tarjeta sigue en
-  su día y aparece el aviso «No se pudo cambiar la fecha. Inténtalo de nuevo.» junto al
-  mes (`role="alert"`). Se borra al empezar otro arrastre.
+  su día y aparece el aviso «No se pudo cambiar la fecha. Inténtalo de nuevo.» en su
+  propia fila, bajo el mes y la navegación (`role="alert"`). Se borra al empezar otro
+  arrastre.
 
 ## Evolución posible
 
