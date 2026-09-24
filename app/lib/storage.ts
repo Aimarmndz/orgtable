@@ -8,8 +8,11 @@ import { randomUUID } from "node:crypto";
 // docker-compose.yml). En la base de datos solo guardamos metadatos. Ver
 // docs/attachments.md y la decisión en docs/decisions/0010-local-file-storage.md.
 
+// `turbopackIgnore`: sin él, Turbopack no puede resolver `process.cwd()` en el build y
+// traza el proyecto entero (docs, test, Dockerfile, ./uploads) hacia .next/standalone.
 const UPLOAD_DIR =
-  process.env.ORGTABLE_UPLOAD_DIR || path.join(process.cwd(), "uploads");
+  process.env.ORGTABLE_UPLOAD_DIR ||
+  path.join(/* turbopackIgnore: true */ process.cwd(), "uploads");
 
 // Límite de tamaño por archivo: 10 MB.
 export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
@@ -38,11 +41,18 @@ export async function readAttachmentFile(storedName: string): Promise<Buffer> {
   return readFile(storedPath(storedName));
 }
 
-/** Borra el fichero de disco. No falla si ya no existe. */
+/**
+ * Borra el fichero de disco. Nunca lanza: quien la llama ya ha borrado la fila, y un
+ * throw aquí rompería la acción y se saltaría la revalidación. Que el fichero ya no
+ * exista (ENOENT) es normal; cualquier otro error (permisos, volumen de solo lectura…)
+ * deja un binario huérfano, así que se registra para que el operador lo vea.
+ */
 export async function deleteAttachmentFile(storedName: string): Promise<void> {
   try {
     await unlink(storedPath(storedName));
-  } catch {
-    // El fichero ya no está: nada que hacer.
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code === "ENOENT") return;
+    console.error("[storage] no se pudo borrar el adjunto", { storedName, code });
   }
 }

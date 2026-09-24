@@ -964,6 +964,37 @@ tests: no había forma de probar las Server Actions ni la revocación de sesione
 **Consecuencias.** Los tests pueden ejecutar Server Actions con sesión real (fila
 `Session` + JWT firmado). Quitar una comprobación de `verifySession` hace fallar
 `session.int.test.ts` (comprobado quitando `revokedAt` y el control de `userId`).
+## 2026-09-24 — Adjuntos: errores de disco visibles y 404 uniforme en la descarga
+
+**Contexto.** `deleteAttachmentFile` tenía un `catch` vacío que se tragaba también
+`EACCES`/`EROFS` (la fila se borraba y el binario quedaba en disco sin rastro). La
+descarga respondía 404 a un id inexistente y 403 a uno de un tablero ajeno (revelaba qué
+ids existen) y convertía cualquier error de lectura en 404. Además,
+`path.join(process.cwd(), "uploads")` hacía que Turbopack trazara el proyecto entero
+hacia `.next/standalone`.
+
+**Decisión.**
+- `deleteAttachmentFile` ignora solo `ENOENT`; el resto se registra con `console.error`
+  (nombre en disco y código, sin el nombre original) y **no se relanza**: la fila ya está
+  borrada y un throw rompería la acción antes de revalidar.
+- La descarga busca el adjunto con una sola consulta acotada por membresía; sin
+  resultado, `404 Not found` con el mismo cuerpo en ambos casos. `ENOENT` al leer → 404 +
+  `console.warn`; cualquier otro código → 500 + `console.error`.
+- `/* turbopackIgnore: true */` en el `path.join` del directorio de subida.
+- Los tests de integración que invocan Server Actions crean una sesión real (fila
+  `Session` + JWT firmado, `test/integration/action-session.ts`) y solo sustituyen la
+  lectura de la cookie con un `vi.mock("next/headers")` local, para ejercer de verdad el
+  DAL y las guardas de rol sin tocar el stub compartido.
+
+**Alternativas descartadas.**
+- Relanzar el error de `unlink`: dejaría la acción a medias tras borrar la fila.
+- Mantener el 403 en la descarga: la API v1 ya evita distinguirlos a propósito.
+- Mockear el DAL en los tests: no probaría la autorización real.
+
+**Consecuencias.** Un volumen sin permisos de escritura se ve en los logs. La reducción
+del trazado NFT no se ha podido comprobar aquí (el build lo ejecuta el integrador): tras
+`pnpm build`, `api/attachments/[id]/route.js.nft.json` debería bajar a unas 200 entradas
+y `.next/standalone` no debería contener `docs/` ni `test/`.
 
 ---
 
