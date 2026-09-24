@@ -86,6 +86,37 @@ contexto de React, así que sigue dentro del `DndContext`.
 `test/calendar-view.test.ts`: el render de servidor no toca `document` (falla si el
 portal se monta sin la guarda). El posicionamiento real solo se comprueba a mano en el
 navegador.
+## 2026-09-24 — Panel de miembros: rol al invitar tras un error, error repetido y fondo
+
+**Contexto.** Tres fallos del formulario de invitar y del `<dialog>` de miembros
+(`app/components/board/members-panel.tsx`):
+- Tras un error («no existe ninguna cuenta…») el rol volvía a Editor sin avisar: React
+  restablece el formulario tras la acción, pero no aplica el nuevo `defaultValue` a un
+  `<select>` ya montado. Al corregir el email, la persona entraba con escritura aunque se
+  hubiera elegido Lector.
+- El aviso `role="alert"` seguía montado entre envíos: un segundo error con el mismo
+  texto no cambiaba el DOM y el lector de pantalla no lo anunciaba.
+- El fundido del `::backdrop` se veía con movimiento reducido: la regla
+  `prefers-reduced-motion` de `globals.css` no cubre `::backdrop`.
+
+**Decisión.**
+- `<select name="role" key={inviteRole}>`: la key remonta el select con el rol devuelto.
+  `inviteRole` solo reutiliza `values.role` si está en `ASSIGNABLE_BOARD_ROLES`; si no
+  (p. ej. OWNER), vuelve a Editor. Es el mismo patrón que `create-token-form.tsx`.
+- El aviso se pinta con `state.error && !pending`, como `login-form.tsx` y
+  `setup-form.tsx`: se retira mientras se envía y un error idéntico se vuelve a insertar.
+- `backdrop:motion-safe:animate-[overlay-in_150ms_ease-out]`, igual que `card-modal.tsx`.
+
+**Alternativas descartadas.**
+- `<select>` controlado con `useState`: habría que sincronizarlo con `state.values` en un
+  efecto y resetearlo al invitar con éxito; la key lo resuelve sin estado nuevo.
+- Añadir `*::backdrop` a la regla de `prefers-reduced-motion` de `globals.css`: toca un
+  archivo compartido cuando `motion-safe:` basta.
+
+**Consecuencias.** El remontaje por key no tiene test automático: sin jsdom,
+`renderToStaticMarkup` ya marcaba el rol correcto antes del arreglo.
+`test/members-panel.test.ts` cubre la vuelta a Editor con un rol no asignable, la
+retirada del aviso mientras se envía y la clase del fondo.
 
 ---
 
@@ -420,8 +451,10 @@ confirmaciones de la invitación no se anunciaban y el email se vaciaba al falla
   el padre al desmontarlo. Al desmontar se cierra y se devuelve el foco a quien lo tenía,
   a mano, porque el navegador no lo restaura si el `<dialog>` sale del DOM.
 - `aria-labelledby`/`aria-describedby` con `useId`.
-- Error con `role="alert"`; éxito en una región `role="status"` siempre montada.
-- El formulario usa `defaultValue` con los `values` que devuelve la acción al fallar.
+- Error con `role="alert"`, retirado mientras se envía (ver «Panel de miembros: rol al
+  invitar tras un error…», más arriba); éxito en una región `role="status"` siempre montada.
+- El email usa `defaultValue` con los `values` que devuelve la acción al fallar. El rol,
+  además, remonta el `<select>` con una key (ver la misma entrada).
 
 **Alternativas descartadas.**
 - Trampa de foco en JavaScript o una librería de diálogos: el `<dialog>` modal ya lo da
