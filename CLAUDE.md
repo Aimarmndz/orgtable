@@ -21,7 +21,7 @@ el resumen de una línea con el enlace.
   IDOR de `moveCard` (la tarjeta debe pertenecer al tablero de destino, `cardBelongsToBoard`),
   `SESSION_SECRET`/`DATABASE_URL` exigidos, cabeceras de seguridad en `next.config.ts`,
   Next 16.3.6 (overrides de seguridad en `pnpm-workspace.yaml`). Tests de autorización en `test/integration/` (IDOR, 403/404).
-- **Tests/CI**: dos niveles. **Unitarios** (lógica pura, sin BD) en `test/` con `pnpm test`.
+- **Tests/CI**: dos niveles. **Unitarios** (sin BD ni red) en `test/` con `pnpm test`.
   **Integración** en `test/integration/` (`pnpm test:integration`): invocan los route
   handlers de `app/api/v1/**` y los servicios contra una PostgreSQL real cuyo nombre debe
   acabar en `_test` (guardia en `test/integration/helpers.ts`); `vitest.integration.config.ts`

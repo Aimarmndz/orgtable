@@ -2,8 +2,8 @@ import { defineConfig } from "vitest/config";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
-// Configuración de los tests unitarios (Vitest). Cubren la lógica PURA del proyecto
-// (roles, ordenación, colores, tokens, validadores) sin tocar la base de datos.
+// Configuración de los tests unitarios (Vitest): sin base de datos ni red. Qué cubren
+// y qué no es lógica pura está en docs/testing.md, para no mantenerlo en dos sitios.
 //
 // Dos alias necesarios para ejecutar módulos de la app fuera de Next:
 //  - `server-only`: algunos módulos lo importan como marca de "solo servidor"; en los
