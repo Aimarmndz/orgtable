@@ -40,7 +40,11 @@ export default async function AppLayout({
           <span className="grid size-7 shrink-0 place-items-center rounded-md bg-accent font-display text-sm font-extrabold text-accent-ink">
             o
           </span>
-          <span className="truncate font-display font-bold tracking-tight">
+          {/* title: el nombre admite 60 caracteres y en móvil se trunca. */}
+          <span
+            title={config?.instanceName ?? "orgtable"}
+            className="truncate font-display font-bold tracking-tight"
+          >
             {config?.instanceName ?? "orgtable"}
           </span>
         </Link>

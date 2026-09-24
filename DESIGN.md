@@ -29,8 +29,8 @@ neón, sin glows, sin negro puro (el "ink" es un espresso cálido).
 |-----|-------|--------|-----|
 | `--accent` | 0.56 0.125 42 | 0.68 0.115 45 | Acción primaria, foco, selección (terracota) |
 | `--accent-ink` | 0.99 0.01 80 | 0.2 0.02 50 | Texto sobre acento |
-| `--danger` | 0.55 0.18 28 | 0.7 0.16 30 | Borrar, error |
-| `--success` | 0.57 0.1 145 | 0.72 0.1 150 | Confirmaciones |
+| `--danger` | 0.52 0.18 28 | 0.71 0.16 30 | Borrar, error |
+| `--success` | 0.48 0.1 145 | 0.72 0.1 150 | Confirmaciones |
 
 ### Colores de tablero / etiqueta (contenido)
 

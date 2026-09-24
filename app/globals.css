@@ -39,8 +39,10 @@
   --accent: oklch(0.49 0.13 40);
   --accent-hover: oklch(0.44 0.13 40);
   --accent-ink: oklch(0.99 0.01 80);
-  --danger: oklch(0.55 0.18 28);
-  --success: oklch(0.57 0.1 145);
+  /* danger y success oscurecidos lo justo para 4,5:1 (WCAG AA) también sobre su propio
+     fondo al 10-15 % (avisos, insignia de vencida). Lo comprueba test/contrast.test.ts. */
+  --danger: oklch(0.52 0.18 28);
+  --success: oklch(0.48 0.1 145);
 }
 
 /* Tema oscuro — carbón cálido (espresso), mismo acento terracota más luminoso */
@@ -55,7 +57,7 @@
   --accent: oklch(0.68 0.115 45);
   --accent-hover: oklch(0.74 0.115 45);
   --accent-ink: oklch(0.2 0.02 50);
-  --danger: oklch(0.7 0.16 30);
+  --danger: oklch(0.71 0.16 30);
   --success: oklch(0.72 0.1 150);
 }
 

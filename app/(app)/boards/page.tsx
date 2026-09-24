@@ -32,6 +32,7 @@ export default async function BoardsPage() {
           name="title"
           required
           maxLength={120}
+          aria-label="Nombre del nuevo tablero"
           placeholder="Nombre del nuevo tablero"
           className="max-w-xs"
         />

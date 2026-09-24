@@ -19,13 +19,17 @@ export function ImportBoardForm() {
         name="file"
         accept="application/json,.json"
         required
+        aria-label="Fichero JSON del tablero a importar"
         className="max-w-full text-sm text-ink-muted file:mr-2 file:rounded-lg file:border-0 file:bg-surface-2 file:px-3 file:py-1.5 file:text-sm file:text-ink hover:file:bg-border/40"
       />
       <Button type="submit" variant="subtle" disabled={pending}>
         {pending ? "Importando…" : "Importar tablero"}
       </Button>
       {state.error && (
-        <p className="w-full rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
+        <p
+          role="alert"
+          className="w-full rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger"
+        >
           {state.error}
         </p>
       )}

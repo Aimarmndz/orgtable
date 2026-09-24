@@ -154,6 +154,39 @@ sobrecarga y que el del proxy coincide.
 **Consecuencias.** El límite es global y se aplica antes de autenticar: cualquiera puede
 mandar 11 MB a una acción. Si cambia el máximo de adjuntos hay que subir este número (el
 test falla si se queda corto).
+## 2026-09-24 — Contraste AA de --danger/--success y campos etiquetados en /boards
+
+**Contexto.** `--success` (oklch 0.57 0.1 145) daba 3,86:1 sobre `--bg` y 3,72:1 en
+los avisos `bg-success/10 text-success`. `--danger` rozaba el límite en sus avisos
+(4,48:1) y en la insignia de vencida `bg-danger/15` (4,15:1 claro, 4,45:1 oscuro). El
+placeholder de `Input`/`Textarea` (`text-ink-muted/70`) quedaba en ~3,2:1. En `/boards`,
+el campo de nuevo tablero y el de importar JSON no tenían etiqueta accesible, y el
+error de importación no se anunciaba.
+
+**Decisión.**
+- Tokens, lo mínimo para 4,5:1 con margen: claro `--danger` 0.55→0.52 y `--success`
+  0.57→0.48 (la propuesta del hallazgo); oscuro `--danger` 0.70→0.71. `--success`
+  oscuro no cambia. `DESIGN.md` actualizado.
+- `test/contrast.test.ts` lee los tokens de `app/globals.css`, convierte OKLCH a sRGB y
+  exige 4,5:1 para ink, ink-muted, accent, danger y success sobre bg, surface,
+  surface-2 y column, para los avisos al 10 % y la insignia al 15 %, y para
+  accent-ink sobre accent, en los dos temas.
+- Placeholder de `app/components/ui/input.tsx` a `text-ink-muted` (6,2:1).
+- `aria-label` en los dos campos de `/boards` y `role="alert"` en el error de
+  importar.
+- `title` con el nombre completo de la instancia en la barra superior, que se trunca
+  en móvil. El resto del ajuste responsive de la barra ya estaba en main.
+
+**Alternativas descartadas.**
+- Cambiar solo `--success` y dejar `--danger` justo por debajo de 4,5:1 en sus avisos.
+- Etiquetas `<label>` visibles: cambian la maquetación de la cabecera de `/boards`; el
+  placeholder ya describe el campo a la vista.
+
+**Consecuencias.** Verde y rojo algo más oscuros en tema claro, también en los rellenos
+`bg-success`/`bg-danger` de otros componentes (barra de checklist, casillas). El test
+avisa si un cambio de tono rompe el contraste. Otros placeholders con
+`text-ink-muted/70` (search-box, card-modal) quedan fuera de este lote.
+
 ## 2026-09-24 — Borrado de tableros con segundo clic y solo para el dueño
 
 **Contexto.** En `/boards`, el ✕ de cada tablero era un `<form action={deleteBoard}>`
