@@ -4,7 +4,6 @@ import { moveCard } from "@/app/lib/actions/cards";
 import { reorderList } from "@/app/lib/actions/lists";
 import { POST as createCardApi } from "@/app/api/v1/lists/[id]/cards/route";
 import { POST as createListApi } from "@/app/api/v1/boards/[id]/lists/route";
-import { sessionTokenFor, TEST_SESSION_SECRET } from "./action-session";
 import {
   resetDb,
   disconnect,
@@ -15,24 +14,10 @@ import {
   seedCard,
   apiRequest,
   ctx,
+  loginAs,
 } from "./helpers";
 
-const cookieJar = vi.hoisted(() => ({ token: undefined as string | undefined }));
-vi.mock("next/headers", () => ({
-  cookies: async () => ({
-    get: (name: string) =>
-      name === "session" && cookieJar.token
-        ? { name, value: cookieJar.token }
-        : undefined,
-    set: () => {},
-    delete: () => {},
-  }),
-  headers: async () => new Headers(),
-}));
-
 beforeEach(async () => {
-  vi.stubEnv("SESSION_SECRET", TEST_SESSION_SECRET);
-  cookieJar.token = undefined;
   await resetDb();
 });
 afterAll(async () => {
@@ -51,7 +36,7 @@ describe("posiciones: moveCard y reorderList validan la clave", () => {
     const list = await seedList(board.id);
     const card = await seedCard(list.id);
     const before = await prisma.card.findUniqueOrThrow({ where: { id: card.id } });
-    cookieJar.token = await sessionTokenFor(owner.id);
+    await loginAs(owner.id);
 
     const res = await moveCard({
       cardId: card.id,
@@ -79,7 +64,7 @@ describe("posiciones: moveCard y reorderList validan la clave", () => {
     const board = await seedBoard(owner.id);
     const list = await seedList(board.id);
     const before = await prisma.list.findUniqueOrThrow({ where: { id: list.id } });
-    cookieJar.token = await sessionTokenFor(owner.id);
+    await loginAs(owner.id);
 
     const res = await reorderList({ listId: list.id, position: bad as string });
     expect(res).toEqual({ ok: false });
@@ -103,7 +88,7 @@ describe("posiciones: moveCard y reorderList validan la clave", () => {
     const listA = await seedList(board.id);
     const listB = await seedList(board.id);
     const card = await seedCard(listA.id);
-    cookieJar.token = await sessionTokenFor(owner.id);
+    await loginAs(owner.id);
 
     expect(
       await moveCard({ cardId: card.id, toListId: listB.id, position: "a0V" }),

@@ -13,19 +13,6 @@ const uploadDir = await vi.hoisted(async () => {
   return dir;
 });
 
-const cookieJar = vi.hoisted(() => ({ token: undefined as string | undefined }));
-vi.mock("next/headers", () => ({
-  cookies: async () => ({
-    get: (name: string) =>
-      name === "session" && cookieJar.token
-        ? { name, value: cookieJar.token }
-        : undefined,
-    set: () => {},
-    delete: () => {},
-  }),
-  headers: async () => new Headers(),
-}));
-
 import { prisma } from "@/app/lib/prisma";
 import { saveAttachmentFile } from "@/app/lib/storage";
 import { subscribeBoard } from "@/app/lib/realtime/bus";
@@ -35,7 +22,6 @@ import { deleteBoard } from "@/app/lib/actions/boards";
 import { uploadAttachment } from "@/app/lib/actions/attachments";
 import { DELETE as deleteCardApi } from "@/app/api/v1/cards/[id]/route";
 import { DELETE as deleteBoardApi } from "@/app/api/v1/boards/[id]/route";
-import { sessionTokenFor, TEST_SESSION_SECRET } from "./action-session";
 import {
   resetDb,
   disconnect,
@@ -47,11 +33,10 @@ import {
   addMember,
   apiRequest,
   ctx,
+  loginAs,
 } from "./helpers";
 
 beforeEach(async () => {
-  vi.stubEnv("SESSION_SECRET", TEST_SESSION_SECRET);
-  cookieJar.token = undefined;
   await resetDb();
 });
 afterAll(async () => {
@@ -89,7 +74,7 @@ async function seedBoardWithAttachment() {
   const list = await seedList(board.id);
   const card = await seedCard(list.id);
   const filePath = await seedAttachment(card.id);
-  cookieJar.token = await sessionTokenFor(owner.id);
+  await loginAs(owner.id);
   return { owner, board, list, card, filePath };
 }
 
@@ -137,7 +122,7 @@ describe("borrar tarjeta, lista o tablero borra los ficheros de sus adjuntos", (
     const { board, filePath } = await seedBoardWithAttachment();
     const editor = await seedUser();
     await addMember(board.id, editor.id, "EDITOR");
-    cookieJar.token = await sessionTokenFor(editor.id);
+    await loginAs(editor.id);
 
     await expect(deleteBoard(form({ boardId: board.id }))).rejects.toThrow("NEXT_REDIRECT");
     expect(await prisma.board.count()).toBe(1);

@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
 import { prisma } from "@/app/lib/prisma";
 import { labelBelongsToBoard } from "@/app/lib/services/labels";
 import { toggleCardLabel, createLabel } from "@/app/lib/actions/labels";
-import { sessionTokenFor, TEST_SESSION_SECRET } from "./action-session";
 import {
   resetDb,
   disconnect,
@@ -10,29 +9,15 @@ import {
   seedBoard,
   seedList,
   seedCard,
+  loginAs,
 } from "./helpers";
 
 // La cookie de sesión que verá el DAL; cada test la fija con signIn().
-const cookieJar = vi.hoisted(() => ({ token: undefined as string | undefined }));
-vi.mock("next/headers", () => ({
-  cookies: async () => ({
-    get: (name: string) =>
-      name === "session" && cookieJar.token
-        ? { name, value: cookieJar.token }
-        : undefined,
-    set: () => {},
-    delete: () => {},
-  }),
-  headers: async () => new Headers(),
-}));
-
 async function signIn(userId: string): Promise<void> {
-  cookieJar.token = await sessionTokenFor(userId);
+  await loginAs(userId);
 }
 
 beforeEach(async () => {
-  vi.stubEnv("SESSION_SECRET", TEST_SESSION_SECRET);
-  cookieJar.token = undefined;
   await resetDb();
 });
 afterAll(async () => {

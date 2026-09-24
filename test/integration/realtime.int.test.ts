@@ -9,7 +9,6 @@ import {
   afterAll,
 } from "vitest";
 import { prisma } from "@/app/lib/prisma";
-import { createSession } from "@/app/lib/session";
 import { publishBoardEvent, publishUserEvent } from "@/app/lib/realtime/bus";
 import { HEARTBEAT_MS, MAX_STREAM_MS } from "@/app/lib/realtime/sse";
 import { GET as boardStream } from "@/app/api/boards/[id]/stream/route";
@@ -21,6 +20,7 @@ import {
   seedBoard,
   addMember,
   ctx,
+  loginAs,
 } from "./helpers";
 
 // Streams SSE de tiempo real: autorización (401/403), limpieza de la suscripción y del
@@ -28,32 +28,12 @@ import {
 // retira el acceso. Antes nada lo comprobaba y una regresión acumulaba listeners en el
 // bus sin que nadie se enterara.
 
-// Tarro de cookies en memoria: createSession escribe la cookie de sesión y
-// verifySession la lee, igual que en una petición real.
-const jar = vi.hoisted(() => new Map<string, string>());
-vi.mock("next/headers", () => ({
-  headers: async () => new Headers(),
-  cookies: async () => ({
-    get: (name: string) => {
-      const value = jar.get(name);
-      return value === undefined ? undefined : { name, value };
-    },
-    set: (name: string, value: string) => {
-      jar.set(name, value);
-    },
-    delete: (name: string) => {
-      jar.delete(name);
-    },
-  }),
-}));
-
 const bus = () =>
   (globalThis as { __orgtableBus?: EventEmitter }).__orgtableBus;
 const listeners = (channel: string) => bus()?.listenerCount(channel) ?? 0;
 
-async function loginAs(userId: string): Promise<string> {
-  jar.clear();
-  await createSession(userId);
+async function loginAndGetSessionId(userId: string): Promise<string> {
+  await loginAs(userId);
   const session = await prisma.session.findFirstOrThrow({
     where: { userId },
     orderBy: { createdAt: "desc" },
@@ -100,8 +80,6 @@ function openController(): AbortController {
 
 beforeEach(async () => {
   await resetDb();
-  jar.clear();
-  vi.stubEnv("SESSION_SECRET", "secreto-de-test-con-longitud-suficiente");
   // Solo el latido (setInterval) y el reloj: la BD sigue usando temporizadores reales.
   vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
 });
@@ -201,7 +179,7 @@ describe("GET /api/boards/[id]/stream", () => {
   it("se cierra en el siguiente latido si se revoca la sesión", async () => {
     const owner = await seedUser();
     const board = await seedBoard(owner.id);
-    const sessionId = await loginAs(owner.id);
+    const sessionId = await loginAndGetSessionId(owner.id);
     const ac = openController();
     const res = await boardStream(
       streamRequest(`/api/boards/${board.id}/stream`, ac.signal),
@@ -310,7 +288,7 @@ describe("GET /api/notifications/stream", () => {
 
   it("se cierra en el siguiente latido si se revoca la sesión", async () => {
     const user = await seedUser();
-    const sessionId = await loginAs(user.id);
+    const sessionId = await loginAndGetSessionId(user.id);
     const ac = openController();
     const res = await notificationsStream(
       streamRequest("/api/notifications/stream", ac.signal),

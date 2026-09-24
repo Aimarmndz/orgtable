@@ -12,23 +12,9 @@ const uploadDir = await vi.hoisted(async () => {
   return dir;
 });
 
-const cookieJar = vi.hoisted(() => ({ token: undefined as string | undefined }));
-vi.mock("next/headers", () => ({
-  cookies: async () => ({
-    get: (name: string) =>
-      name === "session" && cookieJar.token
-        ? { name, value: cookieJar.token }
-        : undefined,
-    set: () => {},
-    delete: () => {},
-  }),
-  headers: async () => new Headers(),
-}));
-
 import { prisma } from "@/app/lib/prisma";
 import { saveAttachmentFile } from "@/app/lib/storage";
 import { GET as downloadAttachment } from "@/app/api/attachments/[id]/route";
-import { sessionTokenFor, TEST_SESSION_SECRET } from "./action-session";
 import {
   resetDb,
   disconnect,
@@ -37,11 +23,10 @@ import {
   seedList,
   seedCard,
   ctx,
+  loginAs,
 } from "./helpers";
 
 beforeEach(async () => {
-  vi.stubEnv("SESSION_SECRET", TEST_SESSION_SECRET);
-  cookieJar.token = undefined;
   await resetDb();
 });
 afterAll(async () => {
@@ -71,7 +56,7 @@ function get(id: string) {
 describe("descarga de adjuntos", () => {
   it("un miembro descarga el fichero (200)", async () => {
     const { owner, attachment } = await seedAttachment();
-    cookieJar.token = await sessionTokenFor(owner.id);
+    await loginAs(owner.id);
 
     const res = await get(attachment.id);
     expect(res.status).toBe(200);
@@ -82,7 +67,7 @@ describe("descarga de adjuntos", () => {
   it("un no miembro recibe el mismo 404 que un id inexistente", async () => {
     const { attachment } = await seedAttachment();
     const stranger = await seedUser();
-    cookieJar.token = await sessionTokenFor(stranger.id);
+    await loginAs(stranger.id);
 
     const foreign = await get(attachment.id);
     const missing = await get("cminexistente000000000000");
@@ -99,7 +84,7 @@ describe("descarga de adjuntos", () => {
   it("una fila sin fichero en disco da 404 y se registra como aviso", async () => {
     const { owner, attachment, filePath } = await seedAttachment();
     await rm(filePath);
-    cookieJar.token = await sessionTokenFor(owner.id);
+    await loginAs(owner.id);
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     const res = await get(attachment.id);
@@ -114,7 +99,7 @@ describe("descarga de adjuntos", () => {
     async () => {
       const { owner, attachment, filePath } = await seedAttachment();
       await chmod(filePath, 0o000);
-      cookieJar.token = await sessionTokenFor(owner.id);
+      await loginAs(owner.id);
       const error = vi.spyOn(console, "error").mockImplementation(() => {});
 
       try {

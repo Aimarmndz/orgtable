@@ -8,6 +8,27 @@ arquitectura anteriores a este registro (ADR 0001–0015) siguen en
 
 ---
 
+## 2026-09-24 — Un solo mecanismo de sesión en los tests de integración
+
+**Contexto.** Al integrar los lotes de la revisión convivían dos formas de simular la
+sesión: el stub compartido `test/stubs/next-headers.ts` con `loginAs()` (lote de
+autenticación) y un `vi.mock("next/headers")` propio en siete archivos, con el helper
+`test/integration/action-session.ts`. Con los dos juntos fallaban 61 tests, porque
+`resetDb()` llama a `__clearCookies()` del stub y los mocks locales no lo exportaban.
+
+**Decisión.** Todos los tests usan el stub compartido y `loginAs()` de `helpers.ts`. Se
+borran `action-session.ts` y los tarros de cookies locales; `realtime.int.test.ts`
+conserva un envoltorio que devuelve el id de sesión, que necesita para revocarla.
+
+**Alternativas descartadas.** Que cada mock local reexporte el stub con
+`importOriginal`: arregla los fallos, pero deja dos formas de iniciar sesión y dos
+secretos de test distintos.
+
+**Consecuencias.** 32 archivos y 208 tests de integración en verde. Un test nuevo con
+sesión solo necesita `await loginAs(user.id)`.
+
+---
+
 ## 2026-09-24 — Collation "C" en las columnas de posición
 
 **Contexto.** Las claves de fractional indexing (base62 `0-9A-Za-z`) solo se ordenan

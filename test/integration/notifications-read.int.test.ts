@@ -8,34 +8,16 @@ import {
   afterAll,
 } from "vitest";
 import { prisma } from "@/app/lib/prisma";
-import { createSession } from "@/app/lib/session";
 import {
   markNotificationRead,
   markAllNotificationsRead,
 } from "@/app/lib/actions/notifications";
-import { resetDb, disconnect, seedUser } from "./helpers";
+import { resetDb, disconnect, seedUser, loginAs } from "./helpers";
 
 // Regresión: al abrir una notificación con tablero no se refrescaba el router y el
 // contador de no leídas del layout se quedaba igual. Ahora las acciones marcan como
 // leída y llaman a refresh() de next/cache. El badge en sí solo se ve en el navegador;
 // aquí se comprueba el dato y que se pide el refresh.
-
-const jar = vi.hoisted(() => new Map<string, string>());
-vi.mock("next/headers", () => ({
-  headers: async () => new Headers(),
-  cookies: async () => ({
-    get: (name: string) => {
-      const value = jar.get(name);
-      return value === undefined ? undefined : { name, value };
-    },
-    set: (name: string, value: string) => {
-      jar.set(name, value);
-    },
-    delete: (name: string) => {
-      jar.delete(name);
-    },
-  }),
-}));
 
 const refreshMock = vi.hoisted(() => vi.fn());
 vi.mock("next/cache", () => ({
@@ -43,11 +25,6 @@ vi.mock("next/cache", () => ({
   revalidateTag: () => {},
   refresh: refreshMock,
 }));
-
-async function loginAs(userId: string): Promise<void> {
-  jar.clear();
-  await createSession(userId);
-}
 
 async function seedNotification(userId: string, boardId: string | null = null) {
   return prisma.notification.create({
@@ -58,9 +35,7 @@ async function seedNotification(userId: string, boardId: string | null = null) {
 
 beforeEach(async () => {
   await resetDb();
-  jar.clear();
   refreshMock.mockClear();
-  vi.stubEnv("SESSION_SECRET", "secreto-de-test-con-longitud-suficiente");
 });
 
 afterEach(() => {

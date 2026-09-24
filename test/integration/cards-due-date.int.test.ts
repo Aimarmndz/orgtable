@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
 import { prisma } from "@/app/lib/prisma";
 import { setCardDueDate, updateCard } from "@/app/lib/actions/cards";
-import { sessionTokenFor, TEST_SESSION_SECRET } from "./action-session";
 import {
   resetDb,
   disconnect,
@@ -9,24 +8,10 @@ import {
   seedBoard,
   seedList,
   seedCard,
+  loginAs,
 } from "./helpers";
 
-const cookieJar = vi.hoisted(() => ({ token: undefined as string | undefined }));
-vi.mock("next/headers", () => ({
-  cookies: async () => ({
-    get: (name: string) =>
-      name === "session" && cookieJar.token
-        ? { name, value: cookieJar.token }
-        : undefined,
-    set: () => {},
-    delete: () => {},
-  }),
-  headers: async () => new Headers(),
-}));
-
 beforeEach(async () => {
-  vi.stubEnv("SESSION_SECRET", TEST_SESSION_SECRET);
-  cookieJar.token = undefined;
   await resetDb();
 });
 afterAll(async () => {
@@ -45,7 +30,7 @@ async function seedCardWithDue() {
     where: { id: card.id },
     data: { dueDate: DUE, description: "Original" },
   });
-  cookieJar.token = await sessionTokenFor(owner.id);
+  await loginAs(owner.id);
   return card;
 }
 
