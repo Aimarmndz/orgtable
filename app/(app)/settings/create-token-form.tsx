@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { createApiToken, type CreateTokenState } from "@/app/lib/actions/tokens";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
@@ -12,42 +12,69 @@ export function CreateTokenForm() {
     createApiToken,
     {},
   );
-  const [copied, setCopied] = useState(false);
+  // El resultado de copiar va ligado al token al que se refiere: al crear otro token
+  // vuelve solo a «idle» sin necesidad de un efecto.
+  const [copy, setCopy] = useState<{
+    token: string;
+    status: "copied" | "error";
+  } | null>(null);
+  const copyStatus =
+    copy && copy.token === state.token ? copy.status : "idle";
+  const codeRef = useRef<HTMLElement>(null);
 
-  const copy = async () => {
-    if (!state.token) return;
+  const copyToken = async () => {
+    const token = state.token;
+    if (!token) return;
     try {
-      await navigator.clipboard.writeText(state.token);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      await navigator.clipboard.writeText(token);
+      setCopy({ token, status: "copied" });
+      setTimeout(() => setCopy(null), 2000);
     } catch {
-      // El portapapeles puede no estar disponible; el token sigue siendo seleccionable.
+      // Por http (contexto no seguro) el portapapeles no existe o se rechaza. El token
+      // solo se muestra una vez, así que se avisa y se deja seleccionado para copiarlo
+      // a mano. Nunca se registra el token.
+      setCopy({ token, status: "error" });
+      if (codeRef.current) {
+        window.getSelection()?.selectAllChildren(codeRef.current);
+      }
     }
   };
 
   return (
     <div>
-      {state.token && (
-        <div className="mb-4 rounded-xl border border-success/30 bg-success/10 p-4">
-          <p className="text-sm font-medium">Token «{state.name}» creado</p>
-          <p className="mt-1 text-xs text-ink-muted">
-            Cópialo ahora: por seguridad no se volverá a mostrar.
-          </p>
-          <div className="mt-2 flex items-stretch gap-2">
-            <code className="min-w-0 flex-1 overflow-x-auto rounded-lg border border-border bg-surface px-3 py-2 font-mono text-xs">
-              {state.token}
-            </code>
-            <Button
-              type="button"
-              variant="subtle"
-              onClick={copy}
-              className="shrink-0"
-            >
-              {copied ? "Copiado" : "Copiar"}
-            </Button>
+      {/* Región siempre montada: así el lector de pantalla anuncia el token creado. */}
+      <div role="status">
+        {state.token && (
+          <div className="mb-4 rounded-xl border border-success/30 bg-success/10 p-4">
+            <p className="text-sm font-medium">Token «{state.name}» creado</p>
+            <p className="mt-1 text-xs text-ink-muted">
+              Cópialo ahora: por seguridad no se volverá a mostrar.
+            </p>
+            <div className="mt-2 flex items-stretch gap-2">
+              <code
+                ref={codeRef}
+                className="min-w-0 flex-1 select-all overflow-x-auto rounded-lg border border-border bg-surface px-3 py-2 font-mono text-xs"
+              >
+                {state.token}
+              </code>
+              <Button
+                type="button"
+                variant="subtle"
+                onClick={copyToken}
+                className="shrink-0"
+              >
+                {copyStatus === "copied" ? "Copiado" : "Copiar"}
+              </Button>
+            </div>
+            {copyStatus === "error" && (
+              <p role="alert" className="mt-2 text-xs text-danger">
+                No se pudo copiar automáticamente: selecciona el token y cópialo a
+                mano.
+              </p>
+            )}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <form action={action} className="flex flex-wrap items-end gap-2">
         <label className="min-w-48 flex-1 text-sm">
@@ -102,7 +129,10 @@ export function CreateTokenForm() {
       </form>
 
       {state.error && (
-        <p className="mt-2 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
+        <p
+          role="alert"
+          className="mt-2 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger"
+        >
           {state.error}
         </p>
       )}

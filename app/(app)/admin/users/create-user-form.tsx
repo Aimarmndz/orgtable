@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useId, useRef } from "react";
 import { createUser, type CreateUserState } from "@/app/lib/actions/admin";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
@@ -9,6 +9,7 @@ import { Input } from "@/app/components/ui/input";
 // con éxito se limpia el formulario. Ver app/lib/actions/admin.ts.
 export function CreateUserForm() {
   const ref = useRef<HTMLFormElement>(null);
+  const errorId = useId();
   const [state, action, pending] = useActionState<CreateUserState, FormData>(
     createUser,
     {},
@@ -31,15 +32,23 @@ export function CreateUserForm() {
       </p>
 
       {state.error && (
-        <p className="mt-3 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
+        <p
+          id={errorId}
+          role="alert"
+          className="mt-3 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger"
+        >
           {state.error}
         </p>
       )}
-      {state.message && (
-        <p className="mt-3 rounded-lg bg-success/10 px-3 py-2 text-sm text-success">
-          {state.message}
-        </p>
-      )}
+      {/* Región siempre montada: los lectores de pantalla solo anuncian los cambios
+          dentro de un role="status" que ya existía antes del mensaje. */}
+      <div role="status">
+        {state.message && (
+          <p className="mt-3 rounded-lg bg-success/10 px-3 py-2 text-sm text-success">
+            {state.message}
+          </p>
+        )}
+      </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <label className="text-sm">
@@ -63,6 +72,8 @@ export function CreateUserForm() {
             type="email"
             required
             defaultValue={state.values?.email}
+            aria-invalid={state.field === "email" || undefined}
+            aria-describedby={state.field === "email" ? errorId : undefined}
             className="mt-1.5"
           />
         </label>

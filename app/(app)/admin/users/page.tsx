@@ -57,12 +57,18 @@ export default async function AdminUsersPage({
       </p>
 
       {ok && OK_MESSAGES[ok] && (
-        <p className="mt-4 rounded-lg bg-success/10 px-3 py-2 text-sm text-success">
+        <p
+          role="status"
+          className="mt-4 rounded-lg bg-success/10 px-3 py-2 text-sm text-success"
+        >
           {OK_MESSAGES[ok]}
         </p>
       )}
       {error && ERROR_MESSAGES[error] && (
-        <p className="mt-4 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
+        <p
+          role="alert"
+          className="mt-4 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger"
+        >
           {ERROR_MESSAGES[error]}
         </p>
       )}
@@ -71,7 +77,9 @@ export default async function AdminUsersPage({
         <CreateUserForm />
       </div>
 
-      <div className="mt-8 overflow-hidden rounded-xl border border-border">
+      {/* overflow-x-auto (no hidden): en móvil la tabla se desplaza y la columna
+          Acciones sigue alcanzable; también recorta las esquinas redondeadas. */}
+      <div className="mt-8 overflow-x-auto rounded-xl border border-border">
         <table className="w-full text-sm">
           <thead className="bg-surface-2 text-left text-xs uppercase tracking-wide text-ink-muted">
             <tr>
@@ -108,6 +116,7 @@ export default async function AdminUsersPage({
                 <td className="px-4 py-3">
                   <UserRowActions
                     userId={u.id}
+                    userName={u.name}
                     role={u.role}
                     isSelf={u.id === admin.id}
                   />

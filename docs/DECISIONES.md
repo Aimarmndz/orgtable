@@ -562,6 +562,32 @@ expulsada seguían recibiendo eventos, en contra del ADR 0008.
 reconecta. Tests en `test/integration/realtime.int.test.ts` (401/403, abort, cancel,
 revocación, expulsión, vida máxima; sin listeners ni temporizadores tras cerrar).
 
+## 2026-09-24 — Administración y ajustes: avisos anunciados, móvil y copia del token
+
+**Contexto.** Los errores y avisos de `/admin/users` y `/settings` no se anunciaban al
+lector de pantalla; el campo de nueva contraseña no tenía etiqueta; las tablas de
+usuarios y auditoría se recortaban a 375 px (`overflow-hidden`) y dejaban la columna
+Acciones fuera de alcance; si fallaba copiar el token (por `http://IP`, contexto no
+seguro) no se avisaba, y el token solo se muestra una vez.
+
+**Decisión.**
+- Errores con `role="alert"`; éxitos dentro de un `role="status"` siempre montado. El
+  email duplicado marca el campo con `aria-invalid` + `aria-describedby`.
+- `aria-label="Nueva contraseña para <nombre>"` en el campo de restablecer.
+- `overflow-x-auto` en las tablas (mantiene el recorte de las esquinas).
+- Copiar el token guarda el resultado ligado al token (`copied`/`error`); si falla,
+  muestra «No se pudo copiar automáticamente: selecciona el token y cópialo a mano.» y
+  deja el token seleccionado (`select-all` + `selectAllChildren`).
+
+**Alternativas descartadas.** Pasar las tablas a tarjetas en móvil: cambio de diseño que
+decide el propietario. `document.execCommand("copy")` como respaldo: API obsoleta.
+
+**Consecuencias.** Test unitario `test/admin-forms-a11y.test.ts` (render en servidor:
+las regiones `role="status"` existen desde el primer render). El resto (lector de
+pantalla, 375 px, copia por http) queda pendiente de verificación manual.
+
+---
+
 ## 2026-09-24 — Crear usuario y crear token conservan lo escrito tras un error
 
 **Contexto.** Con `action={fn}` React restablece el formulario al terminar la acción,

@@ -66,7 +66,8 @@ export default async function AdminAuditPage() {
       {logs.length === 0 ? (
         <p className="mt-8 text-sm text-ink-muted">Todavía no hay eventos.</p>
       ) : (
-        <div className="mt-6 overflow-hidden rounded-xl border border-border">
+        // overflow-x-auto: en móvil la tabla se desplaza en vez de recortarse.
+        <div className="mt-6 overflow-x-auto rounded-xl border border-border">
           <table className="w-full text-sm">
             <thead className="bg-surface-2 text-left text-xs uppercase tracking-wide text-ink-muted">
               <tr>

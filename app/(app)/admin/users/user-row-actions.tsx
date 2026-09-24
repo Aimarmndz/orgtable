@@ -15,10 +15,12 @@ import { Input } from "@/app/components/ui/input";
 // resultado por redirección con query (?ok/?error) que la página traduce a un aviso.
 export function UserRowActions({
   userId,
+  userName,
   role,
   isSelf,
 }: {
   userId: string;
+  userName: string;
   role: "ADMIN" | "MEMBER";
   isSelf: boolean;
 }) {
@@ -64,6 +66,7 @@ export function UserRowActions({
             required
             minLength={8}
             placeholder="Nueva contraseña"
+            aria-label={`Nueva contraseña para ${userName}`}
             autoComplete="new-password"
             className="h-8 w-40 text-xs"
           />
