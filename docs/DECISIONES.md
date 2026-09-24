@@ -561,6 +561,27 @@ expulsada seguían recibiendo eventos, en contra del ADR 0008.
 **Consecuencias.** Una consulta ligera por conexión cada 25 s. Cada 15 min el cliente
 reconecta. Tests en `test/integration/realtime.int.test.ts` (401/403, abort, cancel,
 revocación, expulsión, vida máxima; sin listeners ni temporizadores tras cerrar).
+## 2026-09-24 — El token de API queda fuera de la región viva
+
+**Contexto.** En `/settings`, el `role="status"` siempre montado envolvía todo el panel
+del token recién creado: el texto, el `<code>` con el token en claro y el botón Copiar,
+y dentro había además el `role="alert"` del fallo de copia. El lector de pantalla podía
+leer el token entero cada vez que la región cambiaba (también al pasar a «Copiado») y
+anunciar dos veces el aviso de fallo.
+
+**Decisión.** El `role="status"` solo contiene «Token «nombre» creado» y «Cópialo ahora:
+por seguridad no se volverá a mostrar.». El `<code>`, el botón y el `role="alert"` son
+hermanos de la región, no hijos. El recuadro verde pasa a ser el contenedor siempre
+montado (sin estilo hasta que hay token), así el aspecto no cambia.
+
+**Alternativas descartadas.** `aria-live="off"` en el `<code>` dentro de la región: el
+cambio de texto del botón seguiría disparando el anuncio de la región completa en
+algunos lectores.
+
+**Consecuencias.** Test en `test/admin-forms-a11y.test.ts`: con un token creado, la
+región no contiene el token ni el botón (se sustituye `useActionState` en el propio test
+porque el render de servidor siempre da el estado inicial). La lectura real con un
+lector de pantalla queda pendiente de verificación manual.
 
 ## 2026-09-24 — Restablecer contraseña valida el userId; alcance del test del borrado
 

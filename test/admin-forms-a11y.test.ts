@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -6,6 +6,23 @@ import { renderToStaticMarkup } from "react-dom/server";
 // sustituirlas (este test solo mira el HTML inicial, no ejecuta ninguna acción).
 vi.mock("@/app/lib/actions/admin", () => ({ createUser: vi.fn() }));
 vi.mock("@/app/lib/actions/tokens", () => ({ createApiToken: vi.fn() }));
+
+// En el render de servidor useActionState siempre devuelve el estado inicial. Para
+// mirar el HTML con un token recién creado se sustituye solo cuando el test lo pide.
+const actionState = vi.hoisted(() => ({ override: null as unknown }));
+vi.mock("react", async (importOriginal) => {
+  const react = await importOriginal<typeof import("react")>();
+  return {
+    ...react,
+    useActionState: ((...args: Parameters<typeof react.useActionState>) =>
+      actionState.override === null
+        ? react.useActionState(...args)
+        : [actionState.override, () => {}, false]) as typeof react.useActionState,
+  };
+});
+afterEach(() => {
+  actionState.override = null;
+});
 
 const { CreateUserForm } = await import(
   "@/app/(app)/admin/users/create-user-form"
@@ -24,5 +41,18 @@ describe("formularios de administración y ajustes — accesibilidad", () => {
     const html = renderToStaticMarkup(createElement(CreateTokenForm));
     expect(html).toContain('role="status"');
     expect(html).toMatch(/<option value="full" selected="">/);
+  });
+
+  it("con un token creado, la región role=status no contiene el token ni el botón", () => {
+    const token = "ot_token-secreto-de-prueba";
+    actionState.override = { token, name: "CI" };
+    const html = renderToStaticMarkup(createElement(CreateTokenForm));
+    const status = html.match(/<div role="status">(.*?)<\/div>/);
+    expect(status).not.toBeNull();
+    expect(status![1]).toContain("Token «CI» creado");
+    expect(status![1]).not.toContain(token);
+    expect(status![1]).not.toContain("<button");
+    // El token sigue visible fuera de la región viva.
+    expect(html).toContain(`>${token}</code>`);
   });
 });

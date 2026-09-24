@@ -42,37 +42,52 @@ export function CreateTokenForm() {
 
   return (
     <div>
-      {/* Región siempre montada: así el lector de pantalla anuncia el token creado. */}
-      <div role="status">
-        {state.token && (
-          <div className="mb-4 rounded-xl border border-success/30 bg-success/10 p-4">
-            <p className="text-sm font-medium">Token «{state.name}» creado</p>
-            <p className="mt-1 text-xs text-ink-muted">
-              Cópialo ahora: por seguridad no se volverá a mostrar.
-            </p>
-            <div className="mt-2 flex items-stretch gap-2">
-              <code
-                ref={codeRef}
-                className="min-w-0 flex-1 select-all overflow-x-auto rounded-lg border border-border bg-surface px-3 py-2 font-mono text-xs"
-              >
-                {state.token}
-              </code>
-              <Button
-                type="button"
-                variant="subtle"
-                onClick={copyToken}
-                className="shrink-0"
-              >
-                {copyStatus === "copied" ? "Copiado" : "Copiar"}
-              </Button>
-            </div>
-            {copyStatus === "error" && (
-              <p role="alert" className="mt-2 text-xs text-danger">
-                No se pudo copiar automáticamente: selecciona el token y cópialo a
-                mano.
+      {/* El recuadro existe siempre (sin estilo hasta que hay token) para que la región
+          role="status" esté montada antes del aviso. Esa región solo lleva el texto
+          corto: si envolviera el token y el botón, el lector de pantalla leería el
+          token entero cada vez que cambiara (p. ej. al pasar a «Copiado»). */}
+      <div
+        className={
+          state.token
+            ? "mb-4 rounded-xl border border-success/30 bg-success/10 p-4"
+            : undefined
+        }
+      >
+        <div role="status">
+          {state.token && (
+            <>
+              <p className="text-sm font-medium">Token «{state.name}» creado</p>
+              <p className="mt-1 text-xs text-ink-muted">
+                Cópialo ahora: por seguridad no se volverá a mostrar.
               </p>
-            )}
+            </>
+          )}
+        </div>
+        {state.token && (
+          <div className="mt-2 flex items-stretch gap-2">
+            <code
+              ref={codeRef}
+              className="min-w-0 flex-1 select-all overflow-x-auto rounded-lg border border-border bg-surface px-3 py-2 font-mono text-xs"
+            >
+              {state.token}
+            </code>
+            <Button
+              type="button"
+              variant="subtle"
+              onClick={copyToken}
+              className="shrink-0"
+            >
+              {copyStatus === "copied" ? "Copiado" : "Copiar"}
+            </Button>
           </div>
+        )}
+        {/* Hermano de la región role="status", no hijo: dos regiones vivas anidadas
+            pueden anunciar el aviso dos veces. */}
+        {state.token && copyStatus === "error" && (
+          <p role="alert" className="mt-2 text-xs text-danger">
+            No se pudo copiar automáticamente: selecciona el token y cópialo a
+            mano.
+          </p>
         )}
       </div>
 
