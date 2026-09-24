@@ -312,12 +312,14 @@ export function CalendarView({
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-4">
       <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col rounded-2xl border border-border bg-surface/90 p-3 shadow-[0_2px_8px_-4px_oklch(0.27_0.022_52/0.2)] backdrop-blur-sm sm:p-4">
         {/* Cabecera: mes + navegación */}
-        <div className="flex items-center justify-between gap-3 px-1 pb-3">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-1 pb-3">
           <h2 className="font-display text-lg font-bold tracking-tight first-letter:uppercase">
             {monthLabel}
           </h2>
+          {/* Fila propia bajo el mes y la navegación (order-last basis-full), como el aviso
+              del tablero: entre los dos, a 375 px le quedaban unos 10 px y se salía. */}
           {dropError && (
-            <p role="alert" className="min-w-0 flex-1 text-xs text-danger">
+            <p role="alert" className="order-last basis-full text-xs text-danger">
               {dropError}
             </p>
           )}
