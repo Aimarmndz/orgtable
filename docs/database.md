@@ -265,21 +265,21 @@ para el razonamiento completo.
 Generar el cliente de Prisma (tras cambiar el esquema):
 
 ```bash
-npx prisma generate
+pnpm exec prisma generate
 ```
 
 Crear y aplicar una migración en **desarrollo** (genera el SQL y lo aplica a tu base
 local):
 
 ```bash
-npx prisma migrate dev --name <nombre>
+pnpm exec prisma migrate dev --name <nombre>
 ```
 
 Aplicar migraciones pendientes en **producción** / al arrancar el contenedor (no
 genera nada nuevo, solo aplica lo ya versionado):
 
 ```bash
-npx prisma migrate deploy
+pnpm exec prisma migrate deploy
 ```
 
 En **producción las migraciones las aplica el entrypoint del contenedor**: el

@@ -14,7 +14,9 @@ orgtable es un clon de Trello self-hosted construido con **Next.js 16**,
   versión reciente de Node, así que no uses versiones por debajo de la 22.
 - **Docker**, para levantar una base de datos PostgreSQL local sin tener que
   instalar Postgres en tu máquina.
-- **npm** (viene incluido con Node.js).
+- **pnpm** 11 (se activa con `corepack enable`; la versión exacta está fijada en
+  `packageManager` de `package.json`). No uses npm ni yarn: el lockfile es
+  `pnpm-lock.yaml`.
 
 ---
 
@@ -27,7 +29,7 @@ Sigue estos pasos en orden.
 ```bash
 git clone <url-del-repositorio> orgtable
 cd orgtable
-npm install
+pnpm install
 ```
 
 ### 2. Levantar PostgreSQL con Docker
@@ -75,8 +77,8 @@ SESSION_SECRET="un-secreto-cualquiera-para-desarrollo"
 ### 4. Aplicar migraciones y generar el cliente Prisma
 
 ```bash
-npx prisma migrate dev
-npx prisma generate
+pnpm exec prisma migrate dev
+pnpm exec prisma generate
 ```
 
 - `prisma migrate dev` aplica las migraciones existentes a tu base de datos.
@@ -85,7 +87,7 @@ npx prisma generate
 ### 5. Arrancar el servidor de desarrollo
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 Abre **http://localhost:3000** en tu navegador. La primera vez te recibirá el
@@ -97,12 +99,12 @@ asistente de configuración inicial (`/setup`).
 
 Definidos en `package.json`:
 
-- **`npm run dev`** — Arranca el servidor de desarrollo de Next.js (`next dev`)
+- **`pnpm dev`** — Arranca el servidor de desarrollo de Next.js (`next dev`)
   con recarga en caliente.
-- **`npm run build`** — Compila la aplicación para producción (`next build`).
-- **`npm run start`** — Sirve la build de producción (`next start`). Requiere
-  haber ejecutado antes `npm run build`.
-- **`npm run lint`** — Ejecuta ESLint sobre el proyecto (`eslint`).
+- **`pnpm build`** — Compila la aplicación para producción (`next build`).
+- **`pnpm start`** — Sirve la build de producción (`next start`). Requiere
+  haber ejecutado antes `pnpm build`.
+- **`pnpm lint`** — Ejecuta ESLint sobre el proyecto (`eslint`).
 
 ---
 
@@ -117,7 +119,7 @@ Tras editar `prisma/schema.prisma`, genera y aplica una nueva migración con un
 nombre descriptivo:
 
 ```bash
-npx prisma migrate dev --name <nombre-descriptivo>
+pnpm exec prisma migrate dev --name <nombre-descriptivo>
 ```
 
 Esto crea los ficheros de migración, los aplica a tu base de datos y regenera el
@@ -128,7 +130,7 @@ cliente automáticamente.
 Si necesitas regenerar el cliente de Prisma sin crear una migración:
 
 ```bash
-npx prisma generate
+pnpm exec prisma generate
 ```
 
 Para más detalle sobre el modelo de datos, las decisiones de diseño y el uso de
@@ -207,8 +209,8 @@ Cuando dudes sobre cualquiera de estas APIs, la fuente de verdad es
 - **Antes de abrir un PR**, ejecuta:
 
   ```bash
-  npm run lint
-  npm run build
+  pnpm lint
+  pnpm build
   ```
 
   Ambos deben pasar sin errores.
@@ -223,4 +225,4 @@ Puedes leer el porqué de esta elección en
 
 ---
 
-Resumen: clona el repo, levanta Postgres con Docker en el puerto 5433, configura `.env`, aplica las migraciones de Prisma y arranca con `npm run dev`, recordando que Next.js 16 trae *breaking changes* documentados en `node_modules/next/dist/docs/`.
+Resumen: clona el repo, levanta Postgres con Docker en el puerto 5433, configura `.env`, aplica las migraciones de Prisma y arranca con `pnpm dev`, recordando que Next.js 16 trae *breaking changes* documentados en `node_modules/next/dist/docs/`.

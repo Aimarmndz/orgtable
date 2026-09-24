@@ -3,16 +3,25 @@
 # orgtable — imagen de producción multi-stage. Ver docs/docker.md.
 # Se construye localmente en el servidor del usuario (docker compose build).
 
+# --- Base con pnpm -------------------------------------------------------------
+# pnpm llega por Corepack, fijado a la versión de `packageManager` en package.json,
+# para que la imagen instale con el mismo gestor y versión que el lockfile.
+FROM node:22-alpine AS base
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+RUN corepack enable
+
 # --- Stage 1: deps -----------------------------------------------------------
 # Instala dependencias en Alpine para que los engines nativos de Prisma (el
 # schema-engine de Migrate) se descarguen para linux-musl, no para glibc.
-FROM node:22-alpine AS deps
+# pnpm-workspace.yaml lleva la lista `allowBuilds`: sin ella pnpm no ejecuta los
+# scripts de instalación de Prisma y faltaría el schema-engine.
+FROM base AS deps
 WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
 
 # --- Stage 2: builder --------------------------------------------------------
-FROM node:22-alpine AS builder
+FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -21,8 +30,8 @@ COPY . .
 # la BD —las páginas son dinámicas (auth) y no la consultan en build—.
 ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
 # Genera el Prisma Client (query engine WASM, sin binario).
-RUN npx prisma generate
-RUN npm run build
+RUN pnpm exec prisma generate
+RUN pnpm build
 
 # --- Stage 3: runner ---------------------------------------------------------
 FROM node:22-alpine AS runner

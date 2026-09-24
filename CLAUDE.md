@@ -17,12 +17,12 @@ el resumen de una línea con el enlace.
   defecto del entorno). Solo se incluyen coautores **humanos** cuando se pidan
   expresamente.
 - **Seguridad**: postura y auditoría en `docs/security.md` (+ `SECURITY.md` raíz). Auditoría
-  adversarial multi-agente (workflow `orgtable-security-audit`) + `npm audit`. Fixes clave:
+  adversarial multi-agente (workflow `orgtable-security-audit`) + `pnpm audit`. Fixes clave:
   IDOR de `moveCard` (la tarjeta debe pertenecer al tablero de destino, `cardBelongsToBoard`),
   `SESSION_SECRET`/`DATABASE_URL` exigidos, cabeceras de seguridad en `next.config.ts`,
   Next 16.2.7. Tests de autorización en `test/integration/` (IDOR, 403/404).
-- **Tests/CI**: dos niveles. **Unitarios** (lógica pura, sin BD) en `test/` con `npm test`.
-  **Integración** en `test/integration/` (`npm run test:integration`): invocan los route
+- **Tests/CI**: dos niveles. **Unitarios** (lógica pura, sin BD) en `test/` con `pnpm test`.
+  **Integración** en `test/integration/` (`pnpm test:integration`): invocan los route
   handlers de `app/api/v1/**` y los servicios contra una PostgreSQL real cuyo nombre debe
   acabar en `_test` (guardia en `test/integration/helpers.ts`); `vitest.integration.config.ts`
   aliasa `next/cache`/`next/headers`/`server-only`. La lógica de creación de cuentas vive en

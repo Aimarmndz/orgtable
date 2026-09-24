@@ -23,36 +23,36 @@ El `Dockerfile` tiene tres stages: `deps`, `builder` y `runner`. La idea es cons
 ### Stage `deps` — instalación de dependencias
 
 ```dockerfile
-FROM node:22-alpine AS deps
+FROM base AS deps
 WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
 ```
 
-Se hace `npm ci` sobre `node:22-alpine`. **El uso de Alpine aquí es deliberado, no estético.**
+Se hace `pnpm install --frozen-lockfile` (pnpm llega por Corepack, en un stage `base`) sobre `node:22-alpine`. **El uso de Alpine aquí es deliberado, no estético.**
 
 Alpine Linux usa **musl libc** (no glibc). Prisma descarga *engines nativos* durante la instalación, y uno de ellos es el **schema-engine** que utiliza `migrate deploy`. Al instalar dentro de Alpine, ese binario se descarga para la plataforma **`linux-musl`**, que es exactamente la que tendrá el contenedor final (también Alpine). Si las dependencias se instalaran sobre una imagen basada en glibc (p. ej. `node:22` Debian), el engine quedaría compilado para glibc y fallaría en el `runner` de Alpine. Mantener Alpine de punta a punta garantiza que el engine coincida con el sistema donde se ejecuta.
 
 ### Stage `builder` — generación de Prisma Client y build de Next
 
 ```dockerfile
-FROM node:22-alpine AS builder
+FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
-RUN npx prisma generate
-RUN npm run build
+RUN pnpm exec prisma generate
+RUN pnpm build
 ```
 
 Reutiliza los `node_modules` ya instalados en `deps`, copia el código y hace dos cosas: genera el Prisma Client y construye la app.
 
 El detalle clave es la **`DATABASE_URL` ficticia** definida *antes* de `prisma generate`:
 
-- **Prisma 7 exige resolver `DATABASE_URL` al cargar `prisma.config.ts`.** Si la variable falta, la carga de la configuración lanza un error y `prisma generate` / `npm run build` ni siquiera arrancan.
+- **Prisma 7 exige resolver `DATABASE_URL` al cargar `prisma.config.ts`.** Si la variable falta, la carga de la configuración lanza un error y `prisma generate` / `pnpm build` ni siquiera arrancan.
 - Sin embargo, **ni `generate` ni el build se conectan realmente a la base de datos**. `generate` solo produce el cliente (query engine WASM, sin binario), y las páginas de la app son **dinámicas** (dependen de la sesión/auth), por lo que no consultan la BD durante el build. Es decir, la URL solo necesita *existir y ser sintácticamente válida*; nunca se abre una conexión a `localhost:5432`.
 
-Tras esto, `npm run build` produce `.next/standalone` gracias a `output: "standalone"` (ver [`next.config.ts`](../next.config.ts)).
+Tras esto, `pnpm build` produce `.next/standalone` gracias a `output: "standalone"` (ver [`next.config.ts`](../next.config.ts)).
 
 ### Stage `runner` — imagen final de producción
 
@@ -95,7 +95,7 @@ COPY --from=builder /app/node_modules ./node_modules
 
 El motivo es el **CLI de Prisma**. En el arranque, el entrypoint ejecuta `prisma migrate deploy`, y ese CLI depende de **dependencias transitivas hoisteadas** —por ejemplo **`effect`**, que es usada por `@prisma/config`—. El trazado de dependencias de `output: "standalone"` **solo incluye lo que importa la propia aplicación**, no lo que importa el CLI de Prisma. Por tanto, si copiáramos solo `prisma`/`@prisma`, al CLI le faltarían piezas como `effect` y `migrate deploy` fallaría. Copiar el árbol completo garantiza que tanto la app como el CLI tengan todo lo que necesitan.
 
-> **Mejora pendiente.** Copiar `node_modules` completo infla la imagen. A futuro se puede añadir un stage `prod-deps` que haga `npm ci --omit=dev` y copiar solo ese árbol al `runner`, reduciendo el tamaño final. Queda anotado como optimización.
+> **Mejora pendiente.** Copiar `node_modules` completo infla la imagen. A futuro se puede añadir un stage `prod-deps` que haga `pnpm install --prod --frozen-lockfile` y copiar solo ese árbol al `runner`, reduciendo el tamaño final. Queda anotado como optimización.
 
 ### Entrypoint y comando
 
@@ -212,7 +212,7 @@ El `.dockerignore` reduce el contexto de build y, sobre todo, evita filtrar secr
 
 | Patrón | Motivo |
 | --- | --- |
-| `node_modules` | Se reinstala dentro de la imagen (`npm ci`); no se envía el del host. |
+| `node_modules` | Se reinstala dentro de la imagen (`pnpm install --frozen-lockfile`); no se envía el del host. |
 | `.next` | Artefacto de build, se regenera dentro del contenedor. |
 | `.git`, `.gitignore` | Historial y metadatos innecesarios en la imagen. |
 | `.env`, `.env.*` | **CRÍTICO: los secretos nunca deben acabar en la imagen.** |

@@ -7,7 +7,7 @@ registro abierto).
 
 ## Metodología de la auditoría
 
-- **`npm audit`** sobre las dependencias.
+- **`pnpm audit`** sobre las dependencias.
 - **Auditoría adversarial multi-agente**: 7 revisores en paralelo, uno por superficie de
   ataque (autenticación/sesiones, autorización/IDOR, inyección, XSS/salida, subida de
   ficheros, secretos/SSRF, hardening web), leyendo el **código real**. Cada hallazgo pasó
@@ -16,7 +16,7 @@ registro abierto).
 - **Revisión manual** de los puntos de mayor valor (cookies, cabeceras, descarga de
   adjuntos, SQL crudo).
 
-## Dependencias (`npm audit`)
+## Dependencias (`pnpm audit`)
 
 - **Resuelto el único HIGH**: `next` 16.2.4 → **16.2.7** (DoS por Server Components, bypass
   de middleware/proxy, XSS, SSRF, cache poisoning). Tras la actualización: **0 high, 0
@@ -74,9 +74,9 @@ Los demás hallazgos "confirmados" por el panel eran en realidad **controles cor
 ## Reproducir la auditoría
 
 ```bash
-npm audit                 # dependencias
-npm run lint && npm run typecheck
-npm test && npm run test:integration   # incluye tests de autorización (IDOR, 403/404)
+pnpm audit                 # dependencias
+pnpm lint && pnpm typecheck
+pnpm test && pnpm test:integration   # incluye tests de autorización (IDOR, 403/404)
 ```
 
 La auditoría adversarial multi-agente se relanza con el workflow `orgtable-security-audit`.

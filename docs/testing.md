@@ -9,17 +9,17 @@ Hay dos niveles: **tests unitarios** (lógica pura, sin BD) y **tests de integra
 ## Ejecutar en local
 
 ```bash
-npm test           # unitarios (rápidos, sin BD)
-npm run test:watch # unitarios en modo watch
-npm run typecheck  # tsc --noEmit
-npm run lint       # eslint
+pnpm test           # unitarios (rápidos, sin BD)
+pnpm test:watch # unitarios en modo watch
+pnpm typecheck  # tsc --noEmit
+pnpm lint       # eslint
 
 # Integración: requiere una BD de test (su nombre DEBE acabar en `_test`).
 # Crea orgtable_test en tu Postgres de dev y aplícale las migraciones una vez:
 createdb -h localhost -p 5433 -U orgtable orgtable_test   # o vía docker exec psql
-DATABASE_URL='postgresql://orgtable:PASS@localhost:5433/orgtable_test' npx prisma migrate deploy
+DATABASE_URL='postgresql://orgtable:PASS@localhost:5433/orgtable_test' pnpm exec prisma migrate deploy
 # y luego:
-DATABASE_URL='postgresql://orgtable:PASS@localhost:5433/orgtable_test' npm run test:integration
+DATABASE_URL='postgresql://orgtable:PASS@localhost:5433/orgtable_test' pnpm test:integration
 ```
 
 ## Tests unitarios
@@ -70,16 +70,19 @@ Cómo funcionan:
 ## Integración continua
 
 `.github/workflows/ci.yml` levanta un **servicio PostgreSQL** (`postgres:17`, BD
-`orgtable_test`) y ejecuta, en orden, sobre Node 20:
+`orgtable_test`) y ejecuta, en orden, sobre Node 22 (pnpm llega con `pnpm/action-setup`, que lee
+`packageManager`):
 
-1. `npm ci` — instala con el lockfile (reproducible).
-2. `npx prisma generate` — genera el cliente Prisma (lo necesitan el typecheck y el build).
-3. `npm run lint`
-4. `npm run typecheck`
-5. `npm test` — tests unitarios.
-6. `npx prisma migrate deploy` — crea el esquema en la BD de test del servicio.
-7. `npm run test:integration` — tests de integración contra esa BD.
-8. `npm run build`
+1. `pnpm install --frozen-lockfile` — instala con el lockfile (reproducible).
+2. `pnpm audit --prod --audit-level high` — falla si hay vulnerabilidades altas o
+   críticas en dependencias de producción.
+3. `pnpm exec prisma generate` — genera el cliente Prisma (lo necesitan el typecheck y el build).
+4. `pnpm lint`
+5. `pnpm typecheck`
+6. `pnpm test` — tests unitarios.
+7. `pnpm exec prisma migrate deploy` — crea el esquema en la BD de test del servicio.
+8. `pnpm test:integration` — tests de integración contra esa BD.
+9. `pnpm build`
 
 `DATABASE_URL` apunta a la BD del servicio (`…/orgtable_test`). El build no se conecta
 (rutas dinámicas); los tests de integración sí.

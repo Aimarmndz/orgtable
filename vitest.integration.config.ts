@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 // Tests de INTEGRACIÓN: ejercen las rutas de la API y los servicios contra una base de
-// datos PostgreSQL real (efímera). Se ejecutan con `npm run test:integration` y requieren
+// datos PostgreSQL real (efímera). Se ejecutan con `pnpm test:integration` y requieren
 // DATABASE_URL apuntando a una base de datos de test (su nombre debe acabar en `_test`;
 // los helpers lo verifican para no tocar nunca datos de dev/producción). Ver docs/testing.md.
 //

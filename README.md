@@ -69,10 +69,10 @@ Toda la documentación vive en [`docs/`](./docs/):
 
 ```bash
 git clone https://github.com/aimarmndzz/orgtable.git && cd orgtable
-npm install
+pnpm install
 cp .env.example .env            # ajusta DATABASE_URL a tu Postgres local
-npx prisma migrate dev          # aplica las migraciones
-npm run dev                     # http://localhost:3000
+pnpm exec prisma migrate dev          # aplica las migraciones
+pnpm dev                     # http://localhost:3000
 ```
 
 Más detalles en [`docs/contributing.md`](./docs/contributing.md).
