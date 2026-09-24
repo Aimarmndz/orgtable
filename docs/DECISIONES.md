@@ -232,6 +232,33 @@ resincroniza con el servidor ya sano.
 stream se abre y se cierra al momento). Tests en `test/realtime-reconnect.test.ts`
 (5xx/red no avisan, 401/403 sí, desmontaje durante la comprobación y `probeStatus`
 contra un servidor HTTP real). Descrito en `docs/realtime.md`.
+## 2026-09-24 — IP del cliente con puerto y aviso de proxy mal configurado
+
+**Contexto.** Con `TRUSTED_PROXY_HOPS > 0`, `pickClientIp` devolvía null si el valor de
+X-Forwarded-For no pasaba `isIP` o si la cabecera traía menos valores que proxies
+declarados. Un `ip` null desactiva el límite por IP del login y deja `AuditLog.ip`
+vacío, sin ningún log. Algunos proxies (Azure Application Gateway, IIS ARR) escriben la
+IP con el puerto de origen (`1.2.3.4:5678`, `[2001:db8::1]:443`), así que el operador
+creía tener el límite activo y no lo tenía.
+
+**Decisión.**
+- `resolveClientIp` (pura) devuelve la IP o el motivo por el que no la hay
+  (`missing-header`, `too-few-values`, `not-an-ip`); con hops = 0 no hay motivo.
+- Antes de `isIP` se quita el puerto de `a.b.c.d:puerto` y de `[v6]:puerto` con
+  expresiones estrictas, y el resultado se vuelve a validar. No se corta por el último
+  `:`, que partiría una IPv6 sin corchetes.
+- `pickClientIp` (misma firma, la usa `clientIp()` de `audit.ts`) emite un
+  `console.warn` una vez por motivo y proceso, con `hops` y el número de valores, sin la
+  cabecera ni ninguna IP.
+
+**Alternativas descartadas.** Poner el aviso en `clientIp()` de `app/lib/audit.ts`
+(fuera del alcance de este cambio; el efecto queda igual en `pickClientIp`). Limitar el
+aviso por minuto: más estado para lo mismo, basta con verlo una vez en el log. Aceptar
+el valor con puerto tal cual: daría una clave de rate limit distinta por conexión.
+
+**Consecuencias.** Los proxies que añaden el puerto funcionan sin tocar la
+configuración. Un proxy mal configurado deja un aviso en el log al primer login. Queda
+pendiente documentarlo en la tabla de `TRUSTED_PROXY_HOPS` de `docs/operations.md`.
 
 ---
 
