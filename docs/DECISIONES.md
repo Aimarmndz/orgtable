@@ -419,6 +419,22 @@ del usuario).
 suma los avisos guardados. Test en `test/integration/notifications.int.test.ts`.
 
 ---
+## 2026-09-24 — Hora de las notificaciones solo tras montar
+
+**Contexto.** El tiempo relativo de la campana depende de la hora y la zona del
+navegador. Hoy la lista solo se pinta al abrir el desplegable (ya en cliente), pero
+nada impedía que un cambio futuro la renderizara en el SSR con otro texto.
+
+**Decisión.** Mismo patrón que los comentarios: `useSyncExternalStore` (servidor
+`false`, cliente `true`) y el texto relativo solo con el componente montado, dentro de
+un `<time dateTime>`. La fecha absoluta usa `Intl.DateTimeFormat("es-ES")` en la zona
+del navegador.
+
+**Alternativas descartadas.** `suppressHydrationWarning`: oculta el aviso pero deja el
+texto del servidor.
+
+**Consecuencias.** Durante la hidratación la hora aparece vacía un instante.
+
 ## 2026-09-24 — Refrescar el contador de notificaciones desde la Server Action
 
 **Contexto.** Al abrir una notificación con tablero no se llamaba a `router.refresh()`

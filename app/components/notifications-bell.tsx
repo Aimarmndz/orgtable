@@ -1,6 +1,11 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import {
+  useEffect,
+  useState,
+  useSyncExternalStore,
+  useTransition,
+} from "react";
 import { useRouter } from "next/navigation";
 import { createReconnectRefresher } from "@/app/lib/realtime/reconnect";
 import {
@@ -19,7 +24,9 @@ export type NotificationDTO = {
   createdAt: string; // ISO
 };
 
-// Tiempo relativo legible en español, calculado en cliente.
+// Tiempo relativo legible en español. Depende de la hora y la zona del navegador, así que
+// solo se pinta tras montar (ver useMounted): en el SSR daría otro texto y React
+// avisaría de un desajuste de hidratación.
 function relTime(iso: string): string {
   const then = new Date(iso).getTime();
   const min = Math.floor((Date.now() - then) / 60000);
@@ -30,10 +37,21 @@ function relTime(iso: string): string {
   const d = Math.floor(h / 24);
   if (d === 1) return "ayer";
   if (d < 7) return `hace ${d} d`;
-  return new Intl.DateTimeFormat("es", {
+  return new Intl.DateTimeFormat("es-ES", {
     day: "numeric",
     month: "short",
   }).format(then);
+}
+
+const noopSubscribe = () => () => {};
+
+// false en el servidor y en la hidratación, true en el cliente ya montado.
+function useMounted(): boolean {
+  return useSyncExternalStore(
+    noopSubscribe,
+    () => true,
+    () => false,
+  );
 }
 
 // Campana de notificaciones (Hito 8). Recibe los datos del servidor (renderizados en el
@@ -50,6 +68,7 @@ export function NotificationsBell({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [, startTransition] = useTransition();
+  const mounted = useMounted();
 
   // Entrega en vivo: refresca (con un pequeño debounce) cuando el bus avisa.
   useEffect(() => {
@@ -203,9 +222,12 @@ export function NotificationsBell({
                             {n.body}
                           </span>
                         )}
-                        <span className="mt-1 block text-[11px] text-ink-muted/80">
-                          {relTime(n.createdAt)}
-                        </span>
+                        <time
+                          dateTime={n.createdAt}
+                          className="mt-1 block text-[11px] text-ink-muted/80"
+                        >
+                          {mounted ? relTime(n.createdAt) : ""}
+                        </time>
                       </span>
                     </button>
                   </li>
