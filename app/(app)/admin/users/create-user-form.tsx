@@ -46,13 +46,25 @@ export function CreateUserForm() {
           <span className="block text-xs font-semibold uppercase tracking-wide text-ink-muted">
             Nombre
           </span>
-          <Input name="name" required maxLength={60} className="mt-1.5" />
+          <Input
+            name="name"
+            required
+            maxLength={60}
+            defaultValue={state.values?.name}
+            className="mt-1.5"
+          />
         </label>
         <label className="text-sm">
           <span className="block text-xs font-semibold uppercase tracking-wide text-ink-muted">
             Email
           </span>
-          <Input name="email" type="email" required className="mt-1.5" />
+          <Input
+            name="email"
+            type="email"
+            required
+            defaultValue={state.values?.email}
+            className="mt-1.5"
+          />
         </label>
         <label className="text-sm">
           <span className="block text-xs font-semibold uppercase tracking-wide text-ink-muted">
@@ -71,9 +83,13 @@ export function CreateUserForm() {
           <span className="block text-xs font-semibold uppercase tracking-wide text-ink-muted">
             Rol
           </span>
+          {/* React restablece el formulario a sus valores por defecto tras la acción,
+              pero no actualiza el defaultValue de un <select> ya montado: la key lo
+              remonta con lo elegido para no perderlo (p. ej. Administrador). */}
           <select
+            key={state.values?.role ?? "MEMBER"}
             name="role"
-            defaultValue="MEMBER"
+            defaultValue={state.values?.role ?? "MEMBER"}
             className="mt-1.5 h-9 w-full rounded-lg border border-border bg-surface px-2.5 text-sm text-ink outline-none focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/25"
           >
             <option value="MEMBER">Miembro</option>

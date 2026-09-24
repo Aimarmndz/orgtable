@@ -562,6 +562,26 @@ expulsada seguían recibiendo eventos, en contra del ADR 0008.
 reconecta. Tests en `test/integration/realtime.int.test.ts` (401/403, abort, cancel,
 revocación, expulsión, vida máxima; sin listeners ni temporizadores tras cerrar).
 
+## 2026-09-24 — Crear usuario y crear token conservan lo escrito tras un error
+
+**Contexto.** Con `action={fn}` React restablece el formulario al terminar la acción,
+así que un email duplicado o un dato no válido borraban todo lo tecleado.
+
+**Decisión.** `createUser` y `createApiToken` devuelven `values` en cada error (nunca la
+contraseña) y los campos usan `defaultValue`. Los `<select>` llevan además `key` con el
+valor devuelto: React no actualiza el `defaultValue` de un `<select>` ya montado y el
+reset lo devolvería al valor inicial (p. ej. «Administrador» → «Miembro»).
+`createUser` indica `field: "email"` para marcar el campo del email duplicado.
+
+**Alternativas descartadas.** Campos controlados con `useState`: más código por campo
+para el mismo resultado. Enviar con `onSubmit` + `startTransition` para evitar el reset:
+cambia el flujo de envío de los dos formularios.
+
+**Consecuencias.** Tests en `admin-users.int.test.ts` y `tokens.int.test.ts` (los
+valores vuelven y la contraseña no).
+
+---
+
 ## 2026-09-24 — Fechas del servidor en la zona de la instancia (ORGTABLE_TIMEZONE)
 
 **Contexto.** `/admin/audit`, `/admin/users` y `/settings` son Server Components que

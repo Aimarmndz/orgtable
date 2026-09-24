@@ -29,7 +29,14 @@ export type CreateTokenState = {
   // Token en claro recién creado: se muestra una vez y no se vuelve a poder ver.
   token?: string;
   name?: string;
+  // Lo elegido, para rellenar de nuevo el formulario tras un error.
+  values?: { name: string; scope: string; expiry: string };
 };
+
+function formText(formData: FormData, key: string): string {
+  const v = formData.get(key);
+  return typeof v === "string" ? v : "";
+}
 
 export async function createApiToken(
   _prev: CreateTokenState,
@@ -38,11 +45,12 @@ export async function createApiToken(
   const user = await requireUser();
   // Nombre, permisos y caducidad se validan juntos: un valor no reconocido es un error
   // y no se crea nada (antes caía en silencio a escritura y sin caducidad).
-  const parsed = createTokenSchema.safeParse({
-    name: formData.get("name"),
-    scope: formData.get("scope"),
-    expiry: formData.get("expiry"),
-  });
+  const values = {
+    name: formText(formData, "name"),
+    scope: formText(formData, "scope"),
+    expiry: formText(formData, "expiry"),
+  };
+  const parsed = createTokenSchema.safeParse(values);
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
     // Los enums de validators.ts no llevan mensaje propio (zod lo daría en inglés).
@@ -53,7 +61,7 @@ export async function createApiToken(
         : field === "expiry"
           ? "Caducidad no válida."
           : (issue?.message ?? "Datos no válidos.");
-    return { error };
+    return { error, values };
   }
   const { name, scope } = parsed.data;
   const expiryDays = Number(parsed.data.expiry);

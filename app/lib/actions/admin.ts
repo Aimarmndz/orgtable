@@ -22,7 +22,20 @@ import {
 // No hay registro abierto: el administrador da de alta a las personas. Ver
 // docs/authorization.md y docs/admin.md.
 
-export type CreateUserState = { error?: string; message?: string };
+export type CreateUserState = {
+  error?: string;
+  // Campo al que se refiere el error, para marcarlo (aria-invalid) en el formulario.
+  field?: "email";
+  message?: string;
+  // Lo tecleado, para rellenar de nuevo el formulario tras un error. NUNCA la
+  // contraseña: no debe viajar de vuelta al navegador.
+  values?: { name: string; email: string; role: string };
+};
+
+function formText(formData: FormData, key: string): string {
+  const v = formData.get(key);
+  return typeof v === "string" ? v : "";
+}
 
 /** Da de alta una cuenta de usuario. Devuelve estado para useActionState. */
 export async function createUser(
@@ -30,6 +43,11 @@ export async function createUser(
   formData: FormData,
 ): Promise<CreateUserState> {
   const admin = await requireAdmin();
+  const values = {
+    name: formText(formData, "name"),
+    email: formText(formData, "email"),
+    role: formText(formData, "role"),
+  };
 
   const parsed = createUserSchema.safeParse({
     name: formData.get("name"),
@@ -38,14 +56,17 @@ export async function createUser(
     role: formData.get("role"),
   });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Datos no válidos." };
+    return {
+      error: parsed.error.issues[0]?.message ?? "Datos no válidos.",
+      values,
+    };
   }
 
   // La lógica de creación (normalizar email, rechazar duplicados, hashear) vive en el
   // servicio reutilizable y testeable; aquí solo autorizamos y auditamos.
   const result = await createUserAccount(parsed.data);
   if (!result.ok) {
-    return { error: "Ya existe un usuario con ese email." };
+    return { error: "Ya existe un usuario con ese email.", field: "email", values };
   }
   await recordAudit({
     action: "user.created",

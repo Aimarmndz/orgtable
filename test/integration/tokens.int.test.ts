@@ -46,6 +46,14 @@ describe("createApiToken — validación de permisos y caducidad (integración)"
     expect(await prisma.apiToken.count()).toBe(0);
   });
 
+  it("tras un error devuelve lo elegido para no perderlo en el formulario", async () => {
+    const state = await createApiToken(
+      {},
+      tokenForm({ name: "script", scope: "read", expiry: "7" }),
+    );
+    expect(state.values).toEqual({ name: "script", scope: "read", expiry: "7" });
+  });
+
   it("rechaza que falten permisos o caducidad (antes caía a escritura sin caducidad)", async () => {
     const state = await createApiToken({}, tokenForm({ name: "script" }));
     expect(state.error).toBeDefined();

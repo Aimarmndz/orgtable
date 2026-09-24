@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
 import { prisma } from "@/app/lib/prisma";
 import {
+  createUser,
   updateUserRole,
   resetUserPassword,
   revokeUserSessions,
@@ -88,6 +89,39 @@ describe("acciones de administración con un usuario inexistente (integración)"
   it("sin userId en el formulario responde «invalid»", async () => {
     const url = await redirectOf(revokeUserSessions(form({})));
     expect(url).toBe("/admin/users?error=invalid");
+  });
+});
+
+describe("createUser conserva lo escrito tras un error (integración)", () => {
+  it("con un email duplicado devuelve los valores, marca el campo y nunca la contraseña", async () => {
+    await seedUser({ email: "dup@test.local" });
+    const state = await createUser(
+      {},
+      form({
+        name: "Ada",
+        email: "dup@test.local",
+        password: "contraseña-secreta",
+        role: "ADMIN",
+      }),
+    );
+    expect(state.error).toBe("Ya existe un usuario con ese email.");
+    expect(state.field).toBe("email");
+    expect(state.values).toEqual({
+      name: "Ada",
+      email: "dup@test.local",
+      role: "ADMIN",
+    });
+    expect(JSON.stringify(state)).not.toContain("contraseña-secreta");
+  });
+
+  it("con datos no válidos también devuelve los valores (sin contraseña)", async () => {
+    const state = await createUser(
+      {},
+      form({ name: "Ada", email: "no-es-email", password: "corta", role: "MEMBER" }),
+    );
+    expect(state.error).toBeDefined();
+    expect(state.values?.email).toBe("no-es-email");
+    expect(JSON.stringify(state)).not.toContain("corta");
   });
 });
 

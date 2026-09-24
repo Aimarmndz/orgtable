@@ -59,6 +59,7 @@ export function CreateTokenForm() {
             required
             maxLength={60}
             placeholder="p. ej. Script de backup"
+            defaultValue={state.values?.name}
             className="mt-1.5"
           />
         </label>
@@ -66,9 +67,13 @@ export function CreateTokenForm() {
           <span className="block text-xs font-semibold uppercase tracking-wide text-ink-muted">
             Permisos
           </span>
+          {/* Tras un error se conserva lo elegido. La key remonta el <select>: React
+              no actualiza el defaultValue de uno ya montado y el reset automático del
+              formulario lo devolvería al valor inicial. */}
           <select
+            key={state.values?.scope ?? "full"}
             name="scope"
-            defaultValue="full"
+            defaultValue={state.values?.scope ?? "full"}
             className="mt-1.5 h-9 rounded-lg border border-border bg-surface px-2.5 text-sm text-ink outline-none focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/25"
           >
             <option value="full">Lectura y escritura</option>
@@ -80,8 +85,9 @@ export function CreateTokenForm() {
             Caduca
           </span>
           <select
+            key={state.values?.expiry ?? "0"}
             name="expiry"
-            defaultValue="0"
+            defaultValue={state.values?.expiry ?? "0"}
             className="mt-1.5 h-9 rounded-lg border border-border bg-surface px-2.5 text-sm text-ink outline-none focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/25"
           >
             <option value="0">Nunca</option>
