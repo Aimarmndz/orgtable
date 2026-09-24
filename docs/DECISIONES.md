@@ -8,6 +8,39 @@ arquitectura anteriores a este registro (ADR 0001–0015) siguen en
 
 ---
 
+## 2026-09-24 — Restaurar adjuntos sin borrar antes de comprobar el archivo
+
+**Contexto.** El procedimiento de `docs/operations.md` para restaurar los adjuntos era
+`rm -rf /data/uploads/* && tar xzf - -C /data`: borraba todos los adjuntos antes de leer
+el archivo, sin comprobarlo y sin copia previa, justo lo que `scripts/restore.sh` evita
+con la base de datos. Con un `.tar.gz` truncado se perdían los adjuntos actuales y solo
+quedaba lo que `tar` llegara a extraer. Además, `/*` no incluye los ficheros ocultos.
+
+**Decisión.** Solo se cambia la documentación, con tres pasos: `gzip -t` y `tar tzf`
+del archivo en el host, `scripts/backup.sh` como copia previa, y extracción a
+`/data/uploads/.restore` dentro del propio volumen. Los adjuntos actuales solo se
+sustituyen si `tar` termina bien (`set -e`), y con `find` se incluyen los ocultos. El
+temporal va dentro del volumen porque `/data/uploads` es el punto de montaje y no se
+puede borrar ni renombrar.
+
+**Alternativas descartadas.**
+- Una opción en `scripts/restore.sh` o un `scripts/restore-uploads.sh` con
+  confirmación, copia previa y parada o arranque de la app con `trap`. Es lo más
+  coherente con la base de datos, pero toca los scripts de operación y sus tests, que
+  quedan fuera de este lote. Queda como mejora.
+- Mantener el comando con solo un aviso delante: seguía borrando antes de comprobar.
+- Extraer fuera del volumen (p. ej. `/tmp`) y copiar después: la copia puede fallar a
+  medias con los adjuntos ya borrados, y dentro del mismo volumen `mv` es un
+  renombrado.
+
+**Consecuencias.** Se probó contra la imagen de la app, en un volumen temporal: con un
+archivo truncado `tar` falla, los adjuntos anteriores (ocultos incluidos) siguen
+intactos y solo queda `.restore`, que el siguiente intento borra; con un archivo bueno
+se sustituyen todos. El procedimiento sigue siendo manual: nada obliga a hacer los pasos
+1 y 2.
+
+---
+
 ## 2026-09-24 — Un solo mecanismo de sesión en los tests de integración
 
 **Contexto.** Al integrar los lotes de la revisión convivían dos formas de simular la

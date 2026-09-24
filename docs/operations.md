@@ -131,15 +131,46 @@ El script:
 Al arrancar, la app aplica las migraciones que falten si el volcado es de una versión
 anterior.
 
-Los adjuntos no se restauran con el script. Con la app parada, descomprime el
-`.tar.gz` dentro del volumen `uploads` (desde la raíz de la instalación):
+Los adjuntos no se restauran con el script. ⚠️ Restaurarlos **sustituye todos los
+adjuntos actuales**. Desde la raíz de la instalación, en este orden:
 
-```sh
-docker compose stop app
-docker compose run --rm --no-deps -T --entrypoint sh app \
-  -c 'rm -rf /data/uploads/* && tar xzf - -C /data' < backups/orgtable-uploads-<fecha>.tar.gz
-docker compose start app
-```
+1. **Comprueba el archivo** antes de tocar nada. Si alguno de los dos comandos da error
+   (copia truncada al traerla de fuera, ruta equivocada), para aquí:
+
+   ```sh
+   gzip -t backups/orgtable-uploads-<fecha>.tar.gz
+   tar tzf backups/orgtable-uploads-<fecha>.tar.gz > /dev/null
+   ```
+
+2. **Haz una copia de lo actual**, por si hay que volver atrás:
+
+   ```sh
+   scripts/backup.sh backups/pre-restore-uploads-<fecha>
+   ```
+
+3. **Restaura con la app parada.** El archivo se extrae primero a un directorio temporal
+   dentro del propio volumen y los adjuntos actuales solo se sustituyen si `tar` termina
+   bien. Tiene que ser dentro del volumen porque `/data/uploads` es su punto de montaje:
+   no se puede borrar ni renombrar, solo su contenido.
+
+   ```sh
+   docker compose stop app
+   docker compose run --rm --no-deps -T --entrypoint sh app -c '
+     set -e
+     rm -rf /data/uploads/.restore
+     mkdir /data/uploads/.restore
+     tar xzf - -C /data/uploads/.restore
+     test -d /data/uploads/.restore/uploads
+     find /data/uploads -mindepth 1 -maxdepth 1 ! -name .restore -exec rm -rf {} +
+     find /data/uploads/.restore/uploads -mindepth 1 -maxdepth 1 -exec mv {} /data/uploads/ \;
+     rm -rf /data/uploads/.restore
+   ' < backups/orgtable-uploads-<fecha>.tar.gz
+   docker compose start app
+   ```
+
+Si la restauración falla a mitad, los adjuntos actuales siguen intactos y solo queda el
+directorio temporal `/data/uploads/.restore`, que el siguiente intento borra al empezar.
+Arranca la app igualmente con `docker compose start app`.
 
 ## Exportar e importar tableros
 
