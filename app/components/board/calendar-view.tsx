@@ -54,6 +54,18 @@ const dayNameFormat = new Intl.DateTimeFormat("es-ES", {
   timeZone: "UTC",
 });
 
+// Espacio siempre coge o suelta una pastilla arrastrable (DRAG_KEYBOARD_CODES), así que
+// nunca debe abrirla. dnd-kit solo cancela el keydown, pero un <button> nativo se activa
+// en el keyup de Espacio (Firefox lo hace aunque el keydown esté cancelado): cancelar
+// también el keyup evita que coger o soltar la pastilla abra además el modal. Intro no
+// necesita esto: el botón se activa en el keydown, que dnd-kit ya cancela al soltar.
+export function preventSpaceActivation(e: {
+  code: string;
+  preventDefault: () => void;
+}): void {
+  if (e.code === "Space") e.preventDefault();
+}
+
 // Suscripción vacía para saber, con useSyncExternalStore, si ya estamos en el navegador.
 const subscribeNothing = () => () => {};
 
@@ -104,6 +116,9 @@ function CardChip({
       {...(canEdit ? attributes : {})}
       {...(canEdit ? listeners : {})}
       onClick={() => onOpen(card.id)}
+      // Solo si se puede arrastrar: a quien solo puede ver, Espacio le sigue abriendo la
+      // tarjeta como en cualquier botón.
+      onKeyUp={canEdit ? preventSpaceActivation : undefined}
       title={`${card.title} · ${card.listTitle}`}
       className={`flex items-center gap-1.5 rounded-md border border-border bg-surface px-1.5 py-1 text-left text-xs leading-tight transition-colors hover:border-accent/50 ${
         canEdit ? "cursor-grab active:cursor-grabbing" : ""

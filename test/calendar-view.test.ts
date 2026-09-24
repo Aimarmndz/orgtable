@@ -6,9 +6,26 @@ import type { ListDTO } from "@/app/lib/types";
 // La acción de servidor importa Prisma; aquí solo se mira el HTML inicial.
 vi.mock("@/app/lib/actions/cards", () => ({ setCardDueDate: vi.fn() }));
 
-const { CalendarView } = await import(
+const { CalendarView, preventSpaceActivation } = await import(
   "@/app/components/board/calendar-view"
 );
+
+function keyUp(code: string) {
+  const preventDefault = vi.fn();
+  preventSpaceActivation({ code, preventDefault });
+  return preventDefault;
+}
+
+describe("CalendarView — pastillas", () => {
+  it("cancela el keyup de Espacio para que coger o soltar no abra la tarjeta", () => {
+    expect(keyUp("Space")).toHaveBeenCalledOnce();
+  });
+
+  it("no toca Intro ni otras teclas (Intro sigue abriendo la tarjeta)", () => {
+    expect(keyUp("Enter")).not.toHaveBeenCalled();
+    expect(keyUp("ArrowRight")).not.toHaveBeenCalled();
+  });
+});
 
 describe("CalendarView — render de servidor", () => {
   // Una tarjeta con fecha en el mes actual, para que aparezca en la rejilla.

@@ -38,6 +38,29 @@ archivo truncado `tar` falla, los adjuntos anteriores (ocultos incluidos) siguen
 intactos y solo queda `.restore`, que el siguiente intento borra; con un archivo bueno
 se sustituyen todos. El procedimiento sigue siendo manual: nada obliga a hacer los pasos
 1 y 2.
+## 2026-09-24 — Espacio sobre una pastilla del calendario no abre la tarjeta
+
+**Contexto.** La pastilla del calendario es un `<button>` con `onClick` que abre la
+tarjeta y el `KeyboardSensor` de dnd-kit, que coge y suelta con Espacio. dnd-kit solo
+cancela el keydown, pero un botón nativo se activa en el keyup de Espacio (Firefox lo
+hace aunque el keydown esté cancelado): coger o soltar la pastilla podía abrir además el
+modal. La tarjeta del tablero no lo sufre porque es un `div role="button"` que gestiona
+el teclado a mano.
+
+**Decisión.** Si la pastilla se puede arrastrar (`canEdit`), su `onKeyUp` cancela Espacio
+(`preventSpaceActivation` en `app/components/board/calendar-view.tsx`). Sin permiso de
+edición no se toca: Espacio sigue abriendo la tarjeta. Intro no cambia: el botón se
+activa en el keydown, que dnd-kit ya cancela al soltar.
+
+**Alternativas descartadas.** Convertir la pastilla en un `div role="button"` con la
+misma lógica de teclado que `CardItem`: es más coherente con el tablero, pero es un
+cambio mayor (foco, activación y atributos a mano) para el mismo efecto.
+
+**Consecuencias.** Test unitario en `test/calendar-view.test.ts` (Espacio se cancela,
+Intro y las flechas no). El comportamiento en Firefox solo se comprueba a mano.
+
+---
+
 ## 2026-09-24 — Copia flotante del calendario en un portal a `document.body`
 
 **Contexto.** El `DragOverlay` del calendario se pintaba dentro del panel, que lleva
