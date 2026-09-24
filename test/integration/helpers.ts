@@ -2,6 +2,8 @@ import { prisma } from "@/app/lib/prisma";
 import { createUserAccount } from "@/app/lib/services/users";
 import { generateApiToken } from "@/app/lib/api/tokens";
 import { positionAtEnd } from "@/app/lib/ordering";
+import { createSession } from "@/app/lib/session";
+import { __clearCookies } from "../stubs/next-headers";
 import type { GlobalRole } from "@/app/lib/roles";
 import type { BoardRole } from "@/app/lib/roles";
 
@@ -23,31 +25,50 @@ function assertTestDatabase(): void {
   }
 }
 
-// Todas las tablas del esquema; TRUNCATE ... CASCADE deja la BD vacía entre tests.
-const ALL_TABLES = [
-  "User",
-  "Session",
-  "Board",
-  "List",
-  "Card",
-  "Attachment",
-  "Label",
-  "CardLabel",
-  "Checklist",
-  "ChecklistItem",
-  "BoardMember",
-  "AuditLog",
-  "Notification",
-  "ApiToken",
-  "InstanceConfig",
-];
+// Tablas a vaciar: se leen del catálogo en cada reset en vez de mantener una lista a mano
+// (a la lista fija le faltaban CardAssignee y Comment, que solo se vaciaban por el
+// CASCADE; una tabla futura sin FK se habría quedado con datos entre tests).
+const TABLE_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+async function schemaTables(): Promise<string[]> {
+  const rows = await prisma.$queryRaw<{ tablename: string }[]>`
+    SELECT tablename FROM pg_tables
+    WHERE schemaname = current_schema() AND tablename <> '_prisma_migrations'`;
+  return rows.map(({ tablename }) => {
+    // El nombre se interpola en el TRUNCATE: solo se aceptan identificadores simples.
+    if (!TABLE_NAME.test(tablename)) {
+      throw new Error(`resetDb: nombre de tabla inesperado "${tablename}"`);
+    }
+    return tablename;
+  });
+}
 
 export async function resetDb(): Promise<void> {
   assertTestDatabase();
-  const list = ALL_TABLES.map((t) => `"${t}"`).join(", ");
+  const tables = await schemaTables();
+  if (tables.length === 0) {
+    throw new Error("resetDb: el esquema no tiene tablas; ¿faltan las migraciones?");
+  }
+  const list = tables.map((t) => `"${t}"`).join(", ");
   await prisma.$executeRawUnsafe(
     `TRUNCATE TABLE ${list} RESTART IDENTITY CASCADE`,
   );
+  // Estado en memoria que sobrevive entre tests del mismo archivo: la "petición" del stub
+  // de next/headers (cookies de sesión, cabeceras) y los contadores del rate limit.
+  __clearCookies();
+  (
+    globalThis as { __orgtableRateBuckets?: Map<string, unknown> }
+  ).__orgtableRateBuckets?.clear();
+}
+
+/**
+ * Inicia sesión como `userId` en el stub de next/headers: crea una fila Session real y
+ * deja la cookie firmada, igual que el login. A partir de ahí las Server Actions y el DAL
+ * ven a ese usuario. Llamarla otra vez cambia de usuario.
+ */
+export async function loginAs(userId: string): Promise<void> {
+  __clearCookies();
+  await createSession(userId);
 }
 
 export async function disconnect(): Promise<void> {

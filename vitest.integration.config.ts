@@ -34,7 +34,9 @@ export default defineConfig({
     environment: "node",
     // Zona horaria fija: la lógica de fechas (recordatorios) usa la hora local; UTC la
     // hace determinista en cualquier máquina y en CI.
-    env: { TZ: "UTC" },
+    // SESSION_SECRET: clave FIJA y solo de test para que createSession/verifySession
+    // funcionen con el stub de cookies (loginAs). No protege nada real.
+    env: { TZ: "UTC", SESSION_SECRET: "clave-de-sesion-solo-para-tests-0123456789" },
     include: ["test/integration/**/*.int.test.ts"],
     // Una sola conexión a la BD: los tests comparten un PrismaClient y resetean entre
     // cada uno, así que no deben correr en paralelo entre archivos.

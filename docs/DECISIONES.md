@@ -754,6 +754,35 @@ acción prometía lo contrario.
 **Consecuencias.** Tras un reset el usuario tiene que crear tokens nuevos. Test en
 `test/integration/admin-revocation.int.test.ts` (el mismo Bearer pasa de 200 a 401; los
 tokens de otros usuarios no se tocan).
+## 2026-09-24 — Tests de integración con sesión: stub mutable de cookies
+
+**Contexto.** El stub de `next/headers` devolvía siempre `undefined` en `cookies().get`,
+así que `verifySession`, `requireUser` y `requireBoardAccess` nunca autenticaban en los
+tests: no había forma de probar las Server Actions ni la revocación de sesiones (ADR
+0008). Además `resetDb` usaba una lista fija de tablas a la que le faltaban
+`CardAssignee` y `Comment`.
+
+**Decisión.**
+- `test/stubs/next-headers.ts` guarda cookies y cabeceras en un almacén mutable de
+  módulo, con `__setHeaders`, `__clearCookies` y `__getCookieOptions` para los tests.
+- `loginAs(userId)` en `test/integration/helpers.ts` llama a la `createSession` real;
+  `resetDb` limpia además el stub y los contadores del rate limit.
+- `SESSION_SECRET` fijo de test en `vitest.integration.config.ts`.
+- `resetDb` lee las tablas de `pg_tables` (esquema actual, sin `_prisma_migrations`) y
+  valida cada nombre antes de interpolarlo en el `TRUNCATE`.
+- Se confirma con un test que `cache()` de React no memoiza fuera de RSC (cambiar de
+  usuario con `loginAs` se ve al instante).
+
+**Alternativas descartadas.**
+- `vi.mock("next/headers")` en cada archivo: repetiría el mismo almacén en todos los
+  tests.
+- Mantener la lista de tablas a mano añadiendo las dos que faltaban: se volvería a
+  desfasar con la siguiente tabla.
+- Estimar filas con `reltuples` para decidir qué vaciar: no es exacto.
+
+**Consecuencias.** Los tests pueden ejecutar Server Actions con sesión real (fila
+`Session` + JWT firmado). Quitar una comprobación de `verifySession` hace fallar
+`session.int.test.ts` (comprobado quitando `revokedAt` y el control de `userId`).
 
 ---
 
