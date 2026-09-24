@@ -11,7 +11,12 @@ import {
   type SetupOutcome,
 } from "@/app/lib/services/setup";
 
-export type SetupState = { error?: string };
+// `values` devuelve lo tecleado (nunca la contraseña) para repintar el formulario tras un
+// error: React 19 resetea los formularios no controlados después de la acción.
+export type SetupState = {
+  error?: string;
+  values?: { instanceName: string; name: string; email: string };
+};
 
 export async function completeSetup(
   _prev: SetupState,
@@ -23,6 +28,16 @@ export async function completeSetup(
   // definitiva sigue dentro de la transacción (completeInstanceSetup).
   if (await isSetupComplete()) redirect("/login");
 
+  const text = (key: string) => {
+    const v = formData.get(key);
+    return typeof v === "string" ? v.slice(0, 254) : "";
+  };
+  const values = {
+    instanceName: text("instanceName"),
+    name: text("name"),
+    email: text("email"),
+  };
+
   const parsed = setupSchema.safeParse({
     instanceName: formData.get("instanceName"),
     name: formData.get("name"),
@@ -30,7 +45,10 @@ export async function completeSetup(
     password: formData.get("password"),
   });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Datos no válidos." };
+    return {
+      error: parsed.error.issues[0]?.message ?? "Datos no válidos.",
+      values,
+    };
   }
 
   const { instanceName, name, email, password } = parsed.data;
@@ -52,6 +70,7 @@ export async function completeSetup(
     if (outcome.reason === "ALREADY_SETUP") redirect("/login");
     return {
       error: "No se pudo completar la configuración. Inténtalo de nuevo.",
+      values,
     };
   }
 

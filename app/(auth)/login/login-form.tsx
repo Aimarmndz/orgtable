@@ -30,8 +30,13 @@ export function LoginForm() {
         Accede a tu instancia para seguir con tus tableros.
       </p>
 
-      {state.error && (
-        <p className="mt-5 rounded-lg border border-danger/20 bg-danger/10 px-3 py-2 text-sm text-danger">
+      {/* role="alert" para que el lector de pantalla lo anuncie. Se retira mientras se
+          envía: así un segundo error idéntico se vuelve a insertar y se anuncia de nuevo. */}
+      {state.error && !pending && (
+        <p
+          role="alert"
+          className="mt-5 rounded-lg border border-danger/20 bg-danger/10 px-3 py-2 text-sm text-danger"
+        >
           {state.error}
         </p>
       )}
@@ -48,6 +53,7 @@ export function LoginForm() {
             required
             autoComplete="email"
             placeholder="tu@correo.com"
+            defaultValue={state.values?.email}
           />
         </div>
         <div className="flex flex-col gap-1.5">

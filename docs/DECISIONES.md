@@ -754,6 +754,30 @@ acción prometía lo contrario.
 **Consecuencias.** Tras un reset el usuario tiene que crear tokens nuevos. Test en
 `test/integration/admin-revocation.int.test.ts` (el mismo Bearer pasa de 200 a 401; los
 tokens de otros usuarios no se tocan).
+## 2026-09-24 — Login y setup: conservar lo tecleado y anunciar los errores
+
+**Contexto.** React 19 resetea los formularios no controlados después de una acción:
+tras «Credenciales incorrectas» se borraba el email, y tras un error de validación del
+setup, los cuatro campos. Además el mensaje de error era un `<p>` sin `role="alert"`
+que el lector de pantalla no anunciaba.
+
+**Decisión.**
+- `AuthState.values` y `SetupState.values` devuelven lo enviado en cada error (email;
+  nombre de instancia, nombre y email), nunca la contraseña. El cliente lo pinta con
+  `defaultValue`. En el éxito no se devuelven.
+- El `<p>` de error lleva `role="alert"` y se retira mientras `pending`, para que un
+  segundo error idéntico se vuelva a insertar y se anuncie otra vez.
+
+**Alternativas descartadas.**
+- Campos controlados con `useState`: más código en dos formularios para el mismo efecto.
+- `key` con un contador de intentos: obliga a añadir estado solo para eso.
+
+**Consecuencias.** La verificación con VoiceOver es manual: no hay infraestructura de
+tests de componentes. Los tests de integración comprueban que `values` llega sin la
+contraseña.
+
+---
+
 ## 2026-09-24 — Setup: advisory lock, corte temprano y causa en el log
 
 **Contexto.** `completeSetup` comprobaba `setupCompletedAt` dentro de la transacción y

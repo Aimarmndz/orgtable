@@ -105,3 +105,19 @@ describe("login: auditoría de fallos", () => {
     expect(rows.map((r) => r.userId).sort()).toEqual([null, u.id].sort());
   });
 });
+
+describe("login: valores devueltos tras un error", () => {
+  it("devuelve el email tecleado y nunca la contraseña", async () => {
+    const state = await login({}, form("alguien@test.local", "secreto-pegado"));
+    expect(state.error).toBe("Credenciales incorrectas.");
+    expect(state.values).toEqual({ email: "alguien@test.local" });
+    expect(JSON.stringify(state)).not.toContain("secreto-pegado");
+  });
+
+  it("también con un email mal formado", async () => {
+    const state = await login({}, form("no-es-email", "secreto-pegado"));
+    expect(state.error).toBe("Revisa el email y la contraseña.");
+    expect(state.values).toEqual({ email: "no-es-email" });
+    expect(JSON.stringify(state)).not.toContain("secreto-pegado");
+  });
+});

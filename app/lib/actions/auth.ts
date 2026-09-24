@@ -9,7 +9,10 @@ import { loginSchema } from "@/app/lib/validators";
 import { rateLimit, resetRateLimit } from "@/app/lib/rate-limit";
 import { recordAudit, clientIp } from "@/app/lib/audit";
 
-export type AuthState = { error?: string };
+// `values` devuelve lo tecleado (nunca la contraseña) para repintar el formulario: React
+// 19 resetea los formularios no controlados tras la acción y, sin esto, un error borraba
+// el email.
+export type AuthState = { error?: string; values?: { email: string } };
 
 // Hasta 10 intentos de login por IP cada 10 minutos (anti fuerza bruta). Solo se aplica
 // si hay IP fiable (TRUSTED_PROXY_HOPS > 0, ver app/lib/client-ip.ts); sin ella no se
@@ -24,9 +27,13 @@ const LOGIN_WINDOW_MS = 10 * 60 * 1000;
 const EMAIL_LIMIT = 20;
 const EMAIL_WINDOW_MS = 15 * 60 * 1000;
 
-function tooManyAttempts(retryAfterSec: number): AuthState {
+function tooManyAttempts(
+  retryAfterSec: number,
+  values: AuthState["values"],
+): AuthState {
   return {
     error: `Demasiados intentos. Inténtalo de nuevo en ${retryAfterSec} s.`,
+    values,
   };
 }
 
@@ -35,6 +42,8 @@ export async function login(
   formData: FormData,
 ): Promise<AuthState> {
   const ip = await clientIp();
+  const rawEmail = formData.get("email");
+  const values = { email: typeof rawEmail === "string" ? rawEmail.slice(0, 254) : "" };
 
   if (ip) {
     const limit = rateLimit(`login:${ip}`, LOGIN_LIMIT, LOGIN_WINDOW_MS);
@@ -44,7 +53,7 @@ export async function login(
       if (limit.firstBlock) {
         await recordAudit({ action: "auth.login_rate_limited", ip, detail: "límite por IP" });
       }
-      return tooManyAttempts(limit.retryAfterSec);
+      return tooManyAttempts(limit.retryAfterSec, values);
     }
   }
 
@@ -53,7 +62,7 @@ export async function login(
     password: formData.get("password"),
   });
   if (!parsed.success) {
-    return { error: "Revisa el email y la contraseña." };
+    return { error: "Revisa el email y la contraseña.", values };
   }
   const email = parsed.data.email.toLowerCase();
 
@@ -69,7 +78,7 @@ export async function login(
         detail: "límite por cuenta",
       });
     }
-    return tooManyAttempts(emailLimit.retryAfterSec);
+    return tooManyAttempts(emailLimit.retryAfterSec, values);
   }
 
   const user = await prisma.user.findUnique({ where: { email } });
@@ -89,7 +98,7 @@ export async function login(
       userId: user?.id ?? null,
       ip,
     });
-    return { error: "Credenciales incorrectas." };
+    return { error: "Credenciales incorrectas.", values };
   }
 
   resetRateLimit(emailKey);

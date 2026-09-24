@@ -85,6 +85,20 @@ describe("completeSetup (Server Action)", () => {
     expect(config?.setupCompletedAt ?? null).toBeNull();
   });
 
+  it("con datos no válidos devuelve lo tecleado salvo la contraseña", async () => {
+    const state = await completeSetup(
+      {},
+      setupForm({ email: "no-es-email", password: "secreto-pegado" }),
+    );
+    expect(state.error).toBeTruthy();
+    expect(state.values).toEqual({
+      instanceName: "Mi equipo",
+      name: "Admin",
+      email: "no-es-email",
+    });
+    expect(JSON.stringify(state)).not.toContain("secreto-pegado");
+  });
+
   it("con datos correctos crea el admin, abre sesión y redirige a /boards", async () => {
     await expect(completeSetup({}, setupForm())).rejects.toMatchObject({
       digest: expect.stringContaining(";/boards;"),
