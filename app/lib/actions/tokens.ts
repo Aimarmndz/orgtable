@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { prisma } from "@/app/lib/prisma";
 import { requireUser } from "@/app/lib/dal";
 import { recordAudit } from "@/app/lib/audit";
@@ -12,6 +13,12 @@ import {
 import { generateApiToken } from "@/app/lib/api/tokens";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+const createTokenSchema = z.object({
+  name: apiTokenNameSchema,
+  scope: apiTokenScopeSchema,
+  expiry: apiTokenExpirySchema,
+});
 
 // Gestión de los tokens de API propios (Hito 9). Crear devuelve el token EN CLARO una
 // sola vez (en el estado del formulario); revocar lo borra. La autorización es
@@ -29,22 +36,34 @@ export async function createApiToken(
   formData: FormData,
 ): Promise<CreateTokenState> {
   const user = await requireUser();
-  const parsed = apiTokenNameSchema.safeParse(formData.get("name"));
+  // Nombre, permisos y caducidad se validan juntos: un valor no reconocido es un error
+  // y no se crea nada (antes caía en silencio a escritura y sin caducidad).
+  const parsed = createTokenSchema.safeParse({
+    name: formData.get("name"),
+    scope: formData.get("scope"),
+    expiry: formData.get("expiry"),
+  });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Nombre no válido." };
+    const issue = parsed.error.issues[0];
+    // Los enums de validators.ts no llevan mensaje propio (zod lo daría en inglés).
+    const field = issue?.path[0];
+    const error =
+      field === "scope"
+        ? "Permisos no válidos."
+        : field === "expiry"
+          ? "Caducidad no válida."
+          : (issue?.message ?? "Datos no válidos.");
+    return { error };
   }
-  // Scope y caducidad: si vienen mal, caemos a los valores por defecto seguros.
-  const scope = apiTokenScopeSchema.safeParse(formData.get("scope")).data ?? "full";
-  const expiryDays = Number(
-    apiTokenExpirySchema.safeParse(formData.get("expiry")).data ?? "0",
-  );
+  const { name, scope } = parsed.data;
+  const expiryDays = Number(parsed.data.expiry);
   const expiresAt = expiryDays > 0 ? new Date(Date.now() + expiryDays * DAY_MS) : null;
 
   const { token, hash, prefix } = generateApiToken();
   const created = await prisma.apiToken.create({
     data: {
       userId: user.id,
-      name: parsed.data,
+      name,
       tokenHash: hash,
       prefix,
       scope,
@@ -57,10 +76,10 @@ export async function createApiToken(
     userId: user.id,
     targetType: "apitoken",
     targetId: created.id,
-    detail: `${parsed.data} (${scope})`,
+    detail: `${name} (${scope})`,
   });
   revalidatePath("/settings");
-  return { token, name: parsed.data };
+  return { token, name };
 }
 
 /** Revoca (borra) un token propio. El WHERE incluye el userId: nadie revoca el de otro. */

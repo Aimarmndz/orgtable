@@ -562,6 +562,24 @@ expulsada seguían recibiendo eventos, en contra del ADR 0008.
 reconecta. Tests en `test/integration/realtime.int.test.ts` (401/403, abort, cancel,
 revocación, expulsión, vida máxima; sin listeners ni temporizadores tras cerrar).
 
+## 2026-09-24 — Crear un token de API valida permisos y caducidad
+
+**Contexto.** `createApiToken` convertía un `scope` o `expiry` no reconocidos en
+«escritura» y «no caduca», el valor más permisivo, con un comentario que hablaba de
+«valores por defecto seguros».
+
+**Decisión.** Nombre, permisos y caducidad se validan con un único `z.object` que
+reutiliza los esquemas de `validators.ts`; si algo falla, se devuelve `{ error }` sin
+crear nada («Permisos no válidos.» / «Caducidad no válida.»). Los valores por defecto
+del formulario (escritura, nunca caduca) no cambian: los decide el propietario.
+
+**Alternativas descartadas.** Caer a «solo lectura» y caducidad finita: seguiría
+siendo un valor por defecto silencioso que tapa un formulario manipulado o roto.
+
+**Consecuencias.** Test en `test/integration/tokens.int.test.ts`.
+
+---
+
 ## 2026-09-24 — Restablecer la contraseña también revoca los tokens de API
 
 **Contexto.** `resetUserPassword` solo revocaba sesiones. `authenticateApiToken` no mira
