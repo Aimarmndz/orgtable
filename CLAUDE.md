@@ -121,10 +121,11 @@ observabilidad, backups.
   Comentarios) y avatares en `card-item.tsx`. Notifica `card.assigned`/`comment.added`.
   Tests en `test/integration/collaboration.int.test.ts`. Ver `docs/card-collaboration.md`.
 - **Hito 11 (recordatorios)**: `Notification.cardId` (migración `..._notification_card_ref`)
-  para deep-link y dedup. `services/reminders.ts` (`generateDueReminders(now)`, idempotente
-  por día) disparado por `POST /api/cron/reminders` (secreto Bearer, `timingSafeEqual`, 503
-  si no hay `CRON_SECRET`). Arrastre en el calendario con `setCardDueDate`. Tests en
-  `test/integration/reminders.int.test.ts`. Email/prefs → backlog. Ver `docs/reminders.md`.
+  para deep-link y dedup. `services/reminders.ts` (`generateDueReminders(now)`, política
+  de avisos en `docs/reminders.md`) disparado por `POST /api/cron/reminders` (secreto
+  Bearer, `timingSafeEqual`, 503 si no hay `CRON_SECRET`). Arrastre en el calendario con
+  `setCardDueDate`. Tests en `test/integration/reminders.int.test.ts`. Email/prefs →
+  backlog. Ver `docs/reminders.md`.
 - **Hito 12 (filtros de tablero)**: `app/lib/board-filters.ts` (puro, `cardMatchesFilters`,
   test unitario), `FilterBar` desplegable en la cabecera; `BoardView` filtra las tarjetas y
   desactiva el arrastre con `sortingDisabled` (propagado a `ListColumn`/`CardItem`). Solo

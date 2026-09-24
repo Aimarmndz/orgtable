@@ -2,6 +2,10 @@
 
 **Estado:** aceptada · **Fecha:** 2026-06-07 · **Relacionada:** [ADR 0004](./0004-no-redis-mvp.md), [ADR 0012](./0012-notifications.md)
 
+> **Modificado el 2026-09-24:** la política de avisos (día contado en UTC, un único aviso
+> de vencida y ventana de 7 días) sustituye a la «idempotencia por día» descrita abajo.
+> Ver [`docs/reminders.md`](../reminders.md) y [`docs/DECISIONES.md`](../DECISIONES.md).
+
 ## Contexto
 
 El Hito 11 añade **recordatorios de vencimiento**: avisar a los asignados de una tarjeta

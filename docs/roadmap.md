@@ -134,9 +134,10 @@ El producto mínimo usable: instalar con un comando → configurar → usar como
 
 - [x] **Recordatorios de vencimiento**: `generateDueReminders` (servicio testeable) genera
       notificaciones `due.reminder` para los asignados de tarjetas que vencen en 24 h o
-      están vencidas, **idempotente por día**. Lo dispara un **cron externo** vía el
-      endpoint protegido `POST /api/cron/reminders` (secreto en `Authorization: Bearer`,
-      comparado en tiempo constante), sin scheduler en proceso
+      están vencidas (política de avisos en [`docs/reminders.md`](./reminders.md)). Lo
+      dispara un **cron externo** vía el endpoint protegido `POST /api/cron/reminders`
+      (secreto en `Authorization: Bearer`, comparado en tiempo constante), sin scheduler
+      en proceso
       ([ADR 0015](./decisions/0015-reminders-cron.md)).
 - [x] **Arrastrar en el calendario** a otro día cambia el vencimiento (`@dnd-kit` +
       `setCardDueDate`). Notificaciones con **deep-link** a la tarjeta (`Notification.cardId`).
