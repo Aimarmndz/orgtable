@@ -62,11 +62,20 @@ Los demás hallazgos "confirmados" por el panel eran en realidad **controles cor
   **revocación inmediata** (logout, reset de contraseña, cierre forzado).
 - **Anti-mass-assignment**: todas las acciones validan con **zod** (whitelist de campos).
 - **Login**: rate-limiting por IP + auditoría de intentos.
+- **Cabeceras** (`next.config.ts` + `proxy.ts`):
+  - Páginas: **CSP con nonce por petición** (`app/lib/csp.ts`): `script-src` solo propios
+    con nonce y `'strict-dynamic'`, sin `eval` en producción, `frame-ancestors 'none'`,
+    `object-src 'none'`, `base-uri`/`form-action 'self'`. El layout raíz lee el nonce de
+    `x-nonce` para el script inline del tema.
+  - `/api/**`: `default-src 'none'` (solo JSON, SSE y descargas).
+  - `Strict-Transport-Security: max-age=31536000` (sin `includeSubDomains`),
+    `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`,
+    `Permissions-Policy`.
+  - Sin `upgrade-insecure-requests`: rompería las instalaciones por `http://IP:3000`.
+    El porqué de cada excepción está en [`DECISIONES.md`](./DECISIONES.md).
 
 ## Recomendaciones futuras (backlog)
 
-- **CSP con nonce**: añadir una Content-Security-Policy estricta (requiere nonce para los
-  scripts inline de Next; trabajo aparte).
 - **Guard del último admin**: impedir borrar/degradar al último ADMIN de la instancia.
 - **Endpoint de reset del setup** (admin) en vez de SQL manual.
 - Email/Web Push y preferencias (ya en el backlog del roadmap).

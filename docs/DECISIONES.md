@@ -8,6 +8,42 @@ arquitectura anteriores a este registro (ADR 0001–0015) siguen en
 
 ---
 
+## 2026-09-24 — Content-Security-Policy con nonce y HSTS
+
+**Contexto.** La norma de seguridad exige CSP, HSTS, X-Content-Type-Options y
+Referrer-Policy. Solo había las dos últimas (más `X-Frame-Options` y
+`Permissions-Policy`, que además incluía `interest-cohort`, una directiva que los
+navegadores ya no reconocen y que ensuciaba la consola).
+
+**Decisión.**
+- CSP generada en `proxy.ts` con un nonce aleatorio por petición (`app/lib/csp.ts`,
+  patrón de la guía de CSP de Next 16). Todas las páginas ya eran dinámicas (sesión),
+  así que el nonce no cambia el renderizado.
+- `style-src-attr 'unsafe-inline'`: React pinta atributos `style` desde el servidor
+  (fondo del tablero, dnd-kit) y el nonce no cubre atributos. Los `<style>` sí exigen
+  nonce en producción.
+- En desarrollo, `'unsafe-eval'` y estilos inline sin nonce (Turbopack y el overlay
+  inyectan `<style>` sin él).
+- `/api/**` recibe `default-src 'none'; frame-ancestors 'none'` desde `next.config.ts`.
+- HSTS `max-age=31536000` sin `includeSubDomains` ni `preload`.
+- Se quita `interest-cohort` de `Permissions-Policy`.
+
+**Alternativas descartadas.**
+- CSP estática con `'unsafe-inline'` en scripts: no protege contra XSS.
+- Hashes en lugar de nonce: los scripts de hidratación de Next cambian en cada
+  respuesta.
+- `upgrade-insecure-requests`: rompe las instalaciones por `http://IP:3000`, que es
+  como se documenta el primer arranque.
+- HSTS con `includeSubDomains`/`preload`: impondría HTTPS a dominios hermanos del
+  instalador.
+
+**Consecuencias.** Verificado con Playwright contra `pnpm build && pnpm start`: cero
+violaciones de CSP en tablero, calendario, ajustes, administración y búsqueda; el script
+del tema se ejecuta (clase `dark` aplicada) y el tiempo real por SSE sigue funcionando.
+Cualquier script de terceros futuro necesitará el nonce (`x-nonce`).
+
+---
+
 ## 2026-09-24 — Tablero: doble envío, hidratación y arrastre con teclado
 
 **Contexto.** Probando en el navegador se crearon dos listas iguales con 48 ms de
