@@ -754,6 +754,35 @@ acción prometía lo contrario.
 **Consecuencias.** Tras un reset el usuario tiene que crear tokens nuevos. Test en
 `test/integration/admin-revocation.int.test.ts` (el mismo Bearer pasa de 200 a 401; los
 tokens de otros usuarios no se tocan).
+## 2026-09-24 — Cookie de sesión Secure según el esquema real y SESSION_SECRET ruidoso
+
+**Contexto.** La cookie `session` llevaba `Secure` cuando `NODE_ENV=production`. El
+primer arranque documentado es por `http://IP:3000`, y el navegador descarta una cookie
+`Secure` recibida por HTTP en un origen que no es localhost: tras el asistente la
+instancia no dejaba entrar. Por otro lado, `decrypt` llamaba a `getKey()` dentro del
+`try`, así que un `SESSION_SECRET` ausente se convertía en «sin sesión» y redirigía a
+`/login` sin dejar rastro.
+
+**Decisión.**
+- `secure` = la petición llegó por HTTPS: primer valor de `X-Forwarded-Proto` igual a
+  `https`. Next rellena esa cabecera con el esquema real del socket cuando no la trae
+  un proxy (`??=` en `base-server`), y un proxy TLS la fija a `https`.
+- `decrypt`: sin token devuelve `null` antes de pedir la clave; con token, `getKey()` va
+  fuera del `try` y solo `jwtVerify` queda dentro.
+- `createSession` valida la clave antes de crear la fila `Session`.
+
+**Alternativas descartadas.**
+- Variable `SESSION_COOKIE_SECURE` para desactivarlo en LAN: otra opción de
+  configuración que rebaja la seguridad si se deja puesta tras poner TLS.
+- Seguir con `NODE_ENV`: deja inservible la instalación por HTTP.
+
+**Consecuencias.** Por HTTP la cookie viaja sin `Secure` (lo que ya pasaba en la
+práctica al no poder entrar); detrás de un proxy TLS que envíe `X-Forwarded-Proto` sí
+lo lleva. Falsear esa cabecera solo afecta al propio cliente. La documentación del
+despliegue (TLS delante) la actualiza el lote de despliegue.
+
+---
+
 ## 2026-09-24 — Tests de integración con sesión: stub mutable de cookies
 
 **Contexto.** El stub de `next/headers` devolvía siempre `undefined` en `cookies().get`,

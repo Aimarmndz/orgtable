@@ -41,8 +41,13 @@ export async function decrypt(
   token: string | undefined,
 ): Promise<SessionPayload | null> {
   if (!token) return null;
+  // getKey() va FUERA del try: un SESSION_SECRET ausente es un fallo de configuración y
+  // debe romper la petición con su mensaje, no convertirse en "sin sesión" (lo que
+  // mandaría a /login sin dejar rastro). Sin cookie ni se llega aquí, así que /login y
+  // /setup siguen funcionando para visitantes anónimos.
+  const key = getKey();
   try {
-    const { payload } = await jwtVerify(token, getKey(), {
+    const { payload } = await jwtVerify(token, key, {
       algorithms: ["HS256"],
     });
     if (typeof payload.userId !== "string" || typeof payload.sid !== "string") {
@@ -55,11 +60,24 @@ export async function decrypt(
   }
 }
 
+/**
+ * true si la petición llegó por HTTPS. Next rellena X-Forwarded-Proto con el esquema real
+ * del socket cuando no viene de un proxy (`??=` en base-server), y un proxy TLS la fija a
+ * "https". Se mira el primer valor por si hay varios proxies encadenados.
+ */
+function isHttpsRequest(h: Headers): boolean {
+  const proto = h.get("x-forwarded-proto")?.split(",")[0]?.trim().toLowerCase();
+  return proto === "https";
+}
+
 /** Crea una fila de sesión y guarda el JWT (con su sid) en la cookie httpOnly. */
 export async function createSession(userId: string): Promise<void> {
+  // Se valida la clave ANTES de crear la fila: sin SESSION_SECRET no queda una sesión
+  // huérfana en la BD.
+  getKey();
   const expiresAt = new Date(Date.now() + MAX_AGE_MS);
-  const userAgent =
-    (await headers()).get("user-agent")?.slice(0, 255) ?? null;
+  const requestHeaders = await headers();
+  const userAgent = requestHeaders.get("user-agent")?.slice(0, 255) ?? null;
 
   const session = await prisma.session.create({
     data: { userId, expiresAt, userAgent },
@@ -69,7 +87,11 @@ export async function createSession(userId: string): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.set(COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    // Secure según el esquema REAL de la petición, no NODE_ENV: con NODE_ENV el primer
+    // arranque documentado (http://IP:3000) quedaba inutilizable, porque el navegador
+    // descarta una cookie Secure recibida por HTTP. Detrás de un proxy TLS la cookie sí
+    // lleva Secure. Falsear X-Forwarded-Proto solo perjudica al propio cliente.
+    secure: isHttpsRequest(requestHeaders),
     sameSite: "lax",
     expires: expiresAt,
     path: "/",

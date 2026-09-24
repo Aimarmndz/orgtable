@@ -1,9 +1,15 @@
-import { describe, it, expect, beforeEach, afterAll } from "vitest";
+import { describe, it, expect, beforeEach, afterAll, afterEach, vi } from "vitest";
 import { SignJWT } from "jose";
 import { prisma } from "@/app/lib/prisma";
-import { deleteSession, revokeAllUserSessions } from "@/app/lib/session";
+import {
+  createSession,
+  decrypt,
+  deleteSession,
+  revokeAllUserSessions,
+} from "@/app/lib/session";
 import { verifySession, getCurrentUser } from "@/app/lib/dal";
 import { cookies } from "next/headers";
+import { __getCookieOptions, __setHeaders } from "../stubs/next-headers";
 import { resetDb, disconnect, seedUser, loginAs } from "./helpers";
 
 // Sesiones respaldadas por la tabla Session (ADR 0008): la revocación inmediata depende de
@@ -12,6 +18,9 @@ import { resetDb, disconnect, seedUser, loginAs } from "./helpers";
 
 beforeEach(async () => {
   await resetDb();
+});
+afterEach(() => {
+  vi.unstubAllEnvs();
 });
 afterAll(async () => {
   await disconnect();
@@ -109,5 +118,41 @@ describe("verifySession (integración)", () => {
     expect(row.revokedAt).not.toBeNull();
     expect((await cookies()).get("session")).toBeUndefined();
     expect(await verifySession()).toBeNull();
+  });
+});
+
+describe("decrypt: SESSION_SECRET ausente", () => {
+  it("falla ruidosamente en vez de tratarlo como 'sin sesión'", async () => {
+    vi.stubEnv("SESSION_SECRET", "");
+    await expect(decrypt("x.y.z")).rejects.toThrow(/SESSION_SECRET/);
+    // Sin cookie no se necesita la clave: /login y /setup siguen funcionando.
+    await expect(decrypt(undefined)).resolves.toBeNull();
+  });
+
+  it("con secreto válido, un token manipulado sigue devolviendo null", async () => {
+    expect(await decrypt("x.y.z")).toBeNull();
+  });
+
+  it("createSession no deja una fila huérfana si falta la clave", async () => {
+    const u = await seedUser();
+    vi.stubEnv("SESSION_SECRET", "");
+    await expect(createSession(u.id)).rejects.toThrow(/SESSION_SECRET/);
+    expect(await prisma.session.count()).toBe(0);
+  });
+});
+
+describe("cookie de sesión: Secure según el esquema de la petición", () => {
+  it("por HTTP (primer arranque en http://IP:3000) la cookie no lleva Secure", async () => {
+    const u = await seedUser();
+    __setHeaders({ "x-forwarded-proto": "http" });
+    await createSession(u.id);
+    expect(__getCookieOptions("session")).toMatchObject({ secure: false, httpOnly: true });
+  });
+
+  it("por HTTPS (proxy TLS) la cookie lleva Secure", async () => {
+    const u = await seedUser();
+    __setHeaders({ "x-forwarded-proto": "https" });
+    await createSession(u.id);
+    expect(__getCookieOptions("session")).toMatchObject({ secure: true, httpOnly: true });
   });
 });
