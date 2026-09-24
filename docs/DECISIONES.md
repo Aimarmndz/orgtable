@@ -154,6 +154,31 @@ sobrecarga y que el del proxy coincide.
 **Consecuencias.** El límite es global y se aplica antes de autenticar: cualquiera puede
 mandar 11 MB a una acción. Si cambia el máximo de adjuntos hay que subir este número (el
 test falla si se queda corto).
+## 2026-09-24 — Título por página en /boards, /board/[id] y /search
+
+**Contexto.** Todas las rutas compartían el `<title>` «orgtable», así que las pestañas
+y el historial no se distinguían. La plantilla raíz (`%s · …`) es del lote de la
+maquetación raíz; aquí solo van los títulos de estas páginas.
+
+**Decisión.**
+- `export const metadata` con «Tus tableros» en `/boards` y «Búsqueda» en `/search`.
+  La consulta de búsqueda no va en el título: acabaría en el historial y en las
+  pestañas.
+- `/board/[id]` usa `generateMetadata`, que lee el nombre con `getBoardTitleForUser`
+  (`app/lib/queries.ts`, envuelta en `React.cache`). Comparte con `getBoardWithLists`
+  el filtro `boardAccessWhere` (dueño o miembro), la misma guarda que la página. Sin
+  acceso o si el tablero no existe, título genérico «Tablero».
+
+**Alternativas descartadas.**
+- Leer el título con `prisma.board.findUnique` sin filtro: el `<title>` se resuelve
+  aparte de la página y filtraría el nombre de un tablero ajeno aunque la página dé 404.
+- Reutilizar `getBoardWithLists` en `generateMetadata`: carga el tablero completo solo
+  para leer el título.
+
+**Consecuencias.** Una consulta ligera más por visita al tablero.
+`test/integration/board-metadata.int.test.ts` fija que el dueño y los miembros ven el
+nombre, y que un no miembro o un id inexistente reciben «Tablero».
+
 ## 2026-09-24 — Contraste AA de --danger/--success y campos etiquetados en /boards
 
 **Contexto.** `--success` (oklch 0.57 0.1 145) daba 3,86:1 sobre `--bg` y 3,72:1 en

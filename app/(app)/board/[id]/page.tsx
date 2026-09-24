@@ -1,12 +1,30 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/app/lib/dal";
-import { getBoardWithLists, getBoardMembers } from "@/app/lib/queries";
+import {
+  getBoardWithLists,
+  getBoardMembers,
+  getBoardTitleForUser,
+} from "@/app/lib/queries";
 import { firstParam } from "@/app/lib/search-params";
 import { BoardView } from "@/app/components/board/board-view";
 import { BoardRealtime } from "@/app/components/board/board-realtime";
 import type { BoardMemberDTO } from "@/app/components/board/members-panel";
 import type { BoardDTO } from "@/app/lib/types";
 import type { BoardRole } from "@/app/lib/roles";
+
+// El nombre sale de la misma guarda de acceso que la página: sin acceso, título
+// genérico (la página redirige o da 404, pero el <title> se resuelve aparte).
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const user = await requireUser();
+  const title = await getBoardTitleForUser(id, user.id);
+  return { title: title ?? "Tablero" };
+}
 
 export default async function BoardPage({
   params,

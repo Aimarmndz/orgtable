@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { requireUser } from "@/app/lib/dal";
 import { getBoardsForUser } from "@/app/lib/queries";
@@ -7,6 +8,8 @@ import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { ImportBoardForm } from "./import-board-form";
 import { DeleteBoardButton } from "./delete-board-button";
+
+export const metadata: Metadata = { title: "Tus tableros" };
 
 // Acciones de esquina de cada tablero. En escritorio aparecen al pasar el ratón o al
 // llegar con el teclado; en pantallas sin hover (táctiles) se ven siempre, porque si no

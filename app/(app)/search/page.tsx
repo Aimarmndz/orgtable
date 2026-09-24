@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { requireUser } from "@/app/lib/dal";
 import { searchForUser, type SearchResults } from "@/app/lib/queries";
@@ -6,6 +7,9 @@ import { SearchBox } from "@/app/components/search-box";
 import { firstParam } from "@/app/lib/search-params";
 
 export const dynamic = "force-dynamic";
+
+// La consulta NO va en el título: acabaría en el historial y en las pestañas.
+export const metadata: Metadata = { title: "Búsqueda" };
 
 export default async function SearchPage({
   searchParams,

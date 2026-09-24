@@ -1,4 +1,6 @@
 import "server-only";
+import { cache } from "react";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/app/lib/prisma";
 
 // Consultas de lectura. La autorización (qué tableros puede ver un usuario) se
@@ -206,12 +208,32 @@ export async function searchForUser(
   };
 }
 
+// Guarda de acceso de la página del tablero: dueño o miembro. La comparten la página y
+// su <title> para que el título nunca revele el nombre de un tablero ajeno.
+function boardAccessWhere(
+  boardId: string,
+  userId: string,
+): Prisma.BoardWhereInput {
+  return {
+    id: boardId,
+    OR: [{ ownerId: userId }, { members: { some: { userId } } }],
+  };
+}
+
+/** Título del tablero si el usuario tiene acceso; null si no. Para generateMetadata. */
+export const getBoardTitleForUser = cache(
+  async (boardId: string, userId: string): Promise<string | null> => {
+    const board = await prisma.board.findFirst({
+      where: boardAccessWhere(boardId, userId),
+      select: { title: true },
+    });
+    return board?.title ?? null;
+  },
+);
+
 export async function getBoardWithLists(boardId: string, userId: string) {
   return prisma.board.findFirst({
-    where: {
-      id: boardId,
-      OR: [{ ownerId: userId }, { members: { some: { userId } } }],
-    },
+    where: boardAccessWhere(boardId, userId),
     include: {
       labels: { orderBy: { name: "asc" } },
       lists: {
