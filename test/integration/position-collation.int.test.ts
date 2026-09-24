@@ -1,6 +1,8 @@
-import { describe, it, expect, beforeEach, afterAll } from "vitest";
+import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
 import { prisma } from "@/app/lib/prisma";
 import { getBoardWithLists } from "@/app/lib/queries";
+import { positionAtEnd } from "@/app/lib/ordering";
+import { createChecklist, addChecklistItem } from "@/app/lib/actions/checklists";
 import { POST as createList } from "@/app/api/v1/boards/[id]/lists/route";
 import { POST as createCard } from "@/app/api/v1/lists/[id]/cards/route";
 import {
@@ -10,9 +12,23 @@ import {
   seedApiToken,
   seedBoard,
   seedList,
+  seedCard,
   apiRequest,
   ctx,
 } from "./helpers";
+
+// Las acciones de checklist exigen sesión (cookies) y no tienen ruta en la API pública:
+// se sustituye solo requireBoardAccess por un acceso de OWNER. El resto del DAL es real.
+vi.mock("@/app/lib/dal", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/app/lib/dal")>();
+  return {
+    ...original,
+    requireBoardAccess: async () => ({
+      user: { id: "test-user" },
+      role: "OWNER" as const,
+    }),
+  };
+});
 
 // Las claves de fractional indexing (base62: 0-9A-Za-z) solo están bien ordenadas byte a
 // byte. 'Zz' es la clave inmediatamente anterior a 'a0' (se genera al arrastrar al
@@ -26,6 +42,20 @@ import {
 
 const KEYS = ["a0", "a0V", "a0l", "Zz"];
 const EXPECTED_ORDER = ["Zz", "a0", "a0V", "a0l"];
+
+// También falla sin arrastrar: las altas al final generan a0…a9, aA…aZ y luego 'aa', que
+// una collation lingüística ordena ANTES de 'aB'…'aZ'. Con 37 elementos (a0…aa) el
+// «último» según ORDER BY DESC sería 'aZ' y el alta 38 repetiría 'aa'.
+function endKeys(count: number): string[] {
+  const keys: string[] = [];
+  let last: string | null = null;
+  for (let i = 0; i < count; i++) {
+    last = positionAtEnd(last);
+    keys.push(last);
+  }
+  return keys;
+}
+const END_KEYS = endKeys(37);
 
 beforeEach(async () => {
   await resetDb();
@@ -117,5 +147,53 @@ describe("collation de las claves de posición (integración)", () => {
 
     const after = await getBoardWithLists(board.id, owner.id);
     expect(after?.lists.map((l) => l.title)).toEqual([...EXPECTED_ORDER, "nueva"]);
+  });
+
+  it("createChecklist y addChecklistItem no repiten claves tras 'aZ' → 'aa'", async () => {
+    expect(END_KEYS.slice(-2)).toEqual(["aZ", "aa"]);
+    const owner = await seedUser();
+    const board = await seedBoard(owner.id);
+    const list = await seedList(board.id);
+    const card = await seedCard(list.id);
+    await prisma.checklist.createMany({
+      data: END_KEYS.map((position) => ({ cardId: card.id, title: position, position })),
+    });
+
+    const fd = new FormData();
+    fd.set("cardId", card.id);
+    fd.set("title", "nueva");
+    await createChecklist(fd);
+
+    const checklists = await prisma.checklist.findMany({
+      where: { cardId: card.id },
+      select: { id: true, title: true, position: true },
+    });
+    expect(checklists).toHaveLength(END_KEYS.length + 1);
+    const created = checklists.find((c) => c.title === "nueva");
+    expect(created && created.position > "aa").toBe(true);
+    expect(new Set(checklists.map((c) => c.position)).size).toBe(checklists.length);
+
+    const target = checklists.find((c) => c.title === "a0");
+    if (!target) throw new Error("falta la checklist sembrada 'a0'");
+    await prisma.checklistItem.createMany({
+      data: END_KEYS.map((position) => ({
+        checklistId: target.id,
+        text: position,
+        position,
+      })),
+    });
+    const itemFd = new FormData();
+    itemFd.set("checklistId", target.id);
+    itemFd.set("text", "nuevo");
+    await addChecklistItem(itemFd);
+
+    const items = await prisma.checklistItem.findMany({
+      where: { checklistId: target.id },
+      select: { text: true, position: true },
+    });
+    expect(items).toHaveLength(END_KEYS.length + 1);
+    const createdItem = items.find((i) => i.text === "nuevo");
+    expect(createdItem && createdItem.position > "aa").toBe(true);
+    expect(new Set(items.map((i) => i.position)).size).toBe(items.length);
   });
 });

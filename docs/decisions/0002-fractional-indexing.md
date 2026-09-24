@@ -38,8 +38,11 @@ Usar **fractional indexing**. Las columnas `List.position` y `Card.position` son
   solo están bien ordenadas byte a byte. Con la collation por defecto de una BD glibc
   (`en_US.utf8` en la imagen Debian de postgres, Ubuntu o servicios gestionados)
   `ORDER BY position` deja `Zz` (lo que genera arrastrar al principio) después de `a0`:
-  la tarjeta reaparece al final al refrescar y `createCard`/`createList`, que buscan la
-  última con `ORDER BY position DESC`, generan claves repetidas. La migración
+  la tarjeta reaparece al final al refrescar y `createCard`/`createList`/`addChecklist`/
+  `addChecklistItem`, que buscan el último con `ORDER BY position DESC`, generan claves
+  repetidas. También pasa sin arrastrar, solo con altas al final: tras `aZ` viene `aa`,
+  que esa collation coloca antes de `aB`…`aZ`, así que a partir del elemento 38 de una
+  lista, tablero, tarjeta o checklist se toma `aZ` como último y se repite `aa`. La migración
   `20260924000000_position_collate_c` fija `TEXT COLLATE "C"` en `List`, `Card`,
   `Checklist` y `ChecklistItem.position`. Prisma no modela la collation, así que el
   esquema sigue diciendo `String` y no aparece deriva; cualquier columna de posición
@@ -48,7 +51,8 @@ Usar **fractional indexing**. Las columnas `List.position` y `Card.position` son
 - La migración no reescribe valores. Las instalaciones que ya corrían sobre glibc pueden
   tener claves repetidas; se detectan con
   `SELECT "listId", position, count(*) FROM "Card" GROUP BY 1, 2 HAVING count(*) > 1`
-  (y lo mismo con `"boardId"` en `"List"`). Reasignarlas es decisión del propietario de
+  y lo mismo con `"boardId"` en `"List"`, `"cardId"` en `"Checklist"` y `"checklistId"`
+  en `"ChecklistItem"`. Reasignarlas es decisión del propietario de
   la instalación, con copia de seguridad previa (`scripts/backup.sh`).
 
 Ver `docs/drag-and-drop.md` para el uso desde la UI.

@@ -14,8 +14,10 @@ arquitectura anteriores a este registro (ADR 0001–0015) siguen en
 bien byte a byte. `ORDER BY position` usaba la collation de la BD: en postgres alpine
 (musl, la BD de desarrollo) es byte a byte, pero en glibc (imagen Debian del CI, Ubuntu,
 servicios gestionados) `en_US.utf8` deja `Zz` después de `a0l`. Resultado: la tarjeta
-arrastrada al principio reaparece al final al refrescar, y `createCard`/`createList`
-(que buscan la última con `ORDER BY position DESC`) generan claves repetidas.
+arrastrada al principio reaparece al final al refrescar, y `createCard`/`createList`/
+`addChecklist`/`addChecklistItem` (que buscan el último con `ORDER BY position DESC`)
+generan claves repetidas. Pasa también solo con altas al final: tras `aZ` viene `aa`, que
+esa collation ordena antes de `aB`…`aZ`, así que desde el elemento 38 se repite `aa`.
 
 **Decisión.**
 - Migración `20260924000000_position_collate_c` (creada con `migrate dev --create-only`
@@ -27,8 +29,9 @@ arrastrada al principio reaparece al final al refrescar, y `createCard`/`createL
   claves ya repetidas).
 - Test `test/integration/position-collation.int.test.ts`: comprueba la collation de las
   cuatro columnas (falla sin el arreglo en cualquier servidor) y el orden/no repetición
-  de tarjetas y listas con `a0`, `a0V`, `a0l`, `Zz` (falla sin el arreglo en BD glibc/ICU;
-  verificado con una BD temporal ICU).
+  de tarjetas y listas con `a0`, `a0V`, `a0l`, `Zz`, y el de checklists e ítems con 37
+  altas al final (`a0`…`aa`) (fallan sin el arreglo en BD glibc/ICU; verificado con una
+  BD temporal ICU y con `ORDER BY ... COLLATE "en-US-x-icu"`).
 
 **Alternativas descartadas.**
 - Ordenar en JS o con `localeCompare`: dispersa la regla por todas las consultas y no
@@ -36,7 +39,8 @@ arrastrada al principio reaparece al final al refrescar, y `createCard`/`createL
 - Crear la BD con `LC_COLLATE=C`: no sirve para instalaciones existentes ni para BD
   gestionadas donde no se controla la creación.
 - Reasignar en la migración las claves ya repetidas: toca datos de producción; queda
-  como decisión del propietario, con copia previa (consulta de detección en el ADR 0002).
+  como decisión del propietario, con copia previa (consulta de detección de las cuatro
+  tablas en el ADR 0002).
 
 **Consecuencias.** Toda columna de posición nueva debe crearse con `COLLATE "C"` a mano
 en su migración. Las instalaciones glibc que ya tengan claves repetidas las conservan
