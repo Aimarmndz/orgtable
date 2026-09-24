@@ -1390,7 +1390,8 @@ formateaba en la zona local: al oeste de UTC mostraba el día anterior y descuad
 hidratación. Las tarjetas no se podían abrir con el teclado y, sin permisos de edición o
 con filtros, ni siquiera recibían foco. Los chips del filtro no exponían su estado, las
 etiquetas sin seleccionar tenían ~2,2:1 de contraste y los campos de añadir
-lista/tarjeta solo tenían placeholder.
+lista/tarjeta solo tenían placeholder. El ✕ de una lista la borraba con todas sus
+tarjetas al primer clic, junto al asa de arrastre.
 
 **Decisión.**
 - `isOverdue(dueDate, now)` en `app/lib/board-filters.ts`: compara el día guardado
@@ -1410,16 +1411,20 @@ lista/tarjeta solo tenían placeholder.
 - `aria-label` en los campos: «Nombre de la nueva lista» y «Nueva tarjeta en <lista>».
 - Popover de filtros anclado a la izquierda en móvil (`left-0 sm:right-0`) para que no
   se salga a 375 px.
+- Borrar lista pide un segundo clic en línea («¿Borrar? Sí / No», el foco va a «No»),
+  sin `window.confirm`.
 
 **Alternativas descartadas.**
 - Formatear en la zona del servidor (`ORGTABLE_TIMEZONE`): el vencimiento no es un
   instante, es un día, y en UTC se muestra igual en todas partes.
 - Un asa de arrastre separada dentro de la tarjeta: añade un control más; con Espacio
   para coger e Intro para abrir basta.
+- `window.confirm`: bloquea la página y no sigue el estilo de la app.
 
 **Consecuencias.** Tests en `test/board-filters.test.ts` (vence hoy/ayer, formato con
 `TZ=America/New_York`). Test de render en servidor (`test/card-item.test.ts`) para rol,
-foco y ausencia de «vencida» en el HTML inicial.
+foco y ausencia de «vencida» en el HTML inicial. Sin test automático (no hay entorno
+DOM); verificación manual pendiente.
 
 ---
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   SortableContext,
   useSortable,
@@ -22,6 +23,10 @@ export function ListColumn({
   sortingDisabled?: boolean;
 }) {
   const { canEdit } = useBoardPerms();
+  // Borrar una lista se lleva todas sus tarjetas (cascada) y no se puede deshacer: el ✕
+  // pide una segunda confirmación en línea («¿Borrar? Sí / No») en vez de borrar al
+  // primer clic, que además cae junto al asa de arrastre.
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const {
     attributes,
     listeners,
@@ -62,17 +67,41 @@ export function ListColumn({
         <span className="rounded-full bg-black/5 px-1.5 font-mono text-[11px] tabular-nums text-ink-muted dark:bg-white/10">
           {list.cards.length}
         </span>
-        {canEdit && (
-          <form action={deleteList}>
-            <input type="hidden" name="listId" value={list.id} />
+        {canEdit &&
+          (confirmingDelete ? (
+            <form
+              action={deleteList}
+              className="flex items-center gap-1 text-xs font-medium"
+            >
+              <input type="hidden" name="listId" value={list.id} />
+              <span className="text-ink-muted">¿Borrar?</span>
+              <button
+                type="submit"
+                className="rounded px-1.5 py-0.5 text-danger transition-colors hover:bg-danger/10"
+                aria-label={`Sí, borrar la lista ${list.title} y sus ${list.cards.length} tarjetas`}
+              >
+                Sí
+              </button>
+              <button
+                type="button"
+                autoFocus
+                onClick={() => setConfirmingDelete(false)}
+                className="rounded px-1.5 py-0.5 text-ink-muted transition-colors hover:bg-black/5 hover:text-ink dark:hover:bg-white/10"
+                aria-label="No, conservar la lista"
+              >
+                No
+              </button>
+            </form>
+          ) : (
             <button
+              type="button"
+              onClick={() => setConfirmingDelete(true)}
               className="grid size-6 place-items-center rounded text-ink-muted transition-colors hover:bg-black/5 hover:text-danger dark:hover:bg-white/10"
               aria-label={`Borrar lista ${list.title}`}
             >
               ✕
             </button>
-          </form>
-        )}
+          ))}
       </div>
 
       <SortableContext
