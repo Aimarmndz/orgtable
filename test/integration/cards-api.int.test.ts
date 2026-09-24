@@ -10,6 +10,7 @@ import {
   seedApiToken,
   seedBoard,
   seedList,
+  seedCard,
   addMember,
   apiRequest,
   ctx,
@@ -122,5 +123,83 @@ describe("API v1 — listas y tarjetas (integración)", () => {
     );
     expect(delRes.status).toBe(200);
     expect(await prisma.card.findUnique({ where: { id: card.id } })).toBeNull();
+  });
+});
+
+/** Tarjeta con vencimiento, su propietario y los tokens de un VIEWER y de un extraño. */
+async function seedCardWithRoles() {
+  const owner = await seedUser();
+  const viewer = await seedUser();
+  const stranger = await seedUser();
+  const board = await seedBoard(owner.id);
+  await addMember(board.id, viewer.id, "VIEWER");
+  const list = await seedList(board.id);
+  const card = await seedCard(list.id);
+  await prisma.card.update({
+    where: { id: card.id },
+    data: { dueDate: new Date("2026-07-01T00:00:00.000Z") },
+  });
+  return {
+    list,
+    card,
+    ownerToken: await seedApiToken(owner.id),
+    viewerToken: await seedApiToken(viewer.id),
+    strangerToken: await seedApiToken(stranger.id),
+  };
+}
+
+function patch(cardId: string, token: string, body: unknown) {
+  return patchCard(
+    apiRequest("PATCH", `/api/v1/cards/${cardId}`, { token, body }),
+    ctx({ id: cardId }),
+  );
+}
+
+async function dueDateOf(cardId: string) {
+  const card = await prisma.card.findUniqueOrThrow({
+    where: { id: cardId },
+    select: { dueDate: true },
+  });
+  return card.dueDate?.toISOString() ?? null;
+}
+
+// Regresión: una dueDate no reconocible se guardaba como null (borraba el vencimiento) y
+// la respuesta era 200/201.
+describe("API v1 — tarjetas: validación de dueDate", () => {
+  it.each(["31/12/2026", "2026-02-31", "", "mañana"])(
+    "PATCH con dueDate %j da 422 y conserva la fecha",
+    async (bad) => {
+      const { card, ownerToken } = await seedCardWithRoles();
+      const res = await patch(card.id, ownerToken, { dueDate: bad });
+      expect(res.status).toBe(422);
+      expect(await dueDateOf(card.id)).toBe("2026-07-01T00:00:00.000Z");
+    },
+  );
+
+  it("POST con dueDate inválida da 422 y no crea nada", async () => {
+    const { list, ownerToken } = await seedCardWithRoles();
+    const res = await createCard(
+      apiRequest("POST", `/api/v1/lists/${list.id}/cards`, {
+        token: ownerToken,
+        body: { title: "Nueva", dueDate: "31/12/2026" },
+      }),
+      ctx({ id: list.id }),
+    );
+    expect(res.status).toBe(422);
+    expect(await prisma.card.count()).toBe(1);
+  });
+
+  it("'YYYY-MM-DD', ISO con zona y null siguen funcionando", async () => {
+    const { card, ownerToken } = await seedCardWithRoles();
+    expect((await patch(card.id, ownerToken, { dueDate: "2026-08-15" })).status).toBe(200);
+    expect(await dueDateOf(card.id)).toBe("2026-08-15T00:00:00.000Z");
+
+    expect(
+      (await patch(card.id, ownerToken, { dueDate: "2026-08-15T10:00:00+02:00" })).status,
+    ).toBe(200);
+    expect(await dueDateOf(card.id)).toBe("2026-08-15T08:00:00.000Z");
+
+    expect((await patch(card.id, ownerToken, { dueDate: null })).status).toBe(200);
+    expect(await dueDateOf(card.id)).toBeNull();
   });
 });

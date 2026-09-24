@@ -41,6 +41,20 @@ export const cardTitleSchema = z
   .min(1, "El título es obligatorio")
   .max(500);
 
+// Límite de la descripción de una tarjeta, el mismo en la UI, la API y el import.
+export const CARD_DESCRIPTION_MAX = 5000;
+
+// Vencimiento que envía la UI (input date y arrastre en el calendario): "YYYY-MM-DD", o
+// vacío/null para quitarlo. z.iso.date() rechaza fechas imposibles como 2026-02-31; antes
+// una fecha no parseable se convertía en null y BORRABA el vencimiento sin avisar.
+export const dueDateSchema = z.union([z.literal(""), z.null(), z.iso.date()]);
+
+// Actualización de descripción + vencimiento desde el modal de tarjeta (updateCard).
+export const cardDetailsSchema = z.object({
+  description: z.string().trim().max(CARD_DESCRIPTION_MAX),
+  dueDate: dueDateSchema,
+});
+
 // Colores de etiqueta y de fondo de tablero. Se validan contra la paleta con z.enum (no con
 // el operador `in`, que acepta claves del prototipo como 'constructor'). `.catch` mantiene
 // la tolerancia de antes: un color desconocido cae al valor por defecto en vez de fallar.
@@ -106,7 +120,7 @@ const importChecklistSchema = z.object({
 
 const importCardSchema = z.object({
   title: z.string().min(1).max(500),
-  description: z.string().max(5000).nullable().optional(),
+  description: z.string().max(CARD_DESCRIPTION_MAX).nullable().optional(),
   dueDate: z.string().max(40).nullable().optional(),
   labels: z.array(z.string().max(40)).max(50).optional(),
   checklists: z.array(importChecklistSchema).max(50).optional(),
@@ -150,17 +164,25 @@ export const apiTokenScopeSchema = z.enum(["full", "read"]);
 // Caducidad elegida en /settings: nunca o un número de días.
 export const apiTokenExpirySchema = z.enum(["0", "30", "90", "365"]);
 
+// Vencimiento en la API: "YYYY-MM-DD" (lo documentado) o ISO 8601 completo con zona
+// ("2026-07-01T09:00:00Z" / "+02:00"). null lo quita. Una cadena vacía o no reconocible da
+// 422 en lugar de guardarse como null (antes borraba el vencimiento y respondía 200).
+export const apiDueDateSchema = z.union([
+  z.iso.date(),
+  z.iso.datetime({ offset: true }),
+]);
+
 export const apiCardCreateSchema = z.object({
   title: cardTitleSchema,
-  description: z.string().max(5000).nullish(),
-  dueDate: z.string().max(40).nullish(),
+  description: z.string().max(CARD_DESCRIPTION_MAX).nullish(),
+  dueDate: apiDueDateSchema.nullish(),
 });
 
 export const apiCardUpdateSchema = z
   .object({
     title: cardTitleSchema.optional(),
-    description: z.string().max(5000).nullable().optional(),
-    dueDate: z.string().max(40).nullable().optional(),
+    description: z.string().max(CARD_DESCRIPTION_MAX).nullable().optional(),
+    dueDate: apiDueDateSchema.nullable().optional(),
   })
   .refine((d) => Object.keys(d).length > 0, {
     message: "No hay campos que actualizar.",

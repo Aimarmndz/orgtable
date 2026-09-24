@@ -5,9 +5,18 @@ import { revalidateBoard } from "@/app/lib/realtime/notify";
 import { requireBoardAccess } from "@/app/lib/dal";
 import { canEditBoard } from "@/app/lib/roles";
 import { z } from "zod";
-import { cardTitleSchema } from "@/app/lib/validators";
+import {
+  cardTitleSchema,
+  cardDetailsSchema,
+  dueDateSchema,
+} from "@/app/lib/validators";
 import { cardBelongsToBoard, createCardAtEnd } from "@/app/lib/services/cards";
 import { isValidPositionKey } from "@/app/lib/ordering";
+
+const setCardDueDateSchema = z.object({
+  cardId: z.string().min(1),
+  dueDate: dueDateSchema,
+});
 
 // La posición llega del cliente (drag & drop): se valida antes de cualquier consulta,
 // porque una clave inválida guardada haría fallar para siempre las altas en esa lista.
@@ -16,6 +25,11 @@ const moveCardSchema = z.object({
   toListId: z.string().min(1),
   position: z.string().refine(isValidPositionKey),
 });
+
+/** "YYYY-MM-DD" → medianoche UTC (fecha de calendario); vacío o null → sin fecha. */
+function toDueDate(value: string | null): Date | null {
+  return value ? new Date(value) : null;
+}
 
 // Helper: dado un listId, devuelve el boardId al que pertenece (para autorizar y
 // revalidar). Devuelve null si la lista no existe.
@@ -51,15 +65,19 @@ export async function updateCard(formData: FormData): Promise<void> {
   const { role } = await requireBoardAccess(card.list.boardId);
   if (!canEditBoard(role)) return;
 
-  const description = String(formData.get("description") ?? "").trim();
-  const dueRaw = String(formData.get("dueDate") ?? "").trim();
-  const due = dueRaw ? new Date(dueRaw) : null;
+  // Si algo no valida no se guarda NADA (ni la descripción): guardar solo una parte
+  // perdería en silencio lo que el usuario escribió en la otra.
+  const parsed = cardDetailsSchema.safeParse({
+    description: String(formData.get("description") ?? ""),
+    dueDate: String(formData.get("dueDate") ?? "").trim(),
+  });
+  if (!parsed.success) return;
 
   await prisma.card.update({
     where: { id: cardId },
     data: {
-      description: description || null,
-      dueDate: due && !Number.isNaN(due.getTime()) ? due : null,
+      description: parsed.data.description || null,
+      dueDate: toDueDate(parsed.data.dueDate),
     },
   });
   revalidateBoard(card.list.boardId);
@@ -73,18 +91,20 @@ export async function setCardDueDate(input: {
   cardId: string;
   dueDate: string | null;
 }): Promise<{ ok: boolean }> {
+  const parsed = setCardDueDateSchema.safeParse(input);
+  if (!parsed.success) return { ok: false };
+  const { cardId, dueDate } = parsed.data;
   const card = await prisma.card.findUnique({
-    where: { id: input.cardId },
+    where: { id: cardId },
     select: { list: { select: { boardId: true } } },
   });
   if (!card) return { ok: false };
   const { role } = await requireBoardAccess(card.list.boardId);
   if (!canEditBoard(role)) return { ok: false };
 
-  const due = input.dueDate ? new Date(input.dueDate) : null;
   await prisma.card.update({
-    where: { id: input.cardId },
-    data: { dueDate: due && !Number.isNaN(due.getTime()) ? due : null },
+    where: { id: cardId },
+    data: { dueDate: toDueDate(dueDate) },
   });
   revalidateBoard(card.list.boardId);
   return { ok: true };

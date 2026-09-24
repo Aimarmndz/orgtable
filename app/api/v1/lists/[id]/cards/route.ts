@@ -79,12 +79,12 @@ export async function POST(
     return apiError(422, parsed.error.issues[0]?.message ?? "Datos no válidos.");
   }
 
-  const due = parsed.data.dueDate ? new Date(parsed.data.dueDate) : null;
+  // apiDueDateSchema ya garantiza una fecha ISO válida (o null/ausente).
   const { id } = await createCardAtEnd({
     listId,
     title: parsed.data.title,
     description: parsed.data.description ?? null,
-    dueDate: due && !Number.isNaN(due.getTime()) ? due : null,
+    dueDate: parsed.data.dueDate ? new Date(parsed.data.dueDate) : null,
   });
   const created = await prisma.card.findUniqueOrThrow({
     where: { id },

@@ -87,8 +87,8 @@ export async function PATCH(
     data.description = parsed.data.description || null;
   }
   if (parsed.data.dueDate !== undefined) {
-    const due = parsed.data.dueDate ? new Date(parsed.data.dueDate) : null;
-    data.dueDate = due && !Number.isNaN(due.getTime()) ? due : null;
+    // apiDueDateSchema ya garantiza una fecha ISO válida (o null): nada de caer a null.
+    data.dueDate = parsed.data.dueDate ? new Date(parsed.data.dueDate) : null;
   }
 
   await prisma.card.update({ where: { id }, data });

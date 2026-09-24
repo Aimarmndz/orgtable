@@ -964,6 +964,28 @@ tests: no había forma de probar las Server Actions ni la revocación de sesione
 **Consecuencias.** Los tests pueden ejecutar Server Actions con sesión real (fila
 `Session` + JWT firmado). Quitar una comprobación de `verifySession` hace fallar
 `session.int.test.ts` (comprobado quitando `revokedAt` y el control de `userId`).
+## 2026-09-24 — Tarjetas: vencimiento y descripción validados en acciones y API
+
+**Contexto.** Una fecha no parseable se guardaba como `null` y borraba el vencimiento
+sin avisar (en la API, con 200/201), y la descripción no tenía límite en la UI.
+
+**Decisión.**
+- En la UI, `dueDateSchema` (`""`, `null` o `YYYY-MM-DD` real con `z.iso.date()`); en
+  la API, `apiDueDateSchema` (`YYYY-MM-DD` o ISO 8601 con zona). En la API **la cadena
+  vacía da 422**, no es sinónimo de `null`: `null` ya existe para quitar la fecha y un
+  `""` suele ser un error del cliente. Si algo no valida en `updateCard`, no se guarda
+  nada (tampoco la descripción); `setCardDueDate` devuelve `ok:false`.
+- `CARD_DESCRIPTION_MAX = 5000` compartido por UI, API e import.
+
+**Alternativas descartadas.**
+- `Date.parse` o solo `z.iso.datetime()` para la API: el primero acepta formatos
+  ambiguos y el segundo rompería el `YYYY-MM-DD` documentado.
+
+**Consecuencias.** Un cliente de la API que enviara `dueDate: ""` para borrar la fecha
+ahora recibe 422 y debe enviar `null`.
+
+---
+
 ## 2026-09-24 — Orden: claves de posición validadas y altas al final serializadas
 
 **Contexto.** `moveCard`/`reorderList` guardaban cualquier cadena como posición y una

@@ -6,6 +6,8 @@ import {
   apiTokenNameSchema,
   boardImportSchema,
   labelColorSchema,
+  cardDetailsSchema,
+  dueDateSchema,
 } from "@/app/lib/validators";
 
 describe("validators (zod)", () => {
@@ -42,6 +44,32 @@ describe("validators (zod)", () => {
     expect(apiTokenNameSchema.safeParse("Mi token").success).toBe(true);
     expect(apiTokenNameSchema.safeParse("   ").success).toBe(false);
     expect(apiTokenNameSchema.safeParse("x".repeat(61)).success).toBe(false);
+  });
+
+  it("apiCardCreateSchema/apiCardUpdateSchema validan el formato de dueDate", () => {
+    for (const ok of ["2026-07-01", "2026-07-01T10:00:00Z", "2026-07-01T10:00:00+02:00"]) {
+      expect(apiCardUpdateSchema.safeParse({ dueDate: ok }).success).toBe(true);
+      expect(apiCardCreateSchema.safeParse({ title: "T", dueDate: ok }).success).toBe(true);
+    }
+    for (const bad of ["", "31/12/2026", "2026-02-31", "2026-07-01T10:00:00"]) {
+      expect(apiCardUpdateSchema.safeParse({ dueDate: bad }).success).toBe(false);
+      expect(apiCardCreateSchema.safeParse({ title: "T", dueDate: bad }).success).toBe(false);
+    }
+    expect(apiCardCreateSchema.safeParse({ title: "T", dueDate: null }).success).toBe(true);
+  });
+
+  it("dueDateSchema y cardDetailsSchema (modal de tarjeta)", () => {
+    expect(dueDateSchema.safeParse("").success).toBe(true);
+    expect(dueDateSchema.safeParse(null).success).toBe(true);
+    expect(dueDateSchema.safeParse("2026-09-24").success).toBe(true);
+    expect(dueDateSchema.safeParse("24/09/2026").success).toBe(false);
+    expect(dueDateSchema.safeParse("2026-02-31").success).toBe(false);
+    expect(
+      cardDetailsSchema.safeParse({ description: "x".repeat(5000), dueDate: "" }).success,
+    ).toBe(true);
+    expect(
+      cardDetailsSchema.safeParse({ description: "x".repeat(5001), dueDate: "" }).success,
+    ).toBe(false);
   });
 
   it("labelColorSchema cae a 'blue' fuera de la paleta (también claves del prototipo)", () => {

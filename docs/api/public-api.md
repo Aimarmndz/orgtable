@@ -75,6 +75,11 @@ Authorization: Bearer orgt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 - Crear tarjeta: `{ "title": "…", "description"?: string|null, "dueDate"?: "YYYY-MM-DD"|null }`.
 - Actualizar tarjeta (`PATCH`): cualquiera de `title`, `description`, `dueDate` (al menos
   uno).
+- `description`: como máximo 5000 caracteres.
+- `dueDate`: `"YYYY-MM-DD"` (se guarda a medianoche UTC) o una fecha-hora ISO 8601 con
+  zona (`"2026-07-01T09:00:00Z"`, `"2026-07-01T09:00:00+02:00"`). `null` quita el
+  vencimiento. Cualquier otro valor, incluida la cadena vacía `""` o una fecha imposible
+  como `"2026-02-31"`, da `422` y no cambia nada.
 
 ## Ejemplos
 
