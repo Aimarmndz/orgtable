@@ -33,6 +33,8 @@ describe("recordAudit: fallo de escritura", () => {
     expect(logged).toContain("auth.login");
     expect(logged).not.toContain("dato-privado-xyz");
     expect(logged).not.toContain("192.0.2.10");
+    // Tampoco el userId: el error de FK de Postgres lo repite («Key (userId)=(…)»).
+    expect(logged).not.toContain("no-existe");
   });
 
   it("si la escritura va bien no registra nada en el log", async () => {
