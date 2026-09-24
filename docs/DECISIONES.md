@@ -47,6 +47,31 @@ en su migración. Las instalaciones glibc que ya tengan claves repetidas las con
 hasta que se reasignen; el orden entre dos claves iguales sigue sin estar definido.
 
 ---
+## 2026-09-24 — CSP fija para los .svg
+
+**Contexto.** El matcher de `proxy.ts` excluye `.*\.svg$`, así que los SVG no reciben
+la CSP con nonce, y `next.config.ts` solo ponía CSP a `/api/**`. Los SVG de `public/`
+se servían sin `Content-Security-Policy`: abierto directamente, un SVG es un documento
+que puede ejecutar scripts en el origen de la app.
+
+**Decisión.** Regla `/:file(.*\\.svg)` en `headers()` de `next.config.ts` con
+`default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'` (sus estilos en
+línea funcionan; scripts, recursos externos y el embebido en marcos no).
+`test/next-config.test.ts` resuelve las reglas con `buildCustomRoute` del router de Next
+(el mismo compilador que usa en runtime) en vez de comparar prefijos, para entender los
+parámetros con regex, y comprueba `/file.svg` e `/icons/logo.svg`.
+
+**Alternativas descartadas.**
+- Quitar la exclusión de `.svg` del matcher de `proxy.ts`: el proxy añadiría a cada SVG
+  la CSP de página (con nonce) y el coste de ejecutarse en cada petición de imagen.
+- Borrar los SVG de `public/` (`file.svg`, `globe.svg`, `next.svg`, `vercel.svg`,
+  `window.svg`): son restos de la plantilla de Next y nada de `app/` los usa, pero
+  borrarlos lo decide el propietario. La regla cubre también cualquier SVG futuro.
+
+**Consecuencias.** Un SVG servido desde la app no puede cargar fuentes ni imágenes
+externas ni ejecutar scripts cuando se abre directamente. Cargado con `<img>` un SVG
+nunca ejecuta scripts y su CSP no interviene, así que no afecta a su uso normal.
+
 ## 2026-09-24 — Timeout del pool de pg y singleton de Prisma también en producción
 
 **Contexto.** `PrismaPg` creaba el `pg.Pool` con los valores por defecto:

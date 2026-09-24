@@ -32,7 +32,7 @@ registro abierto).
 | **Alta** | **IDOR en `moveCard`**: solo validaba el tablero de DESTINO, no el de ORIGEN. Un editor podía mover a su tablero una tarjeta de otro al que no tiene acceso, conociendo su id. | **Corregido**: `moveCard` exige `cardBelongsToBoard(cardId, destino)` (la tarjeta debe estar ya en el tablero de destino; no se mueven tarjetas entre tableros). Test de regresión en `security.int.test.ts`. |
 | Media (op.) | `SESSION_SECRET` sin definir degradaba a clave vacía/predecible (sesiones forjables). | **Corregido**: se exige `SESSION_SECRET` (≥16 chars) al firmar/verificar; falla ruidosamente. |
 | Media (op.) | `DATABASE_URL` sin validar: el adapter caería a los defaults de libpq y conectaría a una BD no deseada. | **Corregido**: `createPrismaClient` lanza si falta (salvo en `next build`). |
-| Baja | Faltaban cabeceras de seguridad (clickjacking, sniffing, CSP, HSTS). | **Corregido**: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy` y HSTS en `next.config.ts`; CSP con nonce en `proxy.ts`. Tests en `test/csp.test.ts` y `test/next-config.test.ts`. |
+| Baja | Faltaban cabeceras de seguridad (clickjacking, sniffing, CSP, HSTS). | **Corregido**: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy` y HSTS en `next.config.ts`; CSP con nonce en `proxy.ts` y CSP fija para `/api` y los `.svg`. Tests en `test/csp.test.ts` y `test/next-config.test.ts`. |
 | Baja | El 503 del cron revelaba "sin CRON_SECRET". | **Corregido**: mensaje genérico ("Servicio no disponible"). |
 | Media (op.) | El wizard de setup queda **bloqueado para siempre**; sin reset por UI. | **Aceptado/documentado**: es un bloqueo intencionado; la recuperación es `UPDATE "InstanceConfig" SET "setupCompletedAt" = NULL` (ver `docs/setup-wizard.md`). |
 
@@ -68,6 +68,8 @@ Los demás hallazgos "confirmados" por el panel eran en realidad **controles cor
     `object-src 'none'`, `base-uri`/`form-action 'self'`. El layout raíz lee el nonce de
     `x-nonce` para el script inline del tema.
   - `/api/**`: `default-src 'none'` (solo JSON, SSE y descargas).
+  - `*.svg` (fuera del matcher de `proxy.ts`): `default-src 'none'; style-src
+    'unsafe-inline'`, para que un SVG abierto directamente no ejecute scripts.
   - `Strict-Transport-Security: max-age=31536000` (sin `includeSubDomains`),
     `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`,
     `Permissions-Policy`.

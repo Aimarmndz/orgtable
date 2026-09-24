@@ -1,8 +1,9 @@
 import type { NextConfig } from "next";
 
 // Cabeceras de seguridad aplicadas a todas las respuestas. La CSP de las páginas lleva un
-// nonce por petición y la pone proxy.ts (app/lib/csp.ts); aquí van las cabeceras fijas y
-// una CSP cerrada para /api, que solo sirve JSON, SSE y descargas. Ver docs/security.md.
+// nonce por petición y la pone proxy.ts (app/lib/csp.ts); aquí van las cabeceras fijas,
+// una CSP cerrada para /api, que solo sirve JSON, SSE y descargas, y otra para los .svg,
+// que proxy.ts no cubre. Ver docs/security.md.
 const securityHeaders = [
   // Anti-clickjacking: la app no se embebe en iframes.
   { key: "X-Frame-Options", value: "DENY" },
@@ -51,6 +52,18 @@ const nextConfig: NextConfig = {
           {
             key: "Content-Security-Policy",
             value: "default-src 'none'; frame-ancestors 'none'",
+          },
+        ],
+      },
+      // Los .svg quedan fuera del matcher de proxy.ts (no reciben la CSP con nonce). Un SVG
+      // abierto directamente es un documento que puede ejecutar scripts en el origen de la
+      // app, así que se sirven con una CSP que solo permite sus estilos en línea.
+      {
+        source: "/:file(.*\\.svg)",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'",
           },
         ],
       },

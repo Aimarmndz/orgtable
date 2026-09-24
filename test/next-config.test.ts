@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 import nextConfig from "@/next.config";
 import { MAX_ATTACHMENT_BYTES } from "@/app/lib/storage";
+// El mismo compilador de reglas que usa el router de Next en runtime: así el test entiende
+// los parámetros con regex (`/:file(.*\\.svg)`) igual que el servidor.
+import { buildCustomRoute } from "next/dist/server/lib/router-utils/filesystem";
 
 // Holgura mínima para la sobrecarga de multipart (límites, cabeceras de cada parte y
 // campos del formulario). La guía de Next recomienda 10–20 KB; se exige más.
@@ -11,9 +14,7 @@ async function headersFor(path: string): Promise<Map<string, string>> {
   const rules = (await nextConfig.headers?.()) ?? [];
   const result = new Map<string, string>();
   for (const rule of rules) {
-    // Las reglas usan `/:path*` y `/api/:path*`: basta con comparar el prefijo.
-    const prefix = rule.source.replace("/:path*", "");
-    if (prefix === "" || path === prefix || path.startsWith(`${prefix}/`)) {
+    if (buildCustomRoute("header", rule).match(path)) {
       for (const { key, value } of rule.headers) result.set(key, value);
     }
   }
@@ -56,5 +57,15 @@ describe("cabeceras de seguridad (next.config.ts)", () => {
 
   it("las páginas no reciben la CSP estática: la pone proxy.ts con nonce", async () => {
     expect((await headersFor("/login")).has("Content-Security-Policy")).toBe(false);
+  });
+
+  // proxy.ts excluye los .svg de su matcher: sin esta regla se servían sin CSP y un SVG
+  // abierto directamente podía ejecutar scripts en el origen de la app.
+  it.each(["/file.svg", "/icons/logo.svg"])("%s recibe una CSP que bloquea scripts", async (path) => {
+    const h = await headersFor(path);
+    expect(h.get("Content-Security-Policy")).toBe(
+      "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'",
+    );
+    expect(h.get("X-Content-Type-Options")).toBe("nosniff");
   });
 });
