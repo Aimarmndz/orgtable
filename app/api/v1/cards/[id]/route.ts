@@ -5,6 +5,7 @@ import { apiCardUpdateSchema } from "@/app/lib/validators";
 import { authenticateApiToken, apiBoardRole, isReadOnly } from "@/app/lib/api/auth";
 import { apiError, apiOk } from "@/app/lib/api/respond";
 import { serializeCard } from "@/app/lib/api/serialize";
+import { deleteCardWithAttachments } from "@/app/lib/services/attachments";
 
 // API pública v1 — una tarjeta (Hito 9). Ver docs/api/public-api.md.
 
@@ -118,7 +119,7 @@ export async function DELETE(
     return apiError(403, "Necesitas permiso de edición en el tablero.");
   }
 
-  await prisma.card.delete({ where: { id } });
+  await deleteCardWithAttachments(id);
   revalidateBoard(existing.list.boardId);
   return apiOk({ deleted: true });
 }

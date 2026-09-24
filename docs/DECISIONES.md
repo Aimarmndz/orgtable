@@ -964,6 +964,26 @@ tests: no había forma de probar las Server Actions ni la revocación de sesione
 **Consecuencias.** Los tests pueden ejecutar Server Actions con sesión real (fila
 `Session` + JWT firmado). Quitar una comprobación de `verifySession` hace fallar
 `session.int.test.ts` (comprobado quitando `revokedAt` y el control de `userId`).
+## 2026-09-24 — Adjuntos: borrar los ficheros al borrar tarjetas, listas y tableros
+
+**Contexto.** El `onDelete: Cascade` borraba las filas `Attachment` al borrar una
+tarjeta, lista o tablero, pero los binarios se quedaban en el volumen para siempre. Una
+subida cuya fila fallaba al crearse también dejaba el fichero.
+
+**Decisión.** `services/attachments.ts` lee los nombres en disco y borra en BD en una
+transacción y, tras el commit, borra los ficheros con `Promise.allSettled`. Lo usan
+`deleteCard`, `deleteList`, `deleteBoard` y los `DELETE` de la API. `uploadAttachment`
+borra el fichero si falla el alta de la fila y relanza el error.
+
+**Alternativas descartadas.**
+- Borrar ficheros antes del commit: si la transacción fallara, la fila quedaría sin su
+  binario.
+
+**Consecuencias.** Los ficheros huérfanos que ya existan en una instalación no se
+limpian (decisión del propietario; un barrido necesitaría script con dry-run).
+
+---
+
 ## 2026-09-24 — Tarjetas: vencimiento y descripción validados en acciones y API
 
 **Contexto.** Una fecha no parseable se guardaba como `null` y borraba el vencimiento

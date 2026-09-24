@@ -11,6 +11,7 @@ import {
   dueDateSchema,
 } from "@/app/lib/validators";
 import { cardBelongsToBoard, createCardAtEnd } from "@/app/lib/services/cards";
+import { deleteCardWithAttachments } from "@/app/lib/services/attachments";
 import { isValidPositionKey } from "@/app/lib/ordering";
 
 const setCardDueDateSchema = z.object({
@@ -136,7 +137,7 @@ export async function deleteCard(formData: FormData): Promise<void> {
   const { role } = await requireBoardAccess(card.list.boardId);
   if (!canEditBoard(role)) return;
 
-  await prisma.card.delete({ where: { id: cardId } });
+  await deleteCardWithAttachments(cardId);
   revalidateBoard(card.list.boardId);
 }
 

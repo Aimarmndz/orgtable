@@ -5,6 +5,7 @@ import { revalidateBoard } from "@/app/lib/realtime/notify";
 import { canManageBoard } from "@/app/lib/roles";
 import { recordAudit } from "@/app/lib/audit";
 import { boardTitleSchema } from "@/app/lib/validators";
+import { deleteBoardWithAttachments } from "@/app/lib/services/attachments";
 import { authenticateApiToken, apiBoardRole, isReadOnly } from "@/app/lib/api/auth";
 import { apiError, apiOk } from "@/app/lib/api/respond";
 import {
@@ -78,7 +79,7 @@ export async function DELETE(
     return apiError(403, "Necesitas ser propietario del tablero.");
   }
 
-  await prisma.board.delete({ where: { id } });
+  await deleteBoardWithAttachments({ id });
   await recordAudit({
     action: "board.deleted",
     userId: auth.userId,

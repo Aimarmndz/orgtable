@@ -43,15 +43,22 @@ export async function uploadAttachment(
   }
 
   const { storedName, size } = await saveAttachmentFile(file);
-  await prisma.attachment.create({
-    data: {
-      cardId,
-      filename: file.name.slice(0, 255) || "archivo",
-      storedName,
-      mimeType: (file.type || "application/octet-stream").slice(0, 128),
-      size,
-    },
-  });
+  try {
+    await prisma.attachment.create({
+      data: {
+        cardId,
+        filename: file.name.slice(0, 255) || "archivo",
+        storedName,
+        mimeType: (file.type || "application/octet-stream").slice(0, 128),
+        size,
+      },
+    });
+  } catch (err) {
+    // Sin fila no hay forma de llegar al fichero (p. ej. la tarjeta se borró mientras se
+    // subía): se borra para no dejar un huérfano en disco y se relanza el error original.
+    await deleteAttachmentFile(storedName);
+    throw err;
+  }
   revalidateBoard(boardId);
   return {};
 }

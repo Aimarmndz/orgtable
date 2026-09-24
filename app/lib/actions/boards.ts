@@ -9,6 +9,7 @@ import { canManageBoard } from "@/app/lib/roles";
 import { recordAudit } from "@/app/lib/audit";
 import { boardTitleSchema, boardImportSchema } from "@/app/lib/validators";
 import { positionAtEnd } from "@/app/lib/ordering";
+import { deleteBoardWithAttachments } from "@/app/lib/services/attachments";
 
 export async function createBoard(formData: FormData): Promise<void> {
   const user = await requireUser();
@@ -183,10 +184,9 @@ export async function importBoard(
 export async function deleteBoard(formData: FormData): Promise<void> {
   const user = await requireUser();
   const boardId = String(formData.get("boardId"));
-  // Solo el dueño puede borrar el tablero (deleteMany no falla si no coincide).
-  const { count } = await prisma.board.deleteMany({
-    where: { id: boardId, ownerId: user.id },
-  });
+  // Solo el dueño puede borrar el tablero (deleteMany no falla si no coincide). El
+  // servicio borra también los ficheros de los adjuntos.
+  const count = await deleteBoardWithAttachments({ id: boardId, ownerId: user.id });
   if (count > 0) {
     await recordAudit({
       action: "board.deleted",

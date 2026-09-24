@@ -8,6 +8,7 @@ import { z } from "zod";
 import { listTitleSchema } from "@/app/lib/validators";
 import { isValidPositionKey } from "@/app/lib/ordering";
 import { createListAtEnd } from "@/app/lib/services/lists";
+import { deleteListWithAttachments } from "@/app/lib/services/attachments";
 
 // La posición llega del cliente: ver moveCardSchema en actions/cards.ts.
 const reorderListSchema = z.object({
@@ -52,8 +53,9 @@ export async function deleteList(formData: FormData): Promise<void> {
   const { role } = await requireBoardAccess(list.boardId);
   if (!canEditBoard(role)) return;
 
-  // Las tarjetas se borran en cascada (onDelete: Cascade en el esquema).
-  await prisma.list.delete({ where: { id: listId } });
+  // Las tarjetas se borran en cascada (onDelete: Cascade en el esquema); los ficheros
+  // de sus adjuntos los borra el servicio.
+  await deleteListWithAttachments(listId);
   revalidateBoard(list.boardId);
 }
 
