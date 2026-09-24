@@ -389,12 +389,18 @@ Solo el **propietario** (`OWNER`) del tablero.
 
 - **`addBoardMember(_prev, formData)`** — `{ boardId, email, role }`. Valida con
   `addMemberSchema`. Busca un usuario existente por email; si no existe, devuelve un
-  error. Crea la fila en `board_members`. Retorno: `{ error?, message? }` para
-  `useActionState`.
+  error. Crea la fila en `board_members`. Retorno: `{ error?, message?, values? }` para
+  `useActionState`; `values` (`{ email, role }` enviados) solo viene con `error`, para
+  que el formulario no se vacíe al fallar.
 - **`updateBoardMemberRole(formData)`** — `{ boardId, userId, role }`. Cambia el rol
-  de un miembro. No permite tocar el rol del dueño del tablero.
-- **`removeBoardMember(formData)`** — `{ boardId, userId }`. Quita a un miembro. No
-  permite quitar al dueño.
+  de un miembro. No permite tocar el rol del dueño del tablero. Si el usuario no es
+  miembro o ya tenía ese rol, no hace nada (ni auditoría ni notificación).
+- **`removeBoardMember(formData)`** — `{ boardId, userId }`. Quita a un miembro y sus
+  asignaciones en las tarjetas del tablero (`removeMemberFromBoard`, una transacción). No
+  permite quitar al dueño. Si el usuario no era miembro, no audita ni notifica.
+
+Las tres llaman a `revalidateBoard(boardId)`, así que los demás miembros conectados ven
+el cambio en vivo.
 
 ### Administración de usuarios — `app/lib/actions/admin.ts`
 

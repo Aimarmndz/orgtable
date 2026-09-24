@@ -26,9 +26,15 @@ export async function addComment(formData: FormData): Promise<void> {
     data: { cardId, authorId: user.id, text: parsed.data },
   });
 
-  // Avisa a los asignados de la tarjeta (menos al propio autor).
+  // Avisa a los asignados de la tarjeta (menos al propio autor) que sigan siendo miembros
+  // del tablero. Expulsar ya borra sus asignaciones (services/members.ts), pero pueden
+  // quedar filas huérfanas de antes de ese cambio y no deben recibir el texto del
+  // comentario.
   const assignees = await prisma.cardAssignee.findMany({
-    where: { cardId },
+    where: {
+      cardId,
+      user: { memberships: { some: { boardId: ctx.boardId } } },
+    },
     select: { userId: true },
   });
   await Promise.all(

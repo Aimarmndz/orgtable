@@ -1,7 +1,9 @@
-import { describe, it, expect, beforeEach, afterAll } from "vitest";
+import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
 import { prisma } from "@/app/lib/prisma";
 import { assignMemberToCard } from "@/app/lib/services/assignees";
 import { getBoardWithLists } from "@/app/lib/queries";
+import { requireBoardAccess } from "@/app/lib/dal";
+import { addComment } from "@/app/lib/actions/comments";
 import {
   resetDb,
   disconnect,
@@ -12,8 +14,13 @@ import {
   addMember,
 } from "./helpers";
 
+// addComment autoriza con requireBoardAccess (sesión por cookie), que no existe fuera de
+// Next: se sustituye SOLO en este archivo. El resto de la acción es real.
+vi.mock("@/app/lib/dal", () => ({ requireBoardAccess: vi.fn() }));
+
 beforeEach(async () => {
   await resetDb();
+  vi.mocked(requireBoardAccess).mockReset();
 });
 afterAll(async () => {
   await disconnect();
@@ -68,5 +75,34 @@ describe("colaboración en la tarjeta (integración)", () => {
     expect(got?.comments).toHaveLength(1);
     expect(got?.comments[0]?.text).toBe("Primer comentario");
     expect(got?.comments[0]?.author.name).toBe("Owner Persona");
+  });
+
+  it("addComment no avisa a un asignado que ya no es miembro del tablero", async () => {
+    const owner = await seedUser();
+    const editor = await seedUser();
+    const expelled = await seedUser();
+    const board = await seedBoard(owner.id);
+    await addMember(board.id, editor.id, "EDITOR");
+    const card = await seedCard((await seedList(board.id)).id);
+    // Asignación huérfana: como las que dejaba la expulsión antes de borrarlas.
+    await prisma.cardAssignee.createMany({
+      data: [
+        { cardId: card.id, userId: editor.id },
+        { cardId: card.id, userId: expelled.id },
+      ],
+    });
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: owner.id } });
+    vi.mocked(requireBoardAccess).mockResolvedValue({ user, role: "OWNER" });
+
+    const fd = new FormData();
+    fd.set("cardId", card.id);
+    fd.set("text", "Hola");
+    await addComment(fd);
+
+    const notes = await prisma.notification.findMany({
+      where: { type: "comment.added" },
+      select: { userId: true },
+    });
+    expect(notes).toEqual([{ userId: editor.id }]);
   });
 });

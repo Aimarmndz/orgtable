@@ -1,11 +1,12 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { prisma } from "@/app/lib/prisma";
+import { revalidateBoard } from "@/app/lib/realtime/notify";
 import { requireBoardAccess } from "@/app/lib/dal";
 import { canManageBoard, BOARD_ROLE_LABELS } from "@/app/lib/roles";
 import { recordAudit } from "@/app/lib/audit";
 import { notify } from "@/app/lib/notifications";
+import { removeMemberFromBoard } from "@/app/lib/services/members";
 import { addMemberSchema, assignableBoardRoleSchema } from "@/app/lib/validators";
 
 // Gestión de miembros de un tablero (Hito 3). Solo el PROPIETARIO (OWNER) puede
@@ -13,7 +14,22 @@ import { addMemberSchema, assignableBoardRoleSchema } from "@/app/lib/validators
 // invitar a usuarios que ya existen (el administrador los crea, ver actions/admin.ts).
 // Ver docs/authorization.md.
 
-export type MemberActionState = { error?: string; message?: string };
+// `values` devuelve lo que se envió cuando hay error: React resetea el formulario tras la
+// acción, y sin esto el campo de email se vaciaría justo cuando hay que corregirlo.
+export type MemberActionState = {
+  error?: string;
+  message?: string;
+  values?: { email: string; role: string };
+};
+
+function submittedValues(formData: FormData): { email: string; role: string } {
+  const email = formData.get("email");
+  const role = formData.get("role");
+  return {
+    email: typeof email === "string" ? email : "",
+    role: typeof role === "string" ? role : "",
+  };
+}
 
 /** Invita a un usuario existente (por email) a un tablero con un rol (EDITOR/VIEWER). */
 export async function addBoardMember(
@@ -21,9 +37,10 @@ export async function addBoardMember(
   formData: FormData,
 ): Promise<MemberActionState> {
   const boardId = String(formData.get("boardId"));
+  const values = submittedValues(formData);
   const { user: actor, role: actorRole } = await requireBoardAccess(boardId);
   if (!canManageBoard(actorRole)) {
-    return { error: "Solo el propietario puede gestionar los miembros." };
+    return { error: "Solo el propietario puede gestionar los miembros.", values };
   }
 
   const parsed = addMemberSchema.safeParse({
@@ -31,7 +48,10 @@ export async function addBoardMember(
     role: formData.get("role"),
   });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Datos no válidos." };
+    return {
+      error: parsed.error.issues[0]?.message ?? "Datos no válidos.",
+      values,
+    };
   }
 
   const user = await prisma.user.findUnique({
@@ -42,6 +62,7 @@ export async function addBoardMember(
     return {
       error:
         "No existe ningún usuario con ese email. Pídele al administrador que cree la cuenta primero.",
+      values,
     };
   }
 
@@ -50,7 +71,7 @@ export async function addBoardMember(
     select: { userId: true },
   });
   if (existing) {
-    return { error: `${user.name} ya es miembro de este tablero.` };
+    return { error: `${user.name} ya es miembro de este tablero.`, values };
   }
 
   await prisma.boardMember.create({
@@ -75,7 +96,7 @@ export async function addBoardMember(
     body: `Como ${BOARD_ROLE_LABELS[parsed.data.role]}.`,
     boardId,
   });
-  revalidatePath(`/board/${boardId}`);
+  revalidateBoard(boardId);
   return {
     message: `${user.name} añadido como ${BOARD_ROLE_LABELS[parsed.data.role]}.`,
   };
@@ -98,10 +119,14 @@ export async function updateBoardMemberRole(formData: FormData): Promise<void> {
   });
   if (!board || board.ownerId === userId) return;
 
-  await prisma.boardMember.updateMany({
-    where: { boardId, userId },
+  // Solo cuenta si el usuario ES miembro y su rol cambia de verdad: con un userId ajeno o
+  // el mismo rol no hay nada que auditar ni notificar (evita avisos falsos que, además,
+  // revelarían el título del tablero a quien no es miembro).
+  const { count } = await prisma.boardMember.updateMany({
+    where: { boardId, userId, role: { not: parsed.data } },
     data: { role: parsed.data },
   });
+  if (count === 0) return;
   await recordAudit({
     action: "member.role_changed",
     userId: actor.id,
@@ -116,7 +141,7 @@ export async function updateBoardMemberRole(formData: FormData): Promise<void> {
     body: `Ahora eres ${BOARD_ROLE_LABELS[parsed.data]}.`,
     boardId,
   });
-  revalidatePath(`/board/${boardId}`);
+  revalidateBoard(boardId);
 }
 
 /** Quita a un miembro del tablero (no se puede quitar al propietario). */
@@ -132,7 +157,9 @@ export async function removeBoardMember(formData: FormData): Promise<void> {
   });
   if (!board || board.ownerId === userId) return;
 
-  await prisma.boardMember.deleteMany({ where: { boardId, userId } });
+  // Si no era miembro (userId ajeno o expulsión repetida) no se audita ni se notifica.
+  const removed = await removeMemberFromBoard(boardId, userId);
+  if (removed === 0) return;
   await recordAudit({
     action: "member.removed",
     userId: actor.id,
@@ -146,5 +173,5 @@ export async function removeBoardMember(formData: FormData): Promise<void> {
     type: "member.removed",
     title: `Te han quitado de «${board.title}»`,
   });
-  revalidatePath(`/board/${boardId}`);
+  revalidateBoard(boardId);
 }

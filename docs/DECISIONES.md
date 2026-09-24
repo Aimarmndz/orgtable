@@ -306,6 +306,44 @@ se abre al hidratar (un instante sin modal). El comportamiento del diálogo (foc
 Escape, clic fuera) no tiene test automático: no hay jsdom ni e2e en el proyecto;
 queda pendiente de verificación manual. El selector de etiquetas de `filter-bar.tsx`
 debe usar el mismo estilo que este (relleno sin opacidad).
+## 2026-09-24 — Expulsar a un miembro borra sus asignaciones; sin avisos a no miembros
+
+**Contexto.** `removeBoardMember` solo borraba la fila `BoardMember`. Las asignaciones
+(`CardAssignee`) se quedaban, y `addComment` y los recordatorios avisaban a todos los
+asignados: el expulsado seguía recibiendo el título de las tarjetas y hasta 140
+caracteres de cada comentario. Además, `updateBoardMemberRole` y `removeBoardMember` no
+miraban cuántas filas cambiaban: con un `userId` ajeno se auditaba y notificaba un cambio
+inexistente (revelando el título del tablero). Tampoco publicaban en el bus de tiempo
+real.
+
+**Decisión.**
+- `removeMemberFromBoard` (`app/lib/services/members.ts`) borra membresía y asignaciones
+  del tablero en una transacción y devuelve cuántas membresías borró.
+- Las acciones de rol y expulsión no auditan ni notifican si no cambió nada (0 filas; en
+  el rol, tampoco si ya tenía ese rol).
+- Defensa en profundidad: `addComment` solo avisa a asignados que siguen siendo miembros,
+  lo que cubre las asignaciones huérfanas ya existentes (los recordatorios, en su propia
+  entrada).
+- Las tres acciones de miembros usan `revalidateBoard` (revalida y publica en el bus).
+- `addBoardMember` devuelve `values` con lo enviado cuando hay error, para que el
+  formulario no se vacíe.
+- Los tests de acciones sustituyen `requireBoardAccess` con `vi.mock` solo en su archivo,
+  sin tocar el stub global de `next/headers`.
+
+**Alternativas descartadas.**
+- Limpiar ya las asignaciones huérfanas en producción: es una operación sobre datos
+  reales que decide el propietario (con copia y prueba en seco). El filtro por membresía
+  las neutraliza mientras tanto.
+- Borrarlas con un trigger o un `onDelete` en BD: no hay relación directa entre
+  `CardAssignee` y `BoardMember`; exigiría una migración para algo que resuelve una
+  transacción.
+
+**Consecuencias.** Las filas huérfanas previas siguen en la BD (sin efecto en avisos,
+pero aún visibles como avatares en la tarjeta) hasta que se limpien. Tests en
+`test/integration/members.int.test.ts` y `collaboration.int.test.ts`.
+
+---
+
 ## 2026-09-24 — `notify` informa de si guardó la notificación
 
 **Contexto.** `notify()` tenía un `catch` vacío: si la inserción fallaba no quedaba
