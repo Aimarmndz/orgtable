@@ -5,7 +5,10 @@ import "server-only";
 // Redis. Para multi-instancia el conteo sería por réplica (límite documentado en
 // docs/operations.md). El Map se guarda en globalThis para sobrevivir al HMR.
 
-type Bucket = { count: number; resetAt: number };
+// `blocked` marca que la ventana ya rechazó algún intento: sirve para avisar solo del
+// PRIMER bloqueo (firstBlock) y no escribir una fila de auditoría por cada intento
+// rechazado durante un ataque sostenido.
+type Bucket = { count: number; resetAt: number; blocked?: boolean };
 
 const g = globalThis as unknown as {
   __orgtableRateBuckets?: Map<string, Bucket>;
@@ -13,7 +16,12 @@ const g = globalThis as unknown as {
 const buckets = g.__orgtableRateBuckets ?? new Map<string, Bucket>();
 g.__orgtableRateBuckets = buckets;
 
-export type RateLimitResult = { ok: boolean; retryAfterSec: number };
+export type RateLimitResult = {
+  ok: boolean;
+  retryAfterSec: number;
+  /** true solo en el primer intento rechazado de cada ventana. */
+  firstBlock: boolean;
+};
 
 /**
  * Cuenta un intento para `key`. Permite hasta `limit` por ventana de `windowMs`.
@@ -34,11 +42,22 @@ export function rateLimit(
   const bucket = buckets.get(key);
   if (!bucket || bucket.resetAt <= now) {
     buckets.set(key, { count: 1, resetAt: now + windowMs });
-    return { ok: true, retryAfterSec: 0 };
+    return { ok: true, retryAfterSec: 0, firstBlock: false };
   }
   if (bucket.count >= limit) {
-    return { ok: false, retryAfterSec: Math.ceil((bucket.resetAt - now) / 1000) };
+    const firstBlock = !bucket.blocked;
+    bucket.blocked = true;
+    return {
+      ok: false,
+      retryAfterSec: Math.ceil((bucket.resetAt - now) / 1000),
+      firstBlock,
+    };
   }
   bucket.count += 1;
-  return { ok: true, retryAfterSec: 0 };
+  return { ok: true, retryAfterSec: 0, firstBlock: false };
+}
+
+/** Olvida los intentos de `key` (p. ej. tras un login correcto). */
+export function resetRateLimit(key: string): void {
+  buckets.delete(key);
 }

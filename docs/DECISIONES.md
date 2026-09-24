@@ -754,6 +754,48 @@ acción prometía lo contrario.
 **Consecuencias.** Tras un reset el usuario tiene que crear tokens nuevos. Test en
 `test/integration/admin-revocation.int.test.ts` (el mismo Bearer pasa de 200 a 401; los
 tokens de otros usuarios no se tocan).
+## 2026-09-24 — Login: IP de confianza, límite por cuenta y hash ficticio válido
+
+**Contexto.** Cuatro fallos del login: (1) el límite por IP tomaba el primer valor de
+`X-Forwarded-For`, que escribe el cliente, y cambiándolo en cada intento la fuerza bruta
+no tenía límite; tampoco había límite por cuenta. (2) El hash ficticio para emails
+inexistentes medía 59 caracteres, `bcrypt.compare` devolvía `false` al instante y el
+tiempo de respuesta revelaba qué emails tienen cuenta. (3) Cada fallo guardaba en
+`AuditLog.detail` el email tecleado, exista o no la cuenta. (4) Cada intento rechazado
+por el límite escribía una fila de auditoría.
+
+**Decisión.**
+- `TRUSTED_PROXY_HOPS` (entero >= 0, por defecto 0, validado): con 0 se ignoran
+  `X-Forwarded-For` y `X-Real-IP`; con N se toma el N-ésimo valor desde la derecha
+  (`app/lib/client-ip.ts`). Sin IP no se aplica límite por IP ni un contador común.
+- Límite por cuenta: 20 intentos fallidos cada 15 minutos por email normalizado, también
+  para emails inexistentes; se reinicia tras un login correcto. Se cuenta antes de
+  verificar y se borra con el éxito, para no tener carreras entre peticiones simultáneas.
+- `DUMMY_PASSWORD_HASH`: hash bcrypt real de 60 caracteres y coste 12, como literal, y
+  `verifyPasswordOrDummy` en `app/lib/auth.ts`.
+- `auth.login_failed` guarda solo el `userId` si la cuenta existe; nunca el email.
+- `RateLimitResult.firstBlock`: se audita solo el primer rechazo de cada ventana, con
+  `detail` «límite por IP» o «límite por cuenta».
+- ADR 0009 actualizado.
+
+**Alternativas descartadas.**
+- Seguir con el primer valor de `X-Forwarded-For` o con `X-Real-IP`: los controla el
+  cliente cuando la app está expuesta sin proxy.
+- Contador global `login:unknown` cuando no hay IP: un atacante bloquearía el login de
+  todo el mundo.
+- Guardar un HMAC del email inexistente para correlacionar ataques: sigue siendo un dato
+  seudónimo de un tercero y no hacía falta.
+- `bcrypt.hashSync` al importar el módulo: añade ~200 ms a cada arranque en frío.
+
+**Consecuencias.** Con el valor por defecto `AuditLog.ip` queda vacío y solo rige el
+límite por cuenta. Quien conozca un email puede bloquear esa cuenta hasta 15 minutos
+(riesgo aceptado, documentado en el ADR 0009). Las filas antiguas de `auth.login_failed`
+con email siguen en producción: borrarlas es una operación masiva que decide el
+propietario. `.env.example`, README y `docs/operations.md` los actualiza el lote de
+despliegue.
+
+---
+
 ## 2026-09-24 — Cookie de sesión Secure según el esquema real y SESSION_SECRET ruidoso
 
 **Contexto.** La cookie `session` llevaba `Secure` cuando `NODE_ENV=production`. El

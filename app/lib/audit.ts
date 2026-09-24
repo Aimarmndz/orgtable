@@ -1,6 +1,7 @@
 import "server-only";
 import { headers } from "next/headers";
 import { prisma } from "@/app/lib/prisma";
+import { parseTrustedProxyHops, pickClientIp } from "@/app/lib/client-ip";
 
 // Registro de auditoría (Hito 5). `recordAudit` escribe una fila por evento relevante
 // de seguridad u operación. Está pensado para NO romper nunca la operación principal:
@@ -26,12 +27,16 @@ export type AuditAction =
   | "apitoken.created"
   | "apitoken.revoked";
 
-/** IP del cliente a partir de las cabeceras del proxy inverso (X-Forwarded-For). */
+/**
+ * IP del cliente según X-Forwarded-For y TRUSTED_PROXY_HOPS (ver app/lib/client-ip.ts).
+ * null si no hay proxies de confianza declarados: desde una Server Action no se puede
+ * leer la IP del socket, y la cabecera sin proxy delante la escribe el propio cliente.
+ * X-Real-IP no se usa por lo mismo.
+ */
 export async function clientIp(): Promise<string | null> {
+  const hops = parseTrustedProxyHops(process.env.TRUSTED_PROXY_HOPS);
   const h = await headers();
-  const xff = h.get("x-forwarded-for");
-  if (xff) return xff.split(",")[0]?.trim().slice(0, 64) ?? null;
-  return h.get("x-real-ip")?.slice(0, 64) ?? null;
+  return pickClientIp(h.get("x-forwarded-for"), hops);
 }
 
 export async function recordAudit(params: {
