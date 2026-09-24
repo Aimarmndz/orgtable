@@ -37,6 +37,8 @@ export function CardItem({
     id: card.id,
     data: { type: "card", listId },
     disabled: !draggable,
+    // dnd-kit anuncia por defecto «sortable» (en inglés).
+    attributes: { roleDescription: "tarjeta" },
   });
 
   // Regla lateral tintada con el color de la primera etiqueta (o el borde si no hay).
@@ -75,7 +77,23 @@ export function CardItem({
       style={style}
       {...(draggable ? attributes : {})}
       {...(draggable ? listeners : {})}
+      // Siempre enfocable y anunciada como botón (también para lectores o con filtros,
+      // cuando dnd-kit no pone sus atributos). La copia flotante no recibe foco.
+      role="button"
+      tabIndex={overlay ? -1 : 0}
+      aria-label={card.title}
       onClick={() => onOpen?.(card.id)}
+      onKeyDown={(e) => {
+        // Primero dnd-kit (Espacio coge la tarjeta si se puede arrastrar; si la coge,
+        // marca el evento con preventDefault). Durante un arrastre con teclado, Intro
+        // suelta la tarjeta y no debe abrirla.
+        if (draggable) listeners?.onKeyDown?.(e);
+        if (e.defaultPrevented || isDragging || overlay) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault(); // Espacio desplazaría la página.
+          onOpen?.(card.id);
+        }
+      }}
       className={`group cursor-pointer rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-ink shadow-[0_1px_2px_oklch(0.27_0.022_52/0.06)] transition hover:border-accent/40 hover:shadow-[0_4px_12px_-4px_oklch(0.27_0.022_52/0.15)] ${
         draggable ? "active:cursor-grabbing" : ""
       } ${overlay ? "rotate-2 shadow-lg" : ""}`}

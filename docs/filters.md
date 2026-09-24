@@ -14,12 +14,20 @@ solo de presentación: oculta las que no encajan, no cambia datos.
   **AND** (deben cumplirse todas). «Limpiar filtros» lo resetea.
 - Mientras hay un filtro activo, **el arrastre se desactiva** (las posiciones se calcularían
   sobre un subconjunto visible); al limpiar, vuelve a estar disponible.
+- **Vencidas** son las tarjetas cuyo día de vencimiento es anterior a hoy (día local del
+  navegador): la que vence hoy no cuenta. La misma regla (`isOverdue`) pinta en rojo la
+  fecha de la tarjeta, así que el filtro y la tarjeta nunca discrepan.
+- Cada opción es un botón con `aria-pressed` (el lector anuncia si está activa) dentro de
+  un grupo etiquetado por su título. Las etiquetas sin seleccionar llevan texto de tinta
+  con el borde de su color; las seleccionadas, relleno del color con ✓.
 
 ## Diseño
 
 - La lógica vive en un módulo **puro y testeable**, `app/lib/board-filters.ts`
-  (`cardMatchesFilters`, `filtersActive`), compartido y cubierto por
-  `test/board-filters.test.ts`.
+  (`cardMatchesFilters`, `filtersActive`, `isOverdue`, `formatDueDay`), compartido y
+  cubierto por `test/board-filters.test.ts`. `formatDueDay` formatea el vencimiento en
+  UTC (es una fecha de calendario guardada a medianoche UTC), así que muestra el mismo
+  día en cualquier zona horaria.
 - El estado de los filtros es local de cliente en `BoardView` (no va en la URL). La barra
   es `app/components/board/filter-bar.tsx`. `BoardView` filtra las tarjetas que pasa a cada
   `ListColumn` y propaga `sortingDisabled` a `ListColumn`/`CardItem`.

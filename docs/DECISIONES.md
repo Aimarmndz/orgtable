@@ -1387,7 +1387,10 @@ falsos del test).
 **Contexto.** La tarjeta que vence hoy salía en rojo (se comparaba el instante de
 medianoche UTC con `Date.now()`) mientras el filtro «Vencidas» la excluía, y la fecha se
 formateaba en la zona local: al oeste de UTC mostraba el día anterior y descuadraba la
-hidratación.
+hidratación. Las tarjetas no se podían abrir con el teclado y, sin permisos de edición o
+con filtros, ni siquiera recibían foco. Los chips del filtro no exponían su estado, las
+etiquetas sin seleccionar tenían ~2,2:1 de contraste y los campos de añadir
+lista/tarjeta solo tenían placeholder.
 
 **Decisión.**
 - `isOverdue(dueDate, now)` en `app/lib/board-filters.ts`: compara el día guardado
@@ -1396,13 +1399,27 @@ hidratación.
   es una fecha de calendario.
 - «Vencida» depende del día del navegador, así que la tarjeta solo la calcula tras
   hidratar (`useSyncExternalStore`); en el HTML del servidor nunca sale en rojo.
+- La tarjeta es siempre `role="button"`, `tabIndex=0` y `aria-label` con su título (la
+  copia flotante, `tabIndex=-1`). Intro la abre; Espacio también si no se puede
+  arrastrar.
+- `aria-roledescription` en español («tarjeta», «lista») en lugar del «sortable» de
+  dnd-kit.
+- Filtros: `type="button"`, `aria-pressed` y grupos etiquetados por su título. Etiqueta
+  sin seleccionar: texto de tinta con borde del color; seleccionada: relleno con ✓ y
+  anillo.
+- `aria-label` en los campos: «Nombre de la nueva lista» y «Nueva tarjeta en <lista>».
+- Popover de filtros anclado a la izquierda en móvil (`left-0 sm:right-0`) para que no
+  se salga a 375 px.
 
 **Alternativas descartadas.**
 - Formatear en la zona del servidor (`ORGTABLE_TIMEZONE`): el vencimiento no es un
   instante, es un día, y en UTC se muestra igual en todas partes.
+- Un asa de arrastre separada dentro de la tarjeta: añade un control más; con Espacio
+  para coger e Intro para abrir basta.
 
 **Consecuencias.** Tests en `test/board-filters.test.ts` (vence hoy/ayer, formato con
-`TZ=America/New_York`).
+`TZ=America/New_York`). Test de render en servidor (`test/card-item.test.ts`) para rol,
+foco y ausencia de «vencida» en el HTML inicial.
 
 ---
 

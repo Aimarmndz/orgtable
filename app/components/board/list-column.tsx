@@ -33,6 +33,8 @@ export function ListColumn({
     id: list.id,
     data: { type: "list" },
     disabled: !canEdit || sortingDisabled,
+    // dnd-kit anuncia por defecto «sortable» (en inglés).
+    attributes: { roleDescription: "lista" },
   });
 
   const style = {
@@ -90,7 +92,7 @@ export function ListColumn({
         </div>
       </SortableContext>
 
-      {canEdit && <AddCardForm listId={list.id} />}
+      {canEdit && <AddCardForm listId={list.id} listTitle={list.title} />}
     </div>
   );
 }

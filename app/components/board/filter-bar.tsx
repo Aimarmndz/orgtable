@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { labelBackground } from "@/app/lib/colors";
 import {
   type BoardFilters,
@@ -32,6 +32,7 @@ export function FilterBar({
   onChange: (f: BoardFilters) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const idPrefix = useId();
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -96,28 +97,46 @@ export function FilterBar({
           <div
             role="dialog"
             aria-label="Filtros"
-            className="absolute right-0 top-11 z-40 w-72 max-w-[calc(100vw-2rem)] space-y-4 rounded-xl border border-border bg-surface p-4 text-ink shadow-[0_24px_48px_-24px_oklch(0.27_0.022_52/0.4)]"
+            className="absolute left-0 top-11 z-40 sm:left-auto sm:right-0 w-72 max-w-[calc(100vw-2rem)] space-y-4 rounded-xl border border-border bg-surface p-4 text-ink shadow-[0_24px_48px_-24px_oklch(0.27_0.022_52/0.4)]"
           >
             {/* Etiquetas */}
             <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+              <h3
+                id={`${idPrefix}-labels`}
+                className="text-xs font-semibold uppercase tracking-wide text-ink-muted"
+              >
                 Etiquetas
               </h3>
               {labels.length > 0 ? (
-                <div className="mt-2 flex flex-wrap gap-1.5">
+                <div
+                  role="group"
+                  aria-labelledby={`${idPrefix}-labels`}
+                  className="mt-2 flex flex-wrap gap-1.5"
+                >
                   {labels.map((l) => {
                     const on = filters.labelIds.includes(l.id);
+                    const color = labelBackground(l.color);
+                    // Sin seleccionar: texto de tinta sobre la superficie con el borde del
+                    // color (antes texto blanco con opacity-55, ~2,2:1 de contraste).
+                    // Seleccionada: rellena del color, con ✓ y anillo.
                     return (
                       <button
                         key={l.id}
+                        type="button"
+                        aria-pressed={on}
                         onClick={() => toggle("labelIds", l.id)}
-                        style={{ background: labelBackground(l.color) }}
-                        className={`rounded-full px-2.5 py-1 text-xs font-medium text-white transition ${
+                        style={
                           on
-                            ? "ring-2 ring-ink/40 ring-offset-1 ring-offset-surface"
-                            : "opacity-55 hover:opacity-100"
+                            ? { background: color, borderColor: color }
+                            : { borderColor: color }
+                        }
+                        className={`inline-flex items-center gap-1 rounded-full border-2 px-2.5 py-0.5 text-xs font-medium transition ${
+                          on
+                            ? "text-white ring-2 ring-ink/40 ring-offset-1 ring-offset-surface"
+                            : "text-ink hover:bg-surface-2"
                         }`}
                       >
+                        {on && <span aria-hidden="true">✓</span>}
                         {l.name}
                       </button>
                     );
@@ -130,15 +149,24 @@ export function FilterBar({
 
             {/* Asignados */}
             <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+              <h3
+                id={`${idPrefix}-assignees`}
+                className="text-xs font-semibold uppercase tracking-wide text-ink-muted"
+              >
                 Asignados
               </h3>
-              <div className="mt-2 flex flex-wrap gap-1.5">
+              <div
+                role="group"
+                aria-labelledby={`${idPrefix}-assignees`}
+                className="mt-2 flex flex-wrap gap-1.5"
+              >
                 {members.map((m) => {
                   const on = filters.assigneeIds.includes(m.id);
                   return (
                     <button
                       key={m.id}
+                      type="button"
+                      aria-pressed={on}
                       onClick={() => toggle("assigneeIds", m.id)}
                       className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${
                         on
@@ -155,13 +183,22 @@ export function FilterBar({
 
             {/* Vencimiento */}
             <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+              <h3
+                id={`${idPrefix}-due`}
+                className="text-xs font-semibold uppercase tracking-wide text-ink-muted"
+              >
                 Vencimiento
               </h3>
-              <div className="mt-2 flex flex-wrap gap-1.5">
+              <div
+                role="group"
+                aria-labelledby={`${idPrefix}-due`}
+                className="mt-2 flex flex-wrap gap-1.5"
+              >
                 {DUE_OPTIONS.map((o) => (
                   <button
                     key={o.value}
+                    type="button"
+                    aria-pressed={filters.due === o.value}
                     onClick={() => onChange({ ...filters, due: o.value })}
                     className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${
                       filters.due === o.value
