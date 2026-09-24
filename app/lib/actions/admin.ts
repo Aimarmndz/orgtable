@@ -6,6 +6,7 @@ import { prisma } from "@/app/lib/prisma";
 import { requireAdmin } from "@/app/lib/dal";
 import {
   createUserAccount,
+  deleteUserAccount,
   resetPasswordAndRevokeAccess,
 } from "@/app/lib/services/users";
 import { revokeAllUserSessions } from "@/app/lib/session";
@@ -65,20 +66,29 @@ function backToUsers(params: Record<string, string>): never {
   redirect(`/admin/users${qs ? `?${qs}` : ""}`);
 }
 
+// Id del usuario objetivo: `String(null)` daría "null" y la acción seguiría adelante.
+function readUserId(formData: FormData): string {
+  const userId = formData.get("userId");
+  if (typeof userId !== "string" || userId === "") backToUsers({ error: "invalid" });
+  return userId;
+}
+
 /** Cambia el rol global (ADMIN/MEMBER). No puedes cambiar tu propio rol. */
 export async function updateUserRole(formData: FormData): Promise<void> {
   const admin = await requireAdmin();
-  const userId = String(formData.get("userId"));
+  const userId = readUserId(formData);
   const parsed = globalRoleSchema.safeParse(formData.get("role"));
   if (!parsed.success) backToUsers({ error: "invalid" });
 
   // No puedes degradarte a ti mismo (evita quedarte sin acceso de admin).
   if (userId === admin.id) backToUsers({ error: "self-role" });
 
-  await prisma.user.updateMany({
+  // Se mira el count antes de auditar: con un id inexistente no hay nada que registrar.
+  const { count } = await prisma.user.updateMany({
     where: { id: userId },
     data: { role: parsed.data },
   });
+  if (count === 0) backToUsers({ error: "not-found" });
   await recordAudit({
     action: "user.role_changed",
     userId: admin.id,
@@ -121,7 +131,13 @@ export async function resetUserPassword(formData: FormData): Promise<void> {
 /** Cierra todas las sesiones activas de un usuario (revocación inmediata). */
 export async function revokeUserSessions(formData: FormData): Promise<void> {
   const admin = await requireAdmin();
-  const userId = String(formData.get("userId"));
+  const userId = readUserId(formData);
+  // Tener 0 sesiones activas es válido, así que la existencia se comprueba aparte.
+  const exists = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true },
+  });
+  if (!exists) backToUsers({ error: "not-found" });
   await revokeAllUserSessions(userId);
   await recordAudit({
     action: "user.sessions_revoked",
@@ -140,14 +156,18 @@ export async function revokeUserSessions(formData: FormData): Promise<void> {
  */
 export async function deleteUser(formData: FormData): Promise<void> {
   const admin = await requireAdmin();
-  const userId = String(formData.get("userId"));
+  const userId = readUserId(formData);
 
   if (userId === admin.id) backToUsers({ error: "self-delete" });
 
-  const ownedBoards = await prisma.board.count({ where: { ownerId: userId } });
-  if (ownedBoards > 0) backToUsers({ error: "owns-boards" });
-
-  await prisma.user.deleteMany({ where: { id: userId } });
+  // La comprobación de tableros propios va dentro del DELETE (ver el servicio): así la
+  // cascada nunca borra filas Attachment dejando sus ficheros huérfanos en disco.
+  const result = await deleteUserAccount(userId);
+  if (!result.ok) {
+    backToUsers({
+      error: result.error === "owns_boards" ? "owns-boards" : "not-found",
+    });
+  }
   await recordAudit({
     action: "user.deleted",
     userId: admin.id,

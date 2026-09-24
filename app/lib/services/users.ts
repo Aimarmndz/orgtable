@@ -79,3 +79,28 @@ export async function resetPasswordAndRevokeAccess(
   if (updated.count === 0) return { ok: false, error: "not_found" };
   return { ok: true, revokedTokens: tokens.count };
 }
+
+export type DeleteUserResult =
+  | { ok: true }
+  | { ok: false; error: "not_found" | "owns_boards" };
+
+/**
+ * Borra una cuenta que NO es propietaria de ningún tablero. La condición va en el mismo
+ * DELETE (`boards: { none: {} }`) y no en una consulta previa: si el usuario creara un
+ * tablero entre la comprobación y el borrado, la cascada por ownerId se llevaría sus
+ * listas, tarjetas y filas Attachment, dejando los binarios huérfanos en el volumen de
+ * adjuntos. Así la cascada nunca alcanza adjuntos.
+ */
+export async function deleteUserAccount(
+  userId: string,
+): Promise<DeleteUserResult> {
+  const { count } = await prisma.user.deleteMany({
+    where: { id: userId, boards: { none: {} } },
+  });
+  if (count > 0) return { ok: true };
+  const exists = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true },
+  });
+  return { ok: false, error: exists ? "owns_boards" : "not_found" };
+}

@@ -562,6 +562,31 @@ expulsada seguían recibiendo eventos, en contra del ADR 0008.
 reconecta. Tests en `test/integration/realtime.int.test.ts` (401/403, abort, cancel,
 revocación, expulsión, vida máxima; sin listeners ni temporizadores tras cerrar).
 
+## 2026-09-24 — Acciones de administración: usuario inexistente y borrado atómico
+
+**Contexto.** `updateUserRole`, `resetUserPassword`, `revokeUserSessions` y `deleteUser`
+no miraban si el usuario existía: auditaban y mostraban éxito con un id inexistente.
+`deleteUser` comprobaba los tableros propios en una consulta previa; si el usuario
+creaba un tablero entre medias, la cascada por `ownerId` borraba sus filas `Attachment`
+y dejaba los ficheros huérfanos en el volumen de adjuntos.
+
+**Decisión.**
+- El id se valida como cadena no vacía (`String(null)` daba `"null"`).
+- Se usa el `count` de `updateMany`/`deleteMany` (y un `findUnique` en «Cerrar
+  sesiones», donde 0 sesiones es válido) y se redirige a `?error=not-found` antes de
+  auditar. Mensaje: «Ese usuario ya no existe.».
+- `deleteUserAccount` (servicio) borra con `where: { id, boards: { none: {} } }`: la
+  condición va en el mismo DELETE, así que la cascada nunca alcanza adjuntos.
+
+**Alternativas descartadas.** Leer los `storedName` y borrar los ficheros tras el
+DELETE: con la condición atómica no hay adjuntos que borrar, y no tendría forma de
+probarse sin saltarse la salvaguarda de tableros propios.
+
+**Consecuencias.** Tests en `test/integration/admin-users.int.test.ts` (sin auditoría
+con id inexistente; un propietario de tableros no se borra y su adjunto sigue en BD).
+
+---
+
 ## 2026-09-24 — Crear un token de API valida permisos y caducidad
 
 **Contexto.** `createApiToken` convertía un `scope` o `expiry` no reconocidos en
