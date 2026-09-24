@@ -8,6 +8,58 @@ arquitectura anteriores a este registro (ADR 0001–0015) siguen en
 
 ---
 
+## 2026-09-24 — Tablero: doble envío, hidratación y arrastre con teclado
+
+**Contexto.** Probando en el navegador se crearon dos listas iguales con 48 ms de
+diferencia (Enter repetido), la consola mostraba un error de hidratación de dnd-kit
+(`aria-describedby` distinto entre servidor y cliente) y las tarjetas solo se podían
+mover con el ratón.
+
+**Decisión.**
+- `AddListForm`/`AddCardForm`: una ref `pending` descarta los envíos mientras la acción
+  anterior no ha terminado (`preventDefault` en `onSubmit`; React no lanza la acción
+  de un formulario cuyo evento está cancelado).
+- `DndContext` recibe `id={useId()}`, estable entre servidor y cliente.
+- Se añade `KeyboardSensor` con `sortableKeyboardCoordinates`.
+
+**Alternativas descartadas.**
+- `useActionState`/`useFormStatus` para deshabilitar el campo: el estado pendiente
+  llega en el siguiente render y un segundo Enter en el mismo tick se cuela; además,
+  deshabilitar el input le quita el foco.
+- Deduplicar en el servidor por título: dos listas con el mismo nombre son legítimas.
+
+**Consecuencias.** Verificado con Playwright: tres Enter seguidos crean una sola lista y
+la consola queda sin errores.
+
+---
+
+## 2026-09-24 — Interfaz: móvil a 375 px y contraste del conmutador
+
+**Contexto.** A 375 px todas las páginas del área autenticada desbordaban 76 px en
+horizontal (la barra superior no cabía) y la cabecera del tablero dejaba «Miembros»
+fuera de pantalla. En modo oscuro la opción activa del conmutador Tablero/Calendario
+era texto claro sobre fondo blanco. El fondo del tablero no llegaba al final de la
+pantalla y el calendario mostraba «Septiembre De 2026».
+
+**Decisión.**
+- Barra superior: en móvil «Administración» pasa a icono con `aria-label`, el nombre de
+  la instancia se trunca y los huecos se reducen.
+- Cabecera del tablero con `flex-wrap`.
+- La opción activa usa `bg-surface text-ink` (tokens del tema) en lugar de blanco fijo.
+- El contenedor del área autenticada usa `flex-1` (el `min-h-full` no se resolvía
+  dentro del `body` flex).
+- El mes del calendario usa `first-letter:uppercase` en vez de `capitalize`, que ponía
+  en mayúscula cada palabra.
+
+**Alternativas descartadas.** Un menú hamburguesa en móvil: con pasar a iconos basta
+y no añade un componente nuevo.
+
+**Consecuencias.** Verificado con Playwright a 375 px (desbordamiento 0 en `/boards`,
+tablero, `/settings`, `/admin/users`, `/admin/audit` y `/search`) y a 1440 px en modo
+oscuro.
+
+---
+
 ## 2026-09-24 — Actualización de dependencias por seguridad
 
 **Contexto.** Tras pasar a pnpm, `pnpm audit` daba 63 avisos (2 críticos y 30 altos),
