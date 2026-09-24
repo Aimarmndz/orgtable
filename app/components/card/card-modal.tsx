@@ -30,7 +30,7 @@ import {
   deleteCard,
   type CardDetailsState,
 } from "@/app/lib/actions/cards";
-import { CARD_DESCRIPTION_MAX } from "@/app/lib/validators";
+import { CARD_DESCRIPTION_MAX } from "@/app/lib/limits";
 import { toggleCardLabel, createLabel } from "@/app/lib/actions/labels";
 import {
   createChecklist,

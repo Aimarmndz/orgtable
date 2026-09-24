@@ -92,54 +92,68 @@ en lugar de gestionar estado optimista local para estos campos.
 
 ## Edición de descripción y fecha de vencimiento
 
-Descripción y vencimiento comparten un único `<form action={updateCard}>`:
+Descripción y vencimiento comparten un único formulario conectado a `updateCard` con
+`useActionState`, para poder mostrar el error y desactivar el botón mientras guarda:
 
 ```tsx
-<form action={updateCard} className="mt-6 space-y-4">
+const [details, detailsAction, detailsPending] = useActionState<
+  CardDetailsState,
+  FormData
+>(updateCard, {});
+
+<form action={detailsAction} className="mt-6 space-y-4">
   <input type="hidden" name="cardId" value={card.id} />
-  <Textarea name="description" defaultValue={card.description ?? ""} … />
-  <Input type="date" name="dueDate" defaultValue={dueValue} … />
-  <Button type="submit" variant="subtle">Guardar cambios</Button>
+  <Textarea
+    name="description"
+    maxLength={CARD_DESCRIPTION_MAX}
+    defaultValue={details.description ?? card.description ?? ""}
+    …
+  />
+  <Input type="date" name="dueDate" defaultValue={details.dueDate ?? dueValue} … />
+  <Button type="submit" variant="subtle" disabled={detailsPending}>
+    {detailsPending ? "Guardando…" : "Guardar cambios"}
+  </Button>
+  {details.error && <p role="alert">{details.error}</p>}
 </form>
 ```
 
-- La descripción usa `<Textarea>` (`name="description"`), con `defaultValue` desde
-  `card.description`.
+- La descripción usa `<Textarea>` (`name="description"`) con
+  `maxLength={CARD_DESCRIPTION_MAX}` (5000). La constante está en
+  [`app/lib/limits.ts`](../app/lib/limits.ts), un módulo sin dependencias, para no meter
+  zod en el bundle del cliente; `validators.ts` la reexporta para los esquemas.
 - El vencimiento usa `<Input type="date" name="dueDate">`. El valor por defecto se obtiene
   recortando el ISO a `YYYY-MM-DD`: `card.dueDate ? card.dueDate.slice(0, 10) : ""`.
+- Si no se guarda, el formulario se rehidrata con lo enviado (`details.description`,
+  `details.dueDate`): React resetea el formulario no controlado al acabar la acción y, sin
+  esto, lo escrito se perdería. El error se enlaza al textarea con `aria-describedby`.
 
-La acción **`updateCard(formData)`** ([`cards.ts`](../app/lib/actions/cards.ts)):
+La acción **`updateCard(prev, formData): Promise<CardDetailsState>`**
+([`cards.ts`](../app/lib/actions/cards.ts)) devuelve `{}` si guarda, o
+`{ error, description, dueDate }` con lo enviado si no:
 
-1. Resuelve el `boardId` de la tarjeta, autoriza con `requireBoardAccess` y exige
-   `canEditBoard(role)`. Si la tarjeta no existe o el rol no puede editar, sale sin hacer
-   nada.
-2. Valida `{ description, dueDate }` con `cardDetailsSchema`
-   ([`validators.ts`](../app/lib/validators.ts)): `description` se recorta y admite como
-   máximo `CARD_DESCRIPTION_MAX` caracteres; `dueDate` tiene que ser `""` o una fecha
-   `YYYY-MM-DD` válida (`z.iso.date()`, que rechaza fechas imposibles como `2026-02-31`).
-3. **Si algo no valida, no se guarda nada**, ni siquiera la descripción, y el
-   vencimiento anterior se mantiene. Guardar solo una parte perdería en silencio lo
-   escrito en el otro campo; y antes una fecha no válida se convertía en `null` y
-   **borraba** el vencimiento sin avisar.
-4. Persiste `description || null` y `dueDate: toDueDate(...)` (`""` pasa a `null` y
-   `YYYY-MM-DD` a medianoche UTC) con `prisma.card.update`, y llama a
-   `revalidateBoard(boardId)`.
+1. Normaliza los saltos de línea de la descripción (`\r\n` → `\n`): el navegador los
+   envía como `\r\n`, pero `maxLength` los cuenta como un carácter, así que sin
+   normalizar una descripción que en la UI mide 5000 se rechazaría.
+2. Resuelve el `boardId` de la tarjeta y autoriza con `requireBoardAccess` + `canEditBoard`.
+3. Valida `dueDate` con `dueDateSchema` (`"YYYY-MM-DD"` o vacío para quitarla). Una fecha
+   inválida **no** se guarda como `null`: devuelve un error y no se guarda nada.
+4. Si la descripción es igual a la guardada (tras normalizar y recortar), no se valida su
+   longitud ni se reescribe; solo se actualiza la fecha. Así las tarjetas con
+   descripciones anteriores al límite (más de 5000) pueden seguir cambiando el
+   vencimiento desde el modal. Si ha cambiado, se valida con
+   `cardDetailsSchema.shape.description` (recorte + máximo); vacía se guarda como `null`.
+5. Si algo no valida no se guarda **nada**: guardar solo una parte perdería en silencio
+   lo que el usuario escribió en la otra.
+6. Persiste con `prisma.card.update` y revalida el tablero (`revalidateBoard`).
 
-```ts
-const parsed = cardDetailsSchema.safeParse({
-  description: String(formData.get("description") ?? ""),
-  dueDate: String(formData.get("dueDate") ?? "").trim(),
-});
-if (!parsed.success) return;
+Mensajes de error que puede mostrar el modal:
 
-await prisma.card.update({
-  where: { id: cardId },
-  data: {
-    description: parsed.data.description || null,
-    dueDate: toDueDate(parsed.data.dueDate),
-  },
-});
-```
+| Caso | Mensaje |
+| --- | --- |
+| La tarjeta se borró mientras tanto | «La tarjeta ya no existe.» |
+| Sin rol de edición | «No tienes permiso para editar esta tarjeta.» |
+| Fecha no válida | «La fecha de vencimiento no es válida.» |
+| Descripción nueva demasiado larga | «La descripción no puede superar 5000 caracteres (tiene N).» |
 
 ---
 

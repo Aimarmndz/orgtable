@@ -232,6 +232,30 @@ resincroniza con el servidor ya sano.
 stream se abre y se cierra al momento). Tests en `test/realtime-reconnect.test.ts`
 (5xx/red no avisan, 401/403 sí, desmontaje durante la comprobación y `probeStatus`
 contra un servidor HTTP real). Descrito en `docs/realtime.md`.
+## 2026-09-24 — `CARD_DESCRIPTION_MAX` en un módulo sin dependencias (`limits.ts`)
+
+**Contexto.** El modal de tarjeta importaba `CARD_DESCRIPTION_MAX` de
+`app/lib/validators.ts` para el `maxLength` del textarea. Era el único componente
+`"use client"` que importaba `validators.ts`, así que zod entraba en el bundle del
+cliente del tablero solo por un número. Además, `validators.ts` usa `Buffer` en
+`passwordSchema`, que no existe en el navegador.
+
+**Decisión.** La constante vive en `app/lib/limits.ts`, sin importaciones. El modal la
+importa de ahí y `validators.ts` la importa y la reexporta, así que los esquemas, las
+acciones y los tests siguen usando `validators.ts` sin cambios. Un test unitario
+(`test/client-imports.test.ts`) falla si un componente `"use client"` importa zod o
+`validators.ts`, o si `limits.ts` gana importaciones.
+
+**Alternativas descartadas.** Duplicar el `5000` en el modal: dos fuentes de verdad que
+se pueden desincronizar. Dividir `validators.ts` en esquemas de cliente y de servidor:
+más cambio del necesario para una constante. Comprobar solo con `pnpm build`: no deja
+nada que impida que vuelva a pasar.
+
+**Consecuencias.** Los límites que necesite la UI se añaden a `limits.ts`. El test solo
+mira las importaciones directas: una cadena indirecta hacia zod no la detecta.
+
+---
+
 ## 2026-09-24 — `updateCard` devuelve el error y no revalida descripciones sin cambios
 
 **Contexto.** `cardDetailsSchema` limita la descripción a `CARD_DESCRIPTION_MAX` (5000),
@@ -246,7 +270,8 @@ formulario reenvía la descripción y fallaba todo.
   si guarda, o `{ error, description, dueDate }` con lo enviado para rehidratar el
   formulario. El modal muestra el error (`role="alert"`) y desactiva el botón mientras
   guarda.
-- El textarea lleva `maxLength={CARD_DESCRIPTION_MAX}`, importado de `validators.ts`.
+- El textarea lleva `maxLength={CARD_DESCRIPTION_MAX}` (hoy importado de `limits.ts`, ver
+  la entrada superior).
 - El servidor normaliza `\r\n` a `\n` antes de validar: el navegador envía así los
   saltos de línea, pero `maxLength` los cuenta como un carácter.
 - Si la descripción recibida es igual a la guardada (tras normalizar y recortar), no se
@@ -258,10 +283,9 @@ guardaría una parte y perdería la otra en silencio. Un textarea controlado: ob
 sincronizar a mano con los cambios que llegan por tiempo real. Mover la constante a un
 módulo sin zod: toca archivos fuera de este cambio (ver consecuencias).
 
-**Consecuencias.** El modal importa `validators.ts`, así que zod entra en el bundle del
-cliente de la página del tablero; si pesa, mover `CARD_DESCRIPTION_MAX` a un módulo
-propio y reexportarlo desde `validators.ts`. Queda pendiente actualizar la firma de
-`updateCard` en `docs/card-detail.md`.
+**Consecuencias.** La firma de `updateCard`, los mensajes de error y la regla de la
+descripción sin cambios están en `docs/card-detail.md`. El problema de importar
+`validators.ts` desde el modal se resolvió después (entrada superior).
 
 ---
 

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { BOARD_COLOR_KEYS, LABEL_COLOR_KEYS } from "@/app/lib/colors";
+import { CARD_DESCRIPTION_MAX } from "@/app/lib/limits";
 
 // Esquemas de validación compartidos (zod). Se usan en las Server Actions para
 // validar la entrada antes de tocar la base de datos.
@@ -52,8 +53,9 @@ export const cardTitleSchema = z
   .min(1, "El título es obligatorio")
   .max(500);
 
-// Límite de la descripción de una tarjeta, el mismo en la UI, la API y el import.
-export const CARD_DESCRIPTION_MAX = 5000;
+// El límite vive en limits.ts para que la UI lo use sin importar zod; se reexporta
+// para que los esquemas y las acciones sigan tomándolo de aquí.
+export { CARD_DESCRIPTION_MAX };
 
 // Vencimiento que envía la UI (input date y arrastre en el calendario): "YYYY-MM-DD", o
 // vacío/null para quitarlo. z.iso.date() rechaza fechas imposibles como 2026-02-31; antes

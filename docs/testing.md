@@ -39,7 +39,7 @@ interfaz renderizan componentes con `react-dom/server` (no hay jsdom).
 | Área | Archivos (`test/<nombre>.test.ts`) |
 |------|----------|
 | Autorización, sesión y seguridad | `roles`, `tokens`, `auth`, `client-ip`, `rate-limit`, `csp`, `next-config` |
-| Validación y datos | `validators`, `ordering`, `colors`, `search-params`, `format-date` |
+| Validación y datos | `validators`, `ordering`, `colors`, `search-params`, `format-date`, `client-imports` (ningún componente cliente importa zod ni `validators.ts`) |
 | Tablero y tarjetas (lógica de cliente) | `board-filters`, `board-collision`, `optimistic`, `card-modal-helpers` |
 | Tiempo real | `realtime-bus` (puente `LISTEN/NOTIFY` con un `pg` falso), `realtime-reconnect` |
 | Interfaz y accesibilidad | `card-item`, `admin-forms-a11y`, `delete-board-button`, `delete-board-button-focus`, `metadata`, `contrast` (lee `app/globals.css`) |
