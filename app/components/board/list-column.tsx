@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   SortableContext,
   useSortable,
@@ -27,6 +27,24 @@ export function ListColumn({
   // pide una segunda confirmación en línea («¿Borrar? Sí / No») en vez de borrar al
   // primer clic, que además cae junto al asa de arrastre.
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  // Al cancelar, el formulario se desmonta con el foco dentro; sin devolverlo al ✕
+  // caería al <body> y quien usa teclado perdería su sitio en el tablero (mismo patrón
+  // que DeleteBoardButton). Solo tras cancelar: al montar el tablero cada columna
+  // tiene su ✕ y ninguno debe robar el foco.
+  const deleteTriggerRef = useRef<HTMLButtonElement>(null);
+  const restoreFocus = useRef(false);
+
+  useEffect(() => {
+    if (!confirmingDelete && restoreFocus.current) {
+      restoreFocus.current = false;
+      deleteTriggerRef.current?.focus();
+    }
+  }, [confirmingDelete]);
+
+  function cancelDelete() {
+    restoreFocus.current = true;
+    setConfirmingDelete(false);
+  }
   const {
     attributes,
     listeners,
@@ -71,6 +89,13 @@ export function ListColumn({
           (confirmingDelete ? (
             <form
               action={deleteList}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  // Que el Escape no llegue a otros manejadores del tablero.
+                  e.stopPropagation();
+                  cancelDelete();
+                }
+              }}
               className="flex items-center gap-1 text-xs font-medium"
             >
               <input type="hidden" name="listId" value={list.id} />
@@ -85,7 +110,7 @@ export function ListColumn({
               <button
                 type="button"
                 autoFocus
-                onClick={() => setConfirmingDelete(false)}
+                onClick={cancelDelete}
                 className="rounded px-1.5 py-0.5 text-ink-muted transition-colors hover:bg-black/5 hover:text-ink dark:hover:bg-white/10"
                 aria-label="No, conservar la lista"
               >
@@ -94,6 +119,7 @@ export function ListColumn({
             </form>
           ) : (
             <button
+              ref={deleteTriggerRef}
               type="button"
               onClick={() => setConfirmingDelete(true)}
               className="grid size-6 place-items-center rounded text-ink-muted transition-colors hover:bg-black/5 hover:text-danger dark:hover:bg-white/10"
