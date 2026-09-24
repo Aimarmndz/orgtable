@@ -2,7 +2,7 @@ import { prisma } from "@/app/lib/prisma";
 import { revalidateBoard } from "@/app/lib/realtime/notify";
 import { canEditBoard } from "@/app/lib/roles";
 import { apiCardCreateSchema } from "@/app/lib/validators";
-import { positionAtEnd } from "@/app/lib/ordering";
+import { createCardAtEnd } from "@/app/lib/services/cards";
 import { authenticateApiToken, apiBoardRole, isReadOnly } from "@/app/lib/api/auth";
 import { apiError, apiOk } from "@/app/lib/api/respond";
 import { serializeCard } from "@/app/lib/api/serialize";
@@ -80,19 +80,14 @@ export async function POST(
   }
 
   const due = parsed.data.dueDate ? new Date(parsed.data.dueDate) : null;
-  const last = await prisma.card.findFirst({
-    where: { listId },
-    orderBy: { position: "desc" },
-    select: { position: true },
+  const { id } = await createCardAtEnd({
+    listId,
+    title: parsed.data.title,
+    description: parsed.data.description ?? null,
+    dueDate: due && !Number.isNaN(due.getTime()) ? due : null,
   });
-  const created = await prisma.card.create({
-    data: {
-      listId,
-      title: parsed.data.title,
-      description: parsed.data.description ?? null,
-      dueDate: due && !Number.isNaN(due.getTime()) ? due : null,
-      position: positionAtEnd(last?.position ?? null),
-    },
+  const created = await prisma.card.findUniqueOrThrow({
+    where: { id },
     include: cardInclude,
   });
   revalidateBoard(list.boardId);

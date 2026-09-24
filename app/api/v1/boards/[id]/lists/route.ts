@@ -2,7 +2,7 @@ import { prisma } from "@/app/lib/prisma";
 import { revalidateBoard } from "@/app/lib/realtime/notify";
 import { canEditBoard } from "@/app/lib/roles";
 import { listTitleSchema } from "@/app/lib/validators";
-import { positionAtEnd } from "@/app/lib/ordering";
+import { createListAtEnd } from "@/app/lib/services/lists";
 import { authenticateApiToken, apiBoardRole, isReadOnly } from "@/app/lib/api/auth";
 import { apiError, apiOk } from "@/app/lib/api/respond";
 import { serializeListSummary } from "@/app/lib/api/serialize";
@@ -54,18 +54,7 @@ export async function POST(
     return apiError(422, parsed.error.issues[0]?.message ?? "Datos no válidos.");
   }
 
-  const last = await prisma.list.findFirst({
-    where: { boardId },
-    orderBy: { position: "desc" },
-    select: { position: true },
-  });
-  const list = await prisma.list.create({
-    data: {
-      boardId,
-      title: parsed.data,
-      position: positionAtEnd(last?.position ?? null),
-    },
-  });
+  const list = await createListAtEnd({ boardId, title: parsed.data });
   revalidateBoard(boardId);
   return apiOk(serializeListSummary(list), 201);
 }

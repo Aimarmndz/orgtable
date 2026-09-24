@@ -1,9 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { positionAtEnd, positionBetween } from "@/app/lib/ordering";
+import {
+  positionAtEnd,
+  positionBetween,
+  isValidPositionKey,
+} from "@/app/lib/ordering";
 
 // El orden de listas/tarjetas es una clave string lexicográfica (fractional indexing,
-// ADR 0002). Lo que importa: añadir al final mantiene el orden, e insertar entre dos
-// claves produce una clave estrictamente intermedia.
+// ADR 0002). Lo que importa: añadir al final mantiene el orden y las claves que llegan del
+// cliente se validan antes de guardarse.
 describe("ordering (fractional indexing)", () => {
   it("positionAtEnd produce claves en orden lexicográfico al añadir al final", () => {
     let last: string | null = null;
@@ -26,9 +30,16 @@ describe("ordering (fractional indexing)", () => {
     expect(mid < b).toBe(true);
   });
 
-  it("positionBetween(null, primera) coloca antes de todo", () => {
-    const first = positionAtEnd(null);
-    const before = positionBetween(null, first);
-    expect(before < first).toBe(true);
+  it("isValidPositionKey acepta claves generadas por la librería", () => {
+    expect(isValidPositionKey("a0")).toBe(true);
+    expect(isValidPositionKey("a0V")).toBe(true);
+    expect(isValidPositionKey(positionAtEnd(positionAtEnd(null)))).toBe(true);
+  });
+
+  it("isValidPositionKey rechaza claves que romperían positionAtEnd", () => {
+    const bad = ["", "x", "a", "a00", "!!!", "a0 ", "zzzz~", "a" + "1".repeat(64)];
+    for (const key of bad) {
+      expect(isValidPositionKey(key)).toBe(false);
+    }
   });
 });

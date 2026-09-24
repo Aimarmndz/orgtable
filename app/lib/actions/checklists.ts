@@ -4,7 +4,10 @@ import { prisma } from "@/app/lib/prisma";
 import { revalidateBoard } from "@/app/lib/realtime/notify";
 import { requireBoardAccess } from "@/app/lib/dal";
 import { canEditBoard } from "@/app/lib/roles";
-import { positionAtEnd } from "@/app/lib/ordering";
+import {
+  createChecklistAtEnd,
+  createChecklistItemAtEnd,
+} from "@/app/lib/services/checklists";
 
 async function boardIdForCard(cardId: string): Promise<string | null> {
   const card = await prisma.card.findUnique({
@@ -43,14 +46,7 @@ export async function createChecklist(formData: FormData): Promise<void> {
   const title =
     String(formData.get("title") ?? "").trim().slice(0, 80) || "Checklist";
 
-  const last = await prisma.checklist.findFirst({
-    where: { cardId },
-    orderBy: { position: "desc" },
-    select: { position: true },
-  });
-  await prisma.checklist.create({
-    data: { cardId, title, position: positionAtEnd(last?.position ?? null) },
-  });
+  await createChecklistAtEnd({ cardId, title });
   revalidateBoard(boardId);
 }
 
@@ -74,18 +70,7 @@ export async function addChecklistItem(formData: FormData): Promise<void> {
   const text = String(formData.get("text") ?? "").trim().slice(0, 200);
   if (!text) return;
 
-  const last = await prisma.checklistItem.findFirst({
-    where: { checklistId },
-    orderBy: { position: "desc" },
-    select: { position: true },
-  });
-  await prisma.checklistItem.create({
-    data: {
-      checklistId,
-      text,
-      position: positionAtEnd(last?.position ?? null),
-    },
-  });
+  await createChecklistItemAtEnd({ checklistId, text });
   revalidateBoard(boardId);
 }
 

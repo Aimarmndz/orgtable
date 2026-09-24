@@ -4,8 +4,16 @@ import { prisma } from "@/app/lib/prisma";
 import { revalidateBoard } from "@/app/lib/realtime/notify";
 import { requireBoardAccess } from "@/app/lib/dal";
 import { canEditBoard } from "@/app/lib/roles";
+import { z } from "zod";
 import { listTitleSchema } from "@/app/lib/validators";
-import { positionAtEnd } from "@/app/lib/ordering";
+import { isValidPositionKey } from "@/app/lib/ordering";
+import { createListAtEnd } from "@/app/lib/services/lists";
+
+// La posición llega del cliente: ver moveCardSchema en actions/cards.ts.
+const reorderListSchema = z.object({
+  listId: z.string().min(1),
+  position: z.string().refine(isValidPositionKey),
+});
 
 export async function createList(formData: FormData): Promise<void> {
   const boardId = String(formData.get("boardId"));
@@ -14,18 +22,7 @@ export async function createList(formData: FormData): Promise<void> {
   const parsed = listTitleSchema.safeParse(formData.get("title"));
   if (!parsed.success) return;
 
-  const last = await prisma.list.findFirst({
-    where: { boardId },
-    orderBy: { position: "desc" },
-    select: { position: true },
-  });
-  await prisma.list.create({
-    data: {
-      boardId,
-      title: parsed.data,
-      position: positionAtEnd(last?.position ?? null),
-    },
-  });
+  await createListAtEnd({ boardId, title: parsed.data });
   revalidateBoard(boardId);
 }
 
@@ -69,18 +66,18 @@ export async function reorderList(input: {
   listId: string;
   position: string;
 }): Promise<{ ok: boolean }> {
+  const parsed = reorderListSchema.safeParse(input);
+  if (!parsed.success) return { ok: false };
+  const { listId, position } = parsed.data;
   const list = await prisma.list.findUnique({
-    where: { id: input.listId },
+    where: { id: listId },
     select: { boardId: true },
   });
   if (!list) return { ok: false };
   const { role } = await requireBoardAccess(list.boardId);
   if (!canEditBoard(role)) return { ok: false };
 
-  await prisma.list.update({
-    where: { id: input.listId },
-    data: { position: input.position },
-  });
+  await prisma.list.update({ where: { id: listId }, data: { position } });
   revalidateBoard(list.boardId);
   return { ok: true };
 }

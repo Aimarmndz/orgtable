@@ -964,6 +964,32 @@ tests: no había forma de probar las Server Actions ni la revocación de sesione
 **Consecuencias.** Los tests pueden ejecutar Server Actions con sesión real (fila
 `Session` + JWT firmado). Quitar una comprobación de `verifySession` hace fallar
 `session.int.test.ts` (comprobado quitando `revokedAt` y el control de `userId`).
+## 2026-09-24 — Orden: claves de posición validadas y altas al final serializadas
+
+**Contexto.** `moveCard`/`reorderList` guardaban cualquier cadena como posición y una
+clave inválida dejaba la lista o el tablero sin poder crear nada (`positionAtEnd`
+lanzaba). Además, leer la última posición y crear eran dos pasos, así que dos altas
+simultáneas guardaban la misma clave y el arrastre se rompía en esa lista.
+
+**Decisión.**
+- `isValidPositionKey` (`ordering.ts`): regex base62 con tope de longitud + la propia
+  validación de `fractional-indexing` (la librería sola acepta `'a0 '`). Se valida antes
+  de cualquier consulta.
+- Altas al final (`createCardAtEnd`, `createListAtEnd`, `createChecklistAtEnd`,
+  `createChecklistItemAtEnd`) en una transacción interactiva con `SELECT … FOR UPDATE`
+  sobre la fila padre (lista, tablero, tarjeta, checklist). Funciona con el adapter
+  `@prisma/adapter-pg`; probado con 10 POST en paralelo.
+
+**Alternativas descartadas.**
+- Índice único `(listId, position)`: los movimientos concurrentes también colisionan y
+  fallarían en vez de ordenarse.
+- Cambiar el contrato de arrastre a `beforeId/afterId`: cambio de API que decide el
+  propietario.
+
+**Consecuencias.** Las posiciones inválidas o repetidas que ya existan no se limpian.
+
+---
+
 ## 2026-09-24 — Etiquetas: IDOR de toggleCardLabel y colores validados contra la paleta
 
 **Contexto.** `toggleCardLabel` autorizaba por el tablero de la tarjeta, pero aceptaba

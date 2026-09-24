@@ -4,9 +4,18 @@ import { prisma } from "@/app/lib/prisma";
 import { revalidateBoard } from "@/app/lib/realtime/notify";
 import { requireBoardAccess } from "@/app/lib/dal";
 import { canEditBoard } from "@/app/lib/roles";
+import { z } from "zod";
 import { cardTitleSchema } from "@/app/lib/validators";
-import { cardBelongsToBoard } from "@/app/lib/services/cards";
-import { positionAtEnd } from "@/app/lib/ordering";
+import { cardBelongsToBoard, createCardAtEnd } from "@/app/lib/services/cards";
+import { isValidPositionKey } from "@/app/lib/ordering";
+
+// La posición llega del cliente (drag & drop): se valida antes de cualquier consulta,
+// porque una clave inválida guardada haría fallar para siempre las altas en esa lista.
+const moveCardSchema = z.object({
+  cardId: z.string().min(1),
+  toListId: z.string().min(1),
+  position: z.string().refine(isValidPositionKey),
+});
 
 // Helper: dado un listId, devuelve el boardId al que pertenece (para autorizar y
 // revalidar). Devuelve null si la lista no existe.
@@ -27,18 +36,7 @@ export async function createCard(formData: FormData): Promise<void> {
   const parsed = cardTitleSchema.safeParse(formData.get("title"));
   if (!parsed.success) return;
 
-  const last = await prisma.card.findFirst({
-    where: { listId },
-    orderBy: { position: "desc" },
-    select: { position: true },
-  });
-  await prisma.card.create({
-    data: {
-      listId,
-      title: parsed.data,
-      position: positionAtEnd(last?.position ?? null),
-    },
-  });
+  await createCardAtEnd({ listId, title: parsed.data });
   revalidateBoard(boardId);
 }
 
@@ -132,7 +130,10 @@ export async function moveCard(input: {
   toListId: string;
   position: string;
 }): Promise<{ ok: boolean }> {
-  const boardId = await boardIdForList(input.toListId);
+  const parsed = moveCardSchema.safeParse(input);
+  if (!parsed.success) return { ok: false };
+  const { cardId, toListId, position } = parsed.data;
+  const boardId = await boardIdForList(toListId);
   if (!boardId) return { ok: false };
   const { role } = await requireBoardAccess(boardId);
   if (!canEditBoard(role)) return { ok: false };
@@ -141,11 +142,11 @@ export async function moveCard(input: {
   // comprobación, un editor podría mover a su tablero una tarjeta de OTRO tablero al que no
   // tiene acceso, conociendo solo su id. No se mueven tarjetas entre tableros (la UI tampoco
   // lo permite: el arrastre es dentro de un único tablero).
-  if (!(await cardBelongsToBoard(input.cardId, boardId))) return { ok: false };
+  if (!(await cardBelongsToBoard(cardId, boardId))) return { ok: false };
 
   await prisma.card.update({
-    where: { id: input.cardId },
-    data: { listId: input.toListId, position: input.position },
+    where: { id: cardId },
+    data: { listId: toListId, position },
   });
   revalidateBoard(boardId);
   return { ok: true };
