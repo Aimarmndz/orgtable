@@ -1,21 +1,13 @@
-import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterAll } from "vitest";
+import { generateMetadata } from "@/app/(app)/board/[id]/page";
 import {
   resetDb,
   disconnect,
   seedUser,
   seedBoard,
   addMember,
+  loginAs,
 } from "./helpers";
-
-// La sesión llega por cookie y el stub de next/headers no tiene ninguna: se sustituye el
-// DAL solo en este archivo para decidir qué usuario "está conectado". La consulta de
-// acceso sí va contra la BD real.
-const currentUser = vi.hoisted(() => ({ id: "" }));
-vi.mock("@/app/lib/dal", () => ({
-  requireUser: async () => ({ id: currentUser.id }),
-}));
-
-const { generateMetadata } = await import("@/app/(app)/board/[id]/page");
 
 function metadataFor(boardId: string) {
   return generateMetadata({ params: Promise.resolve({ id: boardId }) });
@@ -35,10 +27,10 @@ describe("título de la página del tablero (integración)", () => {
     const board = await seedBoard(owner.id, "Plan secreto");
     await addMember(board.id, viewer.id, "VIEWER");
 
-    currentUser.id = owner.id;
+    await loginAs(owner.id);
     expect((await metadataFor(board.id)).title).toBe("Plan secreto");
 
-    currentUser.id = viewer.id;
+    await loginAs(viewer.id);
     expect((await metadataFor(board.id)).title).toBe("Plan secreto");
   });
 
@@ -47,13 +39,13 @@ describe("título de la página del tablero (integración)", () => {
     const stranger = await seedUser();
     const board = await seedBoard(owner.id, "Plan secreto");
 
-    currentUser.id = stranger.id;
+    await loginAs(stranger.id);
     expect((await metadataFor(board.id)).title).toBe("Tablero");
   });
 
   it("un tablero inexistente también da el título genérico", async () => {
     const user = await seedUser();
-    currentUser.id = user.id;
+    await loginAs(user.id);
     expect((await metadataFor("no-existe")).title).toBe("Tablero");
   });
 });

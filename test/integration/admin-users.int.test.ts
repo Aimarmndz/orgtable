@@ -15,15 +15,12 @@ import {
   seedBoard,
   seedList,
   seedCard,
+  loginAs,
 } from "./helpers";
 
-// Las acciones autorizan con requireAdmin (cookie) y responden con redirect(). Sin
-// runtime de Next se sustituyen: el admin es el usuario sembrado y redirect lanza un
-// error con la URL, igual que el real interrumpe la acción.
-const session = vi.hoisted(() => ({ adminId: "" }));
-vi.mock("@/app/lib/dal", () => ({
-  requireAdmin: async () => ({ id: session.adminId }),
-}));
+// Las acciones responden con redirect(): se sustituye por uno que lanza un error con la
+// URL, igual que el real interrumpe la acción, para poder leer a dónde redirige. La
+// autorización (requireAdmin) es la real, con la sesión de un admin sembrado.
 class RedirectError extends Error {}
 vi.mock("next/navigation", () => ({
   redirect: (url: string) => {
@@ -50,7 +47,7 @@ async function redirectOf(run: Promise<void>): Promise<string> {
 
 beforeEach(async () => {
   await resetDb();
-  session.adminId = (await seedUser({ role: "ADMIN" })).id;
+  await loginAs((await seedUser({ role: "ADMIN" })).id);
 });
 afterAll(async () => {
   await disconnect();

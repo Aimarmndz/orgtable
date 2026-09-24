@@ -1,6 +1,5 @@
-import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import { prisma } from "@/app/lib/prisma";
-import { requireBoardAccess } from "@/app/lib/dal";
 import {
   addBoardMember,
   removeBoardMember,
@@ -16,23 +15,8 @@ import {
   seedList,
   seedCard,
   addMember,
+  loginAs,
 } from "./helpers";
-
-// Las acciones de miembros autorizan con requireBoardAccess (sesión por cookie), que no
-// existe fuera de Next. Se sustituye SOLO en este archivo por el usuario que indique cada
-// test; el resto (Prisma, auditoría, notificaciones, bus) es real.
-vi.mock("@/app/lib/dal", () => ({ requireBoardAccess: vi.fn() }));
-
-async function actAs(userId: string, boardId: string): Promise<void> {
-  const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
-  const membership = await prisma.boardMember.findUniqueOrThrow({
-    where: { boardId_userId: { boardId, userId } },
-  });
-  vi.mocked(requireBoardAccess).mockResolvedValue({
-    user,
-    role: membership.role,
-  });
-}
 
 function form(fields: Record<string, string>): FormData {
   const fd = new FormData();
@@ -42,7 +26,6 @@ function form(fields: Record<string, string>): FormData {
 
 beforeEach(async () => {
   await resetDb();
-  vi.mocked(requireBoardAccess).mockReset();
 });
 afterAll(async () => {
   await disconnect();
@@ -84,7 +67,7 @@ describe("expulsar miembros (integración)", () => {
     const editor = await seedUser();
     const board = await seedBoard(owner.id);
     await addMember(board.id, editor.id);
-    await actAs(owner.id, board.id);
+    await loginAs(owner.id);
 
     const fd = () => form({ boardId: board.id, userId: editor.id });
     await removeBoardMember(fd());
@@ -104,7 +87,7 @@ describe("expulsar miembros (integración)", () => {
     const owner = await seedUser();
     const stranger = await seedUser();
     const board = await seedBoard(owner.id);
-    await actAs(owner.id, board.id);
+    await loginAs(owner.id);
 
     await removeBoardMember(form({ boardId: board.id, userId: stranger.id }));
 
@@ -118,7 +101,7 @@ describe("cambiar el rol (integración)", () => {
     const owner = await seedUser();
     const stranger = await seedUser();
     const board = await seedBoard(owner.id);
-    await actAs(owner.id, board.id);
+    await loginAs(owner.id);
 
     await updateBoardMemberRole(
       form({ boardId: board.id, userId: stranger.id, role: "VIEWER" }),
@@ -133,7 +116,7 @@ describe("cambiar el rol (integración)", () => {
     const editor = await seedUser();
     const board = await seedBoard(owner.id);
     await addMember(board.id, editor.id, "EDITOR");
-    await actAs(owner.id, board.id);
+    await loginAs(owner.id);
 
     const fd = () =>
       form({ boardId: board.id, userId: editor.id, role: "VIEWER" });
@@ -161,7 +144,7 @@ describe("tiempo real en la gestión de miembros (integración)", () => {
     const editor = await seedUser();
     const board = await seedBoard(owner.id);
     await addMember(board.id, editor.id, "EDITOR");
-    await actAs(owner.id, board.id);
+    await loginAs(owner.id);
 
     const events: BoardEvent[] = [];
     const unsubscribe = subscribeBoard(board.id, (e) => events.push(e));
@@ -182,7 +165,7 @@ describe("tiempo real en la gestión de miembros (integración)", () => {
     const owner = await seedUser();
     const guest = await seedUser();
     const board = await seedBoard(owner.id);
-    await actAs(owner.id, board.id);
+    await loginAs(owner.id);
 
     const events: BoardEvent[] = [];
     const unsubscribe = subscribeBoard(board.id, (e) => events.push(e));
@@ -203,7 +186,7 @@ describe("formulario de invitación (integración)", () => {
   it("con un email que no existe devuelve lo enviado para no vaciar el campo", async () => {
     const owner = await seedUser();
     const board = await seedBoard(owner.id);
-    await actAs(owner.id, board.id);
+    await loginAs(owner.id);
 
     const state = await addBoardMember(
       {},
@@ -218,7 +201,7 @@ describe("formulario de invitación (integración)", () => {
     const owner = await seedUser();
     const guest = await seedUser();
     const board = await seedBoard(owner.id);
-    await actAs(owner.id, board.id);
+    await loginAs(owner.id);
 
     const state = await addBoardMember(
       {},
@@ -228,4 +211,42 @@ describe("formulario de invitación (integración)", () => {
     expect(state.message).toBeDefined();
     expect(state.values).toBeUndefined();
   });
+});
+
+// Con la sesión real, estas acciones pasan por requireBoardAccess + canManageBoard. Antes
+// el DAL estaba sustituido y devolvía el rol que pedía el test, así que una guarda rota no
+// se habría notado.
+describe("autorización de la gestión de miembros (integración)", () => {
+  for (const role of ["EDITOR", "VIEWER"] as const) {
+    it(`un ${role} no puede invitar, cambiar roles ni expulsar`, async () => {
+      const owner = await seedUser();
+      const actor = await seedUser();
+      const target = await seedUser();
+      const guest = await seedUser();
+      const board = await seedBoard(owner.id);
+      await addMember(board.id, actor.id, role);
+      await addMember(board.id, target.id, "EDITOR");
+      await loginAs(actor.id);
+
+      const state = await addBoardMember(
+        {},
+        form({ boardId: board.id, email: guest.email, role: "EDITOR" }),
+      );
+      expect(state.error).toBe("Solo el propietario puede gestionar los miembros.");
+      await updateBoardMemberRole(
+        form({ boardId: board.id, userId: target.id, role: "VIEWER" }),
+      );
+      await removeBoardMember(form({ boardId: board.id, userId: target.id }));
+
+      const members = await prisma.boardMember.findMany({
+        where: { boardId: board.id },
+        select: { userId: true, role: true },
+      });
+      expect(members).toHaveLength(3);
+      expect(members).toContainEqual({ userId: target.id, role: "EDITOR" });
+      expect(members.some((m) => m.userId === guest.id)).toBe(false);
+      expect(await prisma.notification.count()).toBe(0);
+      expect(await prisma.auditLog.count()).toBe(0);
+    });
+  }
 });

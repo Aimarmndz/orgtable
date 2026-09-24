@@ -1,8 +1,7 @@
-import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import { prisma } from "@/app/lib/prisma";
 import { assignMemberToCard } from "@/app/lib/services/assignees";
 import { getBoardWithLists } from "@/app/lib/queries";
-import { requireBoardAccess } from "@/app/lib/dal";
 import { addComment } from "@/app/lib/actions/comments";
 import {
   resetDb,
@@ -12,15 +11,11 @@ import {
   seedList,
   seedCard,
   addMember,
+  loginAs,
 } from "./helpers";
-
-// addComment autoriza con requireBoardAccess (sesión por cookie), que no existe fuera de
-// Next: se sustituye SOLO en este archivo. El resto de la acción es real.
-vi.mock("@/app/lib/dal", () => ({ requireBoardAccess: vi.fn() }));
 
 beforeEach(async () => {
   await resetDb();
-  vi.mocked(requireBoardAccess).mockReset();
 });
 afterAll(async () => {
   await disconnect();
@@ -91,8 +86,7 @@ describe("colaboración en la tarjeta (integración)", () => {
         { cardId: card.id, userId: expelled.id },
       ],
     });
-    const user = await prisma.user.findUniqueOrThrow({ where: { id: owner.id } });
-    vi.mocked(requireBoardAccess).mockResolvedValue({ user, role: "OWNER" });
+    await loginAs(owner.id);
 
     const fd = new FormData();
     fd.set("cardId", card.id);

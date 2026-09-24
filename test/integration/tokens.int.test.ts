@@ -1,14 +1,7 @@
-import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import { prisma } from "@/app/lib/prisma";
 import { createApiToken } from "@/app/lib/actions/tokens";
-import { resetDb, disconnect, seedUser } from "./helpers";
-
-// La acción autoriza con requireUser (cookie de sesión). Aquí no hay runtime de Next,
-// así que se sustituye el DAL por el usuario sembrado en cada test.
-const session = vi.hoisted(() => ({ userId: "" }));
-vi.mock("@/app/lib/dal", () => ({
-  requireUser: async () => ({ id: session.userId }),
-}));
+import { resetDb, disconnect, seedUser, loginAs } from "./helpers";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -20,7 +13,7 @@ function tokenForm(fields: Record<string, string>): FormData {
 
 beforeEach(async () => {
   await resetDb();
-  session.userId = (await seedUser()).id;
+  await loginAs((await seedUser()).id);
 });
 afterAll(async () => {
   await disconnect();

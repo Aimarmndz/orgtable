@@ -243,16 +243,26 @@ autenticación) y un `vi.mock("next/headers")` propio en siete archivos, con el 
 `test/integration/action-session.ts`. Con los dos juntos fallaban 61 tests, porque
 `resetDb()` llama a `__clearCookies()` del stub y los mocks locales no lo exportaban.
 
-**Decisión.** Todos los tests usan el stub compartido y `loginAs()` de `helpers.ts`. Se
-borran `action-session.ts` y los tarros de cookies locales; `realtime.int.test.ts`
-conserva un envoltorio que devuelve el id de sesión, que necesita para revocarla.
+**Decisión.** Todos los tests de integración usan el stub compartido y `loginAs()` de
+`helpers.ts`. Se borran `action-session.ts` y los tarros de cookies locales;
+`realtime.int.test.ts` conserva un envoltorio que devuelve el id de sesión, que necesita
+para revocarla. Ninguno sustituye el DAL: los seis que aún lo hacían (`board-metadata`,
+`members`, `collaboration`, `tokens`, `admin-users`, `position-collation`) pasan a
+`loginAs()`, así que la guarda real de `requireBoardAccess`/`requireAdmin` se ejecuta.
+`admin-users` solo sustituye `redirect()` de `next/navigation`, para leer la URL.
+`members.int.test.ts` añade un test de que un EDITOR o un VIEWER no puede gestionar
+miembros, que con el DAL sustituido no se podía escribir. El unitario
+`test/metadata.test.ts` sí sustituye el DAL, porque no tiene BD.
 
 **Alternativas descartadas.** Que cada mock local reexporte el stub con
 `importOriginal`: arregla los fallos, pero deja dos formas de iniciar sesión y dos
-secretos de test distintos.
+secretos de test distintos. Conservar el `vi.mock("@/app/lib/dal")` de los seis archivos
+corrigiendo solo sus comentarios: la guarda de las acciones de miembros seguiría sin
+probarse.
 
-**Consecuencias.** 32 archivos y 208 tests de integración en verde. Un test nuevo con
-sesión solo necesita `await loginAs(user.id)`.
+**Consecuencias.** 32 archivos y 210 tests de integración en verde. Un test nuevo con
+sesión solo necesita `await loginAs(user.id)`; si hace falta otro rol, se siembra el
+usuario con ese rol en vez de sustituir el DAL.
 
 ---
 

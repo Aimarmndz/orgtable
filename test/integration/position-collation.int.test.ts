@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import { prisma } from "@/app/lib/prisma";
 import { getBoardWithLists } from "@/app/lib/queries";
 import { positionAtEnd } from "@/app/lib/ordering";
@@ -15,20 +15,8 @@ import {
   seedCard,
   apiRequest,
   ctx,
+  loginAs,
 } from "./helpers";
-
-// Las acciones de checklist exigen sesión (cookies) y no tienen ruta en la API pública:
-// se sustituye solo requireBoardAccess por un acceso de OWNER. El resto del DAL es real.
-vi.mock("@/app/lib/dal", async (importOriginal) => {
-  const original = await importOriginal<typeof import("@/app/lib/dal")>();
-  return {
-    ...original,
-    requireBoardAccess: async () => ({
-      user: { id: "test-user" },
-      role: "OWNER" as const,
-    }),
-  };
-});
 
 // Las claves de fractional indexing (base62: 0-9A-Za-z) solo están bien ordenadas byte a
 // byte. 'Zz' es la clave inmediatamente anterior a 'a0' (se genera al arrastrar al
@@ -155,6 +143,9 @@ describe("collation de las claves de posición (integración)", () => {
     const board = await seedBoard(owner.id);
     const list = await seedList(board.id);
     const card = await seedCard(list.id);
+    // Las acciones de checklist no tienen ruta en la API pública: se llaman con la sesión
+    // del propietario del tablero.
+    await loginAs(owner.id);
     await prisma.checklist.createMany({
       data: END_KEYS.map((position) => ({ cardId: card.id, title: position, position })),
     });
