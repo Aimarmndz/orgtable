@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   DndContext,
   DragOverlay,
@@ -59,24 +59,24 @@ export function BoardView({
   viewerRole,
   members,
   currentUserId,
-  initialCardId = null,
 }: {
   board: BoardDTO;
   viewerRole: BoardRole;
   members: BoardMemberDTO[];
   currentUserId: string;
-  initialCardId?: string | null;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [lists, setLists] = useState<ListDTO[]>(board.lists);
   const [activeId, setActiveId] = useState<string | null>(null);
   // Listas tal como estaban al empezar el arrastre, para deshacer el movimiento
   // optimista si se cancela (Escape) o si el servidor lo rechaza.
   const [dragSnapshot, setDragSnapshot] = useState<ListDTO[] | null>(null);
-  // Tarjeta abierta. Puede venir preseleccionada por deep-link (?card=…) desde /search.
-  const [selectedCardId, setSelectedCardId] = useState<string | null>(
-    initialCardId,
-  );
+  // Tarjeta abierta: se deriva de la URL (?card=…), no de un estado inicial. Así el
+  // deep-link de /search o de una notificación abre la tarjeta aunque ya estés en este
+  // tablero (Next no remonta el componente si solo cambian los searchParams).
+  const searchParams = useSearchParams();
+  const selectedCardId = searchParams.get("card");
   const [membersOpen, setMembersOpen] = useState(false);
   // Vista activa: tablero (columnas) o calendario mensual (Hito 7).
   const [view, setView] = useState<"board" | "calendar">("board");
@@ -130,6 +130,20 @@ export function BoardView({
   const selectedCard: CardDTO | undefined = selectedCardId
     ? lists.flatMap((l) => l.cards).find((c) => c.id === selectedCardId)
     : undefined;
+
+  // Abrir/cerrar la tarjeta cambia solo el ?card de la URL con la History API nativa,
+  // que Next sincroniza con useSearchParams sin pedir la página al servidor. Al cerrar
+  // se quita siempre, para que volver a pulsar la misma notificación la abra de nuevo.
+  const openCard = (cardId: string) => {
+    window.history.replaceState(
+      null,
+      "",
+      `${pathname}?card=${encodeURIComponent(cardId)}`,
+    );
+  };
+  const closeCard = () => {
+    window.history.replaceState(null, "", pathname);
+  };
 
   // Nombre legible de un elemento arrastrable/soltable para los anuncios accesibles.
   const describe = (id: UniqueIdentifier | undefined): string => {
@@ -399,7 +413,7 @@ export function BoardView({
                   <ListColumn
                     key={list.id}
                     list={list}
-                    onOpenCard={setSelectedCardId}
+                    onOpenCard={openCard}
                     sortingDisabled={filtering}
                   />
                 ))}
@@ -409,7 +423,7 @@ export function BoardView({
           ) : (
             <CalendarView
               lists={lists}
-              onOpenCard={setSelectedCardId}
+              onOpenCard={openCard}
               canEdit={canEdit}
             />
           )}
@@ -433,7 +447,7 @@ export function BoardView({
           boardLabels={board.labels}
           members={members}
           currentUserId={currentUserId}
-          onClose={() => setSelectedCardId(null)}
+          onClose={closeCard}
         />
       )}
 

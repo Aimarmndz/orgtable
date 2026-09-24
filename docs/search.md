@@ -35,9 +35,13 @@ una tarjeta de un tablero al que no pertenece.
 ## Deep-link a una tarjeta
 
 `/board/<id>?card=<cardId>` abre el tablero con esa tarjeta ya desplegada en su modal.
-La página de tablero lee `searchParams.card` y lo pasa a `BoardView` como
-`initialCardId`. Si el id no existe en el tablero (por ejemplo, la tarjeta se borró), no
-se abre nada: es un comportamiento seguro por defecto.
+`BoardView` deriva la tarjeta abierta de la URL con `useSearchParams()`, así que el
+enlace funciona también si ya estás en ese tablero (Next no remonta el componente cuando
+solo cambian los parámetros). Abrir y cerrar una tarjeta actualiza `?card` con
+`window.history.replaceState`, sin pedir la página al servidor; al cerrar se quita, de
+modo que volver a pulsar la misma notificación la abre de nuevo. Si el id no existe en el
+tablero (por ejemplo, la tarjeta se borró), no se abre nada: es un comportamiento seguro
+por defecto.
 
 ## Componentes y archivos
 

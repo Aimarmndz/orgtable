@@ -1395,7 +1395,9 @@ tarjetas al primer clic, junto al asa de arrastre. Reordenar listas arrastrando 
 nunca funcionaba (`over` resultaba ser una tarjeta), Escape dejaba la tarjeta en otra
 lista sin guardarse, el resultado de `moveCard`/`reorderList`/`setCardDueDate` se
 ignoraba y el calendario no se podía usar con teclado ni mostraba la pastilla bajo el
-puntero.
+puntero. El deep-link `?card=` no abría la tarjeta si ya estabas en ese tablero: el
+modal se inicializaba una sola vez con `useState(initialCardId)` y Next no remonta el
+componente si solo cambian los searchParams.
 
 **Decisión.**
 - `isOverdue(dueDate, now)` en `app/lib/board-filters.ts`: compara el día guardado
@@ -1432,6 +1434,9 @@ puntero.
   en móvil.
 - Calendario: `DragOverlay` con la pastilla, `id` estable y aviso «No se pudo cambiar la
   fecha. Inténtalo de nuevo.» con `role="alert"` si el servidor no guarda.
+- La tarjeta abierta se deriva de `useSearchParams()`. Abrir y cerrar cambian `?card`
+  con `window.history.replaceState` (Next lo sincroniza sin pedir la página); cerrar lo
+  quita siempre. La página del tablero deja de leer `searchParams`.
 
 **Alternativas descartadas.**
 - Formatear en la zona del servidor (`ORGTABLE_TIMEZONE`): el vencimiento no es un
@@ -1443,6 +1448,8 @@ puntero.
   resuelve lo mismo con menos cambios. Un aviso visible al fallar un movimiento en el
   tablero: queda pendiente de que el propietario decida el texto (hoy se deshace en
   silencio y se refresca).
+- `router.replace` con `?card`: cada apertura pediría la página al servidor. Sincronizar
+  `initialCardId` durante el render: seguiría sin abrir la misma notificación dos veces.
 
 **Consecuencias.** Tests en `test/board-filters.test.ts` (vence hoy/ayer, formato con
 `TZ=America/New_York`). Test de render en servidor (`test/card-item.test.ts`) para rol,
@@ -1450,7 +1457,8 @@ foco y ausencia de «vencida» en el HTML inicial. Sin test automático (no hay 
 DOM); verificación manual pendiente. Tests con rectángulos sintéticos en
 `test/board-collision.test.ts` (incluido el fallo de `closestCorners` a secas) y de
 `persistOptimistic` en `test/optimistic.test.ts`. El arrastre real con ratón y teclado
-queda por verificar a mano en el navegador.
+queda por verificar a mano en el navegador. Toca `app/(app)/board/[id]/page.tsx` (fuera
+del lote) para quitar la prop `initialCardId`. Verificación manual pendiente.
 
 ---
 
