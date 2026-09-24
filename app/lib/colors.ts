@@ -15,13 +15,6 @@ export const BOARD_COLORS = {
 export type BoardColor = keyof typeof BOARD_COLORS;
 export const BOARD_COLOR_KEYS = Object.keys(BOARD_COLORS) as BoardColor[];
 
-export function boardBackground(color: string | null | undefined): string {
-  // Object.hasOwn, no `in`: ver boardBackgroundFor.
-  const key =
-    color && Object.hasOwn(BOARD_COLORS, color) ? (color as BoardColor) : "blue";
-  return BOARD_COLORS[key];
-}
-
 /** Color de tablero determinista a partir de un id (para asignar al crear). */
 export function pickBoardColor(seed: string): BoardColor {
   let h = 0;

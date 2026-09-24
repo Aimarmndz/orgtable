@@ -10,14 +10,6 @@ export function positionAtEnd(lastPosition: string | null): string {
   return generateKeyBetween(lastPosition, null);
 }
 
-/** Clave para insertar entre dos posiciones (cualquiera puede ser null en los extremos). */
-export function positionBetween(
-  before: string | null,
-  after: string | null,
-): string {
-  return generateKeyBetween(before, after);
-}
-
 // Alfabeto base62 de la librería y un tope de longitud: las claves reales rara vez pasan
 // de unos pocos caracteres, así que 64 deja margen sin permitir cadenas de megabytes.
 const POSITION_KEY_SHAPE = /^[A-Za-z][0-9A-Za-z]{0,63}$/;

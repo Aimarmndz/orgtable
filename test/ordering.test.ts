@@ -1,9 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  positionAtEnd,
-  positionBetween,
-  isValidPositionKey,
-} from "@/app/lib/ordering";
+import { positionAtEnd, isValidPositionKey } from "@/app/lib/ordering";
 
 // El orden de listas/tarjetas es una clave string lexicográfica (fractional indexing,
 // ADR 0002). Lo que importa: añadir al final mantiene el orden y las claves que llegan del
@@ -20,14 +16,6 @@ describe("ordering (fractional indexing)", () => {
     expect(keys).toEqual([...keys].sort());
     // Sin claves repetidas.
     expect(new Set(keys).size).toBe(keys.length);
-  });
-
-  it("positionBetween cae estrictamente entre dos claves contiguas", () => {
-    const a = positionAtEnd(null);
-    const b = positionAtEnd(a);
-    const mid = positionBetween(a, b);
-    expect(a < mid).toBe(true);
-    expect(mid < b).toBe(true);
   });
 
   it("isValidPositionKey acepta claves generadas por la librería", () => {

@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import {
-  boardBackground,
   pickBoardColor,
   boardBackgroundFor,
   labelBackground,
@@ -10,13 +9,6 @@ import {
 } from "@/app/lib/colors";
 
 describe("colors", () => {
-  it("boardBackground resuelve un color conocido y cae a azul por defecto", () => {
-    expect(boardBackground("green")).toBe(BOARD_COLORS.green);
-    expect(boardBackground("desconocido")).toBe(BOARD_COLORS.blue);
-    expect(boardBackground("constructor")).toBe(BOARD_COLORS.blue);
-    expect(boardBackground(null)).toBe(BOARD_COLORS.blue);
-  });
-
   it("pickBoardColor es determinista y siempre dentro de la paleta", () => {
     expect(pickBoardColor("mismo-seed")).toBe(pickBoardColor("mismo-seed"));
     for (const seed of ["a", "board-123", "Lanzamiento web", ""]) {
