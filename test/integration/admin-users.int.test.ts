@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
 import { prisma } from "@/app/lib/prisma";
+import { deleteUserAccount } from "@/app/lib/services/users";
 import {
   createUser,
   updateUserRole,
@@ -88,6 +89,13 @@ describe("acciones de administración con un usuario inexistente (integración)"
 
   it("sin userId en el formulario responde «invalid»", async () => {
     const url = await redirectOf(revokeUserSessions(form({})));
+    expect(url).toBe("/admin/users?error=invalid");
+  });
+
+  it("restablecer la contraseña sin userId responde «invalid», no el aviso de contraseña", async () => {
+    const url = await redirectOf(
+      resetUserPassword(form({ password: "contraseña-nueva" })),
+    );
     expect(url).toBe("/admin/users?error=invalid");
   });
 });
@@ -180,5 +188,46 @@ describe("acciones de administración con un usuario real (integración)", () =>
     expect(await prisma.user.count({ where: { id: owner.id } })).toBe(1);
     expect(await prisma.attachment.count()).toBe(1);
     expect(await prisma.auditLog.count({ where: { targetId: owner.id } })).toBe(0);
+  });
+});
+
+// La acción no comprueba los tableros por su cuenta: la única salvaguarda es la
+// condición `boards: { none: {} }` del DELETE del servicio. Se llama al servicio
+// directamente para fijar ese contrato. La carrera en sí (un tablero creado entre una
+// comprobación previa y el DELETE) no se reproduce: no hay forma determinista de
+// intercalar dos transacciones aquí.
+describe("deleteUserAccount (servicio, integración)", () => {
+  it("rechaza a un propietario de tableros sin borrar nada en cascada", async () => {
+    const owner = await seedUser();
+    const board = await seedBoard(owner.id);
+    const list = await seedList(board.id);
+    const card = await seedCard(list.id);
+    await prisma.attachment.create({
+      data: {
+        cardId: card.id,
+        filename: "informe.pdf",
+        storedName: "00000000-0000-0000-0000-000000000001.pdf",
+        mimeType: "application/pdf",
+        size: 10,
+      },
+    });
+
+    expect(await deleteUserAccount(owner.id)).toEqual({
+      ok: false,
+      error: "owns_boards",
+    });
+    expect(await prisma.user.count({ where: { id: owner.id } })).toBe(1);
+    expect(await prisma.board.count({ where: { id: board.id } })).toBe(1);
+    expect(await prisma.attachment.count()).toBe(1);
+  });
+
+  it("distingue un usuario inexistente y borra uno sin tableros", async () => {
+    expect(await deleteUserAccount("usuario-que-no-existe")).toEqual({
+      ok: false,
+      error: "not_found",
+    });
+    const user = await seedUser();
+    expect(await deleteUserAccount(user.id)).toEqual({ ok: true });
+    expect(await prisma.user.count({ where: { id: user.id } })).toBe(0);
   });
 });

@@ -562,6 +562,33 @@ expulsada seguían recibiendo eventos, en contra del ADR 0008.
 reconecta. Tests en `test/integration/realtime.int.test.ts` (401/403, abort, cancel,
 revocación, expulsión, vida máxima; sin listeners ni temporizadores tras cerrar).
 
+## 2026-09-24 — Restablecer contraseña valida el userId; alcance del test del borrado
+
+**Contexto.** `resetUserPassword` validaba `userId` dentro de `resetPasswordSchema`: sin
+`userId` redirigía a `?error=password` («La contraseña debe tener al menos 8
+caracteres.»), que no era el problema. Además, el test del propietario de tableros
+pasaba también con el código anterior (comprobación previa + DELETE), así que no
+demostraba la condición atómica del servicio.
+
+**Decisión.**
+- `resetUserPassword` llama a `readUserId` antes de validar la contraseña, como el resto
+  de acciones por fila: sin `userId` responde `?error=invalid`.
+- Test directo de `deleteUserAccount` (sin pasar por la acción): un propietario de
+  tableros devuelve `owns_boards` y su tablero y su adjunto siguen en BD; un id
+  inexistente devuelve `not_found`.
+
+**Alternativas descartadas.** Distinguir por `issues[0].path` del esquema: reparte la
+validación del id entre dos sitios. Reproducir la carrera intercalando dos transacciones
+(bloqueo de la fila `User` por el INSERT del tablero): depende del orden de bloqueos de
+Postgres y sería un test frágil.
+
+**Consecuencias.** La carrera en sí (un tablero creado entre una comprobación y el
+DELETE) NO está probada; los tests fijan el contrato del servicio (la salvaguarda está
+en el propio DELETE, la acción no comprueba nada antes). Tests en
+`test/integration/admin-users.int.test.ts`.
+
+---
+
 ## 2026-09-24 — Administración y ajustes: avisos anunciados, móvil y copia del token
 
 **Contexto.** Los errores y avisos de `/admin/users` y `/settings` no se anunciaban al
@@ -658,6 +685,8 @@ probarse sin saltarse la salvaguarda de tableros propios.
 
 **Consecuencias.** Tests en `test/integration/admin-users.int.test.ts` (sin auditoría
 con id inexistente; un propietario de tableros no se borra y su adjunto sigue en BD).
+Esos tests no reproducen la carrera: ver la entrada «Restablecer contraseña valida el
+userId; alcance del test del borrado».
 
 ---
 

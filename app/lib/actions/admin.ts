@@ -124,8 +124,11 @@ export async function updateUserRole(formData: FormData): Promise<void> {
 /** Restablece la contraseña de un usuario (el admin teclea la nueva). */
 export async function resetUserPassword(formData: FormData): Promise<void> {
   const admin = await requireAdmin();
+  // El userId se valida antes: si falta, el error del esquema sería el de la
+  // contraseña y el aviso («al menos 8 caracteres») no describiría el problema.
+  const userId = readUserId(formData);
   const parsed = resetPasswordSchema.safeParse({
-    userId: formData.get("userId"),
+    userId,
     password: formData.get("password"),
   });
   if (!parsed.success) backToUsers({ error: "password" });
