@@ -63,16 +63,16 @@ cp .env.example .env
 ```
 
 Edita `.env` para que `DATABASE_URL` use el puerto **5433** y el usuario,
-contraseña y base de datos del contenedor, y define un `SESSION_SECRET`
-cualquiera para desarrollo:
+contraseña y base de datos del contenedor, y define un `SESSION_SECRET`:
 
 ```dotenv
 DATABASE_URL="postgresql://orgtable:devpass@localhost:5433/orgtable"
 SESSION_SECRET="un-secreto-cualquiera-para-desarrollo"
 ```
 
-> Para un secreto más serio puedes generarlo con `openssl rand -hex 32`, pero en
-> local cualquier cadena vale.
+> `SESSION_SECRET` es obligatorio y debe tener **al menos 16 caracteres**: con uno más
+> corto la app no puede crear sesiones y el login (y el asistente inicial) fallan.
+> Genera uno con `openssl rand -hex 32`.
 
 ### 4. Aplicar migraciones y generar el cliente Prisma
 

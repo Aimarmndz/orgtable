@@ -144,9 +144,18 @@ necesitas volver a ejecutar el [asistente inicial](./setup-wizard.md) (por ejemp
 una demo), borra esa fila:
 
 ```bash
-docker compose exec -T postgres psql -U orgtable orgtable \
-  -c 'DELETE FROM "InstanceConfig";'
+docker compose exec -T postgres sh -c \
+  'psql -U "$POSTGRES_USER" "$POSTGRES_DB" -c "DELETE FROM \"InstanceConfig\";"'
 ```
 
-La próxima visita mostrará de nuevo el asistente. (Esto no borra usuarios ni tableros
-existentes; úsalo con cuidado.)
+La próxima visita mostrará de nuevo el asistente. Esto no borra usuarios ni tableros
+existentes. Antes de hacerlo, ten en cuenta:
+
+- **Mientras el asistente está abierto, cualquiera que llegue a la app puede crear una
+  cuenta de administrador.** Hazlo con la app accesible solo desde local
+  (`APP_PORT=127.0.0.1:3000`, ver [HTTPS y dominio](#https-y-dominio-reverse-proxy)) o
+  completa el asistente justo después.
+- El asistente crea un administrador **nuevo**: usa un email que no exista ya, o la
+  creación fallará.
+- No sirve para recuperar el acceso de un administrador existente. Para eso, ver
+  [setup-wizard.md](./setup-wizard.md#recuperar-el-acceso-de-un-administrador).

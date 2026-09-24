@@ -1176,6 +1176,43 @@ hacia `.next/standalone`.
 del trazado NFT no se ha podido comprobar aquí (el build lo ejecuta el integrador): tras
 `pnpm build`, `api/attachments/[id]/route.js.nft.json` debería bajar a unas 200 entradas
 y `.next/standalone` no debería contener `docs/` ni `test/`.
+## 2026-09-24 — README con estructura fija y documentación de recuperación
+
+**Contexto.** El README no tenía requisitos, comandos, variables ni despliegue, y
+seguía diciendo que la interfaz estaba «en construcción» con los hitos 0–13 hechos.
+`SECURITY.md` estaba en inglés y remitía al reporte privado de GitHub, que no existe
+en repositorios privados. El reseteo del asistente abría `/setup` a cualquiera sin
+avisar y se presentaba como forma de «rehacer el administrador», lo que falla con un
+email ya existente. `docs/setup-wizard.md` decía «tres cosas» y listaba dos, y
+`docs/database.md` enseñaba un `createPrismaClient` sin la guarda de `DATABASE_URL`.
+
+**Decisión.**
+- README en seis secciones (qué es, requisitos, instalación, comandos, variables,
+  despliegue) más documentación y licencia, remitiendo a `docs/` sin duplicar. La
+  instalación en local escribe un `.env` mínimo con `SESSION_SECRET` generado por
+  `openssl`, lista para copiar y pegar.
+- `SECURITY.md` en español; el canal de reporte queda como `TODO` (email y plazo) que
+  desbloquea el propietario. «Última release» pasa a «seguir `main` con
+  `scripts/update.sh`».
+- Reseteo del asistente: aviso de exposición, email nuevo y comando con
+  `$POSTGRES_USER`/`$POSTGRES_DB` del contenedor. Recuperación de un administrador:
+  otro ADMIN desde `/admin/users` o `UPDATE` del hash generado con `bcryptjs` coste 12
+  dentro del contenedor.
+
+**Alternativas descartadas.**
+- Script de recuperación de contraseña: es un caso raro y el procedimiento de dos
+  comandos basta; un script más es más superficie que mantener.
+- Mantener el badge y la URL del repositorio corregidos: la URL oficial la decide el
+  propietario, así que no se cambian (ver consecuencias).
+
+**Consecuencias.** El procedimiento de recuperación y el reseteo se probaron contra un
+stack Docker real (el hash generado valida con `bcrypt.compare`). Las URLs de
+`install.sh`, README (`aimarmndzz`, badge `Aimarmndz`) y `docs/installation.md`
+(`<owner>`) siguen sin apuntar al remoto real; si el repositorio es privado, el
+instalador con `curl` anónimo no funciona. Pendiente de decisión del propietario.
+
+---
+
 ## 2026-09-24 — Imagen Docker: código de solo lectura y contexto de build sin datos
 
 **Contexto.** El `Dockerfile` terminaba con `chown -R nextjs:nodejs /app`: una capa

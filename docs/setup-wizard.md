@@ -15,12 +15,13 @@ una instancia recién instalada de orgtable. Vive en la ruta `/setup` y su únic
 propósito es dejar la instancia lista para usarse creando la primera cuenta de
 administrador.
 
-Solo te pide tres cosas:
+Te pide cuatro datos:
 
 1. **Nombre de la instancia** — una etiqueta para tu equipo o servidor
    (p. ej. "Mi equipo"). Máximo 60 caracteres.
-2. **Datos del administrador** — tu nombre, tu email y una contraseña (mínimo 8
-   caracteres).
+2. **Tu nombre** — máximo 60 caracteres.
+3. **Tu email** — será el usuario del administrador.
+4. **Una contraseña** — entre 8 y 200 caracteres.
 
 El formulario es minimalista a propósito:
 
@@ -250,8 +251,35 @@ fila `InstanceConfig` (o pone su `setupCompletedAt` a `null`), `isSetupComplete(
 volverá a devolver `false` y **el wizard reaparecerá**.
 
 Esto es **aceptable**: es tu servidor y tu base de datos. orgtable no intenta
-protegerse de quien ya tiene acceso directo a PostgreSQL; ese es un escenario de
-recuperación legítimo (p. ej. quedaste fuera y quieres rehacer el administrador).
+protegerse de quien ya tiene acceso directo a PostgreSQL. Lo que hay que tener en
+cuenta al hacerlo (exposición mientras el asistente está abierto, email nuevo) está en
+[self-hosting.md](./self-hosting.md#restablecer-el-asistente-de-configuración).
+
+El asistente siempre crea un administrador **nuevo**; no sirve para recuperar uno
+existente.
+
+### Recuperar el acceso de un administrador
+
+Si un administrador olvida su contraseña:
+
+- **Si hay otro administrador**, que la restablezca desde `/admin/users` (ver
+  [admin.md](./admin.md)).
+- **Si no hay ninguno con acceso**, cambia el hash directamente en la base de datos.
+  Desde el directorio de instalación, genera el hash con la misma librería y coste que
+  usa la app y guárdalo:
+
+  ```bash
+  HASH=$(docker compose exec -T app node -e \
+    'require("bcryptjs").hash(process.argv[1], 12).then((h) => process.stdout.write(h))' \
+    'la-contraseña-nueva')
+  docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" "$POSTGRES_DB"' <<SQL
+  UPDATE "User" SET "passwordHash" = '$HASH' WHERE email = 'admin@ejemplo.com';
+  SQL
+  ```
+
+  Sustituye la contraseña y el email (en minúsculas). La contraseña queda en el
+  historial de la shell: bórrala de él después (`history -d` o editando
+  `~/.bash_history`).
 
 ---
 

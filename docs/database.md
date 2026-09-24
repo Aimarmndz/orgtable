@@ -96,10 +96,22 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
 function createPrismaClient() {
-  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+  const url = process.env.DATABASE_URL;
+  // Sin DATABASE_URL, el adapter caería en silencio a los valores por defecto de libpq
+  // (PGHOST/localhost…). Durante `next build` no se exige: el build no usa la BD.
+  if (!url && process.env.NEXT_PHASE !== "phase-production-build") {
+    throw new Error(
+      "DATABASE_URL no está configurado. Define la cadena de conexión a PostgreSQL.",
+    );
+  }
+  const adapter = new PrismaPg({ connectionString: url });
   return new PrismaClient({ adapter });
 }
 ```
+
+La guarda de `DATABASE_URL` es un control de seguridad (ver
+[security.md](./security.md)); si cambias esta función, mantenla. El código real está
+en [`app/lib/prisma.ts`](../app/lib/prisma.ts).
 
 Consecuencia práctica: **no hace falta `binaryTargets`** en el generator ni copiar
 engines binarios al contenedor. La imagen Docker queda más simple y portable.

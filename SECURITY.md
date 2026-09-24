@@ -1,24 +1,31 @@
-# Security Policy
+# Política de seguridad
 
-## Supported versions
+## Versiones con soporte
 
-orgtable is developed on the `main` branch. Security fixes land on `main`; self-hosters
-should track the latest release. Always run the most recent version.
+orgtable se desarrolla en la rama `main` y no publica versiones numeradas: las
+correcciones de seguridad llegan a `main`. Mantén tu instalación al día con
+`scripts/update.sh`, que hace una copia de seguridad y actualiza a lo último de `main`
+(ver [`docs/operations.md`](./docs/operations.md#actualizaciones)).
 
-## Reporting a vulnerability
+## Informar de una vulnerabilidad
 
-Please **do not** open a public issue for security problems. Instead, use GitHub's
-**private vulnerability reporting** for this repository
-(`Security` tab → `Report a vulnerability`), which opens a confidential advisory with the
-maintainers.
+**No** abras un issue público para un problema de seguridad.
 
-Include, where possible: affected version/commit, a description, reproduction steps, and
-the impact. We aim to acknowledge reports promptly and to coordinate a fix and disclosure.
+<!-- TODO: falta el canal privado de reporte: un email de seguridad y el plazo de
+respuesta. El reporte privado de GitHub solo existe en repositorios públicos, así que
+no sirve si el repositorio es privado. Lo desbloquea el propietario (MARA-KASSA SL)
+decidiendo el email y el plazo. -->
 
-## Hardening and posture
+Mientras no haya un canal publicado, contacta directamente con el propietario del
+repositorio.
 
-The project's security posture, the result of the latest audit, and operational hardening
-recommendations are documented in [`docs/security.md`](./docs/security.md). Operational
-guidance (TLS/reverse proxy, backups, secrets) is in
-[`docs/self-hosting.md`](./docs/self-hosting.md) and
+Incluye, si puedes: la versión o el commit afectado, una descripción, los pasos para
+reproducirlo y el impacto.
+
+## Postura y endurecimiento
+
+La postura de seguridad del proyecto, el resultado de la última auditoría y las
+recomendaciones de endurecimiento están en [`docs/security.md`](./docs/security.md).
+La guía de operación (TLS/proxy inverso, copias de seguridad, secretos) está en
+[`docs/self-hosting.md`](./docs/self-hosting.md) y
 [`docs/operations.md`](./docs/operations.md).
