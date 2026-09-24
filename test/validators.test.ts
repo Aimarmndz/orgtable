@@ -10,6 +10,7 @@ import {
   boardImportSchema,
   setupSchema,
   createUserSchema,
+  resetPasswordSchema,
   cardDetailsSchema,
   dueDateSchema,
   labelColorSchema,
@@ -180,5 +181,18 @@ describe("validators (zod)", () => {
       createUserSchema.safeParse({ ...user, password: "x".repeat(8), role: "SUPERADMIN" })
         .success,
     ).toBe(false);
+  });
+
+  // bcrypt solo usa los primeros 72 bytes: por encima, dos contraseñas con el mismo prefijo
+  // serían equivalentes.
+  it("la contraseña no puede pasar de 72 bytes UTF-8", () => {
+    const check = (password: string) =>
+      resetPasswordSchema.safeParse({ userId: "u1", password }).success;
+    expect(check("a".repeat(72))).toBe(true);
+    expect(check("a".repeat(73))).toBe(false);
+    expect(check("ñ".repeat(36))).toBe(true);
+    expect(check("ñ".repeat(37))).toBe(false);
+    const setup = { instanceName: "Equipo", name: "Ana", email: "ana@example.com" };
+    expect(setupSchema.safeParse({ ...setup, password: "a".repeat(73) }).success).toBe(false);
   });
 });

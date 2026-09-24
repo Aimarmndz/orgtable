@@ -964,6 +964,28 @@ tests: no había forma de probar las Server Actions ni la revocación de sesione
 **Consecuencias.** Los tests pueden ejecutar Server Actions con sesión real (fila
 `Session` + JWT firmado). Quitar una comprobación de `verifySession` hace fallar
 `session.int.test.ts` (comprobado quitando `revokedAt` y el control de `userId`).
+## 2026-09-24 — Contraseñas de 72 bytes como máximo
+
+**Contexto.** `setupSchema` y `passwordSchema` admitían 200 caracteres, pero bcryptjs
+solo usa los primeros 72 bytes UTF-8: dos contraseñas con el mismo prefijo de 72 bytes
+eran equivalentes sin que nadie lo supiera.
+
+**Decisión.** `passwordSchema` rechaza más de 72 bytes UTF-8 (mensaje «Máximo 72 bytes
+(unos 72 caracteres sin tildes ni emojis)») y `setupSchema.password` lo reutiliza, así
+que el criterio vive en un solo sitio (setup, alta y reset por el administrador).
+`loginSchema` no cambia.
+
+**Alternativas descartadas.**
+- Prehash (SHA-256 antes de bcrypt): invalidaría los hashes existentes o exigiría
+  migrarlos.
+- Aplicar el límite también al login: bloquearía a quien ya tenga guardada una
+  contraseña más larga (que sigue funcionando con sus primeros 72 bytes).
+
+**Consecuencias.** Una contraseña nueva de más de 72 bytes se rechaza con un error
+visible. El `maxLength` de los formularios no se toca aquí.
+
+---
+
 ## 2026-09-24 — Tiempo real: borrar un tablero avisa por el bus en vivo
 
 **Contexto.** `deleteBoard` (acción y `DELETE` de la API) no publicaba nada: las

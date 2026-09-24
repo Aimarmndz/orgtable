@@ -9,6 +9,20 @@ export const loginSchema = z.object({
   password: z.string().min(1, "La contraseña es obligatoria"),
 });
 
+// Contraseña reutilizable (setup wizard, alta y reset por el administrador). bcrypt solo
+// usa los primeros 72 BYTES: más allá, dos contraseñas con el mismo prefijo serían
+// equivalentes, así que se rechazan en vez de recortarlas en silencio. Se cuentan bytes
+// UTF-8, no caracteres (una «ñ» ocupa 2). loginSchema no aplica este límite para no
+// bloquear a quien ya tenga guardada una contraseña más larga.
+const passwordSchema = z
+  .string()
+  .min(8, "La contraseña debe tener al menos 8 caracteres")
+  .max(200)
+  .refine(
+    (p) => Buffer.byteLength(p, "utf8") <= 72,
+    "Máximo 72 bytes (unos 72 caracteres sin tildes ni emojis)",
+  );
+
 export const setupSchema = z.object({
   instanceName: z
     .string()
@@ -17,10 +31,7 @@ export const setupSchema = z.object({
     .max(60, "Máximo 60 caracteres"),
   name: z.string().trim().min(1, "Tu nombre es obligatorio").max(60),
   email: z.email("Email no válido"),
-  password: z
-    .string()
-    .min(8, "La contraseña debe tener al menos 8 caracteres")
-    .max(200),
+  password: passwordSchema,
 });
 
 export const boardTitleSchema = z
@@ -82,12 +93,6 @@ export const addMemberSchema = z.object({
 
 // Rol global del usuario en la instancia.
 export const globalRoleSchema = z.enum(["ADMIN", "MEMBER"]);
-
-// Contraseña reutilizable (mismo criterio que en el setup wizard).
-const passwordSchema = z
-  .string()
-  .min(8, "La contraseña debe tener al menos 8 caracteres")
-  .max(200);
 
 // Alta de usuario por el administrador (no hay registro abierto: el admin crea las
 // cuentas). Ver docs/authorization.md.
