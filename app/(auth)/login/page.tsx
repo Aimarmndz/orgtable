@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { isSetupComplete, verifySession } from "@/app/lib/dal";
 import { LoginForm } from "./login-form";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "Iniciar sesión" };
 
 export default async function LoginPage() {
   // Si aún no se ha configurado la instancia, el primer paso es el wizard.
@@ -37,13 +40,14 @@ export default async function LoginPage() {
             Tu trabajo, en columnas que respiran.
           </h2>
           <p className="mt-5 max-w-sm leading-relaxed text-accent-ink/80">
-            Tableros Kanban open-source y self-hosted. Tus datos en tu servidor,
-            sin terceros mirando.
+            Tableros Kanban self-hosted. Tus datos en tu servidor, sin terceros
+            mirando.
           </p>
         </div>
 
+        {/* Sin mención a la licencia: la vigente es propietaria (LICENSE). */}
         <p className="relative font-mono text-xs uppercase tracking-widest text-accent-ink/60">
-          Open source · AGPL-3.0
+          Kanban · Self-hosted
         </p>
       </aside>
 

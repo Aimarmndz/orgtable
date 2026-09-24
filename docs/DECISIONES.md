@@ -47,6 +47,30 @@ en su migración. Las instalaciones glibc que ya tengan claves repetidas las con
 hasta que se reasignen; el orden entre dos claves iguales sigue sin estar definido.
 
 ---
+## 2026-09-24 — Títulos por página y login sin mención a la licencia
+
+**Contexto.** Todas las rutas tenían el mismo `<title>` «orgtable» (WCAG 2.4.2). Además,
+la pantalla de login («Open source · AGPL-3.0», «open-source y self-hosted») y la meta
+description decían que la app es open source con AGPL, pero la licencia vigente es la
+propietaria de `LICENSE` (decisión del propietario, commit 27c1ba9).
+
+**Decisión.**
+- `app/layout.tsx`: `title: { template: "%s · orgtable", default: "orgtable" }`.
+  `/login` exporta «Iniciar sesión» y `/setup` «Configuración inicial»; el resto de
+  páginas las cubren otros lotes.
+- Meta description: «Tableros Kanban self-hosted, una alternativa a Trello».
+- Login: el párrafo dice «Tableros Kanban self-hosted…» y el pie pasa a «Kanban ·
+  Self-hosted», sin mencionar licencia.
+- `test/metadata.test.ts` comprueba los títulos resueltos, la description y que el HTML
+  del login no diga open source ni AGPL.
+
+**Alternativas descartadas.**
+- Quitar el pie del panel de marca: cambiaba la composición (`justify-between` con tres
+  bloques).
+- Poner un aviso de copyright en el pie: el texto legal lo aporta el propietario.
+
+**Consecuencias.** Cada página nueva debe exportar su `title`; sin él hereda «orgtable».
+
 ## 2026-09-24 — Límite de 11 MB para el cuerpo de las Server Actions
 
 **Contexto.** Next 16 corta el cuerpo de una Server Action en 1 MB antes de ejecutarla.
