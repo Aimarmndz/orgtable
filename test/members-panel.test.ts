@@ -51,7 +51,12 @@ function selectedInviteRole(html: string): string | undefined {
 }
 
 describe("panel de miembros", () => {
-  it("tras un error conserva el rol elegido en el selector de invitar", () => {
+  // OJO: no es la regresión del rol perdido tras un error. El HTML inicial ya salía con
+  // VIEWER antes del arreglo; el fallo estaba en el cliente, donde React no aplica el
+  // nuevo defaultValue a un <select> ya montado. El remontaje por key queda sin test
+  // porque el proyecto no tiene jsdom. El caso siguiente (OWNER → Editor) sí falla con
+  // el código anterior.
+  it("con un error, el HTML inicial marca el rol devuelto en el selector de invitar", () => {
     actionState.override = {
       error: "No existe ninguna cuenta con ese email.",
       values: { email: "x@ejemplo.com", role: "VIEWER" },
