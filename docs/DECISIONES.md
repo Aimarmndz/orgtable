@@ -8,6 +8,42 @@ arquitectura anteriores a este registro (ADR 0001–0015) siguen en
 
 ---
 
+## 2026-09-24 — Collation "C" en las columnas de posición
+
+**Contexto.** Las claves de fractional indexing (base62 `0-9A-Za-z`) solo se ordenan
+bien byte a byte. `ORDER BY position` usaba la collation de la BD: en postgres alpine
+(musl, la BD de desarrollo) es byte a byte, pero en glibc (imagen Debian del CI, Ubuntu,
+servicios gestionados) `en_US.utf8` deja `Zz` después de `a0l`. Resultado: la tarjeta
+arrastrada al principio reaparece al final al refrescar, y `createCard`/`createList`
+(que buscan la última con `ORDER BY position DESC`) generan claves repetidas.
+
+**Decisión.**
+- Migración `20260924000000_position_collate_c` (creada con `migrate dev --create-only`
+  y escrita a mano): `ALTER COLUMN "position" TYPE TEXT COLLATE "C"` en `List`, `Card`,
+  `Checklist` y `ChecklistItem`. Reconstruye `Card_listId_position_idx`.
+- Comentario en la migración y en `schema.prisma` (`List.position`), porque Prisma no
+  modela la collation; `prisma migrate diff` no muestra deriva.
+- ADR 0002 ampliado en «Consecuencias» (fuente única del porqué y de cómo detectar
+  claves ya repetidas).
+- Test `test/integration/position-collation.int.test.ts`: comprueba la collation de las
+  cuatro columnas (falla sin el arreglo en cualquier servidor) y el orden/no repetición
+  de tarjetas y listas con `a0`, `a0V`, `a0l`, `Zz` (falla sin el arreglo en BD glibc/ICU;
+  verificado con una BD temporal ICU).
+
+**Alternativas descartadas.**
+- Ordenar en JS o con `localeCompare`: dispersa la regla por todas las consultas y no
+  arregla el `findFirst ... DESC` de las altas.
+- Crear la BD con `LC_COLLATE=C`: no sirve para instalaciones existentes ni para BD
+  gestionadas donde no se controla la creación.
+- Reasignar en la migración las claves ya repetidas: toca datos de producción; queda
+  como decisión del propietario, con copia previa (consulta de detección en el ADR 0002).
+
+**Consecuencias.** Toda columna de posición nueva debe crearse con `COLLATE "C"` a mano
+en su migración. Las instalaciones glibc que ya tengan claves repetidas las conservan
+hasta que se reasignen; el orden entre dos claves iguales sigue sin estar definido.
+
+---
+
 ## 2026-09-24 — Content-Security-Policy con nonce y HSTS
 
 **Contexto.** La norma de seguridad exige CSP, HSTS, X-Content-Type-Options y

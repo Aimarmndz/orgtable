@@ -34,5 +34,21 @@ Usar **fractional indexing**. Las columnas `List.position` y `Card.position` son
 - Dos clientes concurrentes podrían generar la misma clave al mover al mismo punto
   exacto. En el MVP (un solo usuario) no aplica; cuando llegue el tiempo real
   (ver `docs/roadmap.md`) se regenerará la clave del "perdedor".
+- **Collation "C" obligatoria** (añadido 2026-09-24). Las claves (base62 `0-9A-Za-z`)
+  solo están bien ordenadas byte a byte. Con la collation por defecto de una BD glibc
+  (`en_US.utf8` en la imagen Debian de postgres, Ubuntu o servicios gestionados)
+  `ORDER BY position` deja `Zz` (lo que genera arrastrar al principio) después de `a0`:
+  la tarjeta reaparece al final al refrescar y `createCard`/`createList`, que buscan la
+  última con `ORDER BY position DESC`, generan claves repetidas. La migración
+  `20260924000000_position_collate_c` fija `TEXT COLLATE "C"` en `List`, `Card`,
+  `Checklist` y `ChecklistItem.position`. Prisma no modela la collation, así que el
+  esquema sigue diciendo `String` y no aparece deriva; cualquier columna de posición
+  nueva debe crearse con `COLLATE "C"` a mano en su migración. No se ordena en JS ni con
+  `localeCompare`: el orden lo da la BD.
+- La migración no reescribe valores. Las instalaciones que ya corrían sobre glibc pueden
+  tener claves repetidas; se detectan con
+  `SELECT "listId", position, count(*) FROM "Card" GROUP BY 1, 2 HAVING count(*) > 1`
+  (y lo mismo con `"boardId"` en `"List"`). Reasignarlas es decisión del propietario de
+  la instalación, con copia de seguridad previa (`scripts/backup.sh`).
 
 Ver `docs/drag-and-drop.md` para el uso desde la UI.

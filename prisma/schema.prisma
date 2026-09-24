@@ -93,6 +93,10 @@ model List {
   title     String
   // Clave de ordenación por fractional indexing (string lexicográfico).
   // Mover una lista actualiza SOLO su propia fila. Ver docs/drag-and-drop.md.
+  // En la BD la columna es TEXT COLLATE "C" (orden byte a byte), igual que
+  // Card/Checklist/ChecklistItem.position: con la collation por defecto (glibc) 'Zz'
+  // quedaría después de 'a0'. Prisma no modela la collation; la fija la migración
+  // 20260924000000_position_collate_c. Ver ADR 0002.
   position  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
