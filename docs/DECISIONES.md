@@ -155,6 +155,30 @@ oye el lector de pantalla; «todas» ya deja claro el alcance del borrado.
 
 **Consecuencias.** El lector de pantalla no dice cuántas tarjetas se borran; quien quiera
 saberlo tiene el contador (sin filtros). Test en `test/list-column-delete.test.ts`.
+## 2026-09-24 — Tiempo real: un solo refresh por pestaña para el tablero y la campana
+
+**Contexto.** En `/board/[id]` la campana (layout) y `BoardRealtime` (página) tienen
+cada uno su `EventSource` y su debounce. `router.refresh()` repinta todo el árbol,
+layout incluido, y los dos streams caen y vuelven a la vez (vida máxima de 15 min,
+reinicio, suspensión): cada reconexión hacía dos renders completos del tablero. La
+consecuencia «un `router.refresh()` por reconexión» de la entrada «Resincronizar el
+tablero y la campana al reconectar el EventSource» no se cumplía en esa página.
+
+**Decisión.** `scheduleRefresh` en `app/lib/realtime/reconnect.ts`: un temporizador de
+módulo (200 ms) compartido por los dos componentes para eventos, reconexiones y acceso
+denegado, en lugar del temporizador local de cada uno. No se cancela al desmontar:
+anularía el refresh que pidió el otro componente, y un `router.refresh()` tras
+desmontar solo refresca la ruta actual.
+
+**Alternativas descartadas.** Que la campana no refresque si hay un `BoardRealtime`
+montado: el layout no sabe qué página tiene debajo, y fuera del tablero sí hace falta.
+
+**Consecuencias.** Un solo `router.refresh()` por reconexión y pestaña, también cada
+15 min. La redirección tras una revocación llega unos 200 ms más tarde. Test de
+agrupación en `test/realtime-reconnect.test.ts`.
+
+---
+
 ## 2026-09-24 — Tiempo real: no refrescar a ciegas cuando el stream queda CLOSED
 
 **Contexto.** Al quedar `CLOSED`, `BoardRealtime` y `NotificationsBell` hacían

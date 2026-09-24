@@ -2,7 +2,11 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { keepEventSourceOpen, probeStatus } from "@/app/lib/realtime/reconnect";
+import {
+  keepEventSourceOpen,
+  probeStatus,
+  scheduleRefresh,
+} from "@/app/lib/realtime/reconnect";
 
 // Sincronización en vivo del tablero (Hito 4). Abre un EventSource al stream SSE del
 // tablero; cuando llega un evento "change" (otra persona movió algo), pide a Next que
@@ -16,16 +20,12 @@ export function BoardRealtime({ boardId }: { boardId: string }) {
 
   useEffect(() => {
     const url = `/api/boards/${boardId}/stream`;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-
     // Pequeño debounce: si llegan varios eventos seguidos (p. ej. un arrastre), se
-    // hace un solo refresh.
-    const onChange = () => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => router.refresh(), 200);
-    };
+    // hace un solo refresh. Es compartido con la campana de notificaciones: en esta
+    // página los dos streams reconectan a la vez y un refresh ya repinta ambos.
+    const onChange = () => scheduleRefresh(() => router.refresh());
 
-    const stop = keepEventSourceOpen({
+    return keepEventSourceOpen({
       create: () => new EventSource(url),
       events: { change: onChange },
       // Tras un corte, trae lo que cambió mientras tanto (el servidor no lo reenvía).
@@ -35,13 +35,8 @@ export function BoardRealtime({ boardId }: { boardId: string }) {
       // 502 del proxy durante un reinicio refrescar navegaría a su página de error, así
       // que solo se reintenta.
       probe: () => probeStatus(url),
-      onAccessDenied: () => router.refresh(),
+      onAccessDenied: onChange,
     });
-
-    return () => {
-      if (timer) clearTimeout(timer);
-      stop();
-    };
   }, [boardId, router]);
 
   return null;

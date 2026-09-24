@@ -6,6 +6,8 @@ import {
   keepEventSourceOpen,
   probeStatus,
   retryDelay,
+  scheduleRefresh,
+  REFRESH_DEBOUNCE_MS,
   RETRY_BASE_MS,
   RETRY_MAX_MS,
 } from "@/app/lib/realtime/reconnect";
@@ -258,6 +260,38 @@ describe("keepEventSourceOpen", () => {
     second.stop();
     expect(second.sources[0].closed).toBe(true);
     expect(second.sources[0].listenerCount()).toBe(0);
+  });
+});
+
+// Regresión: en /board/[id] la campana y el tablero reconectan a la vez y cada uno
+// lanzaba su router.refresh(); dos renders completos del tablero en vez de uno.
+describe("scheduleRefresh", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("agrupa en un solo refresh las peticiones de varios componentes", () => {
+    const refreshBoard = vi.fn();
+    const refreshBell = vi.fn();
+    scheduleRefresh(refreshBoard);
+    scheduleRefresh(refreshBell);
+    vi.advanceTimersByTime(REFRESH_DEBOUNCE_MS);
+    expect(refreshBoard.mock.calls.length + refreshBell.mock.calls.length).toBe(1);
+  });
+
+  it("vuelve a refrescar si la petición llega fuera de la ventana", () => {
+    const refresh = vi.fn();
+    scheduleRefresh(refresh);
+    vi.advanceTimersByTime(REFRESH_DEBOUNCE_MS - 1);
+    expect(refresh).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(refresh).toHaveBeenCalledTimes(1);
+    scheduleRefresh(refresh);
+    vi.advanceTimersByTime(REFRESH_DEBOUNCE_MS);
+    expect(refresh).toHaveBeenCalledTimes(2);
   });
 });
 

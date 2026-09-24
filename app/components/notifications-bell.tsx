@@ -7,7 +7,11 @@ import {
   useTransition,
 } from "react";
 import { useRouter } from "next/navigation";
-import { keepEventSourceOpen, probeStatus } from "@/app/lib/realtime/reconnect";
+import {
+  keepEventSourceOpen,
+  probeStatus,
+  scheduleRefresh,
+} from "@/app/lib/realtime/reconnect";
 import {
   markNotificationRead,
   markAllNotificationsRead,
@@ -70,15 +74,13 @@ export function NotificationsBell({
   const [, startTransition] = useTransition();
   const mounted = useMounted();
 
-  // Entrega en vivo: refresca (con un pequeño debounce) cuando el bus avisa.
+  // Entrega en vivo: refresca (con un pequeño debounce) cuando el bus avisa. El
+  // debounce es compartido con BoardRealtime (scheduleRefresh): en la página del tablero
+  // los dos streams caen y vuelven a la vez, y un solo refresh ya repinta ambos.
   useEffect(() => {
     const url = "/api/notifications/stream";
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    const onEvent = () => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => router.refresh(), 200);
-    };
-    const stop = keepEventSourceOpen({
+    const onEvent = () => scheduleRefresh(() => router.refresh());
+    return keepEventSourceOpen({
       create: () => new EventSource(url),
       events: { notification: onEvent },
       // Al reconectar, trae las notificaciones que llegaron durante el corte (el
@@ -88,12 +90,8 @@ export function NotificationsBell({
       // refresca para que el layout redirija a /login; ante un 502 del proxy durante un
       // reinicio refrescar navegaría a su página de error, así que solo se reintenta.
       probe: () => probeStatus(url),
-      onAccessDenied: () => router.refresh(),
+      onAccessDenied: onEvent,
     });
-    return () => {
-      if (timer) clearTimeout(timer);
-      stop();
-    };
   }, [router]);
 
   // Cierra con Escape (setOpen es estable, no hace falta ref).

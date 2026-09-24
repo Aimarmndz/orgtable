@@ -6,6 +6,29 @@
 // abrirse DESPUÉS de la primera vez, se pide un refresh para traer el estado actual.
 // En la primera apertura no hace falta: la página acaba de renderizarse con datos frescos.
 
+// Un solo refresco por pestaña. router.refresh() vuelve a renderizar todo el árbol de
+// la ruta, layout incluido: en /board/[id] la campana (layout) y BoardRealtime (página)
+// tienen cada uno su EventSource, que el servidor corta a la vez (vida máxima de 15 min,
+// reinicio, suspensión del portátil). Con un debounce por componente cada reconexión
+// costaba dos renders completos del tablero; con este temporizador de módulo las
+// peticiones de ambos dentro de la ventana se agrupan en uno.
+export const REFRESH_DEBOUNCE_MS = 200;
+let pendingRefresh: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Programa un refresh agrupado con los que pida cualquier componente en los próximos
+ * REFRESH_DEBOUNCE_MS. No se cancela al desmontar: el temporizador es compartido y
+ * cancelarlo anularía el refresh que pidió el otro componente; un router.refresh()
+ * tras desmontar solo refresca la ruta actual, sin efectos dañinos.
+ */
+export function scheduleRefresh(refresh: () => void): void {
+  if (pendingRefresh) clearTimeout(pendingRefresh);
+  pendingRefresh = setTimeout(() => {
+    pendingRefresh = null;
+    refresh();
+  }, REFRESH_DEBOUNCE_MS);
+}
+
 /** Devuelve el manejador de "open": ignora la primera apertura y avisa en las siguientes. */
 export function createReconnectRefresher(onReconnect: () => void): () => void {
   let opened = false;
