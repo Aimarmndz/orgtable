@@ -18,12 +18,12 @@ registro abierto).
 
 ## Dependencias (`pnpm audit`)
 
-- **Resuelto el único HIGH**: `next` 16.2.4 → **16.2.7** (DoS por Server Components, bypass
-  de middleware/proxy, XSS, SSRF, cache poisoning). Tras la actualización: **0 high, 0
-  critical**.
-- Las **6 moderate** restantes son **transitivas de herramientas de build/desarrollo**
-  (`@prisma/dev` → `@hono/node-server`, eslint → `brace-expansion`, next → `postcss`), no
-  alcanzables en el runtime de producción. Se revisan en cada actualización de deps.
+- **2026-09-24**: con la migración a pnpm, `pnpm audit` daba 63 avisos (2 críticos en
+  `next` 16.2.7). Se subió todo dentro de su versión mayor (`next` 16.3.6, Prisma 7.10…)
+  y se forzaron transitivas parcheadas con `overrides` en `pnpm-workspace.yaml`. Queda
+  **0 avisos** y uno ignorado y justificado (`deepmerge-ts`, solo en el CLI de Prisma).
+  El detalle y el porqué están en [`DECISIONES.md`](./DECISIONES.md).
+- CI ejecuta `pnpm audit --prod --audit-level high` en cada push y PR.
 
 ## Hallazgos confirmados y su estado
 
