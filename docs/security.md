@@ -32,7 +32,7 @@ registro abierto).
 | **Alta** | **IDOR en `moveCard`**: solo validaba el tablero de DESTINO, no el de ORIGEN. Un editor podía mover a su tablero una tarjeta de otro al que no tiene acceso, conociendo su id. | **Corregido**: `moveCard` exige `cardBelongsToBoard(cardId, destino)` (la tarjeta debe estar ya en el tablero de destino; no se mueven tarjetas entre tableros). Test de regresión en `security.int.test.ts`. |
 | Media (op.) | `SESSION_SECRET` sin definir degradaba a clave vacía/predecible (sesiones forjables). | **Corregido**: se exige `SESSION_SECRET` (≥16 chars) al firmar/verificar; falla ruidosamente. |
 | Media (op.) | `DATABASE_URL` sin validar: el adapter caería a los defaults de libpq y conectaría a una BD no deseada. | **Corregido**: `createPrismaClient` lanza si falta (salvo en `next build`). |
-| Baja | Faltaban cabeceras de seguridad (clickjacking, sniffing). | **Corregido**: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy` en `next.config.ts`. |
+| Baja | Faltaban cabeceras de seguridad (clickjacking, sniffing, CSP, HSTS). | **Corregido**: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy` y HSTS en `next.config.ts`; CSP con nonce en `proxy.ts`. Tests en `test/csp.test.ts` y `test/next-config.test.ts`. |
 | Baja | El 503 del cron revelaba "sin CRON_SECRET". | **Corregido**: mensaje genérico ("Servicio no disponible"). |
 | Media (op.) | El wizard de setup queda **bloqueado para siempre**; sin reset por UI. | **Aceptado/documentado**: es un bloqueo intencionado; la recuperación es `UPDATE "InstanceConfig" SET "setupCompletedAt" = NULL` (ver `docs/setup-wizard.md`). |
 
@@ -73,12 +73,20 @@ Los demás hallazgos "confirmados" por el panel eran en realidad **controles cor
     `Permissions-Policy`.
   - Sin `upgrade-insecure-requests`: rompería las instalaciones por `http://IP:3000`.
     El porqué de cada excepción está en [`DECISIONES.md`](./DECISIONES.md).
+- **Tamaño de las peticiones a Server Actions**: `serverActions.bodySizeLimit` y
+  `proxyClientMaxBodySize` en 11 MB (`next.config.ts`), justo por encima del máximo de un
+  adjunto (10 MB). Límite conocido: es global y Next lo aplica **antes de autenticar**, así
+  que cualquiera puede enviar hasta 11 MB a una acción; las acciones rechazan después lo
+  que exceda sus límites propios.
 
 ## Recomendaciones futuras (backlog)
 
 - **Guard del último admin**: impedir borrar/degradar al último ADMIN de la instancia.
 - **Endpoint de reset del setup** (admin) en vez de SQL manual.
 - Email/Web Push y preferencias (ya en el backlog del roadmap).
+- **Subida de adjuntos por route handler** (`/api/...`) con autenticación antes de leer el
+  cuerpo, para poder bajar el límite global de las Server Actions. Lo decide el
+  propietario.
 
 ## Reproducir la auditoría
 

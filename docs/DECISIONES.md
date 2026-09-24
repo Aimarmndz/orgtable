@@ -47,6 +47,31 @@ en su migración. Las instalaciones glibc que ya tengan claves repetidas las con
 hasta que se reasignen; el orden entre dos claves iguales sigue sin estar definido.
 
 ---
+## 2026-09-24 — Límite de 11 MB para el cuerpo de las Server Actions
+
+**Contexto.** Next 16 corta el cuerpo de una Server Action en 1 MB antes de ejecutarla.
+`uploadAttachment` admite 10 MB (`MAX_ATTACHMENT_BYTES`) e `importBoard` 5 MB, así que
+cualquier adjunto o importación de más de 1 MB fallaba con un error genérico. Además,
+`proxy.ts` pasa por las rutas de página y Next solo guarda 10 MB de su cuerpo: lo que
+exceda llega truncado a la acción, sin error.
+
+**Decisión.** `experimental.serverActions.bodySizeLimit` y
+`experimental.proxyClientMaxBodySize` a 11 MB (en bytes) en `next.config.ts`. El
+megabyte extra cubre la sobrecarga de multipart y deja que un archivo algo mayor de
+10 MB llegue a la acción y reciba su mensaje propio en vez de un 413.
+`test/next-config.test.ts` comprueba que el límite supera `MAX_ATTACHMENT_BYTES` más la
+sobrecarga y que el del proxy coincide.
+
+**Alternativas descartadas.**
+- Subir los adjuntos por un route handler en `/api` que autentique antes de leer el
+  cuerpo: es la solución de fondo, pero cambia la arquitectura de la subida; la decide
+  el propietario (anotada en el backlog de `docs/security.md`).
+- Importar `MAX_ATTACHMENT_BYTES` en `next.config.ts`: `storage.ts` es `server-only` y
+  arrastra `node:fs`; se deja el número con comentario y lo vigila el test.
+
+**Consecuencias.** El límite es global y se aplica antes de autenticar: cualquiera puede
+mandar 11 MB a una acción. Si cambia el máximo de adjuntos hay que subir este número (el
+test falla si se queda corto).
 
 ## 2026-09-24 — Content-Security-Policy con nonce y HSTS
 
