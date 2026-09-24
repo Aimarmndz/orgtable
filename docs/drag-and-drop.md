@@ -149,7 +149,9 @@ vuelve a ella si:
 - se **cancela** el arrastre (Escape) o se suelta fuera de cualquier zona: `onDragOver`
   puede haber movido la tarjeta a otra lista solo en el estado local;
 - el servidor **rechaza** el cambio (`{ ok: false }`) o la llamada **falla**: la Server
-  Action se ejecuta con `persistOptimistic`, que en ese caso restaura la instantánea y
+  Action se ejecuta con `persistOptimistic`, que en ese caso restaura la instantánea,
+  muestra un aviso con `role="alert"` en la cabecera del tablero («No se pudo mover la
+  tarjeta/lista. Inténtalo de nuevo.», se borra al empezar el siguiente arrastre) y
   hace `router.refresh()` para traer los datos reales. Las redirecciones de Next (sesión
   caducada) se relanzan sin tocar y las gestiona el router.
 
@@ -428,8 +430,8 @@ vea correctamente.
                  │
                  ▼
    Llegan datos nuevos  →  resincronización en el render  →  setLists(board.lists)
-   (si la acción devuelve { ok: false } o falla: se restaura la instantánea
-    y router.refresh())
+   (si la acción devuelve { ok: false } o falla: se restaura la instantánea,
+    se avisa en la cabecera y router.refresh())
                  (resincroniza el estado optimista con el servidor)
 ```
 

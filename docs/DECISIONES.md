@@ -1432,7 +1432,9 @@ componente si solo cambian los searchParams.
 - Instantánea de las listas al empezar el arrastre: se restaura con Escape, al soltar
   fuera o si la acción falla. `persistOptimistic` (`app/lib/optimistic.ts`) deshace ante
   `{ ok: false }` o excepción, hace `router.refresh()` y relanza las redirecciones de
-  Next (`unstable_rethrow`).
+  Next (`unstable_rethrow`). En el tablero se avisa con `role="alert"` en la cabecera
+  («No se pudo mover la tarjeta. Inténtalo de nuevo.» / «…la lista…»); el aviso se
+  borra al empezar el siguiente arrastre.
 - Título del tablero truncado (`min-w-0 truncate`) para que un nombre largo no desborde
   en móvil.
 - Calendario: `DragOverlay` con la pastilla, `id` estable y aviso «No se pudo cambiar la
@@ -1448,9 +1450,8 @@ componente si solo cambian los searchParams.
   para coger e Intro para abrir basta.
 - `window.confirm`: bloquea la página y no sigue el estilo de la app.
 - `useOptimistic`: exigiría reestructurar el estado del arrastre; la instantánea
-  resuelve lo mismo con menos cambios. Un aviso visible al fallar un movimiento en el
-  tablero: queda pendiente de que el propietario decida el texto (hoy se deshace en
-  silencio y se refresca).
+  resuelve lo mismo con menos cambios. Deshacer en silencio: la tarjeta volvía a su
+  sitio sin explicación y el calendario ya avisaba.
 - `aria-label` con solo el título en la tarjeta: tapaba el vencimiento, el estado
   «vencida» y los contadores. Anclar el popover a la derecha solo en `lg`: depende de
   que la cabecera no se parta, que varía con la longitud del título.
@@ -1460,7 +1461,9 @@ componente si solo cambian los searchParams.
 **Consecuencias.** Tests en `test/board-filters.test.ts` (vence hoy/ayer, formato con
 `TZ=America/New_York`). Test de render en servidor (`test/card-item.test.ts`) para rol,
 foco, nombre accesible desde el contenido (sin `aria-label`) y ausencia de «vencida» en
-el HTML inicial. Sin test automático (no hay entorno
+el HTML inicial. El aviso de movimiento fallido no tiene test automático (necesita un
+fallo de la Server Action en un DOM real); `persistOptimistic` llama a `onFailure` y eso
+sí está probado. Sin test automático (no hay entorno
 DOM); verificación manual pendiente. Tests con rectángulos sintéticos en
 `test/board-collision.test.ts` (incluido el fallo de `closestCorners` a secas) y de
 `persistOptimistic` en `test/optimistic.test.ts`. El arrastre real con ratón y teclado

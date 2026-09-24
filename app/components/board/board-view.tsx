@@ -72,6 +72,9 @@ export function BoardView({
   // Listas tal como estaban al empezar el arrastre, para deshacer el movimiento
   // optimista si se cancela (Escape) o si el servidor lo rechaza.
   const [dragSnapshot, setDragSnapshot] = useState<ListDTO[] | null>(null);
+  // Aviso si el servidor no guarda un movimiento: sin él, la tarjeta o la lista vuelve
+  // a su sitio sin explicación (el calendario avisa igual con dropError).
+  const [moveError, setMoveError] = useState<string | null>(null);
   // Tarjeta abierta: se deriva de la URL (?card=…), no de un estado inicial. Así el
   // deep-link de /search o de una notificación abre la tarjeta aunque ya estés en este
   // tablero (Next no remonta el componente si solo cambian los searchParams).
@@ -166,13 +169,16 @@ export function BoardView({
       `Movimiento cancelado; ${describe(active.id)} vuelve a su sitio.`,
   };
 
-  // Deshace un movimiento optimista que el servidor no guardó y pide los datos reales.
-  const revertTo = (snapshot: ListDTO[]) => {
+  // Deshace un movimiento optimista que el servidor no guardó, avisa y pide los datos
+  // reales.
+  const revertTo = (snapshot: ListDTO[], message: string) => {
     setLists(snapshot);
+    setMoveError(message);
     router.refresh();
   };
 
   function handleDragStart(event: DragStartEvent) {
+    setMoveError(null);
     setActiveId(String(event.active.id));
     setDragSnapshot(lists);
   }
@@ -255,7 +261,8 @@ export function BoardView({
       );
       void persistOptimistic(
         () => reorderList({ listId: activeIdStr, position }),
-        () => revertTo(snapshot),
+        () =>
+          revertTo(snapshot, "No se pudo mover la lista. Inténtalo de nuevo."),
         {
           message: "[tablero] fallo al reordenar la lista",
           context: { listId: activeIdStr },
@@ -307,7 +314,8 @@ export function BoardView({
     );
     void persistOptimistic(
       () => moveCard({ cardId: activeIdStr, toListId: container, position }),
-      () => revertTo(snapshot),
+      () =>
+        revertTo(snapshot, "No se pudo mover la tarjeta. Inténtalo de nuevo."),
       {
         message: "[tablero] fallo al mover la tarjeta",
         context: { cardId: activeIdStr, toListId: container },
@@ -394,6 +402,16 @@ export function BoardView({
                 </span>
               </button>
             </div>
+            {/* Fila propia (basis-full) sobre fondo de superficie: el fondo del tablero
+                puede ser cualquier color y el rojo necesita contraste. */}
+            {moveError && (
+              <p
+                role="alert"
+                className="basis-full rounded-lg bg-surface px-3 py-1.5 text-sm text-danger"
+              >
+                {moveError}
+              </p>
+            )}
           </div>
           {view === "board" ? (
             <div className="flex flex-1 items-start gap-3 overflow-x-auto px-4 pb-4">
