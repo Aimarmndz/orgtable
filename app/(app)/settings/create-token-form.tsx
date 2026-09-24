@@ -143,7 +143,9 @@ export function CreateTokenForm() {
         </Button>
       </form>
 
-      {state.error && (
+      {/* role="alert" para que el lector de pantalla lo anuncie. Se retira mientras se
+          envía: así un segundo error idéntico se vuelve a insertar y se anuncia de nuevo. */}
+      {state.error && !pending && (
         <p
           role="alert"
           className="mt-2 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger"

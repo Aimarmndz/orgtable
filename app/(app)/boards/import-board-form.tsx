@@ -25,7 +25,9 @@ export function ImportBoardForm() {
       <Button type="submit" variant="subtle" disabled={pending}>
         {pending ? "Importando…" : "Importar tablero"}
       </Button>
-      {state.error && (
+      {/* role="alert" para que el lector de pantalla lo anuncie. Se retira mientras se
+          envía: así un segundo error idéntico se vuelve a insertar y se anuncia de nuevo. */}
+      {state.error && !pending && (
         <p
           role="alert"
           className="w-full rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger"

@@ -31,7 +31,9 @@ export function CreateUserForm() {
         No hay registro abierto: aquí das de alta a las personas de tu instancia.
       </p>
 
-      {state.error && (
+      {/* role="alert" para que el lector de pantalla lo anuncie. Se retira mientras se
+          envía: así un segundo error idéntico se vuelve a insertar y se anuncia de nuevo. */}
+      {state.error && !pending && (
         <p
           id={errorId}
           role="alert"
@@ -73,7 +75,7 @@ export function CreateUserForm() {
             required
             defaultValue={state.values?.email}
             aria-invalid={state.field === "email" || undefined}
-            aria-describedby={state.field === "email" ? errorId : undefined}
+            aria-describedby={state.field === "email" && !pending ? errorId : undefined}
             className="mt-1.5"
           />
         </label>

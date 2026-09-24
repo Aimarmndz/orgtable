@@ -86,6 +86,26 @@ contexto de React, así que sigue dentro del `DndContext`.
 `test/calendar-view.test.ts`: el render de servidor no toca `document` (falla si el
 portal se monta sin la guarda). El posicionamiento real solo se comprueba a mano en el
 navegador.
+## 2026-09-24 — Aviso de error retirado al enviar en usuario, token e importar
+
+**Contexto.** `create-user-form.tsx`, `create-token-form.tsx` e `import-board-form.tsx`
+dejaban el aviso `role="alert"` montado entre envíos. Un segundo error idéntico (crear dos
+veces un usuario con un email existente, importar dos veces el mismo JSON inválido) no
+cambiaba el DOM y el lector de pantalla no lo anunciaba.
+
+**Decisión.** El mismo patrón que `login-form.tsx` y el panel de miembros:
+`state.error && !pending`. En crear usuario, `aria-describedby` del email solo apunta al
+aviso mientras está visible, para no referenciar un id inexistente durante el envío.
+
+**Alternativas descartadas.** Añadir un contador o una key al aviso para forzar que se
+reinserte: más estado para lo mismo que ya hace `pending`.
+
+**Consecuencias.** Mientras se envía no se ve el error anterior (el botón ya dice
+«Creando…»/«Importando…»). `test/form-error-reannounce.test.ts` lo comprueba en el HTML
+de los tres formularios.
+
+---
+
 ## 2026-09-24 — Panel de miembros: rol al invitar tras un error, error repetido y fondo
 
 **Contexto.** Tres fallos del formulario de invitar y del `<dialog>` de miembros
