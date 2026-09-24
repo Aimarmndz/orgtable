@@ -4,6 +4,8 @@ import {
   apiCardCreateSchema,
   apiCardUpdateSchema,
   apiTokenNameSchema,
+  boardImportSchema,
+  labelColorSchema,
 } from "@/app/lib/validators";
 
 describe("validators (zod)", () => {
@@ -40,5 +42,24 @@ describe("validators (zod)", () => {
     expect(apiTokenNameSchema.safeParse("Mi token").success).toBe(true);
     expect(apiTokenNameSchema.safeParse("   ").success).toBe(false);
     expect(apiTokenNameSchema.safeParse("x".repeat(61)).success).toBe(false);
+  });
+
+  it("labelColorSchema cae a 'blue' fuera de la paleta (también claves del prototipo)", () => {
+    expect(labelColorSchema.parse("red")).toBe("red");
+    expect(labelColorSchema.parse("constructor")).toBe("blue");
+    expect(labelColorSchema.parse("__proto__")).toBe("blue");
+    expect(labelColorSchema.parse(undefined)).toBe("blue");
+  });
+
+  it("boardImportSchema sanea colores desconocidos en vez de rechazar el fichero", () => {
+    const parsed = boardImportSchema.parse({
+      board: {
+        title: "X",
+        background: "constructor",
+        labels: [{ name: "Rara", color: "toString" }],
+      },
+    });
+    expect(parsed.board.background).toBeNull();
+    expect(parsed.board.labels?.[0].color).toBe("blue");
   });
 });

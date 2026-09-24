@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { BOARD_COLOR_KEYS, LABEL_COLOR_KEYS } from "@/app/lib/colors";
 
 // Esquemas de validación compartidos (zod). Se usan en las Server Actions para
 // validar la entrada antes de tocar la base de datos.
@@ -39,6 +40,12 @@ export const cardTitleSchema = z
   .trim()
   .min(1, "El título es obligatorio")
   .max(500);
+
+// Colores de etiqueta y de fondo de tablero. Se validan contra la paleta con z.enum (no con
+// el operador `in`, que acepta claves del prototipo como 'constructor'). `.catch` mantiene
+// la tolerancia de antes: un color desconocido cae al valor por defecto en vez de fallar.
+export const labelColorSchema = z.enum(LABEL_COLOR_KEYS).catch("blue");
+const boardBackgroundSchema = z.enum(BOARD_COLOR_KEYS).nullable().catch(null);
 
 // Hito 10: comentarios de tarjeta.
 export const commentTextSchema = z
@@ -112,7 +119,7 @@ const importListSchema = z.object({
 
 const importLabelSchema = z.object({
   name: z.string().min(1).max(40),
-  color: z.string().max(20),
+  color: labelColorSchema,
 });
 
 export const boardImportSchema = z.object({
@@ -121,7 +128,7 @@ export const boardImportSchema = z.object({
     .optional(),
   board: z.object({
     title: z.string().min(1).max(120),
-    background: z.string().max(20).nullable().optional(),
+    background: boardBackgroundSchema.optional(),
     labels: z.array(importLabelSchema).max(50).optional(),
     lists: z.array(importListSchema).max(50).optional(),
   }),

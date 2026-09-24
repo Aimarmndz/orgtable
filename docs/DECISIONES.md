@@ -964,6 +964,28 @@ tests: no había forma de probar las Server Actions ni la revocación de sesione
 **Consecuencias.** Los tests pueden ejecutar Server Actions con sesión real (fila
 `Session` + JWT firmado). Quitar una comprobación de `verifySession` hace fallar
 `session.int.test.ts` (comprobado quitando `revokedAt` y el control de `userId`).
+## 2026-09-24 — Etiquetas: IDOR de toggleCardLabel y colores validados contra la paleta
+
+**Contexto.** `toggleCardLabel` autorizaba por el tablero de la tarjeta, pero aceptaba
+una etiqueta de otro tablero (IDOR): un editor de A podía vincular una etiqueta de B
+conociendo su id. Además, el operador `in` sobre las paletas aceptaba claves del
+prototipo como `'constructor'`, que acababan pintadas como color.
+
+**Decisión.**
+- `labelBelongsToBoard` (`services/labels.ts`) tras autorizar; entrada validada con zod.
+- Colores validados con `z.enum` de la paleta y `.catch` (etiqueta → `"blue"`, fondo →
+  `null`) para seguir siendo tolerantes con el import y los formularios; en lectura,
+  `Object.hasOwn` en vez de `in`.
+
+**Alternativas descartadas.**
+- Rechazar el import con un color desconocido: un export de otra versión con un color
+  que ya no existe dejaría de importarse por un detalle cosmético.
+
+**Consecuencias.** Los `CardLabel` cruzados que ya existan en una instalación no se
+limpian (decisión del propietario; un barrido necesitaría script con dry-run).
+
+---
+
 ## 2026-09-24 — Adjuntos: errores de disco visibles y 404 uniforme en la descarga
 
 **Contexto.** `deleteAttachmentFile` tenía un `catch` vacío que se tragaba también

@@ -9,7 +9,6 @@ import { canManageBoard } from "@/app/lib/roles";
 import { recordAudit } from "@/app/lib/audit";
 import { boardTitleSchema, boardImportSchema } from "@/app/lib/validators";
 import { positionAtEnd } from "@/app/lib/ordering";
-import { BOARD_COLORS, LABEL_COLORS } from "@/app/lib/colors";
 
 export async function createBoard(formData: FormData): Promise<void> {
   const user = await requireUser();
@@ -83,8 +82,8 @@ export async function importBoard(
   }
 
   const b = parsed.data.board;
-  const background =
-    b.background && b.background in BOARD_COLORS ? b.background : null;
+  // Colores ya saneados por boardImportSchema: fuera de la paleta → null / "blue".
+  const background = b.background ?? null;
 
   let newBoardId = "";
   await prisma.$transaction(
@@ -99,13 +98,12 @@ export async function importBoard(
       });
       newBoardId = board.id;
 
-      // Etiquetas: una por nombre (se ignoran duplicados); color saneado.
+      // Etiquetas: una por nombre (se ignoran duplicados); color saneado en el esquema.
       const labelIdByName = new Map<string, string>();
       for (const lab of b.labels ?? []) {
         if (labelIdByName.has(lab.name)) continue;
-        const color = lab.color in LABEL_COLORS ? lab.color : "blue";
         const created = await tx.label.create({
-          data: { boardId: board.id, name: lab.name, color },
+          data: { boardId: board.id, name: lab.name, color: lab.color },
         });
         labelIdByName.set(lab.name, created.id);
       }

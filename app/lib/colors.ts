@@ -16,7 +16,9 @@ export type BoardColor = keyof typeof BOARD_COLORS;
 export const BOARD_COLOR_KEYS = Object.keys(BOARD_COLORS) as BoardColor[];
 
 export function boardBackground(color: string | null | undefined): string {
-  const key = color && color in BOARD_COLORS ? (color as BoardColor) : "blue";
+  // Object.hasOwn, no `in`: ver boardBackgroundFor.
+  const key =
+    color && Object.hasOwn(BOARD_COLORS, color) ? (color as BoardColor) : "blue";
   return BOARD_COLORS[key];
 }
 
@@ -32,7 +34,9 @@ export function boardBackgroundFor(b: {
   id: string;
   background: string | null;
 }): string {
-  if (b.background && b.background in BOARD_COLORS) {
+  // Object.hasOwn y no `in`: `in` acepta claves del prototipo ('constructor',
+  // 'toString'…) y devolvería una función en lugar de un color.
+  if (b.background && Object.hasOwn(BOARD_COLORS, b.background)) {
     return BOARD_COLORS[b.background as BoardColor];
   }
   return BOARD_COLORS[pickBoardColor(b.id)];
@@ -54,6 +58,8 @@ export type LabelColor = keyof typeof LABEL_COLORS;
 export const LABEL_COLOR_KEYS = Object.keys(LABEL_COLORS) as LabelColor[];
 
 export function labelBackground(color: string | null | undefined): string {
-  const key = color && color in LABEL_COLORS ? (color as LabelColor) : "blue";
+  // Object.hasOwn, no `in`: ver boardBackgroundFor.
+  const key =
+    color && Object.hasOwn(LABEL_COLORS, color) ? (color as LabelColor) : "blue";
   return LABEL_COLORS[key];
 }

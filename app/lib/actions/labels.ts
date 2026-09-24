@@ -4,7 +4,14 @@ import { prisma } from "@/app/lib/prisma";
 import { revalidateBoard } from "@/app/lib/realtime/notify";
 import { requireBoardAccess } from "@/app/lib/dal";
 import { canEditBoard, canManageBoard } from "@/app/lib/roles";
-import { LABEL_COLORS } from "@/app/lib/colors";
+import { z } from "zod";
+import { labelColorSchema } from "@/app/lib/validators";
+import { labelBelongsToBoard } from "@/app/lib/services/labels";
+
+const toggleCardLabelSchema = z.object({
+  cardId: z.string().min(1),
+  labelId: z.string().min(1),
+});
 
 async function boardIdForCard(cardId: string): Promise<string | null> {
   const card = await prisma.card.findUnique({
@@ -19,9 +26,9 @@ export async function createLabel(formData: FormData): Promise<void> {
   const { role } = await requireBoardAccess(boardId);
   if (!canManageBoard(role)) return;
   const name = String(formData.get("name") ?? "").trim().slice(0, 40);
-  const colorRaw = String(formData.get("color") ?? "blue");
   if (!name) return;
-  const color = colorRaw in LABEL_COLORS ? colorRaw : "blue";
+  // Un color fuera de la paleta (incluidas claves del prototipo) se guarda como "blue".
+  const color = labelColorSchema.parse(formData.get("color") ?? undefined);
 
   await prisma.label.create({ data: { boardId, name, color } });
   revalidateBoard(boardId);
@@ -46,21 +53,23 @@ export async function toggleCardLabel(input: {
   cardId: string;
   labelId: string;
 }): Promise<{ ok: boolean }> {
-  const boardId = await boardIdForCard(input.cardId);
+  const parsed = toggleCardLabelSchema.safeParse(input);
+  if (!parsed.success) return { ok: false };
+  const { cardId, labelId } = parsed.data;
+  const boardId = await boardIdForCard(cardId);
   if (!boardId) return { ok: false };
   const { role } = await requireBoardAccess(boardId);
   if (!canEditBoard(role)) return { ok: false };
+  // Seguridad (IDOR): la etiqueta debe ser del MISMO tablero que la tarjeta. Ver
+  // labelBelongsToBoard.
+  if (!(await labelBelongsToBoard(labelId, boardId))) return { ok: false };
 
-  const key = {
-    cardId_labelId: { cardId: input.cardId, labelId: input.labelId },
-  };
+  const key = { cardId_labelId: { cardId, labelId } };
   const existing = await prisma.cardLabel.findUnique({ where: key });
   if (existing) {
     await prisma.cardLabel.delete({ where: key });
   } else {
-    await prisma.cardLabel.create({
-      data: { cardId: input.cardId, labelId: input.labelId },
-    });
+    await prisma.cardLabel.create({ data: { cardId, labelId } });
   }
   revalidateBoard(boardId);
   return { ok: true };

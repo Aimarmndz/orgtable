@@ -13,8 +13,8 @@ describe("colors", () => {
   it("boardBackground resuelve un color conocido y cae a azul por defecto", () => {
     expect(boardBackground("green")).toBe(BOARD_COLORS.green);
     expect(boardBackground("desconocido")).toBe(BOARD_COLORS.blue);
+    expect(boardBackground("constructor")).toBe(BOARD_COLORS.blue);
     expect(boardBackground(null)).toBe(BOARD_COLORS.blue);
-    expect(boardBackground(undefined)).toBe(BOARD_COLORS.blue);
   });
 
   it("pickBoardColor es determinista y siempre dentro de la paleta", () => {
@@ -42,5 +42,19 @@ describe("colors", () => {
     expect(labelBackground("red")).toBe(LABEL_COLORS.red);
     expect(labelBackground("no-existe")).toBe(LABEL_COLORS.blue);
     expect(labelBackground(null)).toBe(LABEL_COLORS.blue);
+  });
+
+  // Regresión: con el operador `in`, las claves del prototipo pasaban la comprobación y se
+  // pintaba una función como color.
+  it("las claves del prototipo no se toman como colores", () => {
+    for (const key of ["constructor", "__proto__", "toString"]) {
+      expect(labelBackground(key)).toBe(LABEL_COLORS.blue);
+      expect(boardBackgroundFor({ id: "y", background: key })).toBe(
+        BOARD_COLORS[pickBoardColor("y")],
+      );
+    }
+    expect(boardBackgroundFor({ id: "y", background: "toString" })).toMatch(
+      /^oklch\(/,
+    );
   });
 });
