@@ -66,4 +66,15 @@ describe("panel de miembros", () => {
     };
     expect(selectedInviteRole(render())).toBe("EDITOR");
   });
+
+  it("retira el aviso de error mientras se envía para que uno idéntico se reanuncie", () => {
+    const error = "Ana ya es miembro de este tablero.";
+    actionState.override = { error, values: { email: "ana@ejemplo.com", role: "EDITOR" } };
+    expect(render()).toContain(`role="alert"`);
+
+    actionState.pending = true;
+    const html = render();
+    expect(html).not.toContain(`role="alert"`);
+    expect(html).not.toContain(error);
+  });
 });
