@@ -754,6 +754,37 @@ acción prometía lo contrario.
 **Consecuencias.** Tras un reset el usuario tiene que crear tokens nuevos. Test en
 `test/integration/admin-revocation.int.test.ts` (el mismo Bearer pasa de 200 a 401; los
 tokens de otros usuarios no se tocan).
+## 2026-09-24 — Setup: advisory lock, corte temprano y causa en el log
+
+**Contexto.** `completeSetup` comprobaba `setupCompletedAt` dentro de la transacción y
+el comentario lo daba por atómico, pero con READ COMMITTED dos envíos simultáneos leían
+«sin configurar» a la vez y creaban dos administradores (reproducido con un test: sin
+bloqueo salen dos ADMIN). Además, con el setup ya hecho la acción seguía validando y
+gastando bcrypt antes de descubrirlo, y cualquier fallo acababa en «Inténtalo de nuevo»
+sin dejar la causa.
+
+**Decisión.**
+- Lógica en `app/lib/services/setup.ts` (`completeInstanceSetup`), cuya primera
+  sentencia es `pg_advisory_xact_lock(hashtext('orgtable:setup'))`.
+- La acción corta con `redirect("/login")` si `isSetupComplete()` antes de validar y de
+  hacer el hash; la comprobación dentro de la transacción se mantiene.
+- En error, `console.error` con nombre, código y campos de Prisma y mensaje, sin
+  FormData ni email. El texto visible no cambia.
+
+**Alternativas descartadas.**
+- `SELECT … FOR UPDATE` o `updateMany` condicional: la fila de `InstanceConfig` no existe
+  antes del primer setup y no hay nada que bloquear.
+- Crear primero `InstanceConfig` y tratar el P2002 de su PK como «ya configurado»:
+  obliga a distinguirlo del P2002 del email duplicado.
+- Nivel SERIALIZABLE: exigiría reintentos ante fallos de serialización.
+- Mensaje específico para email duplicado: era opcional y añadía un texto visible nuevo.
+
+**Consecuencias.** El segundo envío espera al primero y recibe `ALREADY_SETUP`
+(redirección a `/login`). Test de 20 iteraciones con dos llamadas simultáneas en
+`test/integration/setup.int.test.ts`.
+
+---
+
 ## 2026-09-24 — La auditoría registra sus propios fallos
 
 **Contexto.** `recordAudit` tenía un `catch {}` vacío: si fallaba la escritura en
