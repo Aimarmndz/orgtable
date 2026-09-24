@@ -290,8 +290,8 @@ aviso por minuto: más estado para lo mismo, basta con verlo una vez en el log. 
 el valor con puerto tal cual: daría una clave de rate limit distinta por conexión.
 
 **Consecuencias.** Los proxies que añaden el puerto funcionan sin tocar la
-configuración. Un proxy mal configurado deja un aviso en el log al primer login. Queda
-pendiente documentarlo en la tabla de `TRUSTED_PROXY_HOPS` de `docs/operations.md`.
+configuración. Un proxy mal configurado deja un aviso en el log al primer login,
+documentado en la tabla de `TRUSTED_PROXY_HOPS` de `docs/operations.md`.
 
 ---
 

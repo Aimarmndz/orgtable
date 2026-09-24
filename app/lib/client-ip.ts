@@ -88,7 +88,7 @@ export function pickClientIp(xff: string | null, hops: number): string | null {
     console.warn(
       `[client-ip] TRUSTED_PROXY_HOPS=${hops} pero ${PROBLEM_DETAIL[problem]} ` +
         `(${values} valores): el login no tiene límite por IP y la auditoría no guarda ` +
-        `la IP. Revisa la configuración del proxy. Solo se avisa una vez por proceso.`,
+        `la IP. Revisa la configuración del proxy. Solo se avisa una vez por motivo y proceso.`,
     );
   }
   return ip;

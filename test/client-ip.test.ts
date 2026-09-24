@@ -99,6 +99,8 @@ describe("aviso de proxy mal configurado", () => {
     expect(message).toMatch(/TRUSTED_PROXY_HOPS=1/);
     expect(message).toMatch(/no es una IP/);
     expect(message).not.toMatch(/203\.0\.113/);
+    // Puede haber otro aviso con otro motivo: el texto no debe prometer que es el último.
+    expect(message).toMatch(/una vez por motivo y proceso/);
 
     pick("10.0.0.1", 2);
     expect(warn).toHaveBeenCalledTimes(2);

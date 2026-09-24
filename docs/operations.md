@@ -29,7 +29,7 @@ propios hay delante:
 | `TRUSTED_PROXY_HOPS` | Comportamiento |
 | --- | --- |
 | `0` (por defecto) | Se ignora `X-Forwarded-For`. No hay límite por IP; se aplica solo el límite por email. |
-| `N > 0` | Se toma la IP N-ésima de `X-Forwarded-For` contando por la derecha. Con un único proxy inverso (Caddy o nginx), `1`. |
+| `N > 0` | Se toma la IP N-ésima de `X-Forwarded-For` contando por la derecha. Con un único proxy inverso (Caddy o nginx), `1`. Se acepta la IP con puerto (`1.2.3.4:5678`, `[2001:db8::1]:443`) y se descarta el puerto. Si la cabecera no llega, trae menos de N valores o el valor que toca no es una IP, esa petición no tiene límite por IP (solo el de email) y `AuditLog.ip` queda vacío; el log muestra un aviso `[client-ip] TRUSTED_PROXY_HOPS=N pero …` con el motivo y el número de valores (sin IPs), una vez por motivo y proceso. |
 
 Con `N > 0`, el puerto de la app no debe ser accesible sin pasar por el proxy: quien
 llegue directamente puede inventarse la cabecera. Cómo configurarlo, en
