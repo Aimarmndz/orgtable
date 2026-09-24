@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireUser } from "@/app/lib/dal";
 import { getBoardWithLists, getBoardMembers } from "@/app/lib/queries";
+import { firstParam } from "@/app/lib/search-params";
 import { BoardView } from "@/app/components/board/board-view";
 import { BoardRealtime } from "@/app/components/board/board-realtime";
 import type { BoardMemberDTO } from "@/app/components/board/members-panel";
@@ -12,13 +13,13 @@ export default async function BoardPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ card?: string }>;
+  searchParams: Promise<{ card?: string | string[] }>;
 }) {
   // En Next.js 16 `params` y `searchParams` son asíncronos.
   const { id } = await params;
   // Deep-link para abrir una tarjeta directamente (p. ej. desde /search). Si el id no
   // existe en el tablero, BoardView simplemente no abre nada. Ver docs/search.md.
-  const { card: initialCardId } = await searchParams;
+  const initialCardId = firstParam((await searchParams).card);
   const user = await requireUser();
   const board = await getBoardWithLists(id, user.id);
   if (!board) notFound();

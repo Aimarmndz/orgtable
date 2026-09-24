@@ -3,17 +3,17 @@ import { requireUser } from "@/app/lib/dal";
 import { searchForUser, type SearchResults } from "@/app/lib/queries";
 import { boardBackgroundFor } from "@/app/lib/colors";
 import { SearchBox } from "@/app/components/search-box";
+import { firstParam } from "@/app/lib/search-params";
 
 export const dynamic = "force-dynamic";
 
 export default async function SearchPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string | string[] }>;
 }) {
   const user = await requireUser();
-  const { q = "" } = await searchParams;
-  const query = q.trim();
+  const query = (firstParam((await searchParams).q) ?? "").trim();
 
   const results: SearchResults =
     query.length >= 2
