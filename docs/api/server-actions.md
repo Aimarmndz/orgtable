@@ -78,10 +78,14 @@ antes de guardarla. Ver [docs/drag-and-drop.md](../drag-and-drop.md#el-servidor-
 
 ### `completeSetup`
 
-**Archivo:** `app/lib/actions/setup.ts`
+**Archivo:** `app/lib/actions/setup.ts` (la transacción vive en
+`completeInstanceSetup`, `app/lib/services/setup.ts`)
 
 ```ts
-export type SetupState = { error?: string };
+export type SetupState = {
+  error?: string;
+  values?: { instanceName: string; name: string; email: string };
+};
 
 export async function completeSetup(
   _prev: SetupState,
@@ -91,26 +95,36 @@ export async function completeSetup(
 
 Acción del asistente de configuración inicial (*setup wizard*). Pensada para
 `useActionState`, por eso recibe el estado previo `_prev` y devuelve un
-`SetupState` con un posible mensaje de error.
+`SetupState` con un posible mensaje de error. Los errores devuelven también `values`
+(lo tecleado, **nunca** la contraseña) para que el formulario no se vacíe.
 
+- **Corte temprano:** si `isSetupComplete()` ya es cierto, `redirect("/login")` antes
+  de validar y de gastar bcrypt (el ID de la acción sigue en el bundle de `/setup` y se
+  puede invocar a mano).
 - **Valida:** `setupSchema` sobre los campos `instanceName`, `name`, `email` y
   `password`. Si falla, devuelve el primer mensaje de error de zod (o
   `"Datos no válidos."`).
 - **Autorización:** no hay sesión todavía. La protección es que el setup solo
-  puede completarse **una vez**: dentro de una transacción Prisma se vuelve a
-  comprobar que `instanceConfig.setupCompletedAt` no esté ya fijado, lo que lo
-  hace atómico frente a un doble envío del formulario.
-- **Base de datos** (todo dentro de `prisma.$transaction`):
-  - relee `InstanceConfig` (`id: "singleton"`); si ya hay `setupCompletedAt`,
-    lanza `ALREADY_SETUP`;
+  puede completarse **una vez**. La recomprobación de `setupCompletedAt` dentro de la
+  transacción **no basta por sí sola** (con READ COMMITTED, dos envíos simultáneos la
+  pasarían a la vez): la transacción empieza con un advisory lock que serializa los
+  envíos. El porqué está en [`DECISIONES.md`](../DECISIONES.md) («Setup: advisory lock,
+  corte temprano y causa en el log»).
+- **Base de datos** (`completeInstanceSetup`, todo dentro de `prisma.$transaction`):
+  - `pg_advisory_xact_lock(hashtext('orgtable:setup'))`;
+  - relee `InstanceConfig` (`id: "singleton"`); si ya hay `setupCompletedAt`, devuelve
+    `{ ok: false, reason: "ALREADY_SETUP" }` (no lanza);
   - crea el `User` con `role: "ADMIN"` y la contraseña hasheada
     (`hashPassword`, email normalizado a minúsculas);
   - hace `upsert` de `InstanceConfig` fijando `instanceName` y
-    `setupCompletedAt`.
+    `setupCompletedAt`, y devuelve `{ ok: true, userId }`.
 - **Efectos:**
-  - si la instancia ya estaba configurada (`ALREADY_SETUP`) → `redirect("/login")`;
-  - ante otro error devuelve `{ error: "No se pudo completar la configuración..." }`;
-  - en éxito crea la sesión (`createSession(userId)`) y `redirect("/boards")`.
+  - `ALREADY_SETUP` → `redirect("/login")`;
+  - ante una excepción (BD caída, email duplicado…) registra la causa en el log sin
+    FormData ni email (`describeSetupError`) y devuelve
+    `{ error: "No se pudo completar la configuración. Inténtalo de nuevo.", values }`;
+  - en éxito crea la sesión (`createSession(userId)`), audita `setup.completed` y
+    `redirect("/boards")`.
 
 > Detalle de implementación: `redirect()` se llama **fuera** del `try/catch`,
 > porque internamente lanza la excepción `NEXT_REDIRECT` de Next que no debe ser
@@ -128,7 +142,7 @@ Ver [docs/authentication.md](../authentication.md) y
 **Archivo:** `app/lib/actions/auth.ts`
 
 ```ts
-export type AuthState = { error?: string };
+export type AuthState = { error?: string; values?: { email: string } };
 
 export async function login(
   _prev: AuthState,
@@ -137,19 +151,27 @@ export async function login(
 ```
 
 Inicio de sesión. Diseñada para `useActionState` (recibe `_prev`, devuelve
-`AuthState`).
+`AuthState`). Los errores devuelven también `values` (el email tecleado, **nunca** la
+contraseña) para repintar el formulario.
 
+- **Límites de intentos:** por IP (solo si hay IP fiable, `TRUSTED_PROXY_HOPS > 0`)
+  antes de validar, y por cuenta (email normalizado) antes de verificar; el de cuenta se
+  reinicia con un login correcto. Si salta uno, devuelve
+  `{ error: "Demasiados intentos. Inténtalo de nuevo en N s.", values }`. Valores y
+  porqué en el [ADR 0009](../decisions/0009-in-memory-rate-limit.md).
 - **Valida:** `loginSchema` sobre `email` y `password`. Si falla, devuelve
-  `{ error: "Revisa el email y la contraseña." }`.
+  `{ error: "Revisa el email y la contraseña.", values }`.
 - **Autorización:** ninguna previa (es la propia puerta de entrada).
-- **Base de datos:** busca el `User` por email (normalizado a minúsculas) y
-  verifica la contraseña con `verifyPassword`. Para **no filtrar por tiempo** si
-  un email está o no registrado, siempre se ejecuta la verificación: si el
-  usuario no existe se usa un hash ficticio. Si no hay usuario o la contraseña no
-  es válida, devuelve `{ error: "Credenciales incorrectas." }`.
-- **Efectos:** en éxito, `createSession(user.id)` y `redirect("/boards")`.
+- **Base de datos:** busca el `User` por email (normalizado a minúsculas) y verifica
+  la contraseña con `verifyPasswordOrDummy` (`app/lib/auth.ts`): si el usuario no
+  existe, compara contra un hash bcrypt ficticio válido del mismo coste, para **no
+  filtrar por tiempo** si un email está registrado. Si no hay usuario o la contraseña no
+  es válida, devuelve `{ error: "Credenciales incorrectas.", values }`.
+- **Efectos:** audita `auth.login_failed` (sin el email tecleado),
+  `auth.login_rate_limited` (una vez por ventana bloqueada) o `auth.login`; en éxito,
+  `createSession(user.id)` y `redirect("/boards")`.
 
-Ver [docs/authentication.md](../authentication.md).
+Paso a paso en [docs/authentication.md](../authentication.md#login).
 
 ### `logout`
 
@@ -423,11 +445,18 @@ Solo el **administrador global** (`requireAdmin`).
 
 - **`createUser(_prev, formData)`** — `{ name, email, password, role }`. Valida con
   `createUserSchema`, comprueba unicidad del email, hashea la contraseña y crea la
-  cuenta. Retorno: `{ error?, message? }`.
+  cuenta. Retorno: `{ error?, field?, message?, values? }` para `useActionState`;
+  `field` (`"email"`) marca el campo del error y `values` (`{ name, email, role }`,
+  **nunca** la contraseña) solo viene con `error`, para que el formulario no se vacíe.
 - **`updateUserRole(formData)`** — `{ userId, role }`. Cambia el rol global. No puedes
   cambiar tu propio rol. Devuelve el resultado vía redirección con query.
 - **`resetUserPassword(formData)`** — `{ userId, password }`. Restablece la
-  contraseña. Vía redirección con query.
+  contraseña y, en la misma transacción (`resetPasswordAndRevokeAccess`), revoca todas
+  las sesiones del usuario y **borra sus tokens de API** (ver
+  [docs/admin.md](../admin.md)). Vía redirección con query.
+- **`revokeUserSessions(formData)`** — `{ userId }`. Cierra todas las sesiones activas
+  del usuario al instante; los tokens de API siguen vigentes. Vía redirección con
+  query.
 - **`deleteUser(formData)`** — `{ userId }`. Borra la cuenta. No puedes borrarte a ti
   mismo ni borrar a un usuario que es propietario de tableros (cascada). Vía
   redirección con query.
