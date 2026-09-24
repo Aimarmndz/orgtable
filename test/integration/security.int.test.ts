@@ -16,9 +16,10 @@ afterAll(async () => {
   await disconnect();
 });
 
-// Regresión del IDOR de moveCard (auditoría de seguridad): una tarjeta solo "pertenece" a
-// su propio tablero, así que moveCard no puede arrastrar a tu tablero una tarjeta de otro.
-describe("seguridad: pertenencia tarjeta↔tablero (guard de moveCard)", () => {
+// Helper del guard contra el IDOR de moveCard: una tarjeta solo "pertenece" a su propio
+// tablero. Este test prueba SOLO el helper; que moveCard lo use se comprueba ejecutando la
+// acción en cards-actions.int.test.ts.
+describe("seguridad: helper cardBelongsToBoard", () => {
   it("cardBelongsToBoard es true solo para el tablero real de la tarjeta", async () => {
     const u1 = await seedUser();
     const u2 = await seedUser();
