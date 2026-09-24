@@ -1176,6 +1176,29 @@ hacia `.next/standalone`.
 del trazado NFT no se ha podido comprobar aquí (el build lo ejecuta el integrador): tras
 `pnpm build`, `api/attachments/[id]/route.js.nft.json` debería bajar a unas 200 entradas
 y `.next/standalone` no debería contener `docs/` ni `test/`.
+## 2026-09-24 — La documentación se alinea con la licencia propietaria
+
+**Contexto.** `LICENSE` es propietaria (MARA-KASSA SL) desde el commit `27c1ba9`, pero
+el ADR 0005, `docs/index.md`, `docs/roadmap.md`, `docs/design-system.md`,
+`docs/contributing.md`, `PRODUCT.md`, `CLAUDE.md` y `package.json` seguían diciendo
+AGPL u open source.
+
+**Decisión.** Detalle en [ADR 0016](./decisions/0016-licencia-propietaria.md): la
+vigente es `LICENSE`, que no se toca. ADR 0005 marcado «sustituida por ADR 0016»;
+documentación sin «open source»; `contributing.md` remite a la cláusula de cesión de
+`LICENSE` sin copiarla; `package.json` con `"license": "UNLICENSED"`; el CI falla si
+reaparece AGPL u «open source» fuera del ADR 0005, el 0016 y este registro.
+
+**Alternativas descartadas.** Restaurar la AGPL (decisión del propietario) y licencia
+dual (no se planteó).
+
+**Consecuencias.** Los textos visibles de la app (`app/layout.tsx`, pantalla de login)
+los cambia otro lote de esta revisión; hasta que se integre, el paso de licencia del CI
+falla por ellos. La cesión de derechos sin firma es dudosa según la ley española: si
+entran colaboradores externos, conviene revisarla con un abogado o usar un CLA.
+
+---
+
 ## 2026-09-24 — README con estructura fija y documentación de recuperación
 
 **Contexto.** El README no tenía requisitos, comandos, variables ni despliegue, y

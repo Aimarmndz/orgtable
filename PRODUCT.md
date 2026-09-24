@@ -14,7 +14,7 @@ para añadir contexto (descripción, etiquetas, fechas, checklists).
 
 ## Product Purpose
 
-orgtable es un clon de Trello open-source y self-hosted: tableros → listas → tarjetas
+orgtable es un clon de Trello self-hosted: tableros → listas → tarjetas
 con arrastrar y soltar. El éxito es que se sienta tan fluido y familiar como Trello,
 pero que sea tuyo (tus datos, tu servidor). El producto desaparece detrás de la tarea.
 

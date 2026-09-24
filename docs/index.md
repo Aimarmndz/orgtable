@@ -1,6 +1,6 @@
 # Documentación de orgtable
 
-orgtable es una aplicación de tableros Kanban open-source y self-hosted (una
+orgtable es una aplicación de tableros Kanban self-hosted (una
 alternativa a Trello), construida con Next.js 16, Prisma 7 y PostgreSQL.
 
 Esta documentación está orientada tanto a quien quiere **auto-hospedar** la app como a
@@ -47,7 +47,7 @@ Las decisiones técnicas importantes y su porqué están registradas en
 - [0002 — Fractional indexing para el orden](./decisions/0002-fractional-indexing.md)
 - [0003 — Credenciales de BD en `.env`](./decisions/0003-db-creds-in-env.md)
 - [0004 — Sin Redis en el MVP](./decisions/0004-no-redis-mvp.md)
-- [0005 — Licencia AGPL-3.0](./decisions/0005-agpl.md)
+- [0005 — Licencia inicial (sustituida por la 0016)](./decisions/0005-agpl.md)
 - [0006 — Autorización por rol con guardas explícitas](./decisions/0006-rbac-explicit-guards.md)
 - [0007 — PostgreSQL LISTEN/NOTIFY en lugar de Redis](./decisions/0007-pg-notify-over-redis.md)
 - [0008 — Almacén de sesiones en servidor](./decisions/0008-session-store.md)
@@ -58,6 +58,7 @@ Las decisiones técnicas importantes y su porqué están registradas en
 - [0013 — API pública con tokens personales hasheados](./decisions/0013-api-tokens.md)
 - [0014 — Modelo de colaboración en la tarjeta (asignados y comentarios)](./decisions/0014-card-collaboration.md)
 - [0015 — Recordatorios por endpoint cron externo](./decisions/0015-reminders-cron.md)
+- [0016 — Licencia propietaria](./decisions/0016-licencia-propietaria.md)
 
 ## Hoja de ruta
 

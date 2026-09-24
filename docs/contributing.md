@@ -219,9 +219,10 @@ Cuando dudes sobre cualquiera de estas APIs, la fuente de verdad es
 
 ## Licencia
 
-Al contribuir, aceptas que tus aportaciones se licencien bajo **AGPL-3.0**.
-Puedes leer el porqué de esta elección en
-[`docs/decisions/0005-agpl.md`](./decisions/0005-agpl.md).
+orgtable es software propietario de MARA-KASSA SL. Antes de contribuir, lee
+[`LICENSE`](../LICENSE): hacer una aportación implica aceptar el apartado «Cesión de
+derechos por aportaciones». El contexto de la decisión está en
+[ADR 0016](./decisions/0016-licencia-propietaria.md).
 
 ---
 

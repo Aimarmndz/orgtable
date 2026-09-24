@@ -54,6 +54,17 @@ jobs:
           grep -q 'TRUSTED_PROXY_HOPS: "7"' <<<"$config"
           grep -q 'ORGTABLE_TIMEZONE: Europe/Madrid' <<<"$config"
 
+      # La licencia vigente es la de LICENSE (ADR 0016). Falla si vuelve a aparecer la
+      # antigua (AGPL) u «open source» fuera del ADR sustituido y del registro de decisiones.
+      - name: Check license references
+        run: |
+          if git grep -n -E 'AGPL|[Oo]pen[ -][Ss]ource' -- \
+            ':!docs/decisions/0005-agpl.md' ':!docs/decisions/0016-licencia-propietaria.md' \
+            ':!docs/DECISIONES.md' ':!.github/workflows/ci.yml'; then
+            echo "Hay referencias a una licencia que no es la vigente (ver LICENSE)." >&2
+            exit 1
+          fi
+
       # Instala la versión de pnpm fijada en `packageManager` (package.json).
       - uses: pnpm/action-setup@v4
 

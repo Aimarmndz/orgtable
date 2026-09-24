@@ -9,7 +9,7 @@ reutilizables. Es un resumen operativo; las decisiones de diseño completas vive
 
 ## Estética y principios
 
-orgtable es un **clon de Trello open-source y self-hosted** (tableros → listas →
+orgtable es un **clon de Trello self-hosted** (tableros → listas →
 tarjetas con arrastrar y soltar). El producto debe sentirse tan fluido y familiar como
 Trello, pero que sea tuyo. La marca es **familiar, colorida y directa**; alegre sin ser
 infantil. La voz es concreta y en español.

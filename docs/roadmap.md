@@ -14,7 +14,8 @@ La infraestructura sobre la que se monta todo lo demás. Sin interfaz todavía.
 - [x] Imagen Docker multi-stage + `docker-compose.yml` (app + postgres).
 - [x] Migraciones automáticas en el arranque del contenedor.
 - [x] Instalador de un comando (`install.sh`) con generación de secretos.
-- [x] Licencia AGPL-3.0 y documentación base.
+- [x] Licencia y documentación base. (La licencia inicial se sustituyó después por la
+      propietaria de `LICENSE`; ver [ADR 0016](./decisions/0016-licencia-propietaria.md).)
 
 ## Hito 1 — MVP de extremo a extremo ✅ (completado)
 
