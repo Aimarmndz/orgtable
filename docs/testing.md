@@ -3,8 +3,8 @@
 orgtable tiene tests unitarios con **Vitest** y un workflow de **GitHub Actions** que se
 ejecuta en cada push a `main` y en cada pull request.
 
-Hay dos niveles: **tests unitarios** (lógica pura, sin BD) y **tests de integración**
-(rutas de la API y servicios contra una PostgreSQL real).
+Hay dos niveles: **tests unitarios** (sin BD ni red) y **tests de integración** (rutas de
+la API, Server Actions y servicios contra una PostgreSQL real).
 
 ## Ejecutar en local
 
@@ -22,44 +22,44 @@ DATABASE_URL='postgresql://orgtable:PASS@localhost:5433/orgtable_test' pnpm exec
 DATABASE_URL='postgresql://orgtable:PASS@localhost:5433/orgtable_test' pnpm test:integration
 ```
 
-## Tests unitarios
+## Qué cubre cada archivo
 
-Cubren la **lógica pura** del proyecto, sin tocar la base de datos ni la red (rápidos y
-deterministas). Están en `test/`:
+El inventario completo es `ls test/*.test.ts test/integration/*.int.test.ts`. Las tablas
+agrupan los archivos por área para saber dónde mirar o dónde añadir un test; el detalle
+de cada caso está en los `describe`/`it` del propio archivo, así que aquí no se repite.
+Un archivo nuevo se añade a la fila de su área.
 
-| Archivo | Cubre |
-|---------|-------|
-| `test/roles.test.ts` | Jerarquía de autorización (`canEditBoard`, `canManageBoard`, `atLeastBoardRole`). El corazón del RBAC. |
-| `test/ordering.test.ts` | Fractional indexing: `positionAtEnd` mantiene el orden y `isValidPositionKey` acepta las claves de la librería (también las largas) y rechaza las mal formadas. |
-| `test/colors.test.ts` | Resolución y valores por defecto de colores de tablero/etiqueta; determinismo de `pickBoardColor`. |
-| `test/tokens.test.ts` | Tokens de la API: hash SHA-256 estable, formato `orgt_`, unicidad. |
-| `test/validators.test.ts` | Esquemas zod (títulos, cuerpos de la API, nombre de token), incluida la regla de "al menos un campo" al actualizar. |
-| `test/board-filters.test.ts` | Filtros del tablero (`cardMatchesFilters`): sin filtros pasa todo, etiqueta y asignado (OR dentro de cada dimensión), combinación con AND y estado de vencimiento. |
-| `test/csp.test.ts` | Content-Security-Policy con nonce: scripts solo con el nonce, sin `eval` en producción, estilos con nonce, `frame-ancestors`, sin forzar HTTPS; nonce de 128 bits distinto en cada llamada. |
-| `test/auth.test.ts` | Hash ficticio del login: 60 caracteres, mismo coste que `hashPassword`, nunca coincide y tarda del mismo orden que una verificación real. |
-| `test/client-ip.test.ts` | IP del cliente con `TRUSTED_PROXY_HOPS`: 0 ignora `X-Forwarded-For`, N toma el N-ésimo valor desde la derecha, valores que no son IP, validación de la variable. |
-| `test/rate-limit.test.ts` | Limitador en memoria con relojes falsos: límite exacto, `retryAfterSec`, reinicio de la ventana, claves independientes, `firstBlock` y `resetRateLimit`. |
+### Tests unitarios
 
-## Tests de integración
+Están en `test/` y no usan base de datos ni red. No todos son lógica pura:
+`ops-scripts.test.ts` lanza los scripts de `scripts/` e `install.sh` con bash y un
+`docker` falso en el `PATH`, `storage.test.ts` escribe en un directorio temporal y los de
+interfaz renderizan componentes con `react-dom/server` (no hay jsdom).
+
+| Área | Archivos (`test/<nombre>.test.ts`) |
+|------|----------|
+| Autorización, sesión y seguridad | `roles`, `tokens`, `auth`, `client-ip`, `rate-limit`, `csp`, `next-config` |
+| Validación y datos | `validators`, `ordering`, `colors`, `search-params`, `format-date` |
+| Tablero y tarjetas (lógica de cliente) | `board-filters`, `board-collision`, `optimistic`, `card-modal-helpers` |
+| Tiempo real | `realtime-bus` (puente `LISTEN/NOTIFY` con un `pg` falso), `realtime-reconnect` |
+| Interfaz y accesibilidad | `card-item`, `admin-forms-a11y`, `delete-board-button`, `delete-board-button-focus`, `metadata`, `contrast` (lee `app/globals.css`) |
+| Operación | `ops-scripts`, `storage` |
+
+### Tests de integración
 
 Ejercen el código **contra una PostgreSQL real** (efímera), en `test/integration/`:
 
-| Archivo | Cubre |
-|---------|-------|
-| `users.int.test.ts` | Creación de usuarios: hash de contraseña (nunca en claro), normalización del email, rechazo de duplicados, rol global. |
-| `boards-api.int.test.ts` | API de tableros: `401` sin token o con token inválido, `POST` crea el tablero y deja al usuario como OWNER, `422` con título vacío, `GET` solo devuelve los tableros accesibles. |
-| `cards-api.int.test.ts` | API de listas/tarjetas: un editor crea lista y tarjeta (con vencimiento), un VIEWER recibe `403`, un no-miembro `404`, y `PATCH`/`DELETE` de tarjeta. |
-| `api-scopes.int.test.ts` | Tokens de la API: uno de solo lectura lee pero recibe `403` al escribir, uno completo escribe y uno caducado recibe `401`. |
-| `collaboration.int.test.ts` | Asignados (solo miembros, idempotente) y que `getBoardWithLists` devuelve asignados y comentarios con su autor. |
-| `reminders.int.test.ts` | Recordatorios de vencimiento: solo tarjetas asignadas que vencen pronto o están vencidas, e idempotencia en el mismo día. |
-| `security.int.test.ts` | Helper `cardBelongsToBoard` (guard del IDOR de `moveCard`). |
-| `session.int.test.ts` | `verifySession`: sesión válida, revocación, caducidad, `sid` de otro usuario, firma con otra clave u otro algoritmo, sin `sid`, `deleteSession`; error ruidoso sin `SESSION_SECRET`; cookie `Secure` solo por HTTPS. |
-| `auth.int.test.ts` | Login: límite por cuenta aunque se falsee `X-Forwarded-For`, límite por IP con un proxy de confianza, reinicio tras un login correcto, una sola fila de auditoría por bloqueo, fallos sin el email tecleado y `values` sin la contraseña. |
-| `audit.int.test.ts` | `recordAudit` no lanza si falla la escritura y lo registra en el log sin `detail` ni IP. |
-| `setup.int.test.ts` | Asistente de primer arranque: dos envíos simultáneos crean un solo ADMIN, redirección sin gastar bcrypt si ya está configurado, causa del error en el log sin el email, `values` sin la contraseña. |
-| `cards-actions.int.test.ts` | `moveCard` ejecutado con sesión: IDOR entre tableros, EDITOR, VIEWER, no miembro y sin sesión. |
-| `authz-actions.int.test.ts` | Autorización de comentarios, checklists, subida de adjuntos (rol, vacío, tamaño máximo) y export/import de tableros. |
-| `helpers.int.test.ts` | `resetDb` deja vacías todas las tablas y sin sesión el stub. |
+| Área | Archivos (`test/integration/<nombre>.int.test.ts`) |
+|------|----------|
+| API pública (`/api/v1`) | `boards-api`, `board-detail-api`, `cards-api`, `api-scopes`, `api-auth` |
+| Autorización de Server Actions | `authz-actions`, `cards-actions`, `security`, `labels`, `members`, `board-metadata` |
+| Sesión, login y administración | `session`, `auth`, `setup`, `users`, `admin-users`, `admin-revocation`, `tokens`, `audit` |
+| Tarjetas y colaboración | `cards-due-date`, `collaboration` |
+| Orden de listas y tarjetas | `positions`, `position-collation` |
+| Adjuntos | `attachments-delete`, `attachments-download` |
+| Notificaciones y recordatorios | `notifications`, `notifications-read`, `reminders`, `cron-reminders` |
+| Tiempo real (SSE) | `realtime` |
+| BD y utilidades de test | `helpers`, `prisma-pool` |
 
 Cómo funcionan:
 
@@ -107,19 +107,39 @@ Cómo funcionan:
 ## Integración continua
 
 `.github/workflows/ci.yml` levanta un **servicio PostgreSQL** (`postgres:17`, BD
-`orgtable_test`) y ejecuta, en orden, sobre Node 22 (pnpm llega con `pnpm/action-setup`, que lee
-`packageManager`):
+`orgtable_test`) y ejecuta, en orden:
 
-1. `pnpm install --frozen-lockfile` — instala con el lockfile (reproducible).
-2. `pnpm audit --prod --audit-level high` — falla si hay vulnerabilidades altas o
+1. **Shellcheck** de `scripts/*.sh`, `install.sh` y `docker-entrypoint.sh`. `shellcheck`
+   viene instalado en el runner; en local se instala con `brew install shellcheck` y:
+   ```bash
+   shellcheck scripts/*.sh install.sh docker-entrypoint.sh
+   ```
+2. **Variables del compose**: comprueba que `docker compose config` pasa al contenedor
+   `app` `CRON_SECRET`, `TRUSTED_PROXY_HOPS` y `ORGTABLE_TIMEZONE`. Si una se cae del
+   `environment:`, la función que depende de ella deja de funcionar en Docker sin ningún
+   error. En local:
+   ```bash
+   CRON_SECRET=probe TRUSTED_PROXY_HOPS=7 ORGTABLE_TIMEZONE=Europe/Madrid docker compose config \
+     | grep -E 'CRON_SECRET|TRUSTED_PROXY_HOPS|ORGTABLE_TIMEZONE'
+   ```
+3. **Referencias de licencia**: un `git grep` falla si reaparece la licencia anterior
+   fuera de los archivos excluidos. La expresión y la lista de exclusiones están en el
+   paso «Check license references» de `ci.yml` (el porqué, en la ADR 0016); para
+   reproducirlo en local se copia de ahí.
+
+Estos tres pasos corren antes de instalar pnpm y Node. Después, sobre Node 22 (pnpm llega
+con `pnpm/action-setup`, que lee `packageManager`):
+
+4. `pnpm install --frozen-lockfile` — instala con el lockfile (reproducible).
+5. `pnpm audit --prod --audit-level high` — falla si hay vulnerabilidades altas o
    críticas en dependencias de producción.
-3. `pnpm exec prisma generate` — genera el cliente Prisma (lo necesitan el typecheck y el build).
-4. `pnpm lint`
-5. `pnpm typecheck`
-6. `pnpm test` — tests unitarios.
-7. `pnpm exec prisma migrate deploy` — crea el esquema en la BD de test del servicio.
-8. `pnpm test:integration` — tests de integración contra esa BD.
-9. `pnpm build`
+6. `pnpm exec prisma generate` — genera el cliente Prisma (lo necesitan el typecheck y el build).
+7. `pnpm lint`
+8. `pnpm typecheck`
+9. `pnpm test` — tests unitarios.
+10. `pnpm exec prisma migrate deploy` — crea el esquema en la BD de test del servicio.
+11. `pnpm test:integration` — tests de integración contra esa BD.
+12. `pnpm build`
 
 `DATABASE_URL` apunta a la BD del servicio (`…/orgtable_test`). El build no se conecta
 (rutas dinámicas); los tests de integración sí.
