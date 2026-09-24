@@ -1,10 +1,13 @@
 import "server-only";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import type { PoolConfig } from "pg";
 
-// Singleton de PrismaClient. En desarrollo, Next recarga los módulos en caliente
-// (HMR) y crearía una nueva conexión en cada recarga, agotando el pool de Postgres.
-// Guardarlo en globalThis evita la fuga. En producción se crea una sola vez.
+// Singleton de PrismaClient guardado en globalThis también en producción. En desarrollo,
+// el HMR recarga los módulos y abriría un pool nuevo en cada recarga. En producción,
+// Turbopack evalúa este módulo una vez por capa (route handlers por un lado, RSC/SSR por
+// otro): sin globalThis habría dos pools y el doble de conexiones a Postgres. bus.ts y
+// rate-limit.ts usan el mismo patrón.
 //
 // En Prisma 7 la conexión directa a la base de datos se hace a través de un driver
 // adapter (aquí @prisma/adapter-pg sobre node-postgres). DATABASE_URL se lee de
@@ -13,6 +16,22 @@ import { PrismaPg } from "@prisma/adapter-pg";
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
+
+/**
+ * Configuración del pool de node-postgres. Con los valores por defecto de pg
+ * (`connectionTimeoutMillis: 0`) una petición que no encuentra conexión libre espera
+ * para siempre; Prisma 7 ya no aplica el `connect_timeout` de 5 s que traía Prisma 6.
+ * Se exporta para que test/integration/prisma-pool.int.test.ts la ejercite.
+ */
+export function buildPoolConfig(connectionString: string | undefined): PoolConfig {
+  return {
+    connectionString,
+    // Esperar una conexión libre del pool (o abrir una nueva) falla a los 5 s.
+    connectionTimeoutMillis: 5_000,
+    // Las conexiones inactivas se cierran a los 30 s (el valor de pg, explícito).
+    idleTimeoutMillis: 30_000,
+  };
+}
 
 function createPrismaClient() {
   const url = process.env.DATABASE_URL;
@@ -24,12 +43,16 @@ function createPrismaClient() {
       "DATABASE_URL no está configurado. Define la cadena de conexión a PostgreSQL.",
     );
   }
-  const adapter = new PrismaPg({ connectionString: url });
+  const adapter = new PrismaPg(buildPoolConfig(url), {
+    // Sin este manejador, un error en una conexión inactiva (Postgres reiniciado, red
+    // cortada) llega como evento 'error' sin escuchar y tumba el proceso. Solo el
+    // mensaje: nunca la cadena de conexión, que lleva la contraseña.
+    onPoolError: (err) =>
+      console.error("[prisma] error en una conexión inactiva del pool de pg:", err.message),
+  });
   return new PrismaClient({ adapter });
 }
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
-}
+globalForPrisma.prisma = prisma;

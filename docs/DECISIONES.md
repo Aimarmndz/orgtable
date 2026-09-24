@@ -47,6 +47,32 @@ en su migración. Las instalaciones glibc que ya tengan claves repetidas las con
 hasta que se reasignen; el orden entre dos claves iguales sigue sin estar definido.
 
 ---
+## 2026-09-24 — Timeout del pool de pg y singleton de Prisma también en producción
+
+**Contexto.** `PrismaPg` creaba el `pg.Pool` con los valores por defecto:
+`connectionTimeoutMillis: 0`, así que con el pool agotado (10 conexiones) la petición
+siguiente esperaba para siempre; Prisma 7 ya no aplica el `connect_timeout` de 5 s de
+Prisma 6. Además, el cliente solo se guardaba en `globalThis` fuera de producción, y
+Turbopack evalúa el módulo una vez por capa (route handlers y RSC/SSR): dos pools.
+
+**Decisión.**
+- `buildPoolConfig()` exportada en `app/lib/prisma.ts`: `connectionTimeoutMillis`
+  5 s e `idleTimeoutMillis` 30 s. `onPoolError` registra solo el mensaje del error
+  (nunca la cadena de conexión) para que un fallo en una conexión inactiva no tumbe el
+  proceso.
+- `globalForPrisma.prisma = prisma` siempre, como `bus.ts` y `rate-limit.ts`.
+- `test/integration/prisma-pool.int.test.ts`: con `max: 1` y 200 ms, una consulta
+  mientras una transacción ocupa la conexión falla por timeout; en producción dos
+  evaluaciones del módulo devuelven el mismo cliente.
+
+**Alternativas descartadas.**
+- `max` configurable por variable de entorno: no hace falta todavía.
+- `statement_timeout`: cortaría exportaciones o importaciones grandes sin un valor
+  medido.
+
+**Consecuencias.** Con el pool saturado, una petición falla a los 5 s con un error de
+timeout en vez de colgarse. Un solo pool por proceso.
+
 ## 2026-09-24 — Títulos por página y login sin mención a la licencia
 
 **Contexto.** Todas las rutas tenían el mismo `<title>` «orgtable» (WCAG 2.4.2). Además,
