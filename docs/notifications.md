@@ -24,7 +24,10 @@ no hay plantillas ni i18n en el render.
    `app/lib/actions/members.ts`) llama a **`notify({ userId, type, title, body?, boardId? })`**.
 2. `notify()` escribe una fila en `Notification` y **publica un evento en el bus** por el
    canal del usuario (`user:<id>`). Es best-effort: si algo falla, la mutación principal
-   no se rompe.
+   no se rompe. Devuelve `true` si la fila se guardó (aunque falle el aviso en vivo) y
+   `false` si no; el fallo se registra con `console.error` (tipo, ids y código de error,
+   nunca el título ni el cuerpo). El cron de recordatorios usa ese resultado para no contar
+   avisos que no existen.
 3. El navegador del destinatario tiene abierto un **EventSource** a
    `/api/notifications/stream`. Al recibir el "ping" hace `router.refresh()`.
 4. El layout (`app/(app)/layout.tsx`) vuelve a consultar las notificaciones y el

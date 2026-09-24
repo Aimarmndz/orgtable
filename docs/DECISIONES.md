@@ -306,6 +306,24 @@ se abre al hidratar (un instante sin modal). El comportamiento del diálogo (foc
 Escape, clic fuera) no tiene test automático: no hay jsdom ni e2e en el proyecto;
 queda pendiente de verificación manual. El selector de etiquetas de `filter-bar.tsx`
 debe usar el mismo estilo que este (relleno sin opacidad).
+## 2026-09-24 — `notify` informa de si guardó la notificación
+
+**Contexto.** `notify()` tenía un `catch` vacío: si la inserción fallaba no quedaba
+rastro, y el cron de recordatorios contaba el aviso como creado igualmente, así que
+`POST /api/cron/reminders` devolvía un `created` falso.
+
+**Decisión.** `notify()` sigue siendo best-effort (nunca lanza), pero devuelve
+`Promise<boolean>`: `true` en cuanto la fila se guarda (aunque después falle la
+publicación en el bus, que va en su propio `try`) y `false` si no. El fallo se registra
+con `console.error` con tipo, ids y código de error, sin título ni cuerpo (llevan texto
+del usuario).
+
+**Alternativas descartadas.**
+- Relanzar el error: rompería la mutación que origina el aviso (comentar, invitar…).
+- Registrar el mensaje completo del error: puede incluir valores de la consulta.
+
+**Consecuencias.** Los llamadores que no miran el resultado no cambian. El cron solo
+suma los avisos guardados. Test en `test/integration/notifications.int.test.ts`.
 
 ---
 

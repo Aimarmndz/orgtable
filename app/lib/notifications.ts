@@ -16,6 +16,11 @@ export type NotificationType =
   | "comment.added"
   | "due.reminder";
 
+/**
+ * Crea la notificación y avisa en vivo. Devuelve true si la fila quedó guardada (aunque
+ * falle el aviso en vivo: la campana la verá al recargar) y false si no se pudo crear,
+ * para que quien cuente avisos (el cron de recordatorios) no informe de uno inexistente.
+ */
 export async function notify(params: {
   userId: string;
   type: NotificationType;
@@ -23,7 +28,7 @@ export async function notify(params: {
   body?: string;
   boardId?: string;
   cardId?: string;
-}): Promise<void> {
+}): Promise<boolean> {
   try {
     await prisma.notification.create({
       data: {
@@ -35,8 +40,37 @@ export async function notify(params: {
         cardId: params.cardId ?? null,
       },
     });
-    await publishUserEvent(params.userId);
-  } catch {
-    // Best-effort: una notificación que falla no debe tumbar la mutación principal.
+  } catch (error) {
+    // Best-effort: una notificación que falla no debe tumbar la mutación principal. Se
+    // registra sin título ni cuerpo, que llevan contenido del usuario.
+    console.error("[notify] fallo al crear la notificación", {
+      type: params.type,
+      userId: params.userId,
+      boardId: params.boardId,
+      cardId: params.cardId,
+      code: errorCode(error),
+    });
+    return false;
   }
+  try {
+    await publishUserEvent(params.userId);
+  } catch (error) {
+    console.error("[notify] fallo al publicar el aviso en vivo", {
+      type: params.type,
+      userId: params.userId,
+      code: errorCode(error),
+    });
+  }
+  return true;
+}
+
+// Código de error de Prisma (P2003…) o nombre del error, sin el mensaje completo, que
+// puede incluir valores de la consulta.
+function errorCode(error: unknown): string {
+  if (typeof error === "object" && error !== null) {
+    const code = (error as { code?: unknown }).code;
+    if (typeof code === "string") return code;
+    if (error instanceof Error) return error.name;
+  }
+  return "desconocido";
 }
