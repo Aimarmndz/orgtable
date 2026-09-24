@@ -40,11 +40,38 @@ export const DRAG_KEYBOARD_CODES: KeyboardCodes = {
   end: [KeyboardCode.Space, KeyboardCode.Enter, KeyboardCode.Tab],
 };
 
+type Rect = { left: number; top: number; width: number; right: number };
+
+/** Columna más cercana a `refLeft` en la dirección pedida (`dir` = -1 izquierda, 1 derecha). */
+function neighborColumn(
+  columns: { rect: Rect }[],
+  refLeft: number,
+  dir: -1 | 1,
+): { rect: Rect } | null {
+  let best: { rect: Rect } | null = null;
+  let bestDistance = Infinity;
+  for (const column of columns) {
+    const dx = column.rect.left - refLeft;
+    if (dx * dir <= 0) continue;
+    if (Math.abs(dx) < bestDistance) {
+      best = column;
+      bestDistance = Math.abs(dx);
+    }
+  }
+  return best;
+}
+
 /**
- * Coordenadas del teclado para el tablero. Las tarjetas usan las de `@dnd-kit/sortable`.
- * Para una LISTA, `sortableKeyboardCoordinates` mezcla tarjetas y columnas y su propia
- * primera tarjeta queda «a la derecha» (8 px de margen), así que la primera flecha no
- * hacía nada; aquí la flecha salta directamente a la columna vecina.
+ * Coordenadas del teclado para el tablero.
+ *
+ * - LISTA: `sortableKeyboardCoordinates` mezcla tarjetas y columnas y su propia primera
+ *   tarjeta queda «a la derecha» (8 px de margen), así que la primera flecha no hacía
+ *   nada; aquí la flecha salta directamente a la columna vecina.
+ * - TARJETA con izquierda/derecha: para `sortableKeyboardCoordinates` la propia columna
+ *   de la tarjeta queda «a la izquierda» (su borde está 8 px antes que el de la tarjeta),
+ *   así que la flecha izquierda devolvía la tarjeta a su columna y nunca la movía. Aquí
+ *   se salta a la columna vecina y, dentro de ella, a la tarjeta más cercana en vertical
+ *   (o a la columna si está vacía). Arriba/abajo siguen con las de `@dnd-kit/sortable`.
  */
 export const boardKeyboardCoordinates: KeyboardCoordinateGetter = (
   event,
@@ -52,11 +79,12 @@ export const boardKeyboardCoordinates: KeyboardCoordinateGetter = (
 ) => {
   const { active, collisionRect, droppableContainers, droppableRects } =
     args.context;
-  if (active?.data.current?.type !== "list") {
-    return sortableKeyboardCoordinates(event, args);
-  }
   const right = event.code === KeyboardCode.Right;
   const left = event.code === KeyboardCode.Left;
+  const isList = active?.data.current?.type === "list";
+  if (!isList && !right && !left) {
+    return sortableKeyboardCoordinates(event, args);
+  }
   if (!right && !left) {
     // Las listas solo se mueven en horizontal: arriba/abajo no hacen nada (y no
     // desplazan la página).
@@ -68,19 +96,47 @@ export const boardKeyboardCoordinates: KeyboardCoordinateGetter = (
   event.preventDefault();
   if (!collisionRect) return undefined;
 
-  let best: { left: number; top: number; distance: number } | null = null;
-  for (const container of droppableContainers.getEnabled()) {
-    if (!isListDroppable(container)) continue;
-    const rect = droppableRects.get(container.id);
-    if (!rect) continue;
-    const dx = rect.left - collisionRect.left;
-    if ((right && dx <= 0) || (left && dx >= 0)) continue;
-    const distance = Math.abs(dx);
-    if (!best || distance < best.distance) {
-      best = { left: rect.left, top: rect.top, distance };
+  const enabled = droppableContainers.getEnabled();
+  const columns = enabled.filter(isListDroppable).flatMap((c) => {
+    const rect = droppableRects.get(c.id);
+    return rect ? [{ rect }] : [];
+  });
+  const dir = right ? 1 : -1;
+
+  if (isList) {
+    const target = neighborColumn(columns, collisionRect.left, dir);
+    return target ? { x: target.rect.left, y: target.rect.top } : undefined;
+  }
+
+  // Tarjeta: la referencia es el borde de SU columna (la que contiene su centro), no el
+  // de la tarjeta, para que la propia columna nunca cuente como vecina.
+  const centerX = collisionRect.left + collisionRect.width / 2;
+  const own = columns.find(
+    (c) => centerX >= c.rect.left && centerX < c.rect.right,
+  );
+  const target = neighborColumn(
+    columns,
+    own ? own.rect.left : collisionRect.left,
+    dir,
+  );
+  if (!target) return undefined;
+
+  let bestCard: Rect | null = null;
+  for (const c of enabled) {
+    if (isListDroppable(c) || c.id === active?.id) continue;
+    const r = droppableRects.get(c.id);
+    if (!r) continue;
+    const cx = r.left + r.width / 2;
+    if (cx < target.rect.left || cx >= target.rect.right) continue;
+    if (
+      !bestCard ||
+      Math.abs(r.top - collisionRect.top) < Math.abs(bestCard.top - collisionRect.top)
+    ) {
+      bestCard = r;
     }
   }
-  return best ? { x: best.left, y: best.top } : undefined;
+  const dest = bestCard ?? target.rect;
+  return { x: dest.left, y: dest.top };
 };
 
 /**

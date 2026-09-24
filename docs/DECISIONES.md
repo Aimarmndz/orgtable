@@ -8,6 +8,31 @@ arquitectura anteriores a este registro (ADR 0001–0015) siguen en
 
 ---
 
+## 2026-09-24 — Flechas izquierda/derecha de una tarjeta con el teclado
+
+**Contexto.** Probando en el navegador el build final, una tarjeta cogida con Espacio no
+se movía con la flecha izquierda. `sortableKeyboardCoordinates` filtra los destinos «a la
+izquierda» comparando con el borde de la tarjeta, y el borde de su propia columna está
+8 px antes: la columna propia salía como destino más cercano y la tarjeta volvía a su
+sitio. Hacia la derecha funcionaba porque la columna propia nunca queda a la derecha.
+
+**Decisión.** `boardKeyboardCoordinates` resuelve también izquierda/derecha para las
+tarjetas: toma como referencia el borde de la columna que contiene el centro de la
+tarjeta, salta a la columna vecina y, dentro de ella, a la tarjeta más cercana en
+vertical, o a la columna si está vacía. Arriba/abajo siguen con `@dnd-kit/sortable`.
+
+**Alternativas descartadas.** Envolver `droppableContainers` para quitar la columna
+propia antes de llamar a `sortableKeyboardCoordinates`: depende de la forma interna de
+`DroppableContainersMap` y seguiría eligiendo destinos por esquinas en vez de por
+columna.
+
+**Consecuencias.** Tests con rectángulos sintéticos en `test/board-collision.test.ts`
+(fallan con el código anterior). Verificado con Playwright: la tarjeta pasa a una
+columna vacía a la izquierda y vuelve a la derecha, y el cambio queda en la base de
+datos.
+
+---
+
 ## 2026-09-24 — Restaurar adjuntos sin borrar antes de comprobar el archivo
 
 **Contexto.** El procedimiento de `docs/operations.md` para restaurar los adjuntos era

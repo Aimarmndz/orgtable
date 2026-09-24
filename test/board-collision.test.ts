@@ -144,6 +144,61 @@ describe("boardKeyboardCoordinates (listas)", () => {
   });
 });
 
+describe("boardKeyboardCoordinates (tarjetas, izquierda/derecha)", () => {
+  // Regresión: con la flecha izquierda, la propia columna de la tarjeta (su borde está
+  // 8 px antes) contaba como «a la izquierda» y la tarjeta volvía a su sitio sin moverse.
+  const args = (id: string, collisionRect: ClientRect, extra?: [string, ClientRect][]) => {
+    const r = new Map(rects);
+    const cs = [...containers];
+    for (const [cid, cr] of extra ?? []) {
+      r.set(cid, cr);
+      cs.push(droppable(cid, "list"));
+    }
+    return {
+      active: id,
+      currentCoordinates: { x: collisionRect.left, y: collisionRect.top },
+      context: {
+        ...context({ active: active(id, "card"), collisionRect }),
+        droppableRects: r,
+        droppableContainers: { getEnabled: () => cs },
+      } as unknown as SensorContext,
+    };
+  };
+
+  it("izquierda lleva la tarjeta a la tarjeta de la columna anterior", () => {
+    const { event, preventDefault } = key("ArrowLeft");
+    expect(boardKeyboardCoordinates(event, args("b1", rect(308, 49, 272, 60)))).toEqual({
+      x: 8,
+      y: 49,
+    });
+    expect(preventDefault).toHaveBeenCalled();
+  });
+
+  it("derecha lleva la tarjeta a la columna siguiente", () => {
+    expect(
+      boardKeyboardCoordinates(key("ArrowRight").event, args("b1", rect(308, 49, 272, 60))),
+    ).toEqual({ x: 608, y: 49 });
+  });
+
+  it("en una columna vacía apunta a la propia columna", () => {
+    expect(
+      boardKeyboardCoordinates(
+        key("ArrowRight").event,
+        args("c1", rect(608, 49, 272, 60), [["D", rect(900, 0, 288, 90)]]),
+      ),
+    ).toEqual({ x: 900, y: 0 });
+  });
+
+  it("no pasa de la primera ni de la última columna", () => {
+    expect(
+      boardKeyboardCoordinates(key("ArrowLeft").event, args("a1", rect(8, 49, 272, 60))),
+    ).toBeUndefined();
+    expect(
+      boardKeyboardCoordinates(key("ArrowRight").event, args("c1", rect(608, 49, 272, 60))),
+    ).toBeUndefined();
+  });
+});
+
 describe("calendarKeyboardCoordinates", () => {
   // Rejilla de 3×2 celdas de 100×80 con gap-1 (4 px). La pastilla está en la celda
   // (0,0), desplazada 6 px a la derecha y 20 px hacia abajo.

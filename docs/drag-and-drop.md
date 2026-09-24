@@ -104,10 +104,13 @@ const sensors = useSensors(
 - **Teclado**: con el foco en una tarjeta (o en el título de una lista), **Espacio** la
   coge, las **flechas** la mueven, **Espacio** o **Intro** la sueltan y **Escape**
   cancela. **Intro no coge**: con el foco en una tarjeta, Intro (y Espacio si no se
-  puede arrastrar, p. ej. como Lector o con filtros) la abre. Las tarjetas usan las
-  coordenadas de `@dnd-kit/sortable`; las listas, `boardKeyboardCoordinates`, que salta
-  directamente a la columna vecina (las de sortable se iban primero a la primera tarjeta
-  de la propia columna y la primera flecha no hacía nada).
+  puede arrastrar, p. ej. como Lector o con filtros) la abre. Las coordenadas salen de
+  `boardKeyboardCoordinates`: las listas saltan directamente a la columna vecina (las de
+  sortable se iban primero a la primera tarjeta de la propia columna y la primera flecha
+  no hacía nada); las tarjetas, con izquierda/derecha, saltan a la tarjeta más cercana en
+  vertical de la columna vecina, o a la columna si está vacía (con las de sortable la
+  flecha izquierda las devolvía a su propia columna). Arriba/abajo de una tarjeta siguen
+  usando las de `@dnd-kit/sortable`.
 - **Lectores de pantalla**: las instrucciones y los anuncios de dnd-kit (en inglés por
   defecto) se pasan en español por `accessibility`, y `aria-roledescription` es
   «tarjeta»/«lista» en vez de «sortable».
