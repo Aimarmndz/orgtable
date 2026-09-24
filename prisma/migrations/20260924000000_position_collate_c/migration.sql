@@ -20,3 +20,10 @@ ALTER TABLE "List" ALTER COLUMN "position" TYPE TEXT COLLATE "C";
 ALTER TABLE "Card" ALTER COLUMN "position" TYPE TEXT COLLATE "C";
 ALTER TABLE "Checklist" ALTER COLUMN "position" TYPE TEXT COLLATE "C";
 ALTER TABLE "ChecklistItem" ALTER COLUMN "position" TYPE TEXT COLLATE "C";
+
+-- Reversión (manual; Prisma no genera migraciones «down»). Devuelve las columnas a la
+-- collation por defecto de la BD sin tocar los valores:
+--   ALTER TABLE "List" ALTER COLUMN "position" TYPE TEXT COLLATE "default";
+--   ALTER TABLE "Card" ALTER COLUMN "position" TYPE TEXT COLLATE "default";
+--   ALTER TABLE "Checklist" ALTER COLUMN "position" TYPE TEXT COLLATE "default";
+--   ALTER TABLE "ChecklistItem" ALTER COLUMN "position" TYPE TEXT COLLATE "default";
