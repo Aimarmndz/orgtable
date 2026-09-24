@@ -4,11 +4,17 @@ import {
   apiCardCreateSchema,
   apiCardUpdateSchema,
   apiTokenNameSchema,
+  addMemberSchema,
+  assignableBoardRoleSchema,
+  commentTextSchema,
   boardImportSchema,
-  labelColorSchema,
+  setupSchema,
+  createUserSchema,
   cardDetailsSchema,
   dueDateSchema,
+  labelColorSchema,
 } from "@/app/lib/validators";
+import { ASSIGNABLE_BOARD_ROLES } from "@/app/lib/roles";
 
 describe("validators (zod)", () => {
   it("boardTitleSchema recorta y exige 1..120 caracteres", () => {
@@ -79,6 +85,74 @@ describe("validators (zod)", () => {
     expect(labelColorSchema.parse(undefined)).toBe("blue");
   });
 
+  it("addMemberSchema y assignableBoardRoleSchema no permiten asignar OWNER", () => {
+    expect(assignableBoardRoleSchema.safeParse("OWNER").success).toBe(false);
+    expect(assignableBoardRoleSchema.safeParse("EDITOR").success).toBe(true);
+    expect(addMemberSchema.safeParse({ email: "a@b.es", role: "OWNER" }).success).toBe(false);
+    expect(addMemberSchema.safeParse({ email: "a@b.es", role: "EDITOR" }).success).toBe(true);
+    // El esquema y la lista de la UI no deben divergir.
+    expect([...assignableBoardRoleSchema.options].sort()).toEqual(
+      [...ASSIGNABLE_BOARD_ROLES].sort(),
+    );
+  });
+
+  it("commentTextSchema recorta y exige 1..2000 caracteres", () => {
+    expect(commentTextSchema.safeParse("   ").success).toBe(false);
+    expect(commentTextSchema.safeParse("x".repeat(2001)).success).toBe(false);
+    expect(commentTextSchema.parse("  hola  ")).toBe("hola");
+  });
+
+  it("boardImportSchema acepta el formato del export y rechaza lo que se sale de él", () => {
+    expect(boardImportSchema.safeParse({ board: { title: "Mínimo" } }).success).toBe(true);
+    const full = {
+      orgtable: { type: "board", version: 1 },
+      board: {
+        title: "Completo",
+        background: "teal",
+        labels: [{ name: "Urgente", color: "red" }],
+        lists: [
+          {
+            title: "Pendiente",
+            cards: [
+              {
+                title: "Tarea",
+                description: "Detalle",
+                dueDate: "2026-07-01T00:00:00.000Z",
+                labels: ["Urgente"],
+                checklists: [{ title: "Pasos", items: [{ text: "Uno", done: false }] }],
+              },
+            ],
+          },
+        ],
+      },
+    };
+    expect(boardImportSchema.safeParse(full).success).toBe(true);
+
+    const lists51 = Array.from({ length: 51 }, (_, i) => ({ title: `L${i}` }));
+    expect(
+      boardImportSchema.safeParse({ board: { title: "X", lists: lists51 } }).success,
+    ).toBe(false);
+    expect(boardImportSchema.safeParse({ board: { title: "" } }).success).toBe(false);
+    expect(
+      boardImportSchema.safeParse({
+        board: { title: "X", lists: [{ title: "L", cards: [{ title: "" }] }] },
+      }).success,
+    ).toBe(false);
+    expect(
+      boardImportSchema.safeParse({
+        board: {
+          title: "X",
+          lists: [
+            {
+              title: "L",
+              cards: [{ title: "T", checklists: [{ title: "C", items: [{ text: "i", done: "yes" }] }] }],
+            },
+          ],
+        },
+      }).success,
+    ).toBe(false);
+  });
+
   it("boardImportSchema sanea colores desconocidos en vez de rechazar el fichero", () => {
     const parsed = boardImportSchema.parse({
       board: {
@@ -89,5 +163,22 @@ describe("validators (zod)", () => {
     });
     expect(parsed.board.background).toBeNull();
     expect(parsed.board.labels?.[0].color).toBe("blue");
+  });
+
+  it("setupSchema y createUserSchema: longitud de contraseña y rol", () => {
+    const user = { name: "Ana", email: "ana@example.com", role: "MEMBER" };
+    const setup = { instanceName: "Equipo", name: "Ana", email: "ana@example.com" };
+    for (const [password, ok] of [
+      ["x".repeat(7), false],
+      ["x".repeat(8), true],
+      ["x".repeat(201), false],
+    ] as const) {
+      expect(createUserSchema.safeParse({ ...user, password }).success).toBe(ok);
+      expect(setupSchema.safeParse({ ...setup, password }).success).toBe(ok);
+    }
+    expect(
+      createUserSchema.safeParse({ ...user, password: "x".repeat(8), role: "SUPERADMIN" })
+        .success,
+    ).toBe(false);
   });
 });
