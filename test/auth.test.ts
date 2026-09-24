@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import bcrypt from "bcryptjs";
 import {
   DUMMY_PASSWORD_HASH,
@@ -28,15 +28,18 @@ describe("hash ficticio del login", () => {
     await expect(verifyPasswordOrDummy("otra", hash)).resolves.toBe(false);
   });
 
-  it("sin cuenta tarda del mismo orden que con cuenta (umbral holgado)", async () => {
-    const hash = await hashPassword("correcta");
-    const time = async (fn: () => Promise<unknown>) => {
-      const start = performance.now();
-      await fn();
-      return performance.now() - start;
-    };
-    const real = await time(() => verifyPasswordOrDummy("mala", hash));
-    const dummy = await time(() => verifyPasswordOrDummy("mala", null));
-    expect(dummy).toBeGreaterThan(real * 0.5);
+  // Antes se medían los tiempos de una sola llamada de cada tipo: una pausa del GC o un
+  // runner de CI cargado bastaba para que fallara sin cambios de código. Lo que importa es
+  // que el camino sin cuenta haga el mismo trabajo de bcrypt contra el hash ficticio; que
+  // ese hash cueste lo mismo que uno real ya lo comprueba el primer test.
+  it("sin cuenta compara contra el hash ficticio con bcrypt", async () => {
+    const spy = vi.spyOn(bcrypt, "compare");
+    try {
+      await verifyPasswordOrDummy("mala", null);
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(spy).toHaveBeenCalledWith("mala", DUMMY_PASSWORD_HASH);
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
