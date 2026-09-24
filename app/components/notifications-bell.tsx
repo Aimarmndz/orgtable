@@ -7,7 +7,7 @@ import {
   useTransition,
 } from "react";
 import { useRouter } from "next/navigation";
-import { keepEventSourceOpen } from "@/app/lib/realtime/reconnect";
+import { keepEventSourceOpen, probeStatus } from "@/app/lib/realtime/reconnect";
 import {
   markNotificationRead,
   markAllNotificationsRead,
@@ -72,21 +72,23 @@ export function NotificationsBell({
 
   // Entrega en vivo: refresca (con un pequeño debounce) cuando el bus avisa.
   useEffect(() => {
+    const url = "/api/notifications/stream";
     let timer: ReturnType<typeof setTimeout> | null = null;
     const onEvent = () => {
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => router.refresh(), 200);
     };
     const stop = keepEventSourceOpen({
-      create: () => new EventSource("/api/notifications/stream"),
+      create: () => new EventSource(url),
       events: { notification: onEvent },
       // Al reconectar, trae las notificaciones que llegaron durante el corte (el
       // servidor no las reenvía). Ver app/lib/realtime/reconnect.ts.
       onReconnect: onEvent,
-      // CLOSED: el navegador no reintentará (401 si se revocó la sesión, o un 502 del
-      // proxy durante un reinicio). El refresh deja que el layout redirija a /login; si
-      // no redirige, el helper recrea la fuente con backoff.
-      onClosed: () => router.refresh(),
+      // CLOSED: se pregunta el estado al endpoint. Solo con 401 (sesión revocada) se
+      // refresca para que el layout redirija a /login; ante un 502 del proxy durante un
+      // reinicio refrescar navegaría a su página de error, así que solo se reintenta.
+      probe: () => probeStatus(url),
+      onAccessDenied: () => router.refresh(),
     });
     return () => {
       if (timer) clearTimeout(timer);

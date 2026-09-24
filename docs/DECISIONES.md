@@ -155,6 +155,33 @@ oye el lector de pantalla; «todas» ya deja claro el alcance del borrado.
 
 **Consecuencias.** El lector de pantalla no dice cuántas tarjetas se borran; quien quiera
 saberlo tiene el contador (sin filtros). Test en `test/list-column-delete.test.ts`.
+## 2026-09-24 — Tiempo real: no refrescar a ciegas cuando el stream queda CLOSED
+
+**Contexto.** Al quedar `CLOSED`, `BoardRealtime` y `NotificationsBell` hacían
+`router.refresh()`. La premisa de la entrada «Recrear el EventSource cuando el
+navegador deja de reintentar» («la página no redirigía») era falsa: en Next 16, si la
+petición RSC de un refresh recibe una respuesta no OK o falla por red, el router hace
+una navegación completa (`fetch-server-response.js`, `doMpaNavigation`). Con el 502
+del proxy durante `scripts/update.sh`, o un 500 por un fallo pasajero de la BD, cada
+pestaña abierta acababa en la página de error y se perdía lo que no se hubiera guardado.
+
+**Decisión.** `keepEventSourceOpen` recibe `probe` y `onAccessDenied` en lugar de
+`onClosed`. Al quedar `CLOSED`, `probeStatus(url)` hace un GET al mismo endpoint que se
+aborta en cuanto llegan las cabeceras; solo con 401/403 se llama a `onAccessDenied`
+(refresh para redirigir a `/login` o `/boards`). Ante un 5xx, un error de red o un fallo
+de la propia comprobación solo se reintenta con backoff; al reabrirse, `onReconnect`
+resincroniza con el servidor ya sano.
+
+**Alternativas descartadas.**
+- `HEAD` para la comprobación: en App Router se deriva del GET y abriría el stream igual.
+- Que las rutas SSE respondan 200 con un `event: revoked` antes de cerrar: más limpio,
+  pero toca `sse.ts` y las dos rutas, y no cubre el 401 de una reconexión.
+
+**Consecuencias.** Cada `CLOSED` cuesta una petición extra al endpoint (con 200, el
+stream se abre y se cierra al momento). Tests en `test/realtime-reconnect.test.ts`
+(5xx/red no avisan, 401/403 sí, desmontaje durante la comprobación y `probeStatus`
+contra un servidor HTTP real). `docs/realtime.md` sigue diciendo que se hace
+`router.refresh()` al quedar `CLOSED`: pendiente de corregir fuera de este cambio.
 
 ---
 

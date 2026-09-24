@@ -1,7 +1,10 @@
+import { createServer, type Server } from "node:http";
+import type { AddressInfo } from "node:net";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   createReconnectRefresher,
   keepEventSourceOpen,
+  probeStatus,
   retryDelay,
   RETRY_BASE_MS,
   RETRY_MAX_MS,
@@ -79,11 +82,13 @@ class FakeSource {
   }
 }
 
-function setup() {
+// `status`: lo que respondería el endpoint al comprobar por qué se cerró la fuente.
+function setup(status: number | null = 502) {
   const sources: FakeSource[] = [];
   const onEvent = vi.fn();
   const onReconnect = vi.fn();
-  const onClosed = vi.fn();
+  const onAccessDenied = vi.fn();
+  const probe = vi.fn(async () => status);
   const stop = keepEventSourceOpen({
     create: () => {
       const s = new FakeSource();
@@ -92,10 +97,14 @@ function setup() {
     },
     events: { change: onEvent },
     onReconnect,
-    onClosed,
+    probe,
+    onAccessDenied,
   });
-  return { sources, onEvent, onReconnect, onClosed, stop };
+  return { sources, onEvent, onReconnect, onAccessDenied, probe, stop };
 }
+
+// Deja resolver la promesa de `probe` sin adelantar el reloj.
+const flush = () => vi.advanceTimersByTimeAsync(0);
 
 describe("retryDelay", () => {
   it("dobla desde 3 s hasta un máximo de 30 s", () => {
@@ -123,15 +132,16 @@ describe("keepEventSourceOpen", () => {
     stop();
   });
 
-  it("recrea la fuente tras CLOSED con backoff y refresca al reabrir", () => {
-    const { sources, onReconnect, onClosed, stop } = setup();
+  it("recrea la fuente tras CLOSED con backoff y refresca al reabrir", async () => {
+    const { sources, onReconnect, onAccessDenied, probe, stop } = setup(502);
     sources[0].open();
     expect(onReconnect).not.toHaveBeenCalled();
 
     sources[0].fail();
-    expect(onClosed).toHaveBeenCalledTimes(1);
     expect(sources[0].closed).toBe(true);
     expect(sources[0].listenerCount()).toBe(0);
+    await flush();
+    expect(probe).toHaveBeenCalledTimes(1);
     vi.advanceTimersByTime(RETRY_BASE_MS - 1);
     expect(sources).toHaveLength(1);
     vi.advanceTimersByTime(1);
@@ -139,6 +149,7 @@ describe("keepEventSourceOpen", () => {
 
     // El servidor sigue caído: el siguiente intento espera el doble.
     sources[1].fail();
+    await flush();
     vi.advanceTimersByTime(2 * RETRY_BASE_MS - 1);
     expect(sources).toHaveLength(2);
     vi.advanceTimersByTime(1);
@@ -150,26 +161,94 @@ describe("keepEventSourceOpen", () => {
 
     // Tras abrir, el backoff vuelve a empezar en 3 s.
     sources[2].fail();
+    await flush();
     vi.advanceTimersByTime(RETRY_BASE_MS);
     expect(sources).toHaveLength(4);
+    expect(onAccessDenied).not.toHaveBeenCalled();
     stop();
   });
 
-  it("no recrea la fuente en un corte que el navegador reintenta solo", () => {
-    const { sources, onClosed, onReconnect, stop } = setup();
+  // Regresión: con un 502 del proxy (o un 500 por un fallo pasajero de la BD) se hacía
+  // router.refresh(); en Next 16 un refresh con respuesta no OK navega a la página de
+  // error y la pestaña perdía la app. Ahora un 5xx o un error de red solo reintentan.
+  it.each([500, 502, 503, null])(
+    "ante %s no avisa de acceso denegado y reintenta",
+    async (status) => {
+      const { sources, onAccessDenied, stop } = setup(status);
+      sources[0].fail();
+      await flush();
+      expect(onAccessDenied).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(RETRY_BASE_MS);
+      expect(sources).toHaveLength(2);
+      stop();
+    },
+  );
+
+  it.each([401, 403])(
+    "ante %s avisa de acceso denegado (para redirigir) y reintenta",
+    async (status) => {
+      const { sources, onAccessDenied, stop } = setup(status);
+      sources[0].fail();
+      await flush();
+      expect(onAccessDenied).toHaveBeenCalledTimes(1);
+      vi.advanceTimersByTime(RETRY_BASE_MS);
+      expect(sources).toHaveLength(2);
+      stop();
+    },
+  );
+
+  it("si la comprobación falla, reintenta sin avisar de acceso denegado", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const sources: FakeSource[] = [];
+    const onAccessDenied = vi.fn();
+    const stop = keepEventSourceOpen({
+      create: () => {
+        const s = new FakeSource();
+        sources.push(s);
+        return s;
+      },
+      events: {},
+      onReconnect: () => {},
+      probe: () => Promise.reject(new Error("fallo inesperado")),
+      onAccessDenied,
+    });
+    sources[0].fail();
+    await flush();
+    expect(onAccessDenied).not.toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(RETRY_BASE_MS);
+    expect(sources).toHaveLength(2);
+    stop();
+    errorSpy.mockRestore();
+  });
+
+  it("no reintenta ni avisa si se desmonta mientras se comprueba el estado", async () => {
+    const { sources, onAccessDenied, stop } = setup(401);
+    sources[0].fail();
+    stop();
+    await flush();
+    vi.advanceTimersByTime(RETRY_MAX_MS);
+    expect(onAccessDenied).not.toHaveBeenCalled();
+    expect(sources).toHaveLength(1);
+  });
+
+  it("no recrea la fuente en un corte que el navegador reintenta solo", async () => {
+    const { sources, probe, onReconnect, stop } = setup();
     sources[0].open();
     sources[0].drop();
+    await flush();
     vi.advanceTimersByTime(RETRY_MAX_MS);
-    expect(onClosed).not.toHaveBeenCalled();
+    expect(probe).not.toHaveBeenCalled();
     expect(sources).toHaveLength(1);
     sources[0].open();
     expect(onReconnect).toHaveBeenCalledTimes(1);
     stop();
   });
 
-  it("la limpieza cierra la fuente y cancela el reintento pendiente", () => {
+  it("la limpieza cierra la fuente y cancela el reintento pendiente", async () => {
     const { sources, stop } = setup();
     sources[0].fail();
+    await flush();
     stop();
     vi.advanceTimersByTime(RETRY_MAX_MS);
     expect(sources).toHaveLength(1);
@@ -179,5 +258,61 @@ describe("keepEventSourceOpen", () => {
     second.stop();
     expect(second.sources[0].closed).toBe(true);
     expect(second.sources[0].listenerCount()).toBe(0);
+  });
+});
+
+// Con un servidor HTTP real: el estado tiene que llegar sin esperar al cuerpo (un
+// stream SSE no termina nunca) y la conexión debe cerrarse al momento.
+describe("probeStatus", () => {
+  let server: Server;
+  let base: string;
+  let streamClosed: Promise<void>;
+
+  beforeEach(async () => {
+    let markClosed: () => void = () => {};
+    streamClosed = new Promise((resolve) => {
+      markClosed = resolve;
+    });
+    server = createServer((req, res) => {
+      if (req.url === "/401") {
+        res.writeHead(401).end("Unauthorized");
+        return;
+      }
+      if (req.url === "/502") {
+        res.writeHead(502).end("Bad Gateway");
+        return;
+      }
+      // Stream SSE que no se cierra por su cuenta.
+      res.writeHead(200, { "Content-Type": "text/event-stream" });
+      res.write(": connected\n\n");
+      res.on("close", markClosed);
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  });
+
+  afterEach(async () => {
+    server.closeAllConnections();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  });
+
+  it("devuelve el estado de error del endpoint", async () => {
+    expect(await probeStatus(`${base}/401`)).toBe(401);
+    expect(await probeStatus(`${base}/502`)).toBe(502);
+  });
+
+  it("con un stream abierto devuelve 200 y corta la conexión", async () => {
+    expect(await probeStatus(`${base}/stream`)).toBe(200);
+    await streamClosed;
+  });
+
+  it("sin respuesta (servidor caído) devuelve null", async () => {
+    const port = (server.address() as AddressInfo).port;
+    server.closeAllConnections();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    // Se vuelve a crear para que afterEach tenga algo que cerrar.
+    expect(await probeStatus(`http://127.0.0.1:${port}/401`)).toBeNull();
+    server = createServer();
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   });
 });
