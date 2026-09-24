@@ -98,11 +98,14 @@ Usa rutas absolutas, porque cron arranca en `$HOME`. Por ejemplo, cada día a la
 (`crontab -e`):
 
 ```cron
-30 3 * * * /home/usuario/orgtable/scripts/backup.sh >> /home/usuario/orgtable/backups/backup.log 2>&1
+30 3 * * * /home/usuario/orgtable/scripts/backup.sh >> /home/usuario/orgtable-backup.log 2>&1
 ```
 
-Si el script falla, el error queda en ese log; revísalo o configura `MAILTO` en el
-crontab para recibirlo por correo.
+El log va fuera de `backups/` a propósito: cron abre la redirección antes de ejecutar el
+script, y en una instalación nueva ese directorio aún no existe (lo crea el propio
+script), así que cron fallaría sin llegar a lanzar la copia. Si el script falla, el
+error queda en ese log; revísalo o configura `MAILTO` en el crontab para recibirlo por
+correo.
 
 ### Restaurar
 

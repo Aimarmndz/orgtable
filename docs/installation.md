@@ -140,7 +140,7 @@ El contenedor de la app solo recibe las variables que lista `docker-compose.yml`
 | `POSTGRES_PASSWORD` | Sí | Contraseña del usuario de PostgreSQL. El instalador la genera con `openssl rand -hex 24`. |
 | `POSTGRES_DB` | Sí | Nombre de la base de datos. Por defecto `orgtable`. |
 | `DATABASE_URL` | Sí | Cadena de conexión que usa la aplicación. Debe ser coherente con las tres variables anteriores. El host es `postgres` (nombre del servicio en docker-compose). Formato: `postgresql://USUARIO:CONTRASEÑA@postgres:5432/BASE`. |
-| `SESSION_SECRET` | Sí | Secreto para firmar las sesiones JWT, mínimo 16 caracteres (la app no arranca sin él). El instalador lo genera con `openssl rand -hex 32`. |
+| `SESSION_SECRET` | Sí | Secreto para firmar las sesiones JWT, mínimo 16 caracteres: sin él (o con uno más corto) la app no puede crear sesiones y el login y el asistente inicial fallan. El instalador lo genera con `openssl rand -hex 32`. |
 | `APP_PORT` | No | Puerto del host por el que se expone la aplicación. Por defecto `3000`. Admite `127.0.0.1:3000` para publicarla solo en local, detrás de un proxy inverso. Internamente, el contenedor escucha siempre en el `3000`. |
 | `CRON_SECRET` | No | Secreto del endpoint de [recordatorios de vencimiento](./reminders.md). Vacío = endpoint desactivado. El instalador lo genera con `openssl rand -hex 32`. |
 | `TRUSTED_PROXY_HOPS` | No | Número de proxies de confianza delante de la app (por defecto `0`: se ignora `X-Forwarded-For`). Con un proxy inverso, `1`. Ver [operations.md](./operations.md#límite-de-intentos-de-login-rate-limiting). |

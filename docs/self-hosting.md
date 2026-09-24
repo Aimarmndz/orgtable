@@ -152,9 +152,13 @@ La próxima visita mostrará de nuevo el asistente. Esto no borra usuarios ni ta
 existentes. Antes de hacerlo, ten en cuenta:
 
 - **Mientras el asistente está abierto, cualquiera que llegue a la app puede crear una
-  cuenta de administrador.** Hazlo con la app accesible solo desde local
-  (`APP_PORT=127.0.0.1:3000`, ver [HTTPS y dominio](#https-y-dominio-reverse-proxy)) o
-  completa el asistente justo después.
+  cuenta de administrador.** Publicar la app solo en local (`APP_PORT=127.0.0.1:3000`)
+  no basta: detrás de un proxy inverso, `/setup` sigue abierto por el dominio. Mientras
+  dure, corta ese acceso (para el proxy o bloquea `/setup` en él, p. ej. en Caddy con
+  `respond /setup* 403`) y completa el asistente por un túnel SSH:
+  `ssh -L 3000:127.0.0.1:3000 usuario@servidor` y abre `http://localhost:3000`. Si no
+  puedes cortar el acceso, o `APP_PORT` publica la app en todas las interfaces,
+  completa el asistente justo después del reseteo.
 - El asistente crea un administrador **nuevo**: usa un email que no exista ya, o la
   creación fallará.
 - No sirve para recuperar el acceso de un administrador existente. Para eso, ver

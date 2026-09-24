@@ -1176,6 +1176,42 @@ hacia `.next/standalone`.
 del trazado NFT no se ha podido comprobar aquí (el build lo ejecuta el integrador): tras
 `pnpm build`, `api/attachments/[id]/route.js.nft.json` debería bajar a unas 200 entradas
 y `.next/standalone` no debería contener `docs/` ni `test/`.
+## 2026-09-24 — Log del cron de copias fuera de `backups/` y URL del instalador según `APP_PORT`
+
+**Contexto.** La revisión de la primera pasada de este lote encontró que el ejemplo de
+cron de `docs/operations.md` redirigía el log a `backups/backup.log`. En una instalación
+nueva `backups/` no existe (lo crea `backup.sh`), cron abre la redirección antes de
+lanzar el script y la copia no se ejecutaba nunca, sin dejar rastro en ningún log.
+Además, `install.sh` descartaba la IP de `APP_PORT` y mandaba a `http://<IP>:3000`
+aunque la app escuchara solo en `127.0.0.1`, y con `set -o pipefail` un `.env` sin
+`APP_PORT` hacía fallar el instalador en el último paso. La documentación decía que la
+app «no arranca» sin `SESSION_SECRET`, pero el secreto se comprueba al crear la sesión.
+Y el consejo para proteger el asistente reseteado (`APP_PORT=127.0.0.1:3000`) no
+protege nada detrás de un proxy, porque `/setup` sigue abierto por el dominio.
+
+**Decisión.**
+- El ejemplo de cron escribe en `/home/usuario/orgtable-backup.log`, fuera del repo.
+- `install.sh`: con `APP_PORT` de loopback explica cómo llegar por el proxy o por un
+  túnel SSH; con otra IP concreta muestra esa IP; con el puerto solo o `0.0.0.0`, la
+  IP del servidor. Sin `APP_PORT` usa el 3000 en vez de abortar. Tests en
+  `test/ops-scripts.test.ts` con `docker`, `git` y `hostname` falsos.
+- `.env.example` e `installation.md` describen lo que pasa de verdad sin
+  `SESSION_SECRET`: la app arranca, pero el login y el asistente fallan.
+- Reseteo del asistente: cortar el acceso público a `/setup` (parar el proxy o
+  bloquear la ruta) y completarlo por túnel SSH, o completarlo justo después.
+
+**Alternativas descartadas.**
+- Log dentro de `backups/` pidiendo un `mkdir` previo: es un paso más que se olvida y
+  el fallo vuelve a ser silencioso.
+- Log en la raíz del repo: aparece como fichero sin seguimiento en `git status` y
+  entra en el contexto de build de Docker.
+- Hacer que la app se niegue a arrancar sin `SESSION_SECRET`: cambia el
+  comportamiento y queda fuera de este lote, que es de documentación y operación.
+
+**Consecuencias.** Quien ya copió el cron anterior debe cambiar la ruta del log (o
+crear `backups/` una vez con `mkdir -m 700 backups`). El mensaje final del instalador
+depende de `APP_PORT`.
+
 ## 2026-09-24 — La documentación se alinea con la licencia propietaria
 
 **Contexto.** `LICENSE` es propietaria (MARA-KASSA SL) desde el commit `27c1ba9`, pero
