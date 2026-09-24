@@ -164,4 +164,13 @@ describe("ListColumn: confirmación de borrado", () => {
     expect(findIn(render(), isForm)).not.toBeNull();
     expect(trigger.focus).not.toHaveBeenCalled();
   });
+
+  it("el «Sí» no anuncia el número de tarjetas visibles (con filtros no son todas)", () => {
+    const yes = find(openConfirmation(), hasText("Sí"), "«Sí»");
+    // Antes: «…y sus 1 tarjetas», aunque el borrado en cascada se lleve también las
+    // ocultas por el filtro.
+    expect(yes.props["aria-label"]).toBe(
+      "Sí, borrar la lista Pendiente y todas sus tarjetas",
+    );
+  });
 });

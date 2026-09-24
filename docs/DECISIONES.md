@@ -137,6 +137,24 @@ de los tres formularios.
 `renderToStaticMarkup` ya marcaba el rol correcto antes del arreglo.
 `test/members-panel.test.ts` cubre la vuelta a Editor con un rol no asignable, la
 retirada del aviso mientras se envía y la clase del fondo.
+## 2026-09-24 — Confirmar el borrado de una lista sin anunciar cuántas tarjetas tiene
+
+**Contexto.** El botón «Sí» de la confirmación de borrar lista
+(`app/components/board/list-column.tsx`) anunciaba «Sí, borrar la lista X y sus N
+tarjetas» con `list.cards.length`. Con filtros activos, `BoardView` pasa a `ListColumn`
+solo las tarjetas visibles, así que una lista con 12 tarjetas y una visible anunciaba «y
+sus 1 tarjetas», y al confirmar se borraban las 12 en cascada.
+
+**Decisión.** El `aria-label` dice «Sí, borrar la lista X y todas sus tarjetas», sin
+cifra. El contador visible de la cabecera sigue mostrando las tarjetas filtradas.
+
+**Alternativas descartadas.** Pasar a `ListColumn` una prop `totalCards` desde las listas
+sin filtrar de `board-view.tsx` y concordar singular/plural: da la cifra exacta, pero
+obliga a tocar `BoardView` y su construcción de listas filtradas para un texto que solo
+oye el lector de pantalla; «todas» ya deja claro el alcance del borrado.
+
+**Consecuencias.** El lector de pantalla no dice cuántas tarjetas se borran; quien quiera
+saberlo tiene el contador (sin filtros). Test en `test/list-column-delete.test.ts`.
 
 ---
 

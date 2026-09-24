@@ -103,7 +103,9 @@ export function ListColumn({
               <button
                 type="submit"
                 className="rounded px-1.5 py-0.5 text-danger transition-colors hover:bg-danger/10"
-                aria-label={`Sí, borrar la lista ${list.title} y sus ${list.cards.length} tarjetas`}
+                // Sin cifra: con filtros activos `list.cards` solo trae las visibles, pero
+                // el borrado se lleva en cascada también las ocultas.
+                aria-label={`Sí, borrar la lista ${list.title} y todas sus tarjetas`}
               >
                 Sí
               </button>
