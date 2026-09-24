@@ -1,8 +1,15 @@
 import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import { prisma } from "@/app/lib/prisma";
 import { POST as createList } from "@/app/api/v1/boards/[id]/lists/route";
-import { POST as createCard } from "@/app/api/v1/lists/[id]/cards/route";
-import { PATCH as patchCard, DELETE as deleteCard } from "@/app/api/v1/cards/[id]/route";
+import {
+  GET as listCards,
+  POST as createCard,
+} from "@/app/api/v1/lists/[id]/cards/route";
+import {
+  GET as getCard,
+  PATCH as patchCard,
+  DELETE as deleteCard,
+} from "@/app/api/v1/cards/[id]/route";
 import {
   resetDb,
   disconnect,
@@ -162,6 +169,41 @@ async function dueDateOf(cardId: string) {
   });
   return card.dueDate?.toISOString() ?? null;
 }
+
+describe("API v1 — tarjetas: roles y acceso", () => {
+  it("PATCH y DELETE de un VIEWER dan 403 y no cambian nada", async () => {
+    const { card, viewerToken } = await seedCardWithRoles();
+    expect((await patch(card.id, viewerToken, { title: "X" })).status).toBe(403);
+    const del = await deleteCard(
+      apiRequest("DELETE", `/api/v1/cards/${card.id}`, { token: viewerToken }),
+      ctx({ id: card.id }),
+    );
+    expect(del.status).toBe(403);
+    expect(await prisma.card.findUnique({ where: { id: card.id } })).not.toBeNull();
+  });
+
+  it("un extraño recibe 404 en GET, PATCH y DELETE de la tarjeta y en GET de la lista", async () => {
+    const { list, card, strangerToken } = await seedCardWithRoles();
+    const token = strangerToken;
+    const get = await getCard(
+      apiRequest("GET", `/api/v1/cards/${card.id}`, { token }),
+      ctx({ id: card.id }),
+    );
+    const list404 = await listCards(
+      apiRequest("GET", `/api/v1/lists/${list.id}/cards`, { token }),
+      ctx({ id: list.id }),
+    );
+    const del = await deleteCard(
+      apiRequest("DELETE", `/api/v1/cards/${card.id}`, { token }),
+      ctx({ id: card.id }),
+    );
+    expect(get.status).toBe(404);
+    expect(list404.status).toBe(404);
+    expect((await patch(card.id, token, { title: "X" })).status).toBe(404);
+    expect(del.status).toBe(404);
+    expect(await prisma.card.count()).toBe(1);
+  });
+});
 
 // Regresión: una dueDate no reconocible se guardaba como null (borraba el vencimiento) y
 // la respuesta era 200/201.
