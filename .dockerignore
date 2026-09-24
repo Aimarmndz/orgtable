@@ -16,6 +16,22 @@ docs
 .agents
 skills-lock.json
 
+# Datos locales: copias de seguridad (volcados con datos personales), adjuntos de
+# desarrollo y claves. `COPY . .` los metería en el builder y en su caché. `**/` cubre
+# también los subdirectorios.
+backups
+**/*.sql.gz
+**/*.tar.gz
+uploads
+data
+**/*.pem
+
+# Lo que la imagen no usa: tests, cobertura y scripts que se ejecutan en el host.
+coverage
+test
+scripts
+install.sh
+
 # Logs y temporales
 npm-debug.log*
 *.tsbuildinfo

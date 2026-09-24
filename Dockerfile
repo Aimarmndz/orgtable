@@ -67,8 +67,11 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder /app/package.json ./package.json
 
-COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh && chown -R nextjs:nodejs /app
+COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+# El código queda de root y de solo lectura para `nextjs`: un fallo en la app no puede
+# reescribir server.js, .next ni node_modules. Un `chown -R /app` además duplicaría
+# node_modules en otra capa de cientos de MB. Solo la caché de Next necesita escritura.
+RUN mkdir -p .next/cache && chown nextjs:nodejs .next/cache
 
 USER nextjs
 EXPOSE 3000

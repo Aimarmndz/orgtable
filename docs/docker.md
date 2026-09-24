@@ -72,6 +72,9 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/node_modules ./node_modules
 # ... prisma/, prisma.config.ts, package.json
 
+COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN mkdir -p .next/cache && chown nextjs:nodejs .next/cache
+
 USER nextjs
 EXPOSE 3000
 ENTRYPOINT ["docker-entrypoint.sh"]
@@ -82,7 +85,8 @@ Puntos importantes del `runner`:
 
 - **`node:22-alpine`** otra vez, para que el schema-engine de Prisma (descargado en `deps` para `linux-musl`) sea compatible con el sistema en runtime.
 - **`apk add --no-cache openssl`**: el schema-engine de Prisma necesita `openssl` para ejecutar `migrate deploy`. Alpine no lo trae por defecto, así que se instala explícitamente.
-- **Usuario sin privilegios `nextjs` (non-root)**: se crea el grupo `nodejs` y el usuario `nextjs`, se hace `chown` del árbol de la app y se cambia a ese usuario con `USER nextjs`. La app nunca corre como root.
+- **Usuario sin privilegios `nextjs` (non-root)**: se crea el grupo `nodejs` y el usuario `nextjs` y se cambia a ese usuario con `USER nextjs`. La app nunca corre como root.
+- **El código es de solo lectura para la app**: `/app` sigue siendo de `root`, así que el proceso no puede reescribir `server.js`, `.next` ni `node_modules`. Solo son escribibles `.next/cache` (caché de Next) y `/data/uploads` (adjuntos). No se hace `chown -R /app`: además de dejar el código escribible, duplicaría `node_modules` en una capa nueva de cientos de MB.
 - **Se copian los artefactos de producción**: `.next/standalone` (el servidor Node mínimo), `.next/static`, `public`, y además `prisma/`, `prisma.config.ts` y `package.json` (necesarios para las migraciones).
 
 #### Por qué se copia el `node_modules` **completo**
@@ -227,6 +231,8 @@ El `.dockerignore` reduce el contexto de build y, sobre todo, evita filtrar secr
 | `.env`, `.env.*` | **CRÍTICO: los secretos nunca deben acabar en la imagen.** |
 | `!.env.example` | Excepción: el ejemplo sin secretos sí se conserva. |
 | `docs`, `*.md`, `.claude`, `.agents`, `skills-lock.json` | Documentación y tooling de desarrollo, irrelevantes en runtime. |
+| `backups`, `**/*.sql.gz`, `**/*.tar.gz`, `uploads`, `data`, `**/*.pem` | Copias de seguridad (con datos personales), adjuntos de desarrollo y claves: `COPY . .` los metería en el builder y en su caché. |
+| `coverage`, `test`, `scripts`, `install.sh` | Tests y scripts que se ejecutan en el host; la imagen no los usa. |
 | `npm-debug.log*`, `*.tsbuildinfo` | Logs y temporales. |
 
 El punto más importante es el de los **archivos `.env*`**: las credenciales (`DATABASE_URL`, `SESSION_SECRET`, etc.) **se inyectan por entorno en runtime** (vía `docker-compose.yml` / `.env` del host), nunca se hornean dentro de la imagen. La única excepción es `.env.example`, que es una plantilla sin valores reales. Esto está alineado con [`docs/decisions/0003-db-creds-in-env.md`](./decisions/0003-db-creds-in-env.md).

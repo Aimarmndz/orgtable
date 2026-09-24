@@ -1176,6 +1176,33 @@ hacia `.next/standalone`.
 del trazado NFT no se ha podido comprobar aquí (el build lo ejecuta el integrador): tras
 `pnpm build`, `api/attachments/[id]/route.js.nft.json` debería bajar a unas 200 entradas
 y `.next/standalone` no debería contener `docs/` ni `test/`.
+## 2026-09-24 — Imagen Docker: código de solo lectura y contexto de build sin datos
+
+**Contexto.** El `Dockerfile` terminaba con `chown -R nextjs:nodejs /app`: una capa
+nueva que duplicaba `node_modules` (cientos de MB) y dejaba `server.js`, `.next` y
+`node_modules` escribibles por el proceso de la app. `.dockerignore` no excluía
+`backups/` ni `uploads/`, así que `COPY . .` metía volcados con datos personales en el
+builder y en su caché.
+
+**Decisión.**
+- Sin `chown -R`: `/app` queda de root. El entrypoint entra con `COPY --chmod=755` y
+  solo `.next/cache` se cede a `nextjs` (además de `/data/uploads`, que ya lo estaba).
+- `.dockerignore` excluye `backups`, `**/*.sql.gz`, `**/*.tar.gz`, `uploads`, `data`,
+  `**/*.pem`, `coverage`, `test`, `scripts` e `install.sh`.
+
+**Alternativas descartadas.**
+- `COPY --chown` en cada `COPY`: deja igualmente el código escribible.
+- Stage `prod-deps` para reducir `node_modules`: mejora aparte, ya anotada en
+  `docs/docker.md`.
+
+**Consecuencias.** Verificado construyendo la imagen: `docker history` ya no tiene la
+capa del `chown`; dentro del contenedor `touch server.js` y `node_modules/x` fallan con
+`Permission denied` y `.next/cache` y `/data/uploads` son escribibles; el stack arranca
+`healthy`, aplica migraciones y sin `EACCES`. El builder no contiene `backups`,
+`uploads`, `test`, `scripts` ni `.env`.
+
+---
+
 ## 2026-09-24 — Variables del contenedor, CRON_SECRET, proxies de confianza y HTTPS
 
 **Contexto.** El servicio `app` de `docker-compose.yml` solo recibe las variables de
