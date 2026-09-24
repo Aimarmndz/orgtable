@@ -419,6 +419,26 @@ del usuario).
 suma los avisos guardados. Test en `test/integration/notifications.int.test.ts`.
 
 ---
+## 2026-09-24 — Refrescar el contador de notificaciones desde la Server Action
+
+**Contexto.** Al abrir una notificación con tablero no se llamaba a `router.refresh()`
+y `markNotificationRead` no revalidaba nada: el layout compartido no se volvía a
+renderizar y el contador de no leídas se quedaba igual.
+
+**Decisión.** `markNotificationRead` y `markAllNotificationsRead` llaman a
+`refresh()` de `next/cache` (Next 16, solo en Server Actions) tras el `updateMany`, y
+se quitan los `router.refresh()` del cliente. `test/stubs/next-cache.ts` exporta
+`refresh` como no-op.
+
+**Alternativas descartadas.**
+- `router.refresh()` también cuando hay tablero: compite con el `router.push` y
+  depende de que el cliente se acuerde en cada llamada.
+- `revalidatePath("/", "layout")`: invalida más de lo necesario.
+
+**Consecuencias.** El refresco lo decide el servidor. El badge solo se puede comprobar
+en el navegador; el test de integración (`notifications-read.int.test.ts`) comprueba
+el dato y que se pide `refresh()`.
+
 ## 2026-09-24 — Resincronizar el tablero y la campana al reconectar el EventSource
 
 **Contexto.** El servidor no reenvía los eventos perdidos (no hay `Last-Event-ID`), y

@@ -91,9 +91,10 @@ export function NotificationsBell({
   const openItem = (n: NotificationDTO) => {
     setOpen(false);
     if (!n.read) {
+      // La acción llama a refresh() de next/cache: el contador se actualiza también
+      // cuando además se navega al tablero (antes solo se refrescaba sin tablero).
       startTransition(async () => {
         await markNotificationRead(n.id);
-        if (!n.boardId) router.refresh();
       });
     }
     if (n.boardId) {
@@ -108,7 +109,6 @@ export function NotificationsBell({
   const markAll = () => {
     startTransition(async () => {
       await markAllNotificationsRead();
-      router.refresh();
     });
   };
 
