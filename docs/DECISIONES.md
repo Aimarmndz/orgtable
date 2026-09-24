@@ -231,8 +231,7 @@ resincroniza con el servidor ya sano.
 **Consecuencias.** Cada `CLOSED` cuesta una petición extra al endpoint (con 200, el
 stream se abre y se cierra al momento). Tests en `test/realtime-reconnect.test.ts`
 (5xx/red no avisan, 401/403 sí, desmontaje durante la comprobación y `probeStatus`
-contra un servidor HTTP real). `docs/realtime.md` sigue diciendo que se hace
-`router.refresh()` al quedar `CLOSED`: pendiente de corregir fuera de este cambio.
+contra un servidor HTTP real). Descrito en `docs/realtime.md`.
 
 ---
 

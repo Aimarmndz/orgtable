@@ -42,7 +42,7 @@ Piezas:
 | [`app/api/boards/[id]/stream/route.ts`](../app/api/boards/[id]/stream/route.ts) | El endpoint SSE: autoriza, se suscribe al bus y emite eventos al navegador. |
 | [`app/lib/realtime/sse.ts`](../app/lib/realtime/sse.ts) | Ciclo de vida común de los streams SSE: latido, revalidación del acceso, vida máxima y limpieza. |
 | [`app/components/board/board-realtime.tsx`](../app/components/board/board-realtime.tsx) | Cliente: abre el `EventSource` y hace `router.refresh()` al recibir un evento o al reconectar. |
-| [`app/lib/realtime/reconnect.ts`](../app/lib/realtime/reconnect.ts) | `keepEventSourceOpen`: refresca en cada reapertura salvo la primera y recrea el `EventSource` con backoff si queda `CLOSED`. |
+| [`app/lib/realtime/reconnect.ts`](../app/lib/realtime/reconnect.ts) | `keepEventSourceOpen`: refresca en cada reapertura salvo la primera y, si queda `CLOSED`, comprueba el estado (`probeStatus`) y recrea el `EventSource` con backoff. `scheduleRefresh`: debounce compartido de los refrescos. |
 
 ## Por qué SSE (y no WebSockets)
 
@@ -62,11 +62,32 @@ la primera, en la que la página acaba de renderizarse).
 `EventSource` solo reintenta por su cuenta si la conexión se corta; si el servidor
 responde algo que no es un 200 (401/403 por sesión o acceso revocados, o el 502 de un
 proxy TLS mientras `scripts/update.sh` reinicia la app), queda en `CLOSED` para
-siempre. En ese caso el cliente hace `router.refresh()` —si se revocó el acceso, la
-página redirige a `/login` o `/boards` y el componente se desmonta— y además crea un
-`EventSource` nuevo con backoff exponencial de 3 s a 30 s (`keepEventSourceOpen` en
-`app/lib/realtime/reconnect.ts`); al abrirse vuelve a refrescar y el backoff se
-reinicia. Lo mismo hace la campana de notificaciones.
+siempre. De eso se encarga `keepEventSourceOpen` (`app/lib/realtime/reconnect.ts`), que
+usan tanto el tablero como la campana de notificaciones:
+
+1. Como `EventSource` no expone el estado HTTP, `probeStatus(url)` lo pregunta con un
+   `GET` al mismo endpoint que se aborta en cuanto llegan las cabeceras (con un 200 el
+   stream se abre y se cierra al momento).
+2. Solo con **401/403** se llama a `onAccessDenied`, que pide un refresh con
+   `scheduleRefresh` para que la página redirija a `/login` o `/boards` (el desmontaje
+   cancela el reintento).
+3. Ante un **5xx, un error de red o un fallo de la propia comprobación** no se refresca:
+   solo se crea un `EventSource` nuevo con backoff exponencial de 3 s a 30 s. Al
+   reabrirse, `onReconnect` resincroniza con el servidor ya sano y el backoff se
+   reinicia.
+4. La comprobación tiene un plazo de 10 s (`PROBE_TIMEOUT_MS`): si el proxy retiene la
+   conexión o el servidor no llega a responder, se aborta y se reintenta como ante un
+   error de red. Desmontar el componente también la aborta.
+
+Por qué no se refresca a ciegas: en Next 16, si la petición RSC de un
+`router.refresh()` recibe una respuesta no OK o falla por red, el router hace una
+navegación completa. Con el 502 del proxy o un 500 pasajero de la BD, la pestaña
+acabaría en la página de error y se perdería lo que no se hubiera guardado.
+
+Todos los refrescos del tiempo real (eventos, reconexiones y acceso denegado) pasan por
+`scheduleRefresh`, un debounce de 200 ms **compartido** por el tablero y la campana: en
+`/board/[id]` los dos streams caen y vuelven a la vez, y un solo `router.refresh()`
+repinta ambos.
 
 ## El bus: en proceso por defecto, Postgres opcional
 
