@@ -306,6 +306,33 @@ se abre al hidratar (un instante sin modal). El comportamiento del diálogo (foc
 Escape, clic fuera) no tiene test automático: no hay jsdom ni e2e en el proyecto;
 queda pendiente de verificación manual. El selector de etiquetas de `filter-bar.tsx`
 debe usar el mismo estilo que este (relleno sin opacidad).
+## 2026-09-24 — Panel de miembros con `<dialog>` nativo
+
+**Contexto.** El panel de miembros era un `div role="dialog"` sin foco inicial, sin foco
+atrapado, sin devolver el foco al cerrar y sin nombre accesible. Los errores y
+confirmaciones de la invitación no se anunciaban y el email se vaciaba al fallar.
+
+**Decisión.**
+- `<dialog>` abierto con `showModal()`: el navegador pone el foco dentro y deja inerte el
+  resto. Escape (`cancel`) y el clic en el fondo llaman a `onClose`; el cierre real lo hace
+  el padre al desmontarlo. Al desmontar se cierra y se devuelve el foco a quien lo tenía,
+  a mano, porque el navegador no lo restaura si el `<dialog>` sale del DOM.
+- `aria-labelledby`/`aria-describedby` con `useId`.
+- Error con `role="alert"`; éxito en una región `role="status"` siempre montada.
+- El formulario usa `defaultValue` con los `values` que devuelve la acción al fallar.
+
+**Alternativas descartadas.**
+- Trampa de foco en JavaScript o una librería de diálogos: el `<dialog>` modal ya lo da
+  sin dependencias.
+- Escuchar el evento `close` del `<dialog>`: en desarrollo, el doble montaje de Strict
+  Mode lo dispara al limpiar el efecto y cerraría el panel recién abierto.
+
+**Consecuencias.** Sin textos visibles nuevos. Falta verificarlo a mano con teclado y
+lector de pantalla (no hay infraestructura e2e). El modal de tarjeta sigue con el patrón
+antiguo (otro lote).
+
+---
+
 ## 2026-09-24 — Recordatorios: día UTC, ventana de 7 días y un único aviso de vencida
 
 **Contexto.** Las tarjetas vencidas se avisaban cada día para siempre y la pasada
