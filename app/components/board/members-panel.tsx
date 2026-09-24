@@ -82,7 +82,7 @@ export function MembersPanel({
         // puede venir del fondo (::backdrop).
         if (e.target === e.currentTarget) onClose();
       }}
-      className="mx-auto mt-8 max-h-[calc(100dvh-4rem)] w-[calc(100%-2rem)] max-w-lg overflow-y-auto rounded-2xl border border-border bg-surface text-ink shadow-[0_32px_64px_-24px_oklch(0.27_0.022_52/0.45)] backdrop:bg-black/50 backdrop:animate-[overlay-in_150ms_ease-out] sm:mt-12"
+      className="mx-auto mt-8 max-h-[calc(100dvh-4rem)] w-[calc(100%-2rem)] max-w-lg overflow-y-auto rounded-2xl border border-border bg-surface text-ink shadow-[0_32px_64px_-24px_oklch(0.27_0.022_52/0.45)] backdrop:bg-black/50 backdrop:motion-safe:animate-[overlay-in_150ms_ease-out] sm:mt-12"
       style={{ animation: "dialog-in 180ms ease-out" }}
     >
       <div className="p-6">

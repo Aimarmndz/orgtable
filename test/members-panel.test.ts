@@ -77,4 +77,10 @@ describe("panel de miembros", () => {
     expect(html).not.toContain(`role="alert"`);
     expect(html).not.toContain(error);
   });
+
+  it("el fondo del diálogo solo se anima si no se pide movimiento reducido", () => {
+    const html = render();
+    expect(html).toContain("backdrop:motion-safe:animate-");
+    expect(html).not.toContain("backdrop:animate-");
+  });
 });
