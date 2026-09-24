@@ -1,11 +1,18 @@
 import Link from "next/link";
 import { requireUser } from "@/app/lib/dal";
 import { getBoardsForUser } from "@/app/lib/queries";
-import { createBoard, deleteBoard } from "@/app/lib/actions/boards";
+import { createBoard } from "@/app/lib/actions/boards";
 import { boardBackgroundFor } from "@/app/lib/colors";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { ImportBoardForm } from "./import-board-form";
+import { DeleteBoardButton } from "./delete-board-button";
+
+// Acciones de esquina de cada tablero. En escritorio aparecen al pasar el ratón o al
+// llegar con el teclado; en pantallas sin hover (táctiles) se ven siempre, porque si no
+// no hay forma de descubrirlas.
+const CORNER_ACTION =
+  "grid size-7 place-items-center rounded-md bg-black/20 text-white/90 opacity-0 transition hover:bg-black/40 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100";
 
 export default async function BoardsPage() {
   const user = await requireUser();
@@ -80,7 +87,7 @@ export default async function BoardsPage() {
               <div className="absolute right-2 top-2 flex gap-1">
                 <a
                   href={`/api/boards/${board.id}/export`}
-                  className="grid size-7 place-items-center rounded-md bg-black/20 text-white/90 opacity-0 transition hover:bg-black/40 group-hover:opacity-100 focus-visible:opacity-100"
+                  className={CORNER_ACTION}
                   aria-label={`Exportar tablero ${board.title}`}
                   title="Exportar a JSON"
                 >
@@ -95,15 +102,15 @@ export default async function BoardsPage() {
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
                   </svg>
                 </a>
-                <form action={deleteBoard}>
-                  <input type="hidden" name="boardId" value={board.id} />
-                  <button
-                    className="grid size-7 place-items-center rounded-md bg-black/20 text-sm text-white/90 opacity-0 transition hover:bg-black/40 group-hover:opacity-100 focus-visible:opacity-100"
-                    aria-label={`Borrar tablero ${board.title}`}
-                  >
-                    ✕
-                  </button>
-                </form>
+                {/* Solo el dueño puede borrarlo (deleteBoard lo exige); a los
+                    miembros no se les enseña un botón que no hace nada. */}
+                {board.ownerId === user.id && (
+                  <DeleteBoardButton
+                    boardId={board.id}
+                    title={board.title}
+                    className={`${CORNER_ACTION} text-sm`}
+                  />
+                )}
               </div>
             </li>
           ))}

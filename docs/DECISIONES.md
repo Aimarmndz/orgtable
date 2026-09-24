@@ -154,6 +154,33 @@ sobrecarga y que el del proxy coincide.
 **Consecuencias.** El límite es global y se aplica antes de autenticar: cualquiera puede
 mandar 11 MB a una acción. Si cambia el máximo de adjuntos hay que subir este número (el
 test falla si se queda corto).
+## 2026-09-24 — Borrado de tableros con segundo clic y solo para el dueño
+
+**Contexto.** En `/boards`, el ✕ de cada tablero era un `<form action={deleteBoard}>`
+de un solo clic que borraba en cascada listas, tarjetas y adjuntos. Tenía `opacity-0`
+y solo aparecía al pasar el ratón, así que en táctil era invisible pero un toque en la
+esquina lo disparaba. Además se pintaba en tableros donde el usuario era solo miembro,
+y ahí `deleteBoard` no hacía nada ni avisaba.
+
+**Decisión.**
+- Componente cliente `app/(app)/boards/delete-board-button.tsx`: el ✕ es un
+  `type="button"` que cambia a «¿Borrar? Sí / No» en línea; solo «Sí» envía el
+  formulario. El foco va a «No» y Escape cancela.
+- Se pinta solo si `board.ownerId === user.id`, la misma regla que aplica
+  `deleteBoard` en el servidor.
+- Exportar y borrar se ven siempre en pantallas sin hover
+  (`[@media(hover:none)]:opacity-100`) y al llegar con el teclado
+  (`group-focus-within`).
+
+**Alternativas descartadas.**
+- `window.confirm` (el patrón de `user-row-actions.tsx`): no se puede estilar ni
+  traducir el botón, y la norma del proyecto pide confirmación en línea.
+- Mostrar el ✕ a los miembros con un aviso de error: ofrecería una acción imposible.
+
+**Consecuencias.** Un tablero ya no se puede perder con un toque. Las acciones de
+esquina ocupan sitio fijo en móvil. El comportamiento del segundo clic no tiene test de
+interacción (no hay jsdom ni e2e); `test/delete-board-button.test.ts` comprueba que el
+estado inicial no puede enviar nada.
 
 ## 2026-09-24 — Content-Security-Policy con nonce y HSTS
 
