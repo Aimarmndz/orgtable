@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import {
   DndContext,
   DragOverlay,
+  KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
@@ -16,6 +17,7 @@ import {
   SortableContext,
   horizontalListSortingStrategy,
   arrayMove,
+  sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
 import { generateKeyBetween } from "fractional-indexing";
 import type { BoardDTO, ListDTO, CardDTO } from "@/app/lib/types";
@@ -77,9 +79,17 @@ export function BoardView({
     setLists(board.lists);
   }
 
+  // Teclado además de puntero: con el foco en una tarjeta o lista, Espacio la coge,
+  // las flechas la mueven y Espacio la suelta (accesibilidad sin ratón).
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
   );
+  // dnd-kit genera ids de accesibilidad con un contador global que no coincide entre
+  // servidor y cliente (error de hidratación en aria-describedby); useId es estable.
+  const dndId = useId();
 
   const isList = (id: string) => lists.some((l) => l.id === id);
   const containerOf = (id: string): string | undefined => {
@@ -212,6 +222,7 @@ export function BoardView({
   return (
     <BoardPermsProvider role={viewerRole}>
       <DndContext
+        id={dndId}
         sensors={sensors}
         collisionDetection={closestCorners}
         onDragStart={handleDragStart}

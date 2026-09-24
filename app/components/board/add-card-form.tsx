@@ -5,13 +5,25 @@ import { createCard } from "@/app/lib/actions/cards";
 
 export function AddCardForm({ listId }: { listId: string }) {
   const ref = useRef<HTMLFormElement>(null);
+  // Guarda contra el doble envío (Enter repetido o doble clic): mientras la acción
+  // anterior no termina, los envíos nuevos se descartan. Es una ref y no estado para
+  // que el bloqueo sea inmediato, sin esperar a un nuevo render.
+  const pending = useRef(false);
 
   return (
     <form
       ref={ref}
+      onSubmit={(e) => {
+        if (pending.current) e.preventDefault();
+      }}
       action={async (formData) => {
-        await createCard(formData);
-        ref.current?.reset();
+        pending.current = true;
+        try {
+          await createCard(formData);
+          ref.current?.reset();
+        } finally {
+          pending.current = false;
+        }
       }}
       className="p-2"
     >

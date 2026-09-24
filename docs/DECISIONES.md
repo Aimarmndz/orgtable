@@ -29,7 +29,8 @@ mover con el ratón.
 - Deduplicar en el servidor por título: dos listas con el mismo nombre son legítimas.
 
 **Consecuencias.** Verificado con Playwright: tres Enter seguidos crean una sola lista y
-la consola queda sin errores.
+la consola queda sin errores. Con teclado: Tab hasta una tarjeta, Espacio para cogerla,
+flechas para moverla y Espacio para soltarla (Escape cancela).
 
 ---
 
