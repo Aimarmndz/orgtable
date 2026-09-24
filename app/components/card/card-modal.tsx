@@ -105,7 +105,7 @@ export function CardModal({
 }) {
   const { canEdit, canManage } = useBoardPerms();
   const [, startTransition] = useTransition();
-  const [actionError, setActionError] = useState<string | null>(null);
+  const [labelError, setLabelError] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const descId = useId();
@@ -143,7 +143,7 @@ export function CardModal({
       onClick={(e) => {
         if (e.target === dialogRef.current) onClose();
       }}
-      className="m-0 size-full max-h-none max-w-none overflow-y-auto overscroll-contain bg-transparent p-4 text-ink backdrop:bg-black/50 backdrop:animate-[overlay-in_150ms_ease-out] sm:p-8"
+      className="m-0 size-full max-h-none max-w-none overflow-y-auto overscroll-contain bg-transparent p-4 text-ink backdrop:bg-black/50 backdrop:motion-safe:animate-[overlay-in_150ms_ease-out] sm:p-8"
     >
       <div
         className="mx-auto my-4 w-full max-w-2xl rounded-2xl border border-border bg-surface p-6 shadow-[0_32px_64px_-24px_oklch(0.27_0.022_52/0.45)]"
@@ -165,15 +165,6 @@ export function CardModal({
           </button>
         </div>
 
-        {actionError && (
-          <p
-            role="alert"
-            className="mt-4 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger"
-          >
-            {actionError}
-          </p>
-        )}
-
         {/* Etiquetas */}
         <section className="mt-6">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
@@ -190,7 +181,7 @@ export function CardModal({
                       aria-pressed={on}
                       onClick={() =>
                         startTransition(async () => {
-                          setActionError(
+                          setLabelError(
                             await runToggle(
                               () =>
                                 toggleCardLabel({
@@ -203,24 +194,15 @@ export function CardModal({
                           );
                         })
                       }
-                      // Sin opacidad en el no seleccionado (bajaba el texto a ~2,2:1):
-                      // va sin relleno, con texto ink y un punto del color.
-                      style={
-                        on ? { background: labelBackground(l.color) } : undefined
-                      }
-                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition ${
+                      style={{ background: labelBackground(l.color) }}
+                      // Sin opacity-55 en el no seleccionado: bajaba el texto blanco a
+                      // ~2,2:1. El estado se distingue por el ✓, el anillo y aria-pressed.
+                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium text-white transition ${
                         on
-                          ? "text-white ring-2 ring-ink/40 ring-offset-1 ring-offset-surface"
-                          : "bg-surface text-ink ring-1 ring-inset ring-border hover:bg-surface-2"
+                          ? "ring-2 ring-ink/40 ring-offset-1 ring-offset-surface"
+                          : ""
                       }`}
                     >
-                      {!on && (
-                        <span
-                          aria-hidden="true"
-                          className="size-2 rounded-full"
-                          style={{ background: labelBackground(l.color) }}
-                        />
-                      )}
                       {l.name}
                       {on && " ✓"}
                     </button>
@@ -246,6 +228,16 @@ export function CardModal({
             </div>
           ) : (
             <p className="mt-2 text-sm text-ink-muted">Sin etiquetas.</p>
+          )}
+          {/* El aviso va junto a lo que falló: el modal tiene scroll y uno arriba del
+              todo no se vería. Se borra en cuanto otro cambio de etiqueta sale bien. */}
+          {labelError && (
+            <p
+              role="alert"
+              className="mt-2 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger"
+            >
+              {labelError}
+            </p>
           )}
           {canManage && <NewLabelForm boardId={boardId} />}
         </section>
@@ -333,7 +325,6 @@ export function CardModal({
                 checklist={cl}
                 canEdit={canEdit}
                 startTransition={startTransition}
-                onError={setActionError}
               />
             ))}
           </div>
@@ -478,14 +469,14 @@ function ChecklistBlock({
   checklist,
   canEdit,
   startTransition,
-  onError,
 }: {
   checklist: ChecklistDTO;
   canEdit: boolean;
   startTransition: TransitionStartFunction;
-  onError: (message: string | null) => void;
 }) {
   const itemRef = useRef<HTMLFormElement>(null);
+  // Error propio de cada checklist, para que salga junto al ítem que falló.
+  const [itemError, setItemError] = useState<string | null>(null);
   const total = checklist.items.length;
   const done = checklist.items.filter((i) => i.done).length;
   const pct = total ? Math.round((done / total) * 100) : 0;
@@ -521,7 +512,7 @@ function ChecklistBlock({
               onClick={() =>
                 canEdit &&
                 startTransition(async () => {
-                  onError(
+                  setItemError(
                     await runToggle(
                       () =>
                         toggleChecklistItem({ itemId: it.id, done: !it.done }),
@@ -562,6 +553,15 @@ function ChecklistBlock({
           </li>
         ))}
       </ul>
+
+      {itemError && (
+        <p
+          role="alert"
+          className="mt-2 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger"
+        >
+          {itemError}
+        </p>
+      )}
 
       {canEdit && (
         <form

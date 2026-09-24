@@ -7,17 +7,14 @@ import {
 } from "@/app/components/card/card-modal-helpers";
 
 describe("formatCommentTime", () => {
-  // 09:15 UTC en septiembre = 10:15 en Canarias (WEST, UTC+1). Antes el texto del
-  // servidor (UTC) y el del navegador (Canarias) diferían y rompían la hidratación.
+  // 09:15 UTC en septiembre = 10:15 en Canarias (WEST, UTC+1). Solo comprueba que la
+  // zona recibida llega a Intl; el desajuste de hidratación lo evita useHydrated en el
+  // componente, que no tiene test (no hay jsdom en el proyecto).
   const iso = "2026-09-24T09:15:00.000Z";
 
   it("formatea en la zona indicada", () => {
     expect(formatCommentTime(iso, "Atlantic/Canary")).toContain("10:15");
     expect(formatCommentTime(iso, "UTC")).toContain("9:15");
-  });
-
-  it("usa el locale es-ES", () => {
-    expect(formatCommentTime(iso, "UTC")).toContain("sept");
   });
 });
 

@@ -278,13 +278,17 @@ de etiqueta e ítem ignoraban fallos y «Borrar tarjeta» borraba al primer clic
 - Hora de comentarios: solo tras hidratar (`useSyncExternalStore`), en la zona del
   navegador y `es-ES`; antes, `<time dateTime>` sin texto.
 - Vencimiento: `Intl` `es-ES` con `timeZone: "UTC"` (es medianoche UTC).
-- Toggles: `runToggle` devuelve un mensaje para un `role="alert"`; relanza los errores
-  internos de Next con `unstable_rethrow` (API pública, no `isRedirectError` interno).
+- Toggles: `runToggle` devuelve un mensaje para un `role="alert"` que sale junto a lo
+  que falló (bajo las etiquetas, o bajo los ítems de cada checklist), no arriba del
+  modal, que tiene scroll; relanza los errores internos de Next con `unstable_rethrow`
+  (API pública, no `isRedirectError` interno).
 - Borrado: confirmación en línea con un segundo clic («¿Borrar la tarjeta?» Sí,
   borrar / No), con el foco movido al control nuevo en cada paso.
-- Etiquetas no seleccionadas: sin `opacity-55` (texto a ~2,2:1); sin relleno, texto
-  ink y un punto del color. `aria-pressed` en etiquetas y colores; colores nombrados
-  en español.
+- Etiquetas no seleccionadas: solo se quita `opacity-55` (texto a ~2,2:1) y se mantiene
+  el relleno de color; el estado se distingue por el ✓, el anillo y `aria-pressed`.
+  `aria-pressed` también en los colores; colores nombrados en español.
+- El fundido del fondo va en `::backdrop` con `motion-safe:`: la regla global de
+  movimiento reducido de `globals.css` no cubre `::backdrop`.
 - Lógica pura en `app/components/card/card-modal-helpers.ts` para probarla en node.
 
 **Alternativas descartadas.**
@@ -292,11 +296,16 @@ de etiqueta e ítem ignoraban fallos y «Borrar tarjeta» borraba al primer clic
 - `suppressHydrationWarning` en la hora: calla el aviso pero deja el texto incorrecto.
 - Fijar `Atlantic/Canary` en el cliente: es self-hosted y cada usuario tiene su zona.
 - `window.confirm`: bloquea y no sigue el estilo de la app.
+- Etiqueta no seleccionada en contorno con un punto de color: es un cambio de diseño
+  que no se pidió; basta con quitar la opacidad.
+- Añadir `*::backdrop` a la regla de `globals.css`: `motion-safe:` lo resuelve sin
+  tocar un archivo compartido.
 
 **Consecuencias.** Con `?card=` el `<dialog>` llega cerrado en el HTML del servidor y
 se abre al hidratar (un instante sin modal). El comportamiento del diálogo (foco, Tab,
 Escape, clic fuera) no tiene test automático: no hay jsdom ni e2e en el proyecto;
-queda pendiente de verificación manual.
+queda pendiente de verificación manual. El selector de etiquetas de `filter-bar.tsx`
+debe usar el mismo estilo que este (relleno sin opacidad).
 
 ---
 
