@@ -58,7 +58,7 @@ El script `install.sh` realiza, paso a paso, lo siguiente:
 
 4. **Construye y levanta los servicios.** Ejecuta `docker compose build` (la primera vez tarda unos minutos) y luego `docker compose up -d`.
 
-5. **Muestra la URL de acceso.** Detecta la IP del servidor y el puerto configurado, imprime la dirección donde completar el asistente de configuración inicial y recuerda que para un uso real hace falta HTTPS.
+5. **Muestra la URL de acceso.** Detecta la IP del servidor y el puerto configurado, imprime la dirección donde completar el asistente de configuración inicial y recuerda que para un uso real hace falta HTTPS. Si `APP_PORT` publica la app solo en local (`127.0.0.1:3000`), en vez de esa URL indica cómo llegar por el proxy inverso o por un túnel SSH.
 
 ### Idempotencia
 

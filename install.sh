@@ -69,9 +69,23 @@ log "Levantando los servicios..."
 docker compose up -d
 
 IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
-APP_PORT="$(grep '^APP_PORT=' .env | cut -d= -f2)"
-# APP_PORT puede llevar una IP delante («127.0.0.1:3000»): para la URL solo vale el puerto.
-APP_PORT="${APP_PORT##*:}"
-log "¡Listo! Abre http://${IP:-<IP-del-servidor>}:${APP_PORT:-3000} y completa el asistente de configuración inicial."
+APP_PORT="$(grep '^APP_PORT=' .env | cut -d= -f2 || true)"
+APP_PORT="${APP_PORT:-3000}"
+PORT="${APP_PORT##*:}"
+# APP_PORT puede llevar una IP delante («127.0.0.1:3000», ver docs/self-hosting.md). Si es
+# de loopback, la app no es accesible por la IP del servidor: se dice cómo llegar a ella.
+case "$APP_PORT" in
+  127.*:* | localhost:* | \[::1\]:*)
+    log "¡Listo! La app solo escucha en ${APP_PORT} (local). Completa el asistente de configuración"
+    log "inicial a través de tu proxy inverso o con un túnel SSH desde tu equipo:"
+    log "  ssh -L ${PORT}:${APP_PORT} <usuario>@<servidor>   y abre http://localhost:${PORT}"
+    ;;
+  *)
+    HOST="${IP:-<IP-del-servidor>}"
+    # Con una IP concreta (que no sea 0.0.0.0, todas las interfaces), la app solo escucha ahí.
+    case "$APP_PORT" in 0.0.0.0:*) ;; *:*) HOST="${APP_PORT%:*}" ;; esac
+    log "¡Listo! Abre http://${HOST}:${PORT} y completa el asistente de configuración inicial."
+    ;;
+esac
 log "Aviso: por HTTP la contraseña y la sesión viajan sin cifrar. Para uso real, pon delante"
 log "un proxy inverso con HTTPS: docs/self-hosting.md, apartado «HTTPS y dominio»."

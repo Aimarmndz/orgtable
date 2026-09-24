@@ -22,6 +22,7 @@ import { gzipSync } from "node:zlib";
 // «repo» temporal, porque se sitúan en la raíz del repositorio y leen su .env.
 
 const SCRIPTS_DIR = path.resolve(__dirname, "../scripts");
+const INSTALL_SH = path.resolve(__dirname, "../install.sh");
 
 const DUMP_OK = [
   "--",
@@ -46,7 +47,7 @@ case "$1" in
   ps)
     [ "\${FAKE_APP_RUNNING:-1}" = 1 ] && echo cid123
     exit 0 ;;
-  stop|start|up) exit 0 ;;
+  stop|start|up|version|build) exit 0 ;;
   exec|run)
     case "$*" in
       *pg_dump*)
@@ -306,5 +307,54 @@ describe("scripts/update.sh", () => {
     const calls = dockerCalls();
     expect(calls.some((c) => c.startsWith("git "))).toBe(false);
     expect(calls.some((c) => c.includes("--build"))).toBe(false);
+  });
+});
+
+describe("install.sh", () => {
+  // Instalación ya existente en `root` (hay .git y .env con CRON_SECRET): así no clona ni
+  // genera secretos, y el `git pull` y `docker compose` van a los falsos del PATH.
+  function runInstall(envFile: string) {
+    mkdirSync(path.join(root, ".git"));
+    writeFileSync(path.join(root, ".env"), envFile);
+    writeFileSync(path.join(bin, "hostname"), "#!/usr/bin/env bash\necho 203.0.113.7\n", {
+      mode: 0o755,
+    });
+    const res = spawnSync("bash", [INSTALL_SH], {
+      cwd: tmpdir(),
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        PATH: `${bin}:${process.env.PATH ?? ""}`,
+        FAKE_LOG: log,
+        ORGTABLE_DIR: root,
+      },
+    });
+    return { status: res.status, stdout: res.stdout, stderr: res.stderr };
+  }
+
+  it("con el puerto publicado en todas las interfaces indica la IP del servidor", () => {
+    const r = runInstall("CRON_SECRET=x\nAPP_PORT=3000\n");
+    expect(r.status).toBe(0);
+    expect(r.stdout).toContain("http://203.0.113.7:3000");
+  });
+
+  it("con APP_PORT=127.0.0.1:… no manda a una URL inaccesible por la IP del servidor", () => {
+    const r = runInstall("CRON_SECRET=x\nAPP_PORT=127.0.0.1:3000\n");
+    expect(r.status).toBe(0);
+    expect(r.stdout).not.toContain("203.0.113.7");
+    expect(r.stdout).toContain("ssh -L 3000:127.0.0.1:3000");
+    expect(r.stdout).toContain("http://localhost:3000");
+  });
+
+  it("con una IP concreta en APP_PORT indica esa IP", () => {
+    const r = runInstall("CRON_SECRET=x\nAPP_PORT=10.0.0.5:8080\n");
+    expect(r.status).toBe(0);
+    expect(r.stdout).toContain("http://10.0.0.5:8080");
+  });
+
+  it("sin APP_PORT en el .env termina bien y usa el 3000", () => {
+    const r = runInstall("CRON_SECRET=x\n");
+    expect(r.status).toBe(0);
+    expect(r.stdout).toContain("http://203.0.113.7:3000");
   });
 });
