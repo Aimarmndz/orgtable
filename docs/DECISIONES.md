@@ -306,6 +306,34 @@ se abre al hidratar (un instante sin modal). El comportamiento del diálogo (foc
 Escape, clic fuera) no tiene test automático: no hay jsdom ni e2e en el proyecto;
 queda pendiente de verificación manual. El selector de etiquetas de `filter-bar.tsx`
 debe usar el mismo estilo que este (relleno sin opacidad).
+## 2026-09-24 — Recordatorios: día UTC, ventana de 7 días y un único aviso de vencida
+
+**Contexto.** Las tarjetas vencidas se avisaban cada día para siempre y la pasada
+crecía sin tope. El inicio del día se calculaba con la zona del servidor aunque `dueDate`
+es medianoche UTC: con una zona negativa, una tarjeta que vence hoy salía como «Tarea
+vencida» y el texto mostraba el día anterior. El formato usaba el locale `es`.
+
+**Decisión.**
+- El día se cuenta en UTC y la fecha se formatea con `es-ES` y `timeZone: 'UTC'` (es una
+  fecha de calendario).
+- «Vence pronto»: como mucho un aviso al día. «Tarea vencida»: un solo aviso, a partir del
+  día UTC siguiente al vencimiento, y solo para tarjetas vencidas en los últimos 7 días.
+- Solo se avisa a asignados que siguen siendo miembros del tablero.
+- `created` solo cuenta las notificaciones que `notify()` guardó de verdad.
+- Se añaden tests del endpoint cron (503/401/200) sin modificar `route.ts`.
+
+**Alternativas descartadas.**
+- Usar `ORGTABLE_TIMEZONE` para el día de vencimiento: `dueDate` no tiene hora ni zona;
+  cualquier otra zona desplazaría la fecha elegida.
+- Avisar de vencidas sin límite de antigüedad: avisos diarios infinitos.
+- Fake timers en los tests: no afectan al `createdAt` que pone la BD.
+
+**Consecuencias.** Las tarjetas vencidas hace más de 7 días dejan de generar avisos. Una
+tarjeta vencida produce un único aviso de vencida. Tests en
+`test/integration/reminders.int.test.ts` y `cron-reminders.int.test.ts`.
+
+---
+
 ## 2026-09-24 — Expulsar a un miembro borra sus asignaciones; sin avisos a no miembros
 
 **Contexto.** `removeBoardMember` solo borraba la fila `BoardMember`. Las asignaciones
