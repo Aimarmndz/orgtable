@@ -419,6 +419,36 @@ del usuario).
 suma los avisos guardados. Test en `test/integration/notifications.int.test.ts`.
 
 ---
+## 2026-09-24 — Ciclo de vida y revalidación del acceso en los streams SSE
+
+**Contexto.** Los dos streams SSE (`/api/boards/[id]/stream` y
+`/api/notifications/stream`) dejaban la suscripción al bus y el latido colgados si la
+petición se abortaba durante la autorización o si `enqueue` fallaba (el flag `closed`
+hacía que `close()` saliera sin limpiar), y no tenían `cancel()`. Además la
+autorización solo se comprobaba al conectar: una sesión revocada o una persona
+expulsada seguían recibiendo eventos, en contra del ADR 0008.
+
+**Decisión.**
+- Helper común `app/lib/realtime/sse.ts` (`createSseResponse`) con una limpieza
+  idempotente llamada desde el abort (`{ once: true }`), `cancel()`, un `enqueue`
+  fallido, la revalidación y la vida máxima. Si la petición llega ya abortada se
+  responde 204 sin suscribirse.
+- En cada latido (25 s) se revalida con la BD: sesión no revocada ni caducada
+  (`isSessionActive`) y, en el tablero, que siga siendo miembro. Un flag evita
+  consultas solapadas; si la consulta falla, se registra y se cierra.
+- Vida máxima de 15 min: al cerrar, EventSource reconecta y la ruta reautoriza desde
+  la cookie.
+
+**Alternativas descartadas.**
+- `verifySession` en el latido: depende de `cookies()`, que solo existe dentro de la
+  petición inicial.
+- Evento de control para cortar al instante al revocar: más invasivo (publicar desde
+  cada acción de revocación o expulsión); 25 s de margen es aceptable.
+- Mantener una copia de la lógica en cada ruta: las dos copias tenían el mismo fallo.
+
+**Consecuencias.** Una consulta ligera por conexión cada 25 s. Cada 15 min el cliente
+reconecta. Tests en `test/integration/realtime.int.test.ts` (401/403, abort, cancel,
+revocación, expulsión, vida máxima; sin listeners ni temporizadores tras cerrar).
 
 ## 2026-09-24 — Content-Security-Policy con nonce y HSTS
 

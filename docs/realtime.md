@@ -40,6 +40,7 @@ Piezas:
 | [`app/lib/realtime/bus.ts`](../app/lib/realtime/bus.ts) | El bus pub/sub: `publishBoardEvent` y `subscribeBoard`. |
 | [`app/lib/realtime/notify.ts`](../app/lib/realtime/notify.ts) | `revalidateBoard`: revalida la ruta **y** publica el evento. Lo llaman todas las mutaciones. |
 | [`app/api/boards/[id]/stream/route.ts`](../app/api/boards/[id]/stream/route.ts) | El endpoint SSE: autoriza, se suscribe al bus y emite eventos al navegador. |
+| [`app/lib/realtime/sse.ts`](../app/lib/realtime/sse.ts) | Ciclo de vida común de los streams SSE: latido, revalidación del acceso, vida máxima y limpieza. |
 | [`app/components/board/board-realtime.tsx`](../app/components/board/board-realtime.tsx) | Cliente: abre el `EventSource` y hace `router.refresh()` al recibir un evento. |
 
 ## Por qué SSE (y no WebSockets)
@@ -76,5 +77,15 @@ dependemos de Postgres (ver [ADR 0007](./decisions/0007-pg-notify-over-redis.md)
   stream (responde 401/403, no redirige, porque es una conexión de datos).
 - Envía un latido (`: ping`) cada 25 s para mantener viva la conexión a través de
   proxies, y `X-Accel-Buffering: no` para desactivar el buffering de nginx.
-- Al desconectarse el cliente (`request.signal`), se cancela la suscripción y el
-  intervalo: sin fugas de listeners.
+- **La autorización se revalida en cada latido**: si la sesión se revocó o caducó (ADR
+  0008) o la persona dejó de ser miembro del tablero, el stream se cierra. Como mucho
+  recibe eventos durante 25 s más. Si la consulta a la BD falla, también se cierra (el
+  cliente reconecta y se autoriza de nuevo).
+- **Vida máxima de 15 min**: pasado ese tiempo el servidor cierra el stream y el
+  `EventSource` reconecta, lo que vuelve a autorizar desde cero con la cookie.
+- La limpieza (cancelar la suscripción y el latido, cerrar el stream) es idempotente y
+  se dispara desde el abort de la petición, desde `cancel()` del stream, al fallar un
+  `enqueue`, al perder el acceso o al llegar a la vida máxima. Si la petición llega ya
+  abortada (el cliente se fue mientras se autorizaba), se responde 204 sin suscribirse.
+  Los tests de `test/integration/realtime.int.test.ts` comprueban que no quedan
+  listeners en el bus ni temporizadores.

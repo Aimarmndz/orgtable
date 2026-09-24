@@ -1,6 +1,7 @@
 import { verifySession } from "@/app/lib/dal";
 import { prisma } from "@/app/lib/prisma";
 import { subscribeBoard, type BoardEvent } from "@/app/lib/realtime/bus";
+import { createSseResponse, isSessionActive } from "@/app/lib/realtime/sse";
 
 // Stream de eventos (SSE) de un tablero para la sincronización en vivo (Hito 4). El
 // navegador abre un EventSource a esta ruta (ver app/components/board/board-realtime.tsx);
@@ -20,61 +21,29 @@ export async function GET(
   // (no redirect) porque es una conexión de datos, no una navegación.
   const session = await verifySession();
   if (!session) return new Response("Unauthorized", { status: 401 });
+  const { userId, sessionId } = session;
   const membership = await prisma.boardMember.findUnique({
-    where: { boardId_userId: { boardId, userId: session.userId } },
+    where: { boardId_userId: { boardId, userId } },
     select: { boardId: true },
   });
   if (!membership) return new Response("Forbidden", { status: 403 });
 
-  const encoder = new TextEncoder();
-
-  const stream = new ReadableStream<Uint8Array>({
-    start(controller) {
-      let closed = false;
-      const send = (chunk: string) => {
-        if (closed) return;
-        try {
-          controller.enqueue(encoder.encode(chunk));
-        } catch {
-          closed = true;
-        }
-      };
-
-      // Comentario inicial: abre el stream y fija el intervalo de reconexión del cliente.
-      send(": connected\n\n");
-      send("retry: 3000\n\n");
-
-      const onEvent = (event: BoardEvent) => {
+  return createSseResponse({
+    signal: request.signal,
+    label: "tablero",
+    subscribe: (send) =>
+      subscribeBoard(boardId, (event: BoardEvent) => {
         send(`event: change\ndata: ${JSON.stringify(event)}\n\n`);
-      };
-      const unsubscribe = subscribeBoard(boardId, onEvent);
-
-      // Latido periódico para mantener viva la conexión a través de proxies.
-      const heartbeat = setInterval(() => send(": ping\n\n"), 25000);
-
-      const close = () => {
-        if (closed) return;
-        closed = true;
-        clearInterval(heartbeat);
-        unsubscribe();
-        try {
-          controller.close();
-        } catch {
-          // Ya cerrado.
-        }
-      };
-
-      request.signal.addEventListener("abort", close);
-    },
-  });
-
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/event-stream; charset=utf-8",
-      "Cache-Control": "no-cache, no-transform",
-      Connection: "keep-alive",
-      // Desactiva el buffering de nginx para que los eventos lleguen al instante.
-      "X-Accel-Buffering": "no",
+      }),
+    // En cada latido: si la sesión se revocó o la persona dejó de ser miembro, se corta
+    // el stream (ADR 0008: la revocación es inmediata, también para el tiempo real).
+    isStillAuthorized: async () => {
+      if (!(await isSessionActive(sessionId))) return false;
+      const stillMember = await prisma.boardMember.findUnique({
+        where: { boardId_userId: { boardId, userId } },
+        select: { boardId: true },
+      });
+      return stillMember !== null;
     },
   });
 }

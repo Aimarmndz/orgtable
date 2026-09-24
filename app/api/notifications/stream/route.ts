@@ -1,5 +1,6 @@
 import { verifySession } from "@/app/lib/dal";
 import { subscribeUser, type UserEvent } from "@/app/lib/realtime/bus";
+import { createSseResponse, isSessionActive } from "@/app/lib/realtime/sse";
 
 // Stream SSE de notificaciones del usuario en sesión (Hito 8). El navegador abre un
 // EventSource (ver app/components/notifications-bell.tsx); cuando llega una notificación
@@ -14,54 +15,16 @@ export async function GET(request: Request) {
   // Es una conexión de datos, no una navegación: devolvemos 401 (no redirect).
   const session = await verifySession();
   if (!session) return new Response("Unauthorized", { status: 401 });
-  const userId = session.userId;
+  const { userId, sessionId } = session;
 
-  const encoder = new TextEncoder();
-
-  const stream = new ReadableStream<Uint8Array>({
-    start(controller) {
-      let closed = false;
-      const send = (chunk: string) => {
-        if (closed) return;
-        try {
-          controller.enqueue(encoder.encode(chunk));
-        } catch {
-          closed = true;
-        }
-      };
-
-      send(": connected\n\n");
-      send("retry: 3000\n\n");
-
-      const onEvent = (event: UserEvent) => {
+  return createSseResponse({
+    signal: request.signal,
+    label: "notificaciones",
+    subscribe: (send) =>
+      subscribeUser(userId, (event: UserEvent) => {
         send(`event: notification\ndata: ${JSON.stringify(event)}\n\n`);
-      };
-      const unsubscribe = subscribeUser(userId, onEvent);
-
-      const heartbeat = setInterval(() => send(": ping\n\n"), 25000);
-
-      const close = () => {
-        if (closed) return;
-        closed = true;
-        clearInterval(heartbeat);
-        unsubscribe();
-        try {
-          controller.close();
-        } catch {
-          // Ya cerrado.
-        }
-      };
-
-      request.signal.addEventListener("abort", close);
-    },
-  });
-
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/event-stream; charset=utf-8",
-      "Cache-Control": "no-cache, no-transform",
-      Connection: "keep-alive",
-      "X-Accel-Buffering": "no",
-    },
+      }),
+    // Una sesión revocada deja de recibir avisos en el siguiente latido.
+    isStillAuthorized: () => isSessionActive(sessionId),
   });
 }
