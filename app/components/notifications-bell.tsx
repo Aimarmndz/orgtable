@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { createReconnectRefresher } from "@/app/lib/realtime/reconnect";
 import {
   markNotificationRead,
   markAllNotificationsRead,
@@ -58,10 +59,22 @@ export function NotificationsBell({
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => router.refresh(), 200);
     };
+    // Al reconectar, trae las notificaciones que llegaron durante el corte (el servidor
+    // no las reenvía). Ver app/lib/realtime/reconnect.ts.
+    const onOpen = createReconnectRefresher(onEvent);
+    // CLOSED: el servidor rechazó la conexión (401 si se revocó la sesión) y el
+    // navegador no reintentará; el refresh deja que el layout redirija a /login.
+    const onError = () => {
+      if (source.readyState === EventSource.CLOSED) router.refresh();
+    };
     source.addEventListener("notification", onEvent);
+    source.addEventListener("open", onOpen);
+    source.addEventListener("error", onError);
     return () => {
       if (timer) clearTimeout(timer);
       source.removeEventListener("notification", onEvent);
+      source.removeEventListener("open", onOpen);
+      source.removeEventListener("error", onError);
       source.close();
     };
   }, [router]);

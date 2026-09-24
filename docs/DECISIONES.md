@@ -419,6 +419,26 @@ del usuario).
 suma los avisos guardados. Test en `test/integration/notifications.int.test.ts`.
 
 ---
+## 2026-09-24 — Resincronizar el tablero y la campana al reconectar el EventSource
+
+**Contexto.** El servidor no reenvía los eventos perdidos (no hay `Last-Event-ID`), y
+el cliente no hacía nada al reconectar: tras suspender el portátil o reiniciar el
+servidor, el tablero y el contador de notificaciones mostraban datos viejos.
+
+**Decisión.** `createReconnectRefresher` (`app/lib/realtime/reconnect.ts`): en cada
+`open` del EventSource salvo el primero se lanza el mismo refresh con debounce que
+un evento. Si el EventSource queda en `CLOSED` (el servidor respondió 401/403), se
+hace `router.refresh()` para que la página redirija.
+
+**Alternativas descartadas.**
+- `Last-Event-ID` con historial de eventos en el servidor: exige guardar eventos por
+  canal (memoria o tabla) para un beneficio que un refresh ya cubre.
+- Refrescar en cada `open`, incluido el primero: un render extra al cargar la página.
+
+**Consecuencias.** Un `router.refresh()` por reconexión (también cada 15 min por la
+vida máxima del stream). Si un proxy responde 5xx durante un reinicio, el EventSource
+queda `CLOSED` y el tiempo real no vuelve hasta recargar; se deja como mejora.
+
 ## 2026-09-24 — Puente LISTEN/NOTIFY: cierre, reconexión y validación del payload
 
 **Contexto.** Si `LISTEN` fallaba o la conexión daba `error`, el cliente `pg` no se

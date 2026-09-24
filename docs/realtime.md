@@ -41,7 +41,8 @@ Piezas:
 | [`app/lib/realtime/notify.ts`](../app/lib/realtime/notify.ts) | `revalidateBoard`: revalida la ruta **y** publica el evento. Lo llaman todas las mutaciones. |
 | [`app/api/boards/[id]/stream/route.ts`](../app/api/boards/[id]/stream/route.ts) | El endpoint SSE: autoriza, se suscribe al bus y emite eventos al navegador. |
 | [`app/lib/realtime/sse.ts`](../app/lib/realtime/sse.ts) | Ciclo de vida común de los streams SSE: latido, revalidación del acceso, vida máxima y limpieza. |
-| [`app/components/board/board-realtime.tsx`](../app/components/board/board-realtime.tsx) | Cliente: abre el `EventSource` y hace `router.refresh()` al recibir un evento. |
+| [`app/components/board/board-realtime.tsx`](../app/components/board/board-realtime.tsx) | Cliente: abre el `EventSource` y hace `router.refresh()` al recibir un evento o al reconectar. |
+| [`app/lib/realtime/reconnect.ts`](../app/lib/realtime/reconnect.ts) | `createReconnectRefresher`: refresca en cada reapertura del `EventSource` salvo la primera. |
 
 ## Por qué SSE (y no WebSockets)
 
@@ -50,7 +51,15 @@ un canal bidireccional: las mutaciones siguen yendo por Server Actions sobre HTT
 es más simple que WebSockets, viaja sobre HTTP normal (atraviesa proxies sin upgrade),
 y el navegador **reconecta solo** con `EventSource`. El evento solo dice "este tablero
 cambió"; el cliente recarga los datos con `router.refresh()`, así que el payload es
-mínimo y nunca se desincroniza con la base de datos.
+mínimo y lo que se pinta sale siempre de la base de datos.
+
+Límite conocido: el servidor **no guarda ni reenvía** eventos (no hay `Last-Event-ID`).
+Lo que cambie mientras la conexión está caída (suspensión del portátil, reinicio del
+servidor, corte de red) no llega como evento. Para no quedarse con datos viejos, el
+cliente hace `router.refresh()` **cada vez que el `EventSource` se reabre** (todas menos
+la primera, en la que la página acaba de renderizarse). Si el navegador deja de
+reintentar (`readyState === CLOSED`, p. ej. un 401/403), también refresca para que la
+página redirija a `/login` o `/boards`. Lo mismo hace la campana de notificaciones.
 
 ## El bus: en proceso por defecto, Postgres opcional
 
@@ -90,7 +99,8 @@ dependemos de Postgres (ver [ADR 0007](./decisions/0007-pg-notify-over-redis.md)
   recibe eventos durante 25 s más. Si la consulta a la BD falla, también se cierra (el
   cliente reconecta y se autoriza de nuevo).
 - **Vida máxima de 15 min**: pasado ese tiempo el servidor cierra el stream y el
-  `EventSource` reconecta, lo que vuelve a autorizar desde cero con la cookie.
+  `EventSource` reconecta, lo que vuelve a autorizar desde cero con la cookie. Como toda
+  reconexión, provoca un `router.refresh()` en el cliente.
 - La limpieza (cancelar la suscripción y el latido, cerrar el stream) es idempotente y
   se dispara desde el abort de la petición, desde `cancel()` del stream, al fallar un
   `enqueue`, al perder el acceso o al llegar a la vida máxima. Si la petición llega ya
