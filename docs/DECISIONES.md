@@ -419,6 +419,33 @@ del usuario).
 suma los avisos guardados. Test en `test/integration/notifications.int.test.ts`.
 
 ---
+## 2026-09-24 — Puente LISTEN/NOTIFY: cierre, reconexión y validación del payload
+
+**Contexto.** Si `LISTEN` fallaba o la conexión daba `error`, el cliente `pg` no se
+cerraba y cada suscripción SSE abría otra conexión, sin registrar nada. Mientras el
+puente estaba arrancando, los eventos publicados se perdían. El payload de `NOTIFY` se
+parseaba con un cast: uno sin `id` se reemitía en `board:undefined`. Los `.catch` de
+publicación estaban vacíos.
+
+**Decisión.**
+- La conexión fallida o caída se cierra siempre (`end()`) y se registra con
+  `console.error` (sin `DATABASE_URL`). El estado global solo se limpia si el cliente
+  que falla es el activo.
+- La promesa de arranque se guarda en `globalThis` y `publishCrossInstance` la espera.
+- Reconexión con backoff exponencial de 1 s a 30 s, un único temporizador en
+  `globalThis` y solo mientras quedan suscriptores.
+- `parseBridgePayload` valida con zod (`kind` board/user, `id` y `origin` no vacíos);
+  lo inválido se descarta con `console.warn` indicando solo la longitud.
+
+**Alternativas descartadas.**
+- Reintentar en cada suscripción (lo de antes): sin backoff, una caída de la BD
+  multiplicaba las conexiones.
+- Volcar el payload inválido al log: puede venir de cualquiera con acceso a la BD.
+
+**Consecuencias.** Solo afecta con `ORGTABLE_REALTIME_PG_NOTIFY=1`. Tests unitarios en
+`test/realtime-bus.test.ts` con un `pg` simulado. No se ha probado con una caída real
+de Postgres (`pg_terminate_backend`).
+
 ## 2026-09-24 — Ciclo de vida y revalidación del acceso en los streams SSE
 
 **Contexto.** Los dos streams SSE (`/api/boards/[id]/stream` y

@@ -69,7 +69,15 @@ dependemos de Postgres (ver [ADR 0007](./decisions/0007-pg-notify-over-redis.md)
 - `publishBoardEvent` emite localmente **y** hace `pg_notify` con el id de la instancia
   de origen. Las demás instancias reciben la notificación y la reemiten en su bus local;
   la de origen la ignora (ya la emitió en el acto), evitando duplicados.
-- Si el puente falla, nunca rompe una mutación: el modo en proceso sigue funcionando.
+- El payload de cada `NOTIFY` se valida con zod (`parseBridgePayload`: `kind`, `id`,
+  `origin`); cualquiera con acceso a la BD puede escribir en el canal, así que un
+  payload inválido se descarta con un aviso en el log (solo su longitud, no el contenido).
+- Mientras el puente arranca, `publishBoardEvent` espera a que termine en vez de
+  descartar el evento.
+- Si el puente falla, nunca rompe una mutación: el modo en proceso sigue funcionando. El
+  fallo se registra, la conexión fallida se cierra (para no ir abriendo conexiones hasta
+  agotar las de Postgres) y se reintenta con backoff exponencial de 1 s a 30 s, con un
+  único temporizador y solo mientras quede algún suscriptor.
 
 ## Autorización y robustez
 
