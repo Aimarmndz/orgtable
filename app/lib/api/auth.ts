@@ -30,10 +30,17 @@ export async function authenticateApiToken(
   // Token caducado: deja de valer (no se borra; el usuario lo verá expirado en /settings).
   if (record.expiresAt && record.expiresAt.getTime() < Date.now()) return null;
 
-  // Marca de último uso; nunca debe hacer fallar la petición.
+  // Marca de último uso; nunca debe hacer fallar la petición, pero el fallo se registra:
+  // lastUsedAt es lo que mira el usuario para detectar tokens usados sin su permiso, y
+  // congelarlo en silencio lo engañaría. Nunca se registra el token ni su hash.
   await prisma.apiToken
     .update({ where: { id: record.id }, data: { lastUsedAt: new Date() } })
-    .catch(() => {});
+    .catch((err: unknown) =>
+      console.error("[api-auth] no se pudo actualizar lastUsedAt", {
+        tokenId: record.id,
+        error: err instanceof Error ? err.message : String(err),
+      }),
+    );
 
   return { userId: record.userId, scope: record.scope };
 }
