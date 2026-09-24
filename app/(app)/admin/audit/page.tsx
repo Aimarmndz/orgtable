@@ -1,8 +1,14 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { requireAdmin } from "@/app/lib/dal";
 import { getRecentAuditLogs } from "@/app/lib/queries";
 import type { AuditAction } from "@/app/lib/audit";
 import { formatDateTime } from "@/app/lib/format-date";
+
+export const metadata: Metadata = {
+  title: "Auditoría",
+  description: "Eventos recientes de seguridad y operación de la instancia.",
+};
 
 // Etiquetas legibles para cada acción auditada.
 const ACTION_LABELS: Record<AuditAction, string> = {

@@ -1,9 +1,15 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { requireAdmin } from "@/app/lib/dal";
 import { getAllUsers } from "@/app/lib/queries";
 import { formatDate } from "@/app/lib/format-date";
 import { CreateUserForm } from "./create-user-form";
 import { UserRowActions } from "./user-row-actions";
+
+export const metadata: Metadata = {
+  title: "Usuarios",
+  description: "Altas, roles y contraseñas de las cuentas de la instancia.",
+};
 
 // Mensajes que devuelven las acciones por fila vía ?ok=… / ?error=… (ver admin.ts).
 const OK_MESSAGES: Record<string, string> = {

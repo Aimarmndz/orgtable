@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { requireUser } from "@/app/lib/dal";
 import { getApiTokensForUser } from "@/app/lib/queries";
@@ -6,6 +7,11 @@ import { formatDate } from "@/app/lib/format-date";
 import { CreateTokenForm } from "./create-token-form";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Ajustes",
+  description: "Tu cuenta y tus tokens de API.",
+};
 
 // Fuera del componente: leer la hora dentro del render rompería la regla de pureza.
 function isExpired(d: Date | null): boolean {
