@@ -1,8 +1,7 @@
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import {
   cardMatchesFilters,
   filtersActive,
-  formatDueDay,
   isOverdue,
   EMPTY_FILTERS,
   type BoardFilters,
@@ -103,14 +102,21 @@ describe("isOverdue", () => {
 });
 
 describe("formatDueDay", () => {
-  const originalTz = process.env.TZ;
+  // vi.unstubAllEnvs deja TZ como estaba; si no existía, la borra. Reasignar el valor
+  // original a mano guardaba el texto "undefined", que Node trata como UTC para el
+  // resto del archivo.
   afterEach(() => {
-    process.env.TZ = originalTz;
+    vi.unstubAllEnvs();
   });
 
-  it("muestra el día guardado aunque la zona local vaya por detrás de UTC", () => {
+  it("muestra el día guardado aunque la zona local vaya por detrás de UTC", async () => {
     // Antes se formateaba en la zona local: en Nueva York (UTC-4) salía «23 sept».
-    process.env.TZ = "America/New_York";
+    vi.stubEnv("TZ", "America/New_York");
+    // El formateador es de módulo y fija la zona al importarse: hay que cargar el módulo
+    // DESPUÉS de cambiar TZ. Con el import estático de la cabecera se quedaba con la zona
+    // de la máquina (UTC en CI) y el test pasaba aunque se quitara `timeZone: "UTC"`.
+    vi.resetModules();
+    const { formatDueDay } = await import("@/app/lib/board-filters");
     expect(new Date("2026-09-24T00:00:00.000Z").getDate()).toBe(23); // la trampa
     const label = formatDueDay("2026-09-24T00:00:00.000Z");
     expect(label).toContain("24");
