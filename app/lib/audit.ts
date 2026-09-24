@@ -5,7 +5,8 @@ import { parseTrustedProxyHops, pickClientIp } from "@/app/lib/client-ip";
 
 // Registro de auditoría (Hito 5). `recordAudit` escribe una fila por evento relevante
 // de seguridad u operación. Está pensado para NO romper nunca la operación principal:
-// cualquier fallo se traga en silencio. Ver el modelo AuditLog en prisma/schema.prisma
+// si la escritura falla no se relanza, pero se deja constancia en el log del servidor
+// (sin detail, ip ni datos personales). Ver el modelo AuditLog en prisma/schema.prisma
 // y la vista en /admin/audit (docs/operations.md).
 
 export type AuditAction =
@@ -59,7 +60,25 @@ export async function recordAudit(params: {
         ip: ip ?? null,
       },
     });
-  } catch {
-    // La auditoría es best-effort: nunca debe hacer fallar la acción que la origina.
+  } catch (error) {
+    // Best-effort: no se relanza para no hacer fallar la acción que audita, pero perder
+    // un evento de seguridad en silencio no es aceptable.
+    console.error("[audit] no se pudo escribir en AuditLog", {
+      action: params.action,
+      targetType: params.targetType,
+      targetId: params.targetId,
+      error: describeError(error),
+    });
   }
+}
+
+/**
+ * Resumen del error para el log. El mensaje de PrismaClientValidationError reproduce los
+ * argumentos de la consulta (detail, ip…), así que en ese caso solo se registra el tipo.
+ */
+function describeError(error: unknown): string {
+  if (!(error instanceof Error)) return String(error).slice(0, 200);
+  const code = "code" in error && typeof error.code === "string" ? ` ${error.code}` : "";
+  if (error.name === "PrismaClientValidationError") return `${error.name}${code}`;
+  return `${error.name}${code}: ${error.message.slice(0, 500)}`;
 }

@@ -754,6 +754,28 @@ acción prometía lo contrario.
 **Consecuencias.** Tras un reset el usuario tiene que crear tokens nuevos. Test en
 `test/integration/admin-revocation.int.test.ts` (el mismo Bearer pasa de 200 a 401; los
 tokens de otros usuarios no se tocan).
+## 2026-09-24 — La auditoría registra sus propios fallos
+
+**Contexto.** `recordAudit` tenía un `catch {}` vacío: si fallaba la escritura en
+`AuditLog`, los eventos de seguridad (`auth.login_failed`, `user.deleted`…) se perdían
+sin rastro.
+
+**Decisión.** Se sigue sin relanzar (best-effort), pero se escribe `console.error` con
+`action`, `targetType`, `targetId` y un resumen del error (tipo, código de Prisma y
+mensaje). Nunca `detail`, `ip` ni `userId`. Para `PrismaClientValidationError` solo se
+registra el tipo, porque su mensaje reproduce los argumentos de la consulta.
+
+**Alternativas descartadas.**
+- Relanzar el error: haría fallar el login o el borrado por un problema de la tabla de
+  auditoría.
+- Registrar el error completo: el mensaje de validación de Prisma incluye `detail` e
+  `ip`.
+
+**Consecuencias.** Un fallo de auditoría aparece en los logs del contenedor
+(`docker compose logs app`) con la acción afectada.
+
+---
+
 ## 2026-09-24 — Login: IP de confianza, límite por cuenta y hash ficticio válido
 
 **Contexto.** Cuatro fallos del login: (1) el límite por IP tomaba el primer valor de
