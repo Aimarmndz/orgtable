@@ -42,9 +42,17 @@ export function __setHeaders(init: Record<string, string>): void {
   requestHeaders = new Headers(init);
 }
 
-/** Vacía cookies y cabeceras (estado de una petición nueva y anónima). */
+/**
+ * Vacía solo las cookies. Va separado de `__clearHeaders` porque `loginAs` lo llama y
+ * debe conservar las cabeceras inyectadas antes (X-Forwarded-Proto decide el Secure de la
+ * cookie de sesión y X-Forwarded-For la IP del rate limit).
+ */
 export function __clearCookies(): void {
   cookieJar.clear();
+}
+
+/** Vacía las cabeceras inyectadas con `__setHeaders`. */
+export function __clearHeaders(): void {
   requestHeaders = new Headers();
 }
 

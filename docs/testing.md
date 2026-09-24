@@ -84,9 +84,12 @@ Cómo funcionan:
   - `loginAs(userId)` (en `helpers.ts`) crea una sesión real (fila `Session` + cookie
     firmada) y a partir de ahí el DAL ve a ese usuario; llamarla otra vez cambia de
     usuario.
-  - Para inyectar cabeceras (p. ej. `X-Forwarded-For`) se usa `__setHeaders`, y
-    `__clearCookies` vuelve a una petición anónima. Se importan desde
-    `../stubs/next-headers`.
+  - Para inyectar cabeceras (p. ej. `X-Forwarded-For`) se usa `__setHeaders`;
+    `__clearCookies` vacía las cookies y `__clearHeaders` las cabeceras. Se importan
+    desde `../stubs/next-headers`.
+  - Orden: `loginAs` solo vacía las cookies, así que las cabeceras puestas antes con
+    `__setHeaders` se mantienen (p. ej. `X-Forwarded-Proto: https` → cookie `Secure`).
+    `resetDb` vacía ambas, por lo que las cabeceras se ponen después de `resetDb`.
   - Las redirecciones de Next se comprueban por su `digest`:
     `rejects.toMatchObject({ digest: expect.stringContaining(";/boards;") })`.
 - La lógica de creación de cuentas se extrajo a `app/lib/services/users.ts`

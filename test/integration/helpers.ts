@@ -3,7 +3,7 @@ import { createUserAccount } from "@/app/lib/services/users";
 import { generateApiToken } from "@/app/lib/api/tokens";
 import { positionAtEnd } from "@/app/lib/ordering";
 import { createSession } from "@/app/lib/session";
-import { __clearCookies } from "../stubs/next-headers";
+import { __clearCookies, __clearHeaders } from "../stubs/next-headers";
 import type { GlobalRole } from "@/app/lib/roles";
 import type { BoardRole } from "@/app/lib/roles";
 
@@ -56,6 +56,7 @@ export async function resetDb(): Promise<void> {
   // Estado en memoria que sobrevive entre tests del mismo archivo: la "petición" del stub
   // de next/headers (cookies de sesión, cabeceras) y los contadores del rate limit.
   __clearCookies();
+  __clearHeaders();
   (
     globalThis as { __orgtableRateBuckets?: Map<string, unknown> }
   ).__orgtableRateBuckets?.clear();
@@ -64,7 +65,8 @@ export async function resetDb(): Promise<void> {
 /**
  * Inicia sesión como `userId` en el stub de next/headers: crea una fila Session real y
  * deja la cookie firmada, igual que el login. A partir de ahí las Server Actions y el DAL
- * ven a ese usuario. Llamarla otra vez cambia de usuario.
+ * ven a ese usuario. Llamarla otra vez cambia de usuario. Solo vacía las cookies: las
+ * cabeceras puestas antes con `__setHeaders` se mantienen (p. ej. X-Forwarded-Proto).
  */
 export async function loginAs(userId: string): Promise<void> {
   __clearCookies();

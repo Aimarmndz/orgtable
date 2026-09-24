@@ -754,6 +754,39 @@ acción prometía lo contrario.
 **Consecuencias.** Tras un reset el usuario tiene que crear tokens nuevos. Test en
 `test/integration/admin-revocation.int.test.ts` (el mismo Bearer pasa de 200 a 401; los
 tokens de otros usuarios no se tocan).
+## 2026-09-24 — Stub de next/headers: vaciar cookies y cabeceras por separado
+
+**Contexto.** `loginAs` llamaba a `__clearCookies`, que vaciaba también las cabeceras
+inyectadas. Un test que hiciera `__setHeaders({ "x-forwarded-proto": "https" })` y luego
+`loginAs` perdía la cabecera sin aviso: la cookie salía sin `Secure` y el rate limit no
+veía la IP. Además, el test de `resetDb` también pasaba con la lista fija de tablas
+anterior (CardAssignee y Comment caen por el CASCADE), así que no demostraba que las
+tablas se leyeran del catálogo.
+
+**Decisión.**
+- `__clearCookies` vacía solo las cookies y `__clearHeaders` solo las cabeceras.
+  `loginAs` llama a la primera; `resetDb`, a las dos. Orden documentado en
+  `docs/testing.md`: las cabeceras se ponen después de `resetDb`, antes o después de
+  `loginAs`.
+- `helpers.int.test.ts` crea una tabla temporal sin FK, le mete una fila y exige que
+  `resetDb` la vacíe (con la lista fija falla); y comprueba que `loginAs` conserva
+  `X-Forwarded-Proto`/`X-Forwarded-For`.
+- `audit.int.test.ts` exige que el log del fallo por FK no lleve el `userId`. Pasa con el
+  `describeError` actual (el mensaje de Prisma P2003 nombra la restricción, no el
+  valor), así que no se toca `app/lib/audit.ts`.
+
+**Alternativas descartadas.**
+- Mantener un único `__clearCookies` con un parámetro para conservar cabeceras:
+  parámetro booleano que cambia el comportamiento.
+- Comparar `pg_tables` con los modelos de Prisma: depende de `@@map` y no prueba que
+  `resetDb` use el catálogo, solo que el esquema coincide.
+- Registrar solo nombre y código de todo `PrismaClientKnownRequestError`: el test no
+  muestra fuga y se perdería la restricción que falla, útil para diagnosticar.
+
+**Consecuencias.** Los tests de cookie `Secure` y de IP pueden usar `loginAs` sin
+reinyectar cabeceras. La tabla temporal `zz_reset_probe` se borra en un `finally` y,
+por si quedara de una ejecución interrumpida, también antes de crearla.
+
 ## 2026-09-24 — Login y setup: conservar lo tecleado y anunciar los errores
 
 **Contexto.** React 19 resetea los formularios no controlados después de una acción:
