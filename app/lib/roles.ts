@@ -39,12 +39,6 @@ export const BOARD_ROLE_LABELS: Record<BoardRole, string> = {
   VIEWER: "Lector",
 };
 
-export const BOARD_ROLE_HINTS: Record<BoardRole, string> = {
-  OWNER: "Control total: contenido, miembros, etiquetas y borrar el tablero.",
-  EDITOR: "Puede crear y editar listas, tarjetas y checklists.",
-  VIEWER: "Solo lectura: ve el tablero pero no puede modificarlo.",
-};
-
 // Roles que un propietario puede asignar al invitar/editar miembros (no se asigna
 // OWNER desde la UI: el propietario es el creador del tablero).
 export const ASSIGNABLE_BOARD_ROLES: BoardRole[] = ["EDITOR", "VIEWER"];
