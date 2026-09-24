@@ -25,7 +25,12 @@ import {
   LABEL_COLOR_KEYS,
   type LabelColor,
 } from "@/app/lib/colors";
-import { updateCard, deleteCard } from "@/app/lib/actions/cards";
+import {
+  updateCard,
+  deleteCard,
+  type CardDetailsState,
+} from "@/app/lib/actions/cards";
+import { CARD_DESCRIPTION_MAX } from "@/app/lib/validators";
 import { toggleCardLabel, createLabel } from "@/app/lib/actions/labels";
 import {
   createChecklist,
@@ -109,6 +114,11 @@ export function CardModal({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const descId = useId();
+  const detailsErrorId = useId();
+  const [details, detailsAction, detailsPending] = useActionState<
+    CardDetailsState,
+    FormData
+  >(updateCard, {});
 
   // <dialog> nativo con showModal(): el navegador vuelve inerte el resto de la página
   // (el Tab no sale al tablero), enfoca el primer control y, al cerrar, devuelve el
@@ -252,7 +262,7 @@ export function CardModal({
 
         {/* Descripción + fecha */}
         {canEdit ? (
-          <form action={updateCard} className="mt-6 space-y-4">
+          <form action={detailsAction} className="mt-6 space-y-4">
             <input type="hidden" name="cardId" value={card.id} />
             <div>
               <label
@@ -265,7 +275,11 @@ export function CardModal({
                 id={descId}
                 name="description"
                 rows={4}
-                defaultValue={card.description ?? ""}
+                maxLength={CARD_DESCRIPTION_MAX}
+                // Si no se guardó, se rehidrata con lo enviado: React resetea el
+                // formulario al acabar la acción y, si no, se perdería lo escrito.
+                defaultValue={details.description ?? card.description ?? ""}
+                aria-describedby={details.error ? detailsErrorId : undefined}
                 placeholder="Añade más detalle…"
                 className="mt-2 resize-y"
               />
@@ -278,14 +292,23 @@ export function CardModal({
                 <Input
                   type="date"
                   name="dueDate"
-                  defaultValue={dueValue}
+                  defaultValue={details.dueDate ?? dueValue}
                   className="mt-2 w-auto"
                 />
               </label>
-              <Button type="submit" variant="subtle">
-                Guardar cambios
+              <Button type="submit" variant="subtle" disabled={detailsPending}>
+                {detailsPending ? "Guardando…" : "Guardar cambios"}
               </Button>
             </div>
+            {details.error && (
+              <p
+                id={detailsErrorId}
+                role="alert"
+                className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger"
+              >
+                {details.error}
+              </p>
+            )}
           </form>
         ) : (
           <div className="mt-6 space-y-4">

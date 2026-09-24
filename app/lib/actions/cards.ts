@@ -9,6 +9,7 @@ import {
   cardTitleSchema,
   cardDetailsSchema,
   dueDateSchema,
+  CARD_DESCRIPTION_MAX,
 } from "@/app/lib/validators";
 import { cardBelongsToBoard, createCardAtEnd } from "@/app/lib/services/cards";
 import { deleteCardWithAttachments } from "@/app/lib/services/attachments";
@@ -55,33 +56,74 @@ export async function createCard(formData: FormData): Promise<void> {
   revalidateBoard(boardId);
 }
 
+/**
+ * Resultado de updateCard para useActionState. Si no se guarda, devuelve también lo que
+ * envió el usuario: React resetea el formulario no controlado al acabar la acción y, sin
+ * rehidratarlo con esto, el texto escrito se perdería.
+ */
+export type CardDetailsState = {
+  error?: string;
+  description?: string;
+  dueDate?: string;
+};
+
 /** Actualiza la descripción y/o la fecha de vencimiento de una tarjeta (Hito 2). */
-export async function updateCard(formData: FormData): Promise<void> {
+export async function updateCard(
+  _prev: CardDetailsState,
+  formData: FormData,
+): Promise<CardDetailsState> {
   const cardId = String(formData.get("cardId"));
+  // El navegador envía los saltos de línea del textarea como \r\n, pero su maxLength los
+  // cuenta como un carácter: sin normalizar, una descripción que en la UI mide 5000
+  // llegaría con más y se rechazaría.
+  const description = normalizeNewlines(String(formData.get("description") ?? ""));
+  const dueDate = String(formData.get("dueDate") ?? "").trim();
+  const submitted = { description, dueDate };
+
   const card = await prisma.card.findUnique({
     where: { id: cardId },
-    select: { list: { select: { boardId: true } } },
+    select: { description: true, list: { select: { boardId: true } } },
   });
-  if (!card) return;
+  if (!card) return { error: "La tarjeta ya no existe.", ...submitted };
   const { role } = await requireBoardAccess(card.list.boardId);
-  if (!canEditBoard(role)) return;
+  if (!canEditBoard(role)) {
+    return { error: "No tienes permiso para editar esta tarjeta.", ...submitted };
+  }
 
   // Si algo no valida no se guarda NADA (ni la descripción): guardar solo una parte
   // perdería en silencio lo que el usuario escribió en la otra.
-  const parsed = cardDetailsSchema.safeParse({
-    description: String(formData.get("description") ?? ""),
-    dueDate: String(formData.get("dueDate") ?? "").trim(),
-  });
-  if (!parsed.success) return;
+  const parsedDue = dueDateSchema.safeParse(dueDate);
+  if (!parsedDue.success) {
+    return { error: "La fecha de vencimiento no es válida.", ...submitted };
+  }
+
+  // Una descripción que no ha cambiado no se valida ni se reescribe: las anteriores al
+  // límite pueden pasar de CARD_DESCRIPTION_MAX y, si no, ya no se podría cambiar el
+  // vencimiento de esa tarjeta desde el modal (el formulario reenvía la descripción).
+  const unchanged =
+    description.trim() === normalizeNewlines(card.description ?? "").trim();
+  let newDescription: { description: string | null } | undefined;
+  if (!unchanged) {
+    const parsedDescription = cardDetailsSchema.shape.description.safeParse(description);
+    if (!parsedDescription.success) {
+      return {
+        error: `La descripción no puede superar ${CARD_DESCRIPTION_MAX} caracteres (tiene ${description.trim().length}).`,
+        ...submitted,
+      };
+    }
+    newDescription = { description: parsedDescription.data || null };
+  }
 
   await prisma.card.update({
     where: { id: cardId },
-    data: {
-      description: parsed.data.description || null,
-      dueDate: toDueDate(parsed.data.dueDate),
-    },
+    data: { ...newDescription, dueDate: toDueDate(parsedDue.data) },
   });
   revalidateBoard(card.list.boardId);
+  return {};
+}
+
+function normalizeNewlines(text: string): string {
+  return text.replace(/\r\n/g, "\n");
 }
 
 /**

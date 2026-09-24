@@ -232,6 +232,39 @@ resincroniza con el servidor ya sano.
 stream se abre y se cierra al momento). Tests en `test/realtime-reconnect.test.ts`
 (5xx/red no avisan, 401/403 sí, desmontaje durante la comprobación y `probeStatus`
 contra un servidor HTTP real). Descrito en `docs/realtime.md`.
+## 2026-09-24 — `updateCard` devuelve el error y no revalida descripciones sin cambios
+
+**Contexto.** `cardDetailsSchema` limita la descripción a `CARD_DESCRIPTION_MAX` (5000),
+pero `updateCard` hacía `return;` sin avisar si no validaba, y el textarea del modal no
+tenía `maxLength`. Pegar 6000 caracteres no guardaba nada y, al resetear React el
+formulario, el texto desaparecía. Además, las tarjetas con descripciones anteriores al
+límite (más de 5000) ya no podían cambiar el vencimiento desde el modal, porque el
+formulario reenvía la descripción y fallaba todo.
+
+**Decisión.**
+- `updateCard(prev, formData)` devuelve `CardDetailsState` para `useActionState`: `{}`
+  si guarda, o `{ error, description, dueDate }` con lo enviado para rehidratar el
+  formulario. El modal muestra el error (`role="alert"`) y desactiva el botón mientras
+  guarda.
+- El textarea lleva `maxLength={CARD_DESCRIPTION_MAX}`, importado de `validators.ts`.
+- El servidor normaliza `\r\n` a `\n` antes de validar: el navegador envía así los
+  saltos de línea, pero `maxLength` los cuenta como un carácter.
+- Si la descripción recibida es igual a la guardada (tras normalizar y recortar), no se
+  valida su longitud ni se reescribe; solo se actualiza la fecha. Se mantiene «si algo no
+  valida no se guarda nada».
+
+**Alternativas descartadas.** Validar y guardar descripción y fecha por separado:
+guardaría una parte y perdería la otra en silencio. Un textarea controlado: obliga a
+sincronizar a mano con los cambios que llegan por tiempo real. Mover la constante a un
+módulo sin zod: toca archivos fuera de este cambio (ver consecuencias).
+
+**Consecuencias.** El modal importa `validators.ts`, así que zod entra en el bundle del
+cliente de la página del tablero; si pesa, mover `CARD_DESCRIPTION_MAX` a un módulo
+propio y reexportarlo desde `validators.ts`. Queda pendiente actualizar la firma de
+`updateCard` en `docs/card-detail.md`.
+
+---
+
 ## 2026-09-24 — IP del cliente con puerto y aviso de proxy mal configurado
 
 **Contexto.** Con `TRUSTED_PROXY_HOPS > 0`, `pickClientIp` devolvía null si el valor de
