@@ -30,7 +30,7 @@ deterministas). Están en `test/`:
 | Archivo | Cubre |
 |---------|-------|
 | `test/roles.test.ts` | Jerarquía de autorización (`canEditBoard`, `canManageBoard`, `atLeastBoardRole`). El corazón del RBAC. |
-| `test/ordering.test.ts` | Fractional indexing (`positionAtEnd`, `positionBetween`): el orden se mantiene y las inserciones caen entre dos claves. |
+| `test/ordering.test.ts` | Fractional indexing: `positionAtEnd` mantiene el orden y `isValidPositionKey` acepta las claves de la librería (también las largas) y rechaza las mal formadas. |
 | `test/colors.test.ts` | Resolución y valores por defecto de colores de tablero/etiqueta; determinismo de `pickBoardColor`. |
 | `test/tokens.test.ts` | Tokens de la API: hash SHA-256 estable, formato `orgt_`, unicidad. |
 | `test/validators.test.ts` | Esquemas zod (títulos, cuerpos de la API, nombre de token), incluida la regla de "al menos un campo" al actualizar. |

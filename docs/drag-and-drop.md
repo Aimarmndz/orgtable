@@ -223,28 +223,47 @@ Para más contexto, consulta:
 - `docs/decisions/0002-fractional-indexing.md` — por qué se eligió este enfoque.
 - `docs/database.md` — cómo se modela el campo `position` en la base de datos.
 
-### El servidor solo ordena "al final"
+### El servidor solo ordena "al final" y valida lo que llega
 
-`app/lib/ordering.ts` (módulo `server-only`) expone dos ayudantes basados en la
+`app/lib/ordering.ts` (módulo `server-only`) expone dos funciones basadas en la
 misma librería:
 
-```ts
-export function positionAtEnd(lastPosition: string | null): string {
-  return generateKeyBetween(lastPosition, null);
-}
+- `positionAtEnd(lastPosition)` — clave posterior a la del último elemento. La usan
+  las altas (`createList`, `createCard`, checklists e ítems, y los `POST` de la API
+  v1) a través de `createListAtEnd`/`createCardAtEnd`/`createChecklistAtEnd`/
+  `createChecklistItemAtEnd` (`app/lib/services/`). Cada alta va en una transacción
+  que bloquea la fila padre (`SELECT … FOR UPDATE` sobre el tablero, la lista, la
+  tarjeta o el checklist): sin el bloqueo, dos altas simultáneas leían la misma
+  última posición y guardaban la **misma** clave, y a partir de ahí
+  `generateKeyBetween(a, a)` rompía el arrastre en esa lista.
+- `isValidPositionKey(key)` — valida la clave que calcula el cliente antes de
+  guardarla. El reordenamiento por arrastre lo calcula siempre el cliente y lo envía
+  ya resuelto; si el servidor guardara una clave mal formada (`'x'`, `'a00'`…),
+  `positionAtEnd` lanzaría para siempre al crear en esa lista o tablero.
 
-export function positionBetween(
-  before: string | null,
-  after: string | null,
-): string {
-  return generateKeyBetween(before, after);
-}
-```
+#### Validación de la clave (`isValidPositionKey`)
 
-En la práctica el servidor solo usa `positionAtEnd` cuando **crea** una lista o
-tarjeta nueva (`createList`, `createCard`): busca la posición del último elemento
-y genera una clave posterior a él. El reordenamiento por arrastre lo calcula
-siempre el cliente y lo envía ya resuelto.
+Este es el único sitio que explica la regla; las demás páginas enlazan aquí.
+
+1. **Forma**: alfabeto base62 de la librería, empieza por letra y tiene como
+   máximo `POSITION_KEY_MAX` caracteres. La librería por sí sola acepta claves como
+   `'a0 '` (con espacio), por eso hace falta la regex.
+2. **Estructura**: se intenta `generateKeyBetween(key, null)`; si la librería lanza
+   (parte entera mal formada, fracción acabada en `0`…), la clave no es válida.
+
+`moveCard` y `reorderList` validan con zod (`z.string().refine(isValidPositionKey)`)
+**antes de cualquier consulta**. Una clave inválida devuelve `{ ok: false }` y no se
+guarda nada.
+
+**Límite de longitud.** Las claves crecen al insertar una y otra vez en el mismo
+hueco (aproximadamente un carácter cada seis inserciones). `POSITION_KEY_MAX` es
+1024 caracteres, unas 6000 inserciones seguidas en el mismo hueco (con el tope
+anterior de 64 bastaban 373); evita guardar cadenas enormes y queda por debajo del
+máximo de una entrada del índice `(listId, position)`. Si una clave legítima lo
+superase, `moveCard`/`reorderList`
+devolverían `{ ok: false }` para ese hueco. Hoy `BoardView` no mira ese resultado
+(`void moveCard(...)`): el movimiento optimista se queda en pantalla y se deshace
+al refrescar, sin aviso.
 
 ---
 
@@ -252,10 +271,12 @@ siempre el cliente y lo envía ya resuelto.
 
 Las dos Server Actions de arrastre son deliberadamente mínimas. Ambas:
 
-1. Resuelven el `boardId` afectado.
-2. Validan el acceso con `requireBoardAccess(boardId)`.
-3. Hacen **un único `UPDATE`** de la fila movida.
-4. Llaman a `revalidatePath('/board/<boardId>')`.
+1. Validan la entrada con zod, incluida la clave de posición (ver
+   [Validación de la clave](#validación-de-la-clave-isvalidpositionkey)).
+2. Resuelven el `boardId` afectado.
+3. Validan el acceso con `requireBoardAccess(boardId)` y el rol con `canEditBoard`.
+4. Hacen **un único `UPDATE`** de la fila movida.
+5. Llaman a `revalidateBoard(boardId)` (revalida la ruta y avisa por el bus en vivo).
 
 **`moveCard`** (`app/lib/actions/cards.ts`) — mover/reordenar una tarjeta; puede
 cambiar de lista y/o de posición:
@@ -266,15 +287,21 @@ export async function moveCard(input: {
   toListId: string;
   position: string;
 }): Promise<{ ok: boolean }> {
-  const boardId = await boardIdForList(input.toListId);
+  const parsed = moveCardSchema.safeParse(input); // position: refine(isValidPositionKey)
+  if (!parsed.success) return { ok: false };
+  const { cardId, toListId, position } = parsed.data;
+  const boardId = await boardIdForList(toListId);
   if (!boardId) return { ok: false };
-  await requireBoardAccess(boardId);
+  const { role } = await requireBoardAccess(boardId);
+  if (!canEditBoard(role)) return { ok: false };
+  // La tarjeta debe ser de ese mismo tablero (IDOR).
+  if (!(await cardBelongsToBoard(cardId, boardId))) return { ok: false };
 
   await prisma.card.update({
-    where: { id: input.cardId },
-    data: { listId: input.toListId, position: input.position },
+    where: { id: cardId },
+    data: { listId: toListId, position },
   });
-  revalidatePath(`/board/${boardId}`);
+  revalidateBoard(boardId);
   return { ok: true };
 }
 ```
@@ -286,18 +313,19 @@ export async function reorderList(input: {
   listId: string;
   position: string;
 }): Promise<{ ok: boolean }> {
+  const parsed = reorderListSchema.safeParse(input); // position: refine(isValidPositionKey)
+  if (!parsed.success) return { ok: false };
+  const { listId, position } = parsed.data;
   const list = await prisma.list.findUnique({
-    where: { id: input.listId },
+    where: { id: listId },
     select: { boardId: true },
   });
   if (!list) return { ok: false };
-  await requireBoardAccess(list.boardId);
+  const { role } = await requireBoardAccess(list.boardId);
+  if (!canEditBoard(role)) return { ok: false };
 
-  await prisma.list.update({
-    where: { id: input.listId },
-    data: { position: input.position },
-  });
-  revalidatePath(`/board/${list.boardId}`);
+  await prisma.list.update({ where: { id: listId }, data: { position } });
+  revalidateBoard(list.boardId);
   return { ok: true };
 }
 ```

@@ -171,7 +171,6 @@ export const BOARD_COLORS = {
 
 Helpers asociados:
 
-- `boardBackground(color)` — devuelve el color por clave, con *fallback* a `blue`.
 - `pickBoardColor(seed)` — color **determinista** a partir de un id (hash simple), para
   asignar un color estable al crear un tablero sin color explícito.
 - `boardBackgroundFor({ id, background })` — usa el color elegido o, si no hay, uno estable

@@ -46,8 +46,10 @@ la UI pueda revertir el movimiento optimista si algo falla. Ver
 Las acciones que **crean** elementos (`createList`, `createCard`) calculan la
 posición del nuevo elemento con `positionAtEnd` de `app/lib/ordering.ts`, que
 genera una clave lexicográfica al final de la lista mediante *fractional
-indexing*. Las acciones de drag & drop no calculan la posición: la recibe ya
-calculada del cliente. Ver [docs/drag-and-drop.md](../drag-and-drop.md).
+indexing*, dentro de una transacción que bloquea la fila padre para que dos altas
+simultáneas no repitan posición. Las acciones de drag & drop no calculan la
+posición: la reciben ya calculada del cliente y la validan con `isValidPositionKey`
+antes de guardarla. Ver [docs/drag-and-drop.md](../drag-and-drop.md#el-servidor-solo-ordena-al-final-y-valida-lo-que-llega).
 
 ---
 
@@ -64,11 +66,11 @@ calculada del cliente. Ver [docs/drag-and-drop.md](../drag-and-drop.md).
 | `createList` | `lists.ts` | `(FormData)` | `Promise<void>` | `listTitleSchema` | `requireBoardAccess` | `revalidatePath` |
 | `renameList` | `lists.ts` | `(FormData)` | `Promise<void>` | `listTitleSchema` | `requireBoardAccess` | `revalidatePath` |
 | `deleteList` | `lists.ts` | `(FormData)` | `Promise<void>` | — | `requireBoardAccess` | `revalidatePath` |
-| `reorderList` | `lists.ts` | `({ listId, position })` | `Promise<{ ok: boolean }>` | — | `requireBoardAccess` | `revalidatePath` |
+| `reorderList` | `lists.ts` | `({ listId, position })` | `Promise<{ ok: boolean }>` | `reorderListSchema` (`isValidPositionKey`) | `requireBoardAccess` | `revalidatePath` |
 | `createCard` | `cards.ts` | `(FormData)` | `Promise<void>` | `cardTitleSchema` | `requireBoardAccess` | `revalidatePath` |
 | `renameCard` | `cards.ts` | `(FormData)` | `Promise<void>` | `cardTitleSchema` | `requireBoardAccess` | `revalidatePath` |
 | `deleteCard` | `cards.ts` | `(FormData)` | `Promise<void>` | — | `requireBoardAccess` | `revalidatePath` |
-| `moveCard` | `cards.ts` | `({ cardId, toListId, position })` | `Promise<{ ok: boolean }>` | — | `requireBoardAccess` | `revalidatePath` |
+| `moveCard` | `cards.ts` | `({ cardId, toListId, position })` | `Promise<{ ok: boolean }>` | `moveCardSchema` (`isValidPositionKey`) | `requireBoardAccess` | `revalidatePath` |
 
 ---
 
@@ -216,9 +218,12 @@ export async function deleteBoard(formData: FormData): Promise<void>
   user.id } })`, que solo borra si el usuario es el dueño y **no falla** si no
   coincide (no hay error visible para no-dueños).
 - **Valida:** nada.
-- **Base de datos:** `board.deleteMany`. Listas y tarjetas se borran en cascada
-  (ver el esquema en [docs/database.md](../database.md)).
-- **Efectos:** `revalidatePath("/boards")` y `redirect("/boards")`.
+- **Base de datos:** `deleteBoardWithAttachments` (`app/lib/services/attachments.ts`),
+  que hace el `board.deleteMany` y, tras el commit, borra los ficheros de los
+  adjuntos. Listas y tarjetas se borran en cascada (ver el esquema en
+  [docs/database.md](../database.md) y [docs/attachments.md](../attachments.md)).
+- **Efectos:** si se borró, `revalidateBoard(boardId)` (avisa a las pestañas
+  abiertas); siempre `revalidatePath("/boards")` y `redirect("/boards")`.
 
 ---
 
@@ -234,9 +239,10 @@ export async function createList(formData: FormData): Promise<void>
 
 - **Autorización:** `requireBoardAccess(boardId)`.
 - **Valida:** `listTitleSchema` sobre `title`. Si falla, retorna sin hacer nada.
-- **Base de datos:** busca la última lista del tablero (`orderBy position desc`)
-  y crea la nueva lista con `position: positionAtEnd(last?.position ?? null)`
-  (*fractional indexing*, se añade al final).
+- **Base de datos:** `createListAtEnd` (`app/lib/services/lists.ts`): en una
+  transacción bloquea el tablero (`FOR UPDATE`), busca la última lista y crea la
+  nueva con `positionAtEnd(last?.position ?? null)` (*fractional indexing*, se añade
+  al final).
 - **Efectos:** `revalidatePath(\`/board/${boardId}\`)`.
 
 ### `renameList`
@@ -265,8 +271,9 @@ export async function deleteList(formData: FormData): Promise<void>
 - **Autorización:** resuelve `boardId` de la lista; si no existe, retorna. Luego
   `requireBoardAccess(list.boardId)`.
 - **Valida:** nada.
-- **Base de datos:** `list.delete`. Las tarjetas de la lista se borran en cascada
-  (`onDelete: Cascade` en el esquema, ver
+- **Base de datos:** `deleteListWithAttachments` (`app/lib/services/attachments.ts`):
+  `list.delete` y, tras el commit, los ficheros de los adjuntos. Las tarjetas de la
+  lista se borran en cascada (`onDelete: Cascade` en el esquema, ver
   [docs/database.md](../database.md)).
 - **Efectos:** `revalidatePath(\`/board/${list.boardId}\`)`.
 
@@ -286,8 +293,11 @@ objeto (no `FormData`) y devuelve `{ ok: boolean }`.
 
 - **Autorización:** resuelve `boardId` de la lista; si no existe, devuelve
   `{ ok: false }`. Luego `requireBoardAccess(list.boardId)`.
-- **Valida:** no usa zod. La nueva clave de posición la **calcula el cliente**
-  (*fractional indexing*) y aquí solo se persiste.
+- **Valida:** `reorderListSchema` (zod) antes de cualquier consulta. La nueva clave
+  de posición la **calcula el cliente** (*fractional indexing*) y el servidor la
+  valida con `isValidPositionKey`; una clave inválida devuelve `{ ok: false }` y no
+  se guarda. La regla está en
+  [docs/drag-and-drop.md](../drag-and-drop.md#validación-de-la-clave-isvalidpositionkey).
 - **Base de datos:** `list.update` actualizando únicamente `position` de **una
   sola fila**.
 - **Efectos:** `revalidatePath(\`/board/${list.boardId}\`)`; devuelve
@@ -314,9 +324,10 @@ export async function createCard(formData: FormData): Promise<void>
 - **Autorización:** obtiene `boardId` vía `boardIdForList(listId)`; si es `null`,
   retorna. Luego `requireBoardAccess(boardId)`.
 - **Valida:** `cardTitleSchema` sobre `title`. Si falla, retorna sin hacer nada.
-- **Base de datos:** busca la última tarjeta de la lista (`orderBy position
-  desc`) y crea la nueva con `position: positionAtEnd(last?.position ?? null)`
-  (*fractional indexing*, al final de la lista).
+- **Base de datos:** `createCardAtEnd` (`app/lib/services/cards.ts`): en una
+  transacción bloquea la lista (`FOR UPDATE`), busca la última tarjeta y crea la
+  nueva con `positionAtEnd(last?.position ?? null)` (*fractional indexing*, al final
+  de la lista).
 - **Efectos:** `revalidatePath(\`/board/${boardId}\`)`.
 
 ### `renameCard`
@@ -344,7 +355,8 @@ export async function deleteCard(formData: FormData): Promise<void>
 - **Autorización:** busca la tarjeta seleccionando `list.boardId`; si no existe,
   retorna. Luego `requireBoardAccess(card.list.boardId)`.
 - **Valida:** nada.
-- **Base de datos:** `card.delete`.
+- **Base de datos:** `deleteCardWithAttachments` (`app/lib/services/attachments.ts`):
+  `card.delete` y, tras el commit, los ficheros de los adjuntos.
 - **Efectos:** `revalidatePath(\`/board/${card.list.boardId}\`)`.
 
 ### `moveCard`
@@ -365,8 +377,11 @@ posición. Recibe un objeto (no `FormData`) y devuelve `{ ok: boolean }`.
 - **Autorización:** obtiene `boardId` de la lista destino vía
   `boardIdForList(input.toListId)`; si es `null`, devuelve `{ ok: false }`. Luego
   `requireBoardAccess(boardId)`.
-- **Valida:** no usa zod. La nueva clave de posición la **calcula el cliente**
-  (*fractional indexing*).
+- **Valida:** `moveCardSchema` (zod) antes de cualquier consulta. La nueva clave de
+  posición la **calcula el cliente** (*fractional indexing*) y el servidor la valida
+  con `isValidPositionKey`; una clave inválida devuelve `{ ok: false }` y no se
+  guarda. La regla está en
+  [docs/drag-and-drop.md](../drag-and-drop.md#validación-de-la-clave-isvalidpositionkey).
 - **Base de datos:** un único `card.update` que fija `listId: toListId` y
   `position`.
 - **Efectos:** `revalidatePath(\`/board/${boardId}\`)`; devuelve `{ ok: true }`.
