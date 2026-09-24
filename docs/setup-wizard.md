@@ -120,7 +120,14 @@ bien estás en el wizard (sin configurar), o bien estás en login / la app
 Cuando envías el formulario, se ejecuta la Server Action `completeSetup`
 (`app/lib/actions/setup.ts`). Sus pasos son:
 
-### 1. Validación con zod
+### 1. Corte temprano
+
+Si `isSetupComplete()` ya es cierto, la acción hace `redirect("/login")` antes de
+validar nada y de gastar el hash de bcrypt. Hace falta aunque `/setup` ya redirija:
+el ID de la acción sigue en el bundle de la página y se puede invocar a mano. No
+sustituye a la comprobación dentro de la transacción, que es la definitiva.
+
+### 2. Validación con zod
 
 Los cuatro campos se validan con `setupSchema` antes de tocar la base de datos.
 Si la validación falla, la acción devuelve un error legible y no hace nada más:
@@ -139,51 +146,35 @@ if (!parsed.success) {
 
 La contraseña se hashea (`hashPassword`) **antes** de abrir la transacción.
 
-### 2. Transacción atómica
+### 3. Transacción serializada
 
-El núcleo de la acción es una transacción de Prisma (`prisma.$transaction`) que
-realiza cuatro cosas:
+El núcleo es `completeInstanceSetup` (`app/lib/services/setup.ts`), una transacción
+de Prisma (`prisma.$transaction`) que hace, en este orden:
 
-```ts
-const userId = await prisma.$transaction(async (tx) => {
-  const existing = await tx.instanceConfig.findUnique({
-    where: { id: INSTANCE_ID },
-  });
-  if (existing?.setupCompletedAt) {
-    throw new Error("ALREADY_SETUP");
-  }
-  const user = await tx.user.create({
-    data: { email: email.toLowerCase(), name, passwordHash, role: "ADMIN" },
-  });
-  await tx.instanceConfig.upsert({
-    where: { id: INSTANCE_ID },
-    create: {
-      id: INSTANCE_ID,
-      instanceName,
-      setupCompletedAt: new Date(),
-    },
-    update: { instanceName, setupCompletedAt: new Date() },
-  });
-  return user.id;
-});
-```
-
-1. **Re-comprueba `setupCompletedAt` dentro de la propia transacción.** Si ya
-   tiene fecha, lanza `ALREADY_SETUP` y aborta. Esta segunda comprobación —
-   distinta de la del `page.tsx` — es lo que hace la operación **atómica frente a
-   un doble envío del formulario**: dos peticiones casi simultáneas no pueden
-   crear dos administradores, porque la lectura y la escritura suceden dentro de
-   la misma transacción.
-2. **Crea el usuario administrador** con la contraseña ya hasheada, el email en
+1. **Toma un advisory lock de transacción**:
+   `pg_advisory_xact_lock(hashtext('orgtable:setup'))`. Un segundo envío simultáneo
+   espera aquí hasta que el primero confirme o aborte.
+2. **Recomprueba `setupCompletedAt`.** Si ya tiene fecha, devuelve
+   `{ ok: false, reason: "ALREADY_SETUP" }` (no lanza) y no escribe nada.
+3. **Crea el usuario administrador** con la contraseña ya hasheada, el email en
    minúsculas y el rol `ADMIN`.
-3. **Marca `setupCompletedAt`** con la fecha actual y guarda el `instanceName`
-   (mediante `upsert`, por si la fila `InstanceConfig` ya existía sin completar).
+4. **Marca `setupCompletedAt`** con la fecha actual y guarda el `instanceName`
+   (mediante `upsert`, por si la fila `InstanceConfig` ya existía sin completar), y
+   devuelve `{ ok: true, userId }`.
+
+La recomprobación del paso 2 **solo protege porque el lock del paso 1 serializa los
+envíos**. Con el aislamiento por defecto de PostgreSQL (READ COMMITTED), sin el lock
+dos envíos casi simultáneos leerían los dos «sin configurar» y crearían dos
+administradores. No quites el lock: el porqué completo y las alternativas descartadas
+están en [`DECISIONES.md`](./DECISIONES.md) («Setup: advisory lock, corte temprano y
+causa en el log»), y `test/integration/setup.int.test.ts` lo comprueba con envíos
+simultáneos.
 
 Como todo ocurre en una transacción, si algo falla a mitad no se queda un estado
 inconsistente: o se crean el administrador y la marca de configuración juntos, o
 no se crea nada.
 
-### 3. Auto-login y redirección
+### 4. Auto-login y redirección
 
 Tras la transacción, la acción crea la sesión (auto-login con `createSession`) y
 redirige a `/boards`:
@@ -234,14 +225,17 @@ independientes:
 1. **El campo en base de datos** (`InstanceConfig.setupCompletedAt`): la fuente
    de verdad persistente. Mientras tenga fecha, la instancia se considera
    configurada.
-2. **El re-check atómico en la transacción**: aunque dos formularios se envíen a
-   la vez, la comprobación dentro de `$transaction` impide crear un segundo
-   administrador (lanza `ALREADY_SETUP`, que redirige a `/login`).
-3. **El redirect de la página** (`/setup` → `/login` vía `isSetupComplete()`):
-   evita siquiera mostrar el formulario una vez configurada la instancia.
+2. **La recomprobación en la transacción, serializada por el advisory lock**: aunque
+   dos formularios se envíen a la vez, el lock hace que el segundo espere al
+   primero y, al recomprobar, vea el setup hecho; devuelve `ALREADY_SETUP`, que
+   redirige a `/login`. Sin el lock, la recomprobación sola no basta (ver
+   [paso 3](#3-transacción-serializada)).
+3. **Las comprobaciones previas con `isSetupComplete()`**: el redirect de la página
+   (`/setup` → `/login`) evita mostrar el formulario, y el corte temprano de la
+   acción evita validar y hashear si alguien la invoca a mano.
 
-Estas tres capas se solapan a propósito: el redirect de la página es la primera
-línea (UX), y el re-check de la transacción es la red de seguridad real contra
+Estas tres capas se solapan a propósito: las comprobaciones previas son la primera
+línea (UX y coste), y la transacción con el lock es la red de seguridad real contra
 condiciones de carrera.
 
 ### Caso límite: borrar la fila `InstanceConfig`
