@@ -42,6 +42,11 @@ export function MembersPanel({
     {},
   );
 
+  // Rol con el que se remonta el selector tras un error. `values.role` es lo que se envió,
+  // sin validar: solo se reutiliza si es un rol asignable; si no, vuelve al por defecto.
+  const inviteRole =
+    ASSIGNABLE_BOARD_ROLES.find((r) => r === state.values?.role) ?? "EDITOR";
+
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const descriptionId = useId();
@@ -126,9 +131,14 @@ export function MembersPanel({
               <span className="block text-xs font-semibold uppercase tracking-wide text-ink-muted">
                 Rol
               </span>
+              {/* React restablece el formulario a sus valores por defecto tras la acción,
+                  pero no actualiza el defaultValue de un <select> ya montado: la key lo
+                  remonta con lo elegido para que un error no devuelva «Lector» a «Editor»
+                  y la invitación siguiente dé más permisos de los queridos. */}
               <select
+                key={inviteRole}
                 name="role"
-                defaultValue={state.values?.role ?? "EDITOR"}
+                defaultValue={inviteRole}
                 className="mt-1.5 h-9 rounded-lg border border-border bg-surface px-2.5 text-sm text-ink outline-none focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/25"
               >
                 {ASSIGNABLE_BOARD_ROLES.map((r) => (
