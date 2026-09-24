@@ -4,7 +4,6 @@ import {
   expect,
   vi,
   beforeEach,
-  afterEach,
   afterAll,
 } from "vitest";
 import { prisma } from "@/app/lib/prisma";
@@ -36,10 +35,6 @@ async function seedNotification(userId: string, boardId: string | null = null) {
 beforeEach(async () => {
   await resetDb();
   refreshMock.mockClear();
-});
-
-afterEach(() => {
-  vi.unstubAllEnvs();
 });
 
 afterAll(async () => {

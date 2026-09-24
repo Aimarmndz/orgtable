@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import { prisma } from "@/app/lib/prisma";
 import { labelBelongsToBoard } from "@/app/lib/services/labels";
 import { toggleCardLabel, createLabel } from "@/app/lib/actions/labels";
@@ -12,16 +12,10 @@ import {
   loginAs,
 } from "./helpers";
 
-// La cookie de sesión que verá el DAL; cada test la fija con signIn().
-async function signIn(userId: string): Promise<void> {
-  await loginAs(userId);
-}
-
 beforeEach(async () => {
   await resetDb();
 });
 afterAll(async () => {
-  vi.unstubAllEnvs();
   await disconnect();
 });
 
@@ -49,7 +43,7 @@ describe("etiquetas: pertenencia al tablero (IDOR de toggleCardLabel)", () => {
 
   it("toggleCardLabel rechaza una etiqueta de otro tablero y no crea el vínculo", async () => {
     const { owner, cardA, labelB } = await seedTwoBoards();
-    await signIn(owner.id);
+    await loginAs(owner.id);
 
     const res = await toggleCardLabel({ cardId: cardA.id, labelId: labelB.id });
     expect(res).toEqual({ ok: false });
@@ -58,7 +52,7 @@ describe("etiquetas: pertenencia al tablero (IDOR de toggleCardLabel)", () => {
 
   it("toggleCardLabel rechaza un id inexistente sin lanzar", async () => {
     const { owner, cardA } = await seedTwoBoards();
-    await signIn(owner.id);
+    await loginAs(owner.id);
 
     const res = await toggleCardLabel({ cardId: cardA.id, labelId: "no-existe" });
     expect(res).toEqual({ ok: false });
@@ -67,7 +61,7 @@ describe("etiquetas: pertenencia al tablero (IDOR de toggleCardLabel)", () => {
 
   it("toggleCardLabel pone y quita una etiqueta del mismo tablero", async () => {
     const { owner, cardA, labelA } = await seedTwoBoards();
-    await signIn(owner.id);
+    await loginAs(owner.id);
 
     expect(await toggleCardLabel({ cardId: cardA.id, labelId: labelA.id })).toEqual({
       ok: true,
@@ -84,7 +78,7 @@ describe("etiquetas: color validado contra la paleta", () => {
   it("createLabel guarda 'blue' si el color es una clave del prototipo", async () => {
     const owner = await seedUser();
     const board = await seedBoard(owner.id);
-    await signIn(owner.id);
+    await loginAs(owner.id);
 
     const fd = new FormData();
     fd.set("boardId", board.id);
@@ -99,7 +93,7 @@ describe("etiquetas: color validado contra la paleta", () => {
   it("createLabel conserva un color válido de la paleta", async () => {
     const owner = await seedUser();
     const board = await seedBoard(owner.id);
-    await signIn(owner.id);
+    await loginAs(owner.id);
 
     const fd = new FormData();
     fd.set("boardId", board.id);

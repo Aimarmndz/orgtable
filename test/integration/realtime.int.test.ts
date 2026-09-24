@@ -88,7 +88,6 @@ afterEach(() => {
   // Abortar siempre, aunque el test falle, para no dejar streams vivos en el bus.
   for (const ac of aborters.splice(0)) ac.abort();
   vi.useRealTimers();
-  vi.unstubAllEnvs();
 });
 
 afterAll(async () => {

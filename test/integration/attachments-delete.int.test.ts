@@ -40,7 +40,6 @@ beforeEach(async () => {
   await resetDb();
 });
 afterAll(async () => {
-  vi.unstubAllEnvs();
   await rm(uploadDir, { recursive: true, force: true });
   delete process.env.ORGTABLE_UPLOAD_DIR;
   await disconnect();

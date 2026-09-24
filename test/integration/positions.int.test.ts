@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import { prisma } from "@/app/lib/prisma";
 import { moveCard } from "@/app/lib/actions/cards";
 import { reorderList } from "@/app/lib/actions/lists";
@@ -21,7 +21,6 @@ beforeEach(async () => {
   await resetDb();
 });
 afterAll(async () => {
-  vi.unstubAllEnvs();
   await disconnect();
 });
 
