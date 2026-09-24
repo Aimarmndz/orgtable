@@ -31,6 +31,8 @@ http://<IP-del-servidor>:<APP_PORT>
 
 Por defecto, `APP_PORT` es `3000`. Aparecerá el **asistente de configuración inicial**, donde creas tu usuario administrador y pones nombre a la instancia. Consulta [docs/setup-wizard.md](./setup-wizard.md) para ese paso.
 
+> **HTTPS.** Por `http://` la aplicación funciona, pero la contraseña y la sesión viajan sin cifrar. Para un uso real, pon delante un proxy inverso con TLS (Caddy o nginx) antes de dar acceso a nadie más: pasos en [self-hosting.md › HTTPS y dominio](./self-hosting.md#https-y-dominio-reverse-proxy). Completa el asistente en cuanto arranque la instalación: mientras esté abierto, quien llegue antes a la app crea el administrador.
+
 ## Qué hace el instalador
 
 El script `install.sh` realiza, paso a paso, lo siguiente:
@@ -48,19 +50,22 @@ El script `install.sh` realiza, paso a paso, lo siguiente:
 3. **Genera el `.env` con secretos aleatorios.** Solo si **no existe** ya un `.env`. En ese caso:
    - Genera `POSTGRES_PASSWORD` con `openssl rand -hex 24`.
    - Genera `SESSION_SECRET` con `openssl rand -hex 32`.
+   - Genera `CRON_SECRET` con `openssl rand -hex 32` (el secreto de los [recordatorios de vencimiento](./reminders.md)).
    - Construye automáticamente el `DATABASE_URL` a partir de esas credenciales.
    - Escribe el archivo y le aplica permisos `600` (`chmod 600 .env`).
 
+   Si el `.env` ya existe y no tiene `CRON_SECRET`, se lo añade sin tocar el resto.
+
 4. **Construye y levanta los servicios.** Ejecuta `docker compose build` (la primera vez tarda unos minutos) y luego `docker compose up -d`.
 
-5. **Muestra la URL de acceso.** Detecta la IP del servidor y el puerto configurado, e imprime la dirección donde completar el asistente de configuración inicial.
+5. **Muestra la URL de acceso.** Detecta la IP del servidor y el puerto configurado, imprime la dirección donde completar el asistente de configuración inicial y recuerda que para un uso real hace falta HTTPS.
 
 ### Idempotencia
 
 Puedes volver a ejecutar el comando de instalación sin problema. Si lo haces:
 
 - El repositorio se **actualiza** con `git pull --ff-only`.
-- El `.env` existente **no se sobrescribe**: se conservan los secretos ya generados (`POSTGRES_PASSWORD`, `SESSION_SECRET`, etc.).
+- El `.env` existente **no se sobrescribe**: se conservan los secretos ya generados (`POSTGRES_PASSWORD`, `SESSION_SECRET`, etc.). Solo se añade `CRON_SECRET` si falta.
 - La imagen se reconstruye y los servicios se relevantan con los cambios.
 
 Esto hace que el instalador sirva también para **actualizar** una instalación existente.
@@ -82,7 +87,7 @@ Si prefieres no usar el script, puedes instalar orgtable a mano.
    cp .env.example .env
    ```
 
-   Edita `.env` y ajusta los valores. La plantilla `.env.example` contiene:
+   Edita `.env` y ajusta los valores. Lo imprescindible de la plantilla `.env.example` es:
 
    ```env
    # --- PostgreSQL ---
@@ -93,16 +98,19 @@ Si prefieres no usar el script, puedes instalar orgtable a mano.
    DATABASE_URL=postgresql://orgtable:changeme@postgres:5432/orgtable
 
    # --- Aplicación ---
-   SESSION_SECRET=changeme
+   # Obligatorio, mínimo 16 caracteres.
+   SESSION_SECRET=
 
    APP_PORT=3000
    ```
 
-   Cambia los valores `changeme` por secretos reales. Puedes generar el secreto de sesión con:
+   Cambia `changeme` por una contraseña real (también dentro de `DATABASE_URL`) y rellena `SESSION_SECRET` y, para los recordatorios, `CRON_SECRET`. Genera cada secreto con:
 
    ```bash
    openssl rand -hex 32
    ```
+
+   El resto de variables son opcionales; están en la [tabla de abajo](#variables-de-entorno).
 
    Importante: el `DATABASE_URL` debe coincidir con el usuario, la contraseña y la base de datos de PostgreSQL. En docker-compose el host es `postgres` (el nombre del servicio), no `localhost`. Por seguridad, restringe los permisos del archivo:
 
@@ -118,20 +126,27 @@ Si prefieres no usar el script, puedes instalar orgtable a mano.
 
    La primera build tarda unos minutos.
 
-4. Abre `http://<IP-del-servidor>:<APP_PORT>` y completa el [asistente de configuración inicial](./setup-wizard.md).
+4. Abre `http://<IP-del-servidor>:<APP_PORT>` y completa el [asistente de configuración inicial](./setup-wizard.md). Para un uso real, pon HTTPS delante (ver el aviso de [Instalación rápida](#instalación-rápida)).
 
 ## Variables de entorno
 
-Todas las variables se definen en el `.env` de la raíz del proyecto. El instalador las genera automáticamente; en una instalación manual las rellenas tú.
+Esta tabla es la referencia de todas las variables. Se definen en el `.env` de la raíz del proyecto; el instalador genera las obligatorias y en una instalación manual las rellenas tú. La plantilla comentada es [`.env.example`](../.env.example).
 
-| Variable | Para qué sirve |
-|---|---|
-| `POSTGRES_USER` | Usuario de la base de datos PostgreSQL. Por defecto `orgtable`. |
-| `POSTGRES_PASSWORD` | Contraseña del usuario de PostgreSQL. El instalador la genera con `openssl rand -hex 24`. |
-| `POSTGRES_DB` | Nombre de la base de datos. Por defecto `orgtable`. |
-| `DATABASE_URL` | Cadena de conexión que usa la aplicación. Debe ser coherente con las tres variables anteriores. El host es `postgres` (nombre del servicio en docker-compose). Formato: `postgresql://USUARIO:CONTRASEÑA@postgres:5432/BASE`. |
-| `SESSION_SECRET` | Secreto para firmar las sesiones JWT. El instalador lo genera con `openssl rand -hex 32`. |
-| `APP_PORT` | Puerto del host por el que se expone la aplicación. Por defecto `3000`. Internamente, el contenedor escucha siempre en el `3000`. |
+El contenedor de la app solo recibe las variables que lista `docker-compose.yml` en `environment:`. Tras cambiar el `.env`, aplica los cambios con `docker compose up -d` (recrea el contenedor; `restart` no basta).
+
+| Variable | Obligatoria | Para qué sirve |
+|---|---|---|
+| `POSTGRES_USER` | Sí | Usuario de la base de datos PostgreSQL. Por defecto `orgtable`. |
+| `POSTGRES_PASSWORD` | Sí | Contraseña del usuario de PostgreSQL. El instalador la genera con `openssl rand -hex 24`. |
+| `POSTGRES_DB` | Sí | Nombre de la base de datos. Por defecto `orgtable`. |
+| `DATABASE_URL` | Sí | Cadena de conexión que usa la aplicación. Debe ser coherente con las tres variables anteriores. El host es `postgres` (nombre del servicio en docker-compose). Formato: `postgresql://USUARIO:CONTRASEÑA@postgres:5432/BASE`. |
+| `SESSION_SECRET` | Sí | Secreto para firmar las sesiones JWT, mínimo 16 caracteres (la app no arranca sin él). El instalador lo genera con `openssl rand -hex 32`. |
+| `APP_PORT` | No | Puerto del host por el que se expone la aplicación. Por defecto `3000`. Admite `127.0.0.1:3000` para publicarla solo en local, detrás de un proxy inverso. Internamente, el contenedor escucha siempre en el `3000`. |
+| `CRON_SECRET` | No | Secreto del endpoint de [recordatorios de vencimiento](./reminders.md). Vacío = endpoint desactivado. El instalador lo genera con `openssl rand -hex 32`. |
+| `TRUSTED_PROXY_HOPS` | No | Número de proxies de confianza delante de la app (por defecto `0`: se ignora `X-Forwarded-For`). Con un proxy inverso, `1`. Ver [operations.md](./operations.md#límite-de-intentos-de-login-rate-limiting). |
+| `ORGTABLE_TIMEZONE` | No | Zona horaria IANA de las fechas que formatea el servidor. Por defecto `Atlantic/Canary`. |
+| `ORGTABLE_UPLOAD_DIR` | No | Directorio de los adjuntos. En Docker, `/data/uploads` (volumen `uploads`). Ver [attachments.md](./attachments.md). |
+| `ORGTABLE_REALTIME_PG_NOTIFY` | No | `1` para propagar el tiempo real entre varias réplicas de la app con PostgreSQL `LISTEN/NOTIFY`. Por defecto `0`. Ver [realtime.md](./realtime.md). |
 
 ## Comandos útiles de operación
 

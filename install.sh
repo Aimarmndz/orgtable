@@ -38,17 +38,27 @@ if [ ! -f .env ]; then
   log "Generando .env con secretos aleatorios..."
   POSTGRES_PASSWORD="$(openssl rand -hex 24)"
   SESSION_SECRET="$(openssl rand -hex 32)"
+  CRON_SECRET="$(openssl rand -hex 32)"
   cat > .env <<EOF
 POSTGRES_USER=orgtable
 POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
 POSTGRES_DB=orgtable
 DATABASE_URL=postgresql://orgtable:${POSTGRES_PASSWORD}@postgres:5432/orgtable
 SESSION_SECRET=${SESSION_SECRET}
+CRON_SECRET=${CRON_SECRET}
 APP_PORT=3000
 EOF
   chmod 600 .env
 else
   log ".env ya existe: se conservan los secretos actuales."
+  # Las instalaciones anteriores no tenían CRON_SECRET: se añade sin tocar lo demás, para
+  # que los recordatorios de vencimiento se puedan programar (docs/reminders.md).
+  if ! grep -q '^CRON_SECRET=.' .env; then
+    log "Añadiendo CRON_SECRET al .env..."
+    # Si el .env no acaba en salto de línea, la variable se pegaría a la última línea.
+    if [ -n "$(tail -c 1 .env)" ]; then echo >> .env; fi
+    printf 'CRON_SECRET=%s\n' "$(openssl rand -hex 32)" >> .env
+  fi
 fi
 
 # 4. Construir y levantar -----------------------------------------------------
@@ -60,4 +70,8 @@ docker compose up -d
 
 IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
 APP_PORT="$(grep '^APP_PORT=' .env | cut -d= -f2)"
+# APP_PORT puede llevar una IP delante («127.0.0.1:3000»): para la URL solo vale el puerto.
+APP_PORT="${APP_PORT##*:}"
 log "¡Listo! Abre http://${IP:-<IP-del-servidor>}:${APP_PORT:-3000} y completa el asistente de configuración inicial."
+log "Aviso: por HTTP la contraseña y la sesión viajan sin cifrar. Para uso real, pon delante"
+log "un proxy inverso con HTTPS: docs/self-hosting.md, apartado «HTTPS y dominio»."

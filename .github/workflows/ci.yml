@@ -44,6 +44,16 @@ jobs:
       - name: Shellcheck
         run: shellcheck scripts/*.sh install.sh docker-entrypoint.sh
 
+      # El contenedor app solo recibe las variables listadas en `environment:`. Si alguna
+      # se cae del compose, la función que depende de ella deja de funcionar en Docker sin
+      # ningún error (p. ej. sin CRON_SECRET los recordatorios responden siempre 503).
+      - name: Check compose passes env vars to app
+        run: |
+          config="$(CRON_SECRET=probe TRUSTED_PROXY_HOPS=7 ORGTABLE_TIMEZONE=Europe/Madrid docker compose config)"
+          grep -q 'CRON_SECRET: probe' <<<"$config"
+          grep -q 'TRUSTED_PROXY_HOPS: "7"' <<<"$config"
+          grep -q 'ORGTABLE_TIMEZONE: Europe/Madrid' <<<"$config"
+
       # Instala la versión de pnpm fijada en `packageManager` (package.json).
       - uses: pnpm/action-setup@v4
 

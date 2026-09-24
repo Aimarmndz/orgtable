@@ -62,26 +62,80 @@ Generado con permisos `600` por el instalador.
 
 ## HTTPS y dominio (reverse proxy)
 
-orgtable sirve HTTP plano en el puerto `APP_PORT` (3000 por defecto). Para producción,
-ponlo detrás de un reverse proxy con TLS. Ejemplo con **Caddy** (certificados
-automáticos):
+orgtable sirve HTTP plano en el puerto `APP_PORT` (3000 por defecto). Se puede usar así,
+por ejemplo en `http://IP:3000` para el primer arranque o en una red local, pero **la
+contraseña y la cookie de sesión viajan sin cifrar**. Para un uso real, ponlo detrás de
+un proxy inverso con TLS.
 
-```caddyfile
-tablero.midominio.com {
-    reverse_proxy localhost:3000
-}
-```
+La cookie de sesión lleva el atributo `Secure` cuando la petición llega por HTTPS:
+directamente o con la cabecera `X-Forwarded-Proto: https` que añade el proxy. Por HTTP
+plano se envía sin `Secure` para que el login funcione.
 
-Con TLS por delante, la cookie de sesión (`secure`, `sameSite=lax`) funciona como se
-espera. Para exponer solo el proxy, mantén el puerto de la app accesible únicamente en
-local (`127.0.0.1:3000`) ajustando el mapeo de puertos en `docker-compose.yml`.
+Tres pasos:
+
+1. **Publica la app solo en local**, para que nadie llegue a ella sin pasar por el
+   proxy. En el `.env`:
+
+   ```env
+   APP_PORT=127.0.0.1:3000
+   ```
+
+   y aplica el cambio con `docker compose up -d`. Un firewall como `ufw` **no basta**:
+   Docker publica los puertos con sus propias reglas de iptables y se lo salta.
+
+2. **Indica que hay un proxy delante**, para que el límite de intentos de login use la
+   IP real del cliente ([operations.md](./operations.md#límite-de-intentos-de-login-rate-limiting)).
+   En el `.env`:
+
+   ```env
+   TRUSTED_PROXY_HOPS=1
+   ```
+
+   Con `TRUSTED_PROXY_HOPS` mayor que 0 y el puerto de la app abierto al exterior,
+   cualquiera podría falsear su IP con `X-Forwarded-For`: haz antes el paso 1.
+
+3. **Configura el proxy.** Con **Caddy** (certificados automáticos):
+
+   ```caddyfile
+   tablero.midominio.com {
+       reverse_proxy 127.0.0.1:3000
+   }
+   ```
+
+   Caddy ya envía `X-Forwarded-Proto` y, mientras no configures `trusted_proxies`,
+   sustituye el `X-Forwarded-For` que mande el cliente por su IP real. No añadas
+   `trusted_proxies` salvo que haya otro proxy delante de Caddy.
+
+   Con **nginx** (certificados aparte, p. ej. con certbot):
+
+   ```nginx
+   server {
+       listen 443 ssl;
+       server_name tablero.midominio.com;
+       # ssl_certificate / ssl_certificate_key …
+
+       location / {
+           proxy_pass http://127.0.0.1:3000;
+           proxy_http_version 1.1;
+           proxy_set_header Host $host;
+           # La IP del cliente tal como la ve nginx, sin lo que mande el propio cliente.
+           proxy_set_header X-Forwarded-For $remote_addr;
+           proxy_set_header X-Forwarded-Proto $scheme;
+           # Tiempo real (SSE): sin buffer y con conexiones largas.
+           proxy_buffering off;
+           proxy_read_timeout 1h;
+       }
+   }
+   ```
 
 ## Seguridad
 
 - **PostgreSQL no se expone al host**: en el `docker-compose.yml` el servicio
   `postgres` no publica puertos, solo es accesible desde la red interna de Compose.
 - Mantén el servidor y Docker actualizados.
-- Restringe el acceso al puerto de la app con un firewall si no usas reverse proxy.
+- Si no usas proxy inverso, recuerda que Docker se salta `ufw`: para cerrar el puerto
+  de la app usa `APP_PORT=127.0.0.1:3000` o reglas en la cadena `DOCKER-USER` de
+  iptables.
 
 ## Restablecer el asistente de configuración
 

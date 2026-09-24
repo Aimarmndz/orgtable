@@ -37,9 +37,20 @@ services:
       ORGTABLE_UPLOAD_DIR: ${ORGTABLE_UPLOAD_DIR:-/data/uploads}
       # Tiempo real entre varias réplicas (0 = en proceso). Ver docs/realtime.md.
       ORGTABLE_REALTIME_PG_NOTIFY: ${ORGTABLE_REALTIME_PG_NOTIFY:-0}
+      # Secreto del endpoint de recordatorios. Vacío = endpoint desactivado (503). El
+      # contenedor solo ve las variables listadas aquí: sin esta línea, el CRON_SECRET del
+      # .env no llegaría a la app. Ver docs/reminders.md.
+      CRON_SECRET: ${CRON_SECRET:-}
+      # Proxies de confianza delante de la app (0 = se ignora X-Forwarded-For y el límite
+      # de login va por email). Ver docs/self-hosting.md.
+      TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-0}
+      # Zona horaria de las fechas que formatea el servidor. Ver docs/installation.md.
+      ORGTABLE_TIMEZONE: ${ORGTABLE_TIMEZONE:-Atlantic/Canary}
     volumes:
       - uploads:/data/uploads
     ports:
+      # APP_PORT admite también «127.0.0.1:3000» para publicar la app solo en local
+      # (detrás de un proxy inverso). Ver docs/self-hosting.md.
       - "${APP_PORT:-3000}:3000"
     healthcheck:
       # 127.0.0.1 (no "localhost"): dentro del contenedor localhost resuelve a IPv6

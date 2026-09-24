@@ -133,7 +133,7 @@ Más contexto sobre el esquema y el flujo de migraciones en [`database.md`](./da
 
 ## `docker-compose.yml` — orquestación
 
-Define dos servicios (`postgres` y `app`), un volumen (`pgdata`) y una red bridge interna (`orgtable`).
+Define dos servicios (`postgres` y `app`), dos volúmenes (`pgdata` para la base de datos y `uploads` para los adjuntos) y una red bridge interna (`orgtable`).
 
 ### Servicio `postgres`
 
@@ -175,6 +175,13 @@ app:
     DATABASE_URL: ${DATABASE_URL}
     SESSION_SECRET: ${SESSION_SECRET}
     NODE_ENV: production
+    ORGTABLE_UPLOAD_DIR: ${ORGTABLE_UPLOAD_DIR:-/data/uploads}
+    ORGTABLE_REALTIME_PG_NOTIFY: ${ORGTABLE_REALTIME_PG_NOTIFY:-0}
+    CRON_SECRET: ${CRON_SECRET:-}
+    TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-0}
+    ORGTABLE_TIMEZONE: ${ORGTABLE_TIMEZONE:-Atlantic/Canary}
+  volumes:
+    - uploads:/data/uploads
   ports:
     - "${APP_PORT:-3000}:3000"
   healthcheck:
@@ -189,7 +196,9 @@ app:
 
 - **Build local** desde el `Dockerfile` del repo (`context: .`). La imagen se construye en el servidor del usuario, no se descarga de un registry.
 - **`depends_on` con `condition: service_healthy`**: la app **no arranca hasta que PostgreSQL está `healthy`**. Así, cuando el entrypoint ejecute `migrate deploy`, la BD ya está aceptando conexiones.
-- **Publica el puerto** `${APP_PORT:-3000}:3000` (configurable vía `APP_PORT`, por defecto `3000`). Este es el único servicio expuesto al host.
+- **Solo recibe las variables de `environment:`**, no todo el `.env`. Si una variable nueva no se añade aquí, la app no la ve dentro del contenedor (el CI lo comprueba para las opcionales). Qué hace cada una: [tabla de variables de `installation.md`](./installation.md#variables-de-entorno).
+- **Volumen `uploads`** montado en `/data/uploads`: los adjuntos sobreviven a recreaciones del contenedor.
+- **Publica el puerto** `${APP_PORT:-3000}:3000` (configurable vía `APP_PORT`, por defecto `3000`, en todas las interfaces). Con `APP_PORT=127.0.0.1:3000` solo se publica en local, que es lo que conviene detrás de un proxy inverso ([self-hosting.md](./self-hosting.md#https-y-dominio-reverse-proxy)). Es el único servicio expuesto al host.
 - **Healthcheck con `wget`** contra `http://127.0.0.1:3000/api/health`.
 
 #### Por qué `127.0.0.1` y no `localhost` en el healthcheck
@@ -255,7 +264,7 @@ Parar el stack:
 docker compose down
 ```
 
-(`docker compose down -v` eliminaría también el volumen `pgdata` y, con él, **todos los datos**.)
+(`docker compose down -v` eliminaría también los volúmenes `pgdata` y `uploads` y, con ellos, **todos los datos y todos los adjuntos**.)
 
 ---
 

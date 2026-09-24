@@ -7,16 +7,33 @@ actualización. Para la puesta en producción general (reverse proxy, TLS), ver
 
 ## Límite de intentos de login (rate limiting)
 
-El login está protegido contra fuerza bruta: **hasta 10 intentos por IP cada 10
-minutos**. Superado el límite, el formulario responde con un aviso y un tiempo de
-espera, y el intento se registra en la auditoría (`auth.login_rate_limited`).
+El login está protegido contra fuerza bruta con dos límites:
+
+- **Por IP: hasta 10 intentos cada 10 minutos**, solo si la IP del cliente es fiable
+  (ver abajo).
+- **Por email: 20 intentos fallidos cada 15 minutos**. Solo cuentan los fallos y el
+  contador se reinicia tras un login correcto.
+
+Superado un límite, el formulario responde con un aviso y un tiempo de espera, y el
+intento se registra en la auditoría (`auth.login_rate_limited`).
 
 La implementación ([`app/lib/rate-limit.ts`](../app/lib/rate-limit.ts)) es **en
 memoria** (un contador por ventana fija), sin Redis ni dependencias externas. Es la
-opción adecuada para el despliegue estándar de una sola instancia. La IP se obtiene de
-`X-Forwarded-For` / `X-Real-IP`, así que conviene tener un reverse proxy que las fije
-(ver self-hosting). La decisión está en
+opción adecuada para el despliegue estándar de una sola instancia. La decisión está en
 [ADR 0009](./decisions/0009-in-memory-rate-limit.md).
+
+**De dónde sale la IP: `TRUSTED_PROXY_HOPS`.** La cabecera `X-Forwarded-For` la puede
+escribir cualquiera, así que la app solo se fía de ella si se le dice cuántos proxies
+propios hay delante:
+
+| `TRUSTED_PROXY_HOPS` | Comportamiento |
+| --- | --- |
+| `0` (por defecto) | Se ignora `X-Forwarded-For`. No hay límite por IP; se aplica solo el límite por email. |
+| `N > 0` | Se toma la IP N-ésima de `X-Forwarded-For` contando por la derecha. Con un único proxy inverso (Caddy o nginx), `1`. |
+
+Con `N > 0`, el puerto de la app no debe ser accesible sin pasar por el proxy: quien
+llegue directamente puede inventarse la cabecera. Cómo configurarlo, en
+[self-hosting.md](./self-hosting.md#https-y-dominio-reverse-proxy).
 
 > **Multi-instancia:** el conteo es por réplica. Con N réplicas el límite efectivo es
 > N×10. Para un límite global compartido haría falta un store común (p. ej.

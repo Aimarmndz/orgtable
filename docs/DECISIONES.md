@@ -1176,6 +1176,47 @@ hacia `.next/standalone`.
 del trazado NFT no se ha podido comprobar aquí (el build lo ejecuta el integrador): tras
 `pnpm build`, `api/attachments/[id]/route.js.nft.json` debería bajar a unas 200 entradas
 y `.next/standalone` no debería contener `docs/` ni `test/`.
+## 2026-09-24 — Variables del contenedor, CRON_SECRET, proxies de confianza y HTTPS
+
+**Contexto.** El servicio `app` de `docker-compose.yml` solo recibe las variables de
+`environment:`, y `CRON_SECRET` no estaba: en Docker los recordatorios respondían
+siempre 503. Las variables nuevas de otros cambios (`TRUSTED_PROXY_HOPS`,
+`ORGTABLE_TIMEZONE`) tampoco llegarían. La documentación daba por buena
+`X-Forwarded-For` para el límite de login, mandaba completar el asistente por
+`http://IP:3000` sin advertir de nada y dejaba `SESSION_SECRET=changeme` (8
+caracteres, por debajo del mínimo de 16).
+
+**Decisión.**
+- `docker-compose.yml` pasa `CRON_SECRET` (vacío por defecto = 503),
+  `TRUSTED_PROXY_HOPS` (0 por defecto) y `ORGTABLE_TIMEZONE` (`Atlantic/Canary`). El
+  CI comprueba con `docker compose config` que llegan.
+- `install.sh` genera `CRON_SECRET` en instalaciones nuevas y lo añade al `.env` de
+  las existentes si falta; al terminar avisa de que por HTTP todo viaja sin cifrar.
+- El puerto sigue publicado en todas las interfaces por defecto. Para publicarlo solo
+  en local se documenta `APP_PORT=127.0.0.1:3000`, que la interpolación del compose ya
+  admite, sin variable nueva.
+- Se documenta HTTPS como recomendación (no requisito): la cookie de sesión es `Secure`
+  cuando la petición llega por HTTPS o con `X-Forwarded-Proto: https`. Ejemplos de
+  Caddy y nginx (`X-Forwarded-For $remote_addr`), `TRUSTED_PROXY_HOPS=1` y aviso de
+  que Docker se salta `ufw`.
+- `docs/installation.md` es la referencia única de variables; `.env.example`,
+  `docs/docker.md` y el README remiten a ella.
+
+**Alternativas descartadas.**
+- `env_file: .env` en el servicio: metería en el contenedor todas las variables,
+  incluidas `POSTGRES_PASSWORD` y las que no necesita.
+- Publicar la app en `127.0.0.1` por defecto (o una variable `APP_BIND`): rompe a
+  quien entra hoy por `IP:3000`; lo decidió el propietario.
+- `SESSION_COOKIE_SECURE`: descartada por el propietario a favor de detectar HTTPS.
+
+**Consecuencias.** Tras actualizar hay que recrear el contenedor
+(`docker compose up -d`) para que vea las variables nuevas. Quien tenga `CRON_SECRET`
+en el `.env` empieza a recibir recordatorios en cuanto programe el cron. Los
+comportamientos de `TRUSTED_PROXY_HOPS`, `ORGTABLE_TIMEZONE` y la cookie `Secure`
+dependen del código de otros cambios de esta misma revisión.
+
+---
+
 ## 2026-09-24 — Copias de seguridad, restauración y actualización fiables
 
 **Contexto.** `scripts/backup.sh` usaba `sh` sin `pipefail`: si `pg_dump` fallaba
