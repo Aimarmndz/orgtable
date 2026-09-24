@@ -24,12 +24,14 @@ reconstruir. Hay un script que lo hace:
 
 ```bash
 cd ~/orgtable
-scripts/update.sh        # git pull --ff-only && docker compose up -d --build
+scripts/update.sh        # copia de seguridad, git pull --ff-only y docker compose up -d --build
 ```
 
 Las migraciones de base de datos pendientes se aplican **solas** al arrancar el
-contenedor (`prisma migrate deploy` en el entrypoint; es idempotente). No hay pasos
-manuales. Ver [docker.md](./docker.md) y [operations.md](./operations.md).
+contenedor (`prisma migrate deploy` en el entrypoint; es idempotente). El script hace
+antes una copia de seguridad y no actualiza si la copia falla; un `docker compose up -d
+--build` a mano no la hace. Ver [docker.md](./docker.md) y
+[operations.md](./operations.md#actualizaciones).
 
 ## Copias de seguridad
 
@@ -42,8 +44,9 @@ scripts/restore.sh backups/orgtable-db-<fecha>.sql.gz   # restaurar la BD
 ```
 
 > Programa `scripts/backup.sh` con un `cron` del sistema y guarda copias fuera del
-> servidor. Detalles completos (incluido exportar/importar tableros sueltos) en
-> [operations.md](./operations.md).
+> servidor. Las copias contienen datos personales. Detalles completos (cron, permisos,
+> restauración de adjuntos, exportar/importar tableros sueltos) en
+> [operations.md](./operations.md#copias-de-seguridad).
 
 ## El archivo `.env`
 

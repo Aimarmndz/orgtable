@@ -1176,6 +1176,48 @@ hacia `.next/standalone`.
 del trazado NFT no se ha podido comprobar aquí (el build lo ejecuta el integrador): tras
 `pnpm build`, `api/attachments/[id]/route.js.nft.json` debería bajar a unas 200 entradas
 y `.next/standalone` no debería contener `docs/` ni `test/`.
+## 2026-09-24 — Copias de seguridad, restauración y actualización fiables
+
+**Contexto.** `scripts/backup.sh` usaba `sh` sin `pipefail`: si `pg_dump` fallaba
+quedaba un `.sql.gz` vacío y el script anunciaba «✓ Backup completado». Desde cron
+(directorio `$HOME`) fallaba cada noche sin que nadie lo notara, omitía los adjuntos en
+silencio y dejaba las copias legibles por todos (644). `restore.sh` cargaba el volcado
+sin `--clean` ni `ON_ERROR_STOP` sobre un esquema ya migrado: mezclaba datos y decía
+«✓». `update.sh` migraba producción sin copia previa.
+
+**Decisión.**
+- Los tres scripts pasan a `bash` con `set -euo pipefail` y se sitúan en la raíz del
+  repositorio, así que funcionan desde cualquier directorio.
+- `backup.sh`: `umask 077` (ficheros 600, directorio por defecto 700); escribe en
+  `.partial` y solo renombra si el gzip es válido, no está vacío y contiene la marca
+  final de `pg_dump`. `pg_dump --clean --if-exists`. Los adjuntos se leen con `exec` si
+  la app está en marcha o con un contenedor efímero (`run --rm --no-deps`) si no; solo
+  se omiten si no existe `/data/uploads` (código 3), cualquier otro fallo aborta.
+- `restore.sh`: valida el fichero antes de preguntar, hace copia previa con
+  `backup.sh` en `backups/pre-restore-<fecha>`, para la app y carga
+  `DROP SCHEMA public CASCADE; CREATE SCHEMA public;` + volcado en una sola
+  transacción con `ON_ERROR_STOP`. Sirve también para volcados antiguos sin `--clean`.
+- `update.sh`: `docker compose up -d --wait postgres` y `backup.sh` antes del
+  `git pull`; si la copia falla, no actualiza.
+- Tests en `test/ops-scripts.test.ts` con un `docker` falso en el `PATH`, y
+  `shellcheck` en el CI.
+
+**Alternativas descartadas.**
+- Dejar `sh` POSIX: no tiene `pipefail`, que es justo lo que faltaba.
+- Restaurar solo con `--clean`: no arregla los volcados ya hechos sin él.
+- `chmod 700` sobre cualquier destino que pase el usuario: con `/tmp` (o cron como
+  root) rompería el sistema. Solo se fuerza en el directorio por defecto; uno nuevo ya
+  nace en 700 por el umask.
+- Omitir los adjuntos si la app está parada: es el fallo silencioso que se quería
+  quitar.
+
+**Consecuencias.** Verificado con Docker real (proyecto compose desechable): copia
+desde `$HOME` con umask 022 da 700/600; con Postgres parado sale con código 1 y sin
+ficheros; restaurar devuelve los datos y quita tablas ajenas; fichero inexistente o
+corrupto sale con 1 sin tocar nada; el procedimiento de restaurar adjuntos de
+`docs/operations.md` funciona. Las copias antiguas siguen con 644: la documentación da
+el `chmod` para cerrarlas. `update.sh` no se probó contra un remoto real (solo con los
+falsos del test).
 
 ---
 

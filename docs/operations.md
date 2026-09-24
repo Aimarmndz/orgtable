@@ -56,18 +56,70 @@ scripts/backup.sh [directorio_destino]   # por defecto: ./backups
 
 Genera dos ficheros con marca de tiempo:
 
-- `orgtable-db-<fecha>.sql.gz` — volcado de `pg_dump` comprimido.
+- `orgtable-db-<fecha>.sql.gz` — volcado de `pg_dump --clean --if-exists` comprimido.
 - `orgtable-uploads-<fecha>.tar.gz` — los adjuntos del volumen `/data/uploads`.
 
-Para **restaurar** la base de datos (⚠️ sobrescribe los datos actuales):
+Cómo se comporta:
+
+- Se puede lanzar desde cualquier directorio: se sitúa solo en la raíz de la instalación.
+- Si algo falla (Postgres parado, volcado vacío o truncado, adjuntos que no se pueden
+  leer), sale con un código distinto de 0, lo dice por la salida de error y no deja
+  ficheros a medias. Solo imprime `✓ Backup completado` si las copias están bien.
+- Los adjuntos se omiten únicamente si no existe `/data/uploads`. Si la app está parada,
+  se leen con un contenedor efímero que monta el mismo volumen.
+- **Las copias contienen datos personales** (emails, hashes de contraseñas y de tokens,
+  comentarios). El script crea el directorio `backups/` con permisos `700` y los ficheros
+  con `600`. Las copias hechas con versiones anteriores del script pueden ser legibles
+  por otros usuarios del servidor; ciérralas una vez:
+
+  ```sh
+  chmod 700 backups && chmod 600 backups/*.gz
+  ```
+
+Automatiza el backup con un `cron` del sistema y guarda copias fuera del servidor.
+Usa rutas absolutas, porque cron arranca en `$HOME`. Por ejemplo, cada día a las 3:30
+(`crontab -e`):
+
+```cron
+30 3 * * * /home/usuario/orgtable/scripts/backup.sh >> /home/usuario/orgtable/backups/backup.log 2>&1
+```
+
+Si el script falla, el error queda en ese log; revísalo o configura `MAILTO` en el
+crontab para recibirlo por correo.
+
+### Restaurar
+
+Para **restaurar** la base de datos (⚠️ sustituye todos los datos actuales):
 
 ```sh
 scripts/restore.sh backups/orgtable-db-<fecha>.sql.gz
 ```
 
-Los adjuntos se restauran descomprimiendo el `.tar.gz` dentro del volumen `uploads`.
-Automatiza el backup con un `cron` del sistema (p. ej. diario) y guarda copias fuera
-del servidor.
+El script:
+
+1. Comprueba que el fichero existe, que es un gzip válido y que el volcado está
+   completo. Si no, sale sin tocar nada.
+2. Pide confirmación.
+3. Hace una **copia previa automática** en `backups/pre-restore-<fecha>/` con
+   `scripts/backup.sh`. Si la copia falla, no sigue.
+4. Para la app mientras restaura y, si estaba en marcha, la vuelve a arrancar al
+   terminar.
+5. Vacía el esquema y carga el volcado en **una sola transacción** con
+   `ON_ERROR_STOP`: si algo falla, no se aplica nada y la base de datos queda como
+   estaba. Funciona también con volcados antiguos hechos sin `--clean`.
+
+Al arrancar, la app aplica las migraciones que falten si el volcado es de una versión
+anterior.
+
+Los adjuntos no se restauran con el script. Con la app parada, descomprime el
+`.tar.gz` dentro del volumen `uploads` (desde la raíz de la instalación):
+
+```sh
+docker compose stop app
+docker compose run --rm --no-deps -T --entrypoint sh app \
+  -c 'rm -rf /data/uploads/* && tar xzf - -C /data' < backups/orgtable-uploads-<fecha>.tar.gz
+docker compose start app
+```
 
 ## Exportar e importar tableros
 
@@ -91,9 +143,18 @@ La imagen de la app se construye localmente, así que actualizar es traer los ca
 reconstruir. El script [`scripts/update.sh`](../scripts/update.sh) lo hace:
 
 ```sh
-scripts/update.sh        # git pull --ff-only && docker compose up -d --build
+scripts/update.sh
 ```
+
+El script, en este orden:
+
+1. Levanta Postgres si no lo estaba y hace una **copia de seguridad** con
+   `scripts/backup.sh` (queda en `backups/`). Si la copia falla, no actualiza.
+2. Trae los cambios (`git pull --ff-only`).
+3. Reconstruye y relanza (`docker compose up -d --build`).
 
 Las **migraciones de base de datos se aplican solas** al arrancar: el
 `docker-entrypoint.sh` ejecuta `prisma migrate deploy` antes de levantar el servidor.
-Haz un backup (`scripts/backup.sh`) antes de actualizar.
+Por eso la copia va antes: si una migración sale mal, se puede volver con
+`scripts/restore.sh`. Un `docker compose up -d --build` lanzado a mano **no** hace esa
+copia.

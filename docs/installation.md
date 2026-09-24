@@ -155,14 +155,13 @@ Volver a levantarlos:
 docker compose up -d
 ```
 
-Actualizar a la última versión (actualiza el código, reconstruye y relevanta):
+Actualizar a la última versión (copia de seguridad, actualiza el código, reconstruye y relevanta):
 
 ```bash
-git pull --ff-only
-docker compose up -d --build
+scripts/update.sh
 ```
 
-También puedes volver a ejecutar el instalador (`install.sh`), que hace lo mismo de forma idempotente sin tocar tu `.env`.
+Volver a ejecutar el instalador (`install.sh`) también actualiza sin tocar tu `.env`, pero **no** hace la copia de seguridad previa. Detalles en [operations.md](./operations.md#actualizaciones).
 
 Para operaciones avanzadas como **copias de seguridad** o configurar un **reverse proxy con TLS**, consulta [docs/self-hosting.md](./self-hosting.md).
 

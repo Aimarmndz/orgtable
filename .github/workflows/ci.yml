@@ -39,6 +39,11 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      # shellcheck viene instalado en ubuntu-latest. Los scripts de operación tocan datos
+      # de producción (backups, restauración), así que un error de shell no puede pasar.
+      - name: Shellcheck
+        run: shellcheck scripts/*.sh install.sh docker-entrypoint.sh
+
       # Instala la versión de pnpm fijada en `packageManager` (package.json).
       - uses: pnpm/action-setup@v4
 
