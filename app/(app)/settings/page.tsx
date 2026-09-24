@@ -2,13 +2,10 @@ import Link from "next/link";
 import { requireUser } from "@/app/lib/dal";
 import { getApiTokensForUser } from "@/app/lib/queries";
 import { revokeApiToken } from "@/app/lib/actions/tokens";
+import { formatDate } from "@/app/lib/format-date";
 import { CreateTokenForm } from "./create-token-form";
 
 export const dynamic = "force-dynamic";
-
-function formatDate(d: Date): string {
-  return new Intl.DateTimeFormat("es", { dateStyle: "medium" }).format(d);
-}
 
 // Fuera del componente: leer la hora dentro del render rompería la regla de pureza.
 function isExpired(d: Date | null): boolean {

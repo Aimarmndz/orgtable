@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireAdmin } from "@/app/lib/dal";
 import { getRecentAuditLogs } from "@/app/lib/queries";
 import type { AuditAction } from "@/app/lib/audit";
+import { formatDateTime } from "@/app/lib/format-date";
 
 // Etiquetas legibles para cada acción auditada.
 const ACTION_LABELS: Record<AuditAction, string> = {
@@ -34,13 +35,6 @@ const WARN_ACTIONS = new Set<string>([
 
 function actionLabel(action: string): string {
   return ACTION_LABELS[action as AuditAction] ?? action;
-}
-
-function formatWhen(d: Date): string {
-  return new Intl.DateTimeFormat("es", {
-    dateStyle: "short",
-    timeStyle: "medium",
-  }).format(d);
 }
 
 export default async function AdminAuditPage() {
@@ -86,7 +80,7 @@ export default async function AdminAuditPage() {
               {logs.map((log) => (
                 <tr key={log.id} className="bg-surface align-top">
                   <td className="whitespace-nowrap px-4 py-2.5 text-xs text-ink-muted tabular-nums">
-                    {formatWhen(log.createdAt)}
+                    {formatDateTime(log.createdAt)}
                   </td>
                   <td className="px-4 py-2.5">
                     <span

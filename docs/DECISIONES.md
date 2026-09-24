@@ -562,6 +562,34 @@ expulsada seguían recibiendo eventos, en contra del ADR 0008.
 reconecta. Tests en `test/integration/realtime.int.test.ts` (401/403, abort, cancel,
 revocación, expulsión, vida máxima; sin listeners ni temporizadores tras cerrar).
 
+## 2026-09-24 — Fechas del servidor en la zona de la instancia (ORGTABLE_TIMEZONE)
+
+**Contexto.** `/admin/audit`, `/admin/users` y `/settings` son Server Components que
+formateaban con `Intl.DateTimeFormat("es")` sin `timeZone`: salían en la zona del
+proceso (UTC en el contenedor). Un login fallido a las 10:15 en Canarias aparecía a las
+9:15, y las fechas cercanas a medianoche cambiaban de día.
+
+**Decisión.**
+- Helper único `app/lib/format-date.ts` (`formatDateTime`, `formatDate`) con locale
+  `es-ES` y la zona de la variable `ORGTABLE_TIMEZONE` (IANA; por defecto
+  `Atlantic/Canary`). Se valida con `Intl`: una zona desconocida lanza un error claro
+  en vez de caer a un valor por defecto.
+- La auditoría muestra la abreviatura de la zona (`timeZoneName: "short"`).
+- Los vencimientos (`dueDate`, fechas de calendario a medianoche UTC) NO usan este
+  helper: se formatean con `timeZone: "UTC"`.
+
+**Alternativas descartadas.**
+- Formatear en el cliente con la zona del navegador: obliga a convertir tres páginas de
+  servidor en componentes cliente y da horas distintas a cada administrador.
+- Fijar `Atlantic/Canary` en el código: es una app self-hosted, cada instancia tiene la
+  suya.
+
+**Consecuencias.** Variable de entorno nueva `ORGTABLE_TIMEZONE` (su documentación en
+`.env.example` y README la hace el lote de despliegue). Test unitario
+`test/format-date.test.ts` con `TZ=UTC`.
+
+---
+
 ## 2026-09-24 — Acciones de administración: usuario inexistente y borrado atómico
 
 **Contexto.** `updateUserRole`, `resetUserPassword`, `revokeUserSessions` y `deleteUser`

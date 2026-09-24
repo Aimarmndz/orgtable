@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireAdmin } from "@/app/lib/dal";
 import { getAllUsers } from "@/app/lib/queries";
+import { formatDate } from "@/app/lib/format-date";
 import { CreateUserForm } from "./create-user-form";
 import { UserRowActions } from "./user-row-actions";
 
@@ -21,10 +22,6 @@ const ERROR_MESSAGES: Record<string, string> = {
   invalid: "Datos no válidos.",
   "not-found": "Ese usuario ya no existe.",
 };
-
-function formatDate(d: Date): string {
-  return new Intl.DateTimeFormat("es", { dateStyle: "medium" }).format(d);
-}
 
 export default async function AdminUsersPage({
   searchParams,
