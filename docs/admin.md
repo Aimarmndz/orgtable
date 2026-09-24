@@ -13,8 +13,13 @@ cabecera y pueden entrar a `/admin/users`. La ruta está protegida por
 - **Crear cuentas**: nombre, email, contraseña inicial y rol global
   (`MEMBER` o `ADMIN`). El usuario podrá iniciar sesión con esa contraseña.
 - **Cambiar el rol global** de cualquier otra cuenta (promover a admin o degradar).
-- **Restablecer la contraseña** de cualquier cuenta (teclea una nueva).
-- **Borrar cuentas**.
+- **Restablecer la contraseña** de cualquier cuenta (teclea una nueva). Además cierra
+  todas las sesiones del usuario y **borra todos sus tokens de API**: es la acción a
+  usar si una cuenta puede estar comprometida. El usuario tendrá que crear tokens
+  nuevos en `/settings`.
+- **Cerrar sesiones** de una cuenta: revoca sus sesiones del navegador, pero **no** sus
+  tokens de API.
+- **Borrar cuentas** (sus sesiones y tokens se borran en cascada).
 
 ## Salvaguardas
 

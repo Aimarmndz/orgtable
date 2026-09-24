@@ -42,3 +42,40 @@ export async function createUserAccount(
   });
   return { ok: true, user };
 }
+
+export type ResetPasswordResult =
+  | { ok: true; revokedTokens: number }
+  | { ok: false; error: "not_found" };
+
+/**
+ * Restablece la contraseña de un usuario y le retira TODO acceso vigente: revoca sus
+ * sesiones y borra sus tokens de API. Los tokens no dependen de la tabla Session, así
+ * que revocar solo sesiones dejaría viva la API (/api/v1) a quien hubiera creado un
+ * token con la cuenta comprometida. Borrar es la semántica de revocación del ADR 0013.
+ *
+ * Se comprueba que el usuario existe ANTES de hashear (bcrypt es caro) y los tres
+ * cambios van en una transacción: o se aplican todos o ninguno.
+ */
+export async function resetPasswordAndRevokeAccess(
+  userId: string,
+  password: string,
+): Promise<ResetPasswordResult> {
+  const exists = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true },
+  });
+  if (!exists) return { ok: false, error: "not_found" };
+
+  const passwordHash = await hashPassword(password);
+  const [updated, , tokens] = await prisma.$transaction([
+    prisma.user.updateMany({ where: { id: userId }, data: { passwordHash } }),
+    prisma.session.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    }),
+    prisma.apiToken.deleteMany({ where: { userId } }),
+  ]);
+  // El usuario pudo borrarse entre la comprobación y la transacción.
+  if (updated.count === 0) return { ok: false, error: "not_found" };
+  return { ok: true, revokedTokens: tokens.count };
+}

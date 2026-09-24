@@ -43,6 +43,14 @@ aplicaciones. Hay que decidir **cómo se autentica** esa API (sin cookies de nav
   autenticación.
 - `lastUsedAt` se actualiza en cada petición (best-effort); es una escritura barata y útil
   para que el usuario detecte tokens en uso o en desuso.
+- Los tokens **no dependen de la tabla `Session`**: cerrar sesión o «Cerrar sesiones»
+  en `/admin/users` no los invalida. Por eso, **restablecer la contraseña** de un
+  usuario (acción del administrador) **borra también todos sus tokens** en la misma
+  transacción que revoca sus sesiones (`resetPasswordAndRevokeAccess` en
+  `app/lib/services/users.ts`, añadido el 2026-09-24): si la cuenta estaba
+  comprometida, un token creado por el atacante dejaría abierta la API. El usuario
+  tendrá que crear tokens nuevos. Ver [`docs/api/public-api.md`](../api/public-api.md)
+  y [`docs/admin.md`](../admin.md).
 - La superficie inicial cubre tableros, listas y tarjetas (CRUD esencial); checklists,
   etiquetas y adjuntos quedan como ampliación natural.
 - Documentado en [`docs/api/public-api.md`](../api/public-api.md).

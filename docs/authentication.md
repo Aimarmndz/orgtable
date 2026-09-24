@@ -352,9 +352,12 @@ días):
 
 - **`logout`** revoca la fila de la sesión actual (`revokedAt`) y borra la cookie.
 - **Restablecer la contraseña** (por el administrador) revoca **todas** las sesiones
-  del usuario: cualquier sesión abierta deja de valer al instante.
+  del usuario y **borra sus tokens de API**, en una sola transacción: cualquier sesión
+  abierta y cualquier token dejan de valer al instante (ver
+  [ADR 0013](./decisions/0013-api-tokens.md)).
 - El administrador puede **forzar el cierre de sesión** de un usuario desde
-  `/admin/users` (acción `revokeUserSessions`).
+  `/admin/users` (acción `revokeUserSessions`). Solo afecta a las sesiones del
+  navegador: los tokens de API siguen vigentes.
 - **Borrar un usuario** elimina sus sesiones en cascada.
 
 El coste es **una consulta más por petición** (la búsqueda de la sesión), memoizada

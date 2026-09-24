@@ -562,6 +562,34 @@ expulsada seguían recibiendo eventos, en contra del ADR 0008.
 reconecta. Tests en `test/integration/realtime.int.test.ts` (401/403, abort, cancel,
 revocación, expulsión, vida máxima; sin listeners ni temporizadores tras cerrar).
 
+## 2026-09-24 — Restablecer la contraseña también revoca los tokens de API
+
+**Contexto.** `resetUserPassword` solo revocaba sesiones. `authenticateApiToken` no mira
+la tabla `Session`, así que quien hubiera creado un token `full` sin caducidad con una
+cuenta comprometida seguía entrando por `/api/v1` después del reset. El comentario de la
+acción prometía lo contrario.
+
+**Decisión.**
+- Nuevo servicio `resetPasswordAndRevokeAccess` en `app/lib/services/users.ts`: en una
+  sola `$transaction` cambia el hash, revoca las sesiones y **borra** los tokens del
+  usuario (borrar es la revocación del ADR 0013). Comprueba que el usuario existe antes
+  de hashear.
+- La auditoría `user.password_reset` guarda cuántos tokens se revocaron.
+- «Cerrar sesiones» no cambia de semántica (solo sesiones) y no se añade un botón nuevo
+  de revocar tokens; queda documentado que no toca los tokens.
+
+**Alternativas descartadas.**
+- Invalidar tokens por fecha (`tokensValidAfter` en `User`): exige migración y deja
+  filas muertas en `/settings`.
+- Revocar tokens también en «Cerrar sesiones»: cambia una acción que se usa para cerrar
+  el navegador de alguien sin romper sus scripts.
+
+**Consecuencias.** Tras un reset el usuario tiene que crear tokens nuevos. Test en
+`test/integration/admin-revocation.int.test.ts` (el mismo Bearer pasa de 200 a 401; los
+tokens de otros usuarios no se tocan).
+
+---
+
 ## 2026-09-24 — Content-Security-Policy con nonce y HSTS
 
 **Contexto.** La norma de seguridad exige CSP, HSTS, X-Content-Type-Options y

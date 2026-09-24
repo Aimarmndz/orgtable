@@ -7,7 +7,8 @@ import { UserRowActions } from "./user-row-actions";
 // Mensajes que devuelven las acciones por fila vía ?ok=… / ?error=… (ver admin.ts).
 const OK_MESSAGES: Record<string, string> = {
   role: "Rol actualizado.",
-  password: "Contraseña restablecida. Se han cerrado las sesiones del usuario.",
+  password:
+    "Contraseña restablecida. Se han cerrado las sesiones del usuario y revocado sus tokens de API.",
   delete: "Usuario borrado.",
   revoked: "Sesiones cerradas.",
 };
@@ -18,6 +19,7 @@ const ERROR_MESSAGES: Record<string, string> = {
     "Ese usuario es propietario de tableros. Transfiérelos o bórralos antes de eliminar la cuenta.",
   password: "La contraseña debe tener al menos 8 caracteres.",
   invalid: "Datos no válidos.",
+  "not-found": "Ese usuario ya no existe.",
 };
 
 function formatDate(d: Date): string {

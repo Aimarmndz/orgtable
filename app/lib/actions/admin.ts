@@ -4,8 +4,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/app/lib/prisma";
 import { requireAdmin } from "@/app/lib/dal";
-import { hashPassword } from "@/app/lib/auth";
-import { createUserAccount } from "@/app/lib/services/users";
+import {
+  createUserAccount,
+  resetPasswordAndRevokeAccess,
+} from "@/app/lib/services/users";
 import { revokeAllUserSessions } from "@/app/lib/session";
 import { recordAudit } from "@/app/lib/audit";
 import {
@@ -97,19 +99,20 @@ export async function resetUserPassword(formData: FormData): Promise<void> {
   });
   if (!parsed.success) backToUsers({ error: "password" });
 
-  const passwordHash = await hashPassword(parsed.data.password);
-  await prisma.user.updateMany({
-    where: { id: parsed.data.userId },
-    data: { passwordHash },
-  });
-  // Al cambiar la contraseña, revocamos todas las sesiones del usuario: cualquier
-  // sesión abierta (p. ej. en un dispositivo comprometido) deja de valer al instante.
-  await revokeAllUserSessions(parsed.data.userId);
+  // Al cambiar la contraseña se retira todo acceso vigente del usuario: sus sesiones
+  // (navegador) y sus tokens de API, que no dependen de la sesión. Si la cuenta estaba
+  // comprometida, un token creado por el atacante seguiría abriendo /api/v1.
+  const result = await resetPasswordAndRevokeAccess(
+    parsed.data.userId,
+    parsed.data.password,
+  );
+  if (!result.ok) backToUsers({ error: "not-found" });
   await recordAudit({
     action: "user.password_reset",
     userId: admin.id,
     targetType: "user",
     targetId: parsed.data.userId,
+    detail: `tokens de API revocados: ${result.revokedTokens}`,
   });
   revalidatePath("/admin/users");
   backToUsers({ ok: "password" });
