@@ -57,18 +57,25 @@ Turbopack evalúa el módulo una vez por capa (route handlers y RSC/SSR): dos po
 
 **Decisión.**
 - `buildPoolConfig()` exportada en `app/lib/prisma.ts`: `connectionTimeoutMillis`
-  5 s e `idleTimeoutMillis` 30 s. `onPoolError` registra solo el mensaje del error
-  (nunca la cadena de conexión) para que un fallo en una conexión inactiva no tumbe el
-  proceso.
+  5 s e `idleTimeoutMillis` 10 s (el valor por defecto de pg-pool, explícito para que
+  no cambie sin querer). `onPoolError` registra solo el mensaje del error (nunca la
+  cadena de conexión). El adapter ya escuchaba el evento `error` del pool, así que el
+  proceso no se caía: el manejador sirve para que el fallo de una conexión inactiva
+  quede en el log y no solo en el de depuración del adapter.
 - `globalForPrisma.prisma = prisma` siempre, como `bus.ts` y `rate-limit.ts`.
-- `test/integration/prisma-pool.int.test.ts`: con `max: 1` y 200 ms, una consulta
-  mientras una transacción ocupa la conexión falla por timeout; en producción dos
-  evaluaciones del módulo devuelven el mismo cliente.
+- `test/integration/prisma-pool.int.test.ts`: el cliente exportado se crea con
+  `buildPoolConfig()` y `onPoolError` (se envuelve `PrismaPg` con `vi.doMock`); con
+  `max: 1` y 200 ms, una consulta mientras una transacción ocupa la conexión falla por
+  timeout; en producción dos evaluaciones del módulo devuelven el mismo cliente.
 
 **Alternativas descartadas.**
 - `max` configurable por variable de entorno: no hace falta todavía.
 - `statement_timeout`: cortaría exportaciones o importaciones grandes sin un valor
   medido.
+- `idleTimeoutMillis` de 30 s: no hay medida que justifique mantener abiertas las
+  conexiones inactivas más tiempo que el valor de pg.
+- Probar el timeout con los 5 s reales: cada ejecución de la suite tardaría 5 s más; el
+  cableado ya lo comprueba el test del cliente exportado.
 
 **Consecuencias.** Con el pool saturado, una petición falla a los 5 s con un error de
 timeout en vez de colgarse. Un solo pool por proceso.

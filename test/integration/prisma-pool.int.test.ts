@@ -9,11 +9,50 @@ describe("pool de conexiones de Prisma", () => {
   it("fija un timeout de conexión (pg espera para siempre por defecto)", () => {
     const config = buildPoolConfig("postgresql://u:p@localhost:5432/x_test");
     expect(config.connectionTimeoutMillis).toBe(5_000);
-    expect(config.idleTimeoutMillis).toBe(30_000);
+    expect(config.idleTimeoutMillis).toBe(10_000);
   });
 
-  // Reproduce el cuelgue: con el pool agotado, la consulta siguiente debe fallar por
-  // timeout en vez de quedarse esperando. Se usa un pool de 1 y 200 ms para no tardar.
+  // Comprueba el cableado: el cliente que exporta el módulo se crea con buildPoolConfig y
+  // con onPoolError. Si alguien vuelve a `new PrismaPg({ connectionString })`, falla.
+  it("el cliente exportado usa buildPoolConfig y registra solo el mensaje de los errores", async () => {
+    const g = globalThis as unknown as { prisma: PrismaClient | undefined };
+    const previous = g.prisma;
+    const calls: ConstructorParameters<typeof PrismaPg>[] = [];
+    vi.doMock("@prisma/adapter-pg", async (importOriginal) => {
+      const actual = await importOriginal<typeof import("@prisma/adapter-pg")>();
+      class RecordingPrismaPg extends actual.PrismaPg {
+        constructor(...args: ConstructorParameters<typeof PrismaPg>) {
+          super(...args);
+          calls.push(args);
+        }
+      }
+      return { ...actual, PrismaPg: RecordingPrismaPg };
+    });
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      g.prisma = undefined;
+      vi.resetModules();
+      const { prisma } = await import("@/app/lib/prisma");
+      expect(calls).toHaveLength(1);
+      const [config, options] = calls[0];
+      expect(config).toEqual(buildPoolConfig(process.env.DATABASE_URL));
+
+      // Se registra el mensaje, no el objeto Error (que podría arrastrar más datos).
+      options?.onPoolError?.(new Error("conexión cerrada"));
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      expect(errorSpy.mock.calls[0]).toEqual([expect.any(String), "conexión cerrada"]);
+      await prisma.$disconnect();
+    } finally {
+      errorSpy.mockRestore();
+      vi.doUnmock("@prisma/adapter-pg");
+      vi.resetModules();
+      g.prisma = previous;
+    }
+  });
+
+  // Reproduce el cuelgue con la configuración de pg: con el pool agotado, la consulta
+  // siguiente falla por timeout en vez de quedarse esperando. Se usa un pool de 1 y
+  // 200 ms para no tardar 5 s; que la app use ese timeout lo vigila el test anterior.
   it("con el pool agotado, una consulta falla por timeout en vez de colgarse", async () => {
     const adapter = new PrismaPg({
       ...buildPoolConfig(process.env.DATABASE_URL),

@@ -28,8 +28,9 @@ export function buildPoolConfig(connectionString: string | undefined): PoolConfi
     connectionString,
     // Esperar una conexión libre del pool (o abrir una nueva) falla a los 5 s.
     connectionTimeoutMillis: 5_000,
-    // Las conexiones inactivas se cierran a los 30 s (el valor de pg, explícito).
-    idleTimeoutMillis: 30_000,
+    // Las conexiones inactivas se cierran a los 10 s: el valor por defecto de pg-pool,
+    // explícito para que el test lo vigile y no cambie sin querer.
+    idleTimeoutMillis: 10_000,
   };
 }
 
@@ -44,9 +45,10 @@ function createPrismaClient() {
     );
   }
   const adapter = new PrismaPg(buildPoolConfig(url), {
-    // Sin este manejador, un error en una conexión inactiva (Postgres reiniciado, red
-    // cortada) llega como evento 'error' sin escuchar y tumba el proceso. Solo el
-    // mensaje: nunca la cadena de conexión, que lleva la contraseña.
+    // El adapter ya escucha el evento 'error' del pool (no tumba el proceso), pero sin
+    // este manejador el fallo de una conexión inactiva (Postgres reiniciado, red cortada)
+    // solo iba a su log de depuración. Se registra solo el mensaje: nunca la cadena de
+    // conexión, que lleva la contraseña.
     onPoolError: (err) =>
       console.error("[prisma] error en una conexión inactiva del pool de pg:", err.message),
   });
