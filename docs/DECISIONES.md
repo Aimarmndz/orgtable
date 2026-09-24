@@ -155,6 +155,33 @@ oye el lector de pantalla; «todas» ya deja claro el alcance del borrado.
 
 **Consecuencias.** El lector de pantalla no dice cuántas tarjetas se borran; quien quiera
 saberlo tiene el contador (sin filtros). Test en `test/list-column-delete.test.ts`.
+## 2026-09-24 — Tiempo real: plazo máximo para la comprobación del stream CLOSED
+
+**Contexto.** `keepEventSourceOpen` programaba el reintento al terminar `probe()`, y
+`probeStatus` hacía un `fetch` sin timeout (el del navegador no tiene). Si la
+comprobación no respondía (un proxy que retiene la conexión mientras la app arranca, o
+`verifySession` esperando una conexión del pool durante el mismo fallo de BD que dio el
+500), no se recreaba nunca la fuente y el tiempo real se perdía hasta recargar. El
+desmontaje tampoco abortaba la comprobación en curso.
+
+**Decisión.** `PROBE_TIMEOUT_MS` (10 s) en `app/lib/realtime/reconnect.ts`. `probe`
+recibe una `AbortSignal` y un temporizador compite con ella (`Promise.race`): al vencer
+aborta la señal y se trata como «sin estado» (reintento con backoff, sin
+`onAccessDenied`). El desmontaje aborta la señal. `probeStatus(url, signal)` devuelve
+`null` si la señal se aborta.
+
+**Alternativas descartadas.**
+- Solo `AbortSignal.timeout` dentro de `probeStatus`: el reintento seguiría dependiendo
+  de que el `probe` inyectado respete la señal.
+- `AbortSignal.any` para encadenar señales: Safari no lo tiene hasta la 17.4; se
+  encadena con un listener.
+
+**Consecuencias.** Con un servidor colgado, cada reintento tarda hasta 10 s más que el
+backoff. Tests en `test/realtime-reconnect.test.ts`: `probe` que no resuelve nunca,
+aborto al desmontar y `probeStatus` con la señal abortada contra un servidor HTTP real.
+
+---
+
 ## 2026-09-24 — Tiempo real: un solo refresh por pestaña para el tablero y la campana
 
 **Contexto.** En `/board/[id]` la campana (layout) y `BoardRealtime` (página) tienen

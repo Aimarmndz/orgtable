@@ -89,7 +89,7 @@ export function NotificationsBell({
       // CLOSED: se pregunta el estado al endpoint. Solo con 401 (sesión revocada) se
       // refresca para que el layout redirija a /login; ante un 502 del proxy durante un
       // reinicio refrescar navegaría a su página de error, así que solo se reintenta.
-      probe: () => probeStatus(url),
+      probe: (signal) => probeStatus(url, signal),
       onAccessDenied: onEvent,
     });
   }, [router]);

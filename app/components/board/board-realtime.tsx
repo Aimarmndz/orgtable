@@ -34,7 +34,7 @@ export function BoardRealtime({ boardId }: { boardId: string }) {
       // revocados) se refresca para que la página redirija a /login o /boards; ante un
       // 502 del proxy durante un reinicio refrescar navegaría a su página de error, así
       // que solo se reintenta.
-      probe: () => probeStatus(url),
+      probe: (signal) => probeStatus(url, signal),
       onAccessDenied: onChange,
     });
   }, [boardId, router]);

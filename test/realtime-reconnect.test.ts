@@ -7,6 +7,7 @@ import {
   probeStatus,
   retryDelay,
   scheduleRefresh,
+  PROBE_TIMEOUT_MS,
   REFRESH_DEBOUNCE_MS,
   RETRY_BASE_MS,
   RETRY_MAX_MS,
@@ -90,7 +91,7 @@ function setup(status: number | null = 502) {
   const onEvent = vi.fn();
   const onReconnect = vi.fn();
   const onAccessDenied = vi.fn();
-  const probe = vi.fn(async () => status);
+  const probe = vi.fn<(signal: AbortSignal) => Promise<number | null>>(async () => status);
   const stop = keepEventSourceOpen({
     create: () => {
       const s = new FakeSource();
@@ -234,6 +235,53 @@ describe("keepEventSourceOpen", () => {
     expect(sources).toHaveLength(1);
   });
 
+  // Regresión: el reintento se programaba solo al terminar la comprobación; si el proxy
+  // retenía la conexión o el servidor no llegaba a responder, no se recreaba la fuente
+  // nunca y el tiempo real se perdía hasta recargar la pestaña.
+  it("si la comprobación no responde, reintenta tras el plazo sin avisar", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const sources: FakeSource[] = [];
+    const onAccessDenied = vi.fn();
+    const signals: AbortSignal[] = [];
+    const stop = keepEventSourceOpen({
+      create: () => {
+        const s = new FakeSource();
+        sources.push(s);
+        return s;
+      },
+      events: {},
+      onReconnect: () => {},
+      // Ignora la señal a propósito: el plazo no puede depender de que la respete.
+      probe: (signal) => {
+        signals.push(signal);
+        return new Promise<number | null>(() => {});
+      },
+      onAccessDenied,
+    });
+    sources[0].fail();
+    await vi.advanceTimersByTimeAsync(PROBE_TIMEOUT_MS - 1);
+    expect(signals[0].aborted).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(signals[0].aborted).toBe(true);
+    vi.advanceTimersByTime(RETRY_BASE_MS);
+    expect(sources).toHaveLength(2);
+    expect(onAccessDenied).not.toHaveBeenCalled();
+    expect(errorSpy).not.toHaveBeenCalled();
+    stop();
+    errorSpy.mockRestore();
+  });
+
+  it("el desmontaje aborta la comprobación en curso", async () => {
+    const { sources, probe, stop } = setup(502);
+    sources[0].fail();
+    const signal = probe.mock.calls[0][0];
+    expect(signal.aborted).toBe(false);
+    stop();
+    expect(signal.aborted).toBe(true);
+    await vi.advanceTimersByTimeAsync(PROBE_TIMEOUT_MS + RETRY_MAX_MS);
+    expect(sources).toHaveLength(1);
+  });
+
   it("no recrea la fuente en un corte que el navegador reintenta solo", async () => {
     const { sources, probe, onReconnect, stop } = setup();
     sources[0].open();
@@ -316,6 +364,11 @@ describe("probeStatus", () => {
         res.writeHead(502).end("Bad Gateway");
         return;
       }
+      // Proxy que retiene la conexión sin enviar cabeceras.
+      if (req.url === "/hang") {
+        res.on("close", markClosed);
+        return;
+      }
       // Stream SSE que no se cierra por su cuenta.
       res.writeHead(200, { "Content-Type": "text/event-stream" });
       res.write(": connected\n\n");
@@ -338,6 +391,20 @@ describe("probeStatus", () => {
   it("con un stream abierto devuelve 200 y corta la conexión", async () => {
     expect(await probeStatus(`${base}/stream`)).toBe(200);
     await streamClosed;
+  });
+
+  it("si se aborta la señal antes de la respuesta devuelve null y corta", async () => {
+    const controller = new AbortController();
+    const pending = probeStatus(`${base}/hang`, controller.signal);
+    setTimeout(() => controller.abort(), 50);
+    expect(await pending).toBeNull();
+    await streamClosed;
+  });
+
+  it("con la señal ya abortada devuelve null sin hacer la petición", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    expect(await probeStatus(`${base}/401`, controller.signal)).toBeNull();
   });
 
   it("sin respuesta (servidor caído) devuelve null", async () => {

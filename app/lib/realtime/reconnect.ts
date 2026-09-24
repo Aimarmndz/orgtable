@@ -53,6 +53,12 @@ export function createReconnectRefresher(onReconnect: () => void): () => void {
 export const RETRY_BASE_MS = 3_000;
 export const RETRY_MAX_MS = 30_000;
 
+// Plazo máximo de la comprobación. fetch no tiene timeout en el navegador: si el proxy
+// retiene la conexión mientras la app arranca, o verifySession espera una conexión del
+// pool durante el mismo fallo de BD que dio el 500, la comprobación no respondería
+// nunca y, como el reintento se programa al terminarla, no se recrearía la fuente.
+export const PROBE_TIMEOUT_MS = 10_000;
+
 // Valor de EventSource.CLOSED. Se usa el literal porque en Node (tests) no existe el
 // global EventSource.
 const CLOSED = 2;
@@ -72,13 +78,17 @@ export type EventSourceLike = {
 
 /**
  * Estado HTTP del endpoint SSE, o null si no hubo respuesta (error de red, servidor
- * caído). Es un GET normal que se aborta en cuanto llegan las cabeceras: con un 200 el
- * stream se abre y se cierra al momento (el servidor limpia la suscripción por el
- * abort). No se usa HEAD porque en App Router se deriva del GET y abriría igualmente
- * el stream.
+ * caído, o `signal` abortada por el plazo o el desmontaje). Es un GET normal que se
+ * aborta en cuanto llegan las cabeceras: con un 200 el stream se abre y se cierra al
+ * momento (el servidor limpia la suscripción por el abort). No se usa HEAD porque en
+ * App Router se deriva del GET y abriría igualmente el stream.
  */
-export async function probeStatus(url: string): Promise<number | null> {
+export async function probeStatus(url: string, signal?: AbortSignal): Promise<number | null> {
   const controller = new AbortController();
+  // Se encadena a mano en vez de con AbortSignal.any, que Safari solo tiene desde 17.4.
+  const forwardAbort = () => controller.abort();
+  if (signal?.aborted) return null;
+  signal?.addEventListener("abort", forwardAbort, { once: true });
   try {
     const res = await fetch(url, {
       cache: "no-store",
@@ -88,10 +98,12 @@ export async function probeStatus(url: string): Promise<number | null> {
     return res.status;
   } catch (err) {
     // Sin respuesta no hay estado que interpretar: el llamador reintenta con backoff.
-    // Solo se tolera el fallo de red (TypeError de fetch); cualquier otro es un bug.
-    if (err instanceof TypeError) return null;
+    // Solo se toleran el fallo de red (TypeError de fetch) y el abort pedido desde
+    // fuera; cualquier otro error es un bug.
+    if (err instanceof TypeError || controller.signal.aborted) return null;
     throw err;
   } finally {
+    signal?.removeEventListener("abort", forwardAbort);
     controller.abort();
   }
 }
@@ -103,7 +115,9 @@ export async function probeStatus(url: string): Promise<number | null> {
  * - `onReconnect`: se llama en cada apertura salvo la primera (también en las fuentes
  *   recreadas), para traer lo perdido durante el corte.
  * - `probe`: cuando el navegador deja la fuente en CLOSED, averigua el estado HTTP del
- *   endpoint (probeStatus en la app; inyectable para probarlo sin navegador).
+ *   endpoint (probeStatus en la app; inyectable para probarlo sin navegador). Recibe
+ *   una señal que se aborta al pasar PROBE_TIMEOUT_MS o al desmontar; aunque `probe` la
+ *   ignore, pasado el plazo se reintenta como ante un error de red.
  * - `onAccessDenied`: solo si `probe` da 401/403 (sesión o acceso revocados); con un
  *   `router.refresh()` la página redirige y el desmontaje cancela el reintento. Ante un
  *   5xx o un error de red no se llama: solo se reintenta, y al reabrirse `onReconnect`
@@ -113,7 +127,7 @@ export function keepEventSourceOpen(options: {
   create: () => EventSourceLike;
   events: Record<string, () => void>;
   onReconnect: () => void;
-  probe: () => Promise<number | null>;
+  probe: (signal: AbortSignal) => Promise<number | null>;
   onAccessDenied: () => void;
 }): () => void {
   const { create, events, onReconnect, probe, onAccessDenied } = options;
@@ -122,6 +136,8 @@ export function keepEventSourceOpen(options: {
   const refreshOnReopen = createReconnectRefresher(onReconnect);
   let source: EventSourceLike | null = null;
   let retryTimer: ReturnType<typeof setTimeout> | null = null;
+  let probeTimer: ReturnType<typeof setTimeout> | null = null;
+  let probeController: AbortController | null = null;
   let attempt = 0;
   let stopped = false;
 
@@ -145,19 +161,33 @@ export function keepEventSourceOpen(options: {
     source = null;
     const delay = retryDelay(attempt);
     attempt += 1;
-    probe()
-      .catch((err: unknown) => {
-        // Si no se sabe por qué se cerró, no se refresca (podría navegar a una página
-        // de error): se reintenta igual que ante un 5xx.
-        console.error("[realtime] no se pudo comprobar por qué se cerró el stream", err);
-        return null;
-      })
-      .then((status) => {
-        // El componente pudo desmontarse mientras se comprobaba.
-        if (stopped) return;
-        if (status === 401 || status === 403) onAccessDenied();
-        retryTimer = setTimeout(connect, delay);
-      });
+    const controller = new AbortController();
+    probeController = controller;
+    // El plazo compite con la comprobación en vez de fiarse de que `probe` respete la
+    // señal: el reintento tiene que programarse pase lo que pase.
+    const timedOut = new Promise<null>((resolve) => {
+      probeTimer = setTimeout(() => {
+        controller.abort();
+        resolve(null);
+      }, PROBE_TIMEOUT_MS);
+    });
+    const checked = probe(controller.signal).catch((err: unknown) => {
+      // Abortada por el plazo o el desmontaje: ya se sabe por qué, no es un fallo.
+      if (controller.signal.aborted) return null;
+      // Si no se sabe por qué se cerró, no se refresca (podría navegar a una página
+      // de error): se reintenta igual que ante un 5xx.
+      console.error("[realtime] no se pudo comprobar por qué se cerró el stream", err);
+      return null;
+    });
+    void Promise.race([checked, timedOut]).then((status) => {
+      if (probeTimer) clearTimeout(probeTimer);
+      probeTimer = null;
+      probeController = null;
+      // El componente pudo desmontarse mientras se comprobaba.
+      if (stopped) return;
+      if (status === 401 || status === 403) onAccessDenied();
+      retryTimer = setTimeout(connect, delay);
+    });
   }
 
   function connect() {
@@ -178,6 +208,11 @@ export function keepEventSourceOpen(options: {
     stopped = true;
     if (retryTimer) clearTimeout(retryTimer);
     retryTimer = null;
+    // Corta la comprobación en curso para no dejar la petición colgada tras desmontar.
+    if (probeTimer) clearTimeout(probeTimer);
+    probeTimer = null;
+    probeController?.abort();
+    probeController = null;
     if (source) detach(source);
     source = null;
   };
