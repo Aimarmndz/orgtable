@@ -38,6 +38,31 @@ archivo truncado `tar` falla, los adjuntos anteriores (ocultos incluidos) siguen
 intactos y solo queda `.restore`, que el siguiente intento borra; con un archivo bueno
 se sustituyen todos. El procedimiento sigue siendo manual: nada obliga a hacer los pasos
 1 y 2.
+## 2026-09-24 — Copia flotante del calendario en un portal a `document.body`
+
+**Contexto.** El `DragOverlay` del calendario se pintaba dentro del panel, que lleva
+`backdrop-blur-sm`. `backdrop-filter` convierte ese panel en el bloque contenedor de sus
+descendientes `position: fixed`, y dnd-kit coloca la copia con `fixed` y coordenadas de la
+ventana. La copia salía desplazada (lo que miden las cabeceras de la app y del tablero),
+la animación de soltar volvía a un punto equivocado y el `overflow-y-auto` la recortaba.
+
+**Decisión.** En `app/components/board/calendar-view.tsx`, el `DragOverlay` se pinta con
+`createPortal(…, document.body)`. Se monta solo en el navegador (`useSyncExternalStore`
+con instantánea de servidor `false`, el mismo patrón que `CardItem`) y siempre, no solo
+con una tarjeta activa, para que termine la animación de soltar. El portal conserva el
+contexto de React, así que sigue dentro del `DndContext`.
+
+**Alternativas descartadas.**
+- Quitar `backdrop-blur-sm` del panel: cambia el diseño (decisión del usuario) y
+  cualquier `transform`, `filter` o `will-change` futuro en un ancestro lo volvería a
+  romper.
+- Sacar el `DragOverlay` del panel pero dentro del contenedor con scroll: no protege
+  frente a otros ancestros con esas propiedades.
+
+**Consecuencias.** La copia sigue al puntero sin recortes. Test
+`test/calendar-view.test.ts`: el render de servidor no toca `document` (falla si el
+portal se monta sin la guarda). El posicionamiento real solo se comprueba a mano en el
+navegador.
 
 ---
 

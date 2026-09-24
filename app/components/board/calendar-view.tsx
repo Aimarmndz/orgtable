@@ -1,6 +1,7 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
+import { useId, useMemo, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import {
   DndContext,
   DragOverlay,
@@ -52,6 +53,9 @@ const dayNameFormat = new Intl.DateTimeFormat("es-ES", {
   month: "long",
   timeZone: "UTC",
 });
+
+// Suscripción vacía para saber, con useSyncExternalStore, si ya estamos en el navegador.
+const subscribeNothing = () => () => {};
 
 // Clave de día local YYYY-MM-DD. Se compara con dueDate.slice(0,10) (la fecha que el
 // usuario eligió), evitando desfases de zona horaria.
@@ -185,6 +189,13 @@ export function CalendarView({
   const [activeId, setActiveId] = useState<string | null>(null);
   // Aviso si el servidor no guardó la nueva fecha (la tarjeta se queda en su día).
   const [dropError, setDropError] = useState<string | null>(null);
+  // El DragOverlay va en un portal a document.body, que solo existe en el navegador: en
+  // el servidor y durante la hidratación esto vale false y no se monta.
+  const inBrowser = useSyncExternalStore(
+    subscribeNothing,
+    () => true,
+    () => false,
+  );
 
   const todayKey = useMemo(() => dayKey(new Date()), []);
 
@@ -398,13 +409,23 @@ export function CalendarView({
               </DayCell>
             ))}
           </div>
-          <DragOverlay>
-            {activeCard ? (
-              <div className="flex w-full items-center gap-1.5 rounded-md border border-accent/50 bg-surface px-1.5 py-1 text-left text-xs leading-tight shadow-lg">
-                <ChipContent card={activeCard} />
-              </div>
-            ) : null}
-          </DragOverlay>
+          {/* En un portal a document.body: el panel lleva backdrop-blur, y backdrop-filter
+              convierte al panel en el bloque contenedor de los descendientes fixed. Dentro
+              de él, la copia (fixed, con coordenadas de la ventana) salía desplazada por la
+              cabecera y recortada por el overflow-y-auto. El portal conserva el contexto de
+              React, así que sigue dentro del DndContext. Montado siempre (no solo con
+              activeCard) para que termine la animación de soltar. */}
+          {inBrowser &&
+            createPortal(
+              <DragOverlay>
+                {activeCard ? (
+                  <div className="flex w-full items-center gap-1.5 rounded-md border border-accent/50 bg-surface px-1.5 py-1 text-left text-xs leading-tight shadow-lg">
+                    <ChipContent card={activeCard} />
+                  </div>
+                ) : null}
+              </DragOverlay>,
+              document.body,
+            )}
         </DndContext>
 
         {undated > 0 && (
