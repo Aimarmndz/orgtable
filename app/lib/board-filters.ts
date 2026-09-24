@@ -22,16 +22,38 @@ export function filtersActive(f: BoardFilters): boolean {
   return f.labelIds.length > 0 || f.assigneeIds.length > 0 || f.due !== "any";
 }
 
+/**
+ * ¿Está vencida? El `dueDate` representa un DÍA (se elige con `<input type="date">` y se
+ * guarda a medianoche UTC), así que se compara su parte de fecha con el día LOCAL de
+ * `now`, sin horas: la tarjeta que vence hoy no está vencida hasta mañana. Comparar el
+ * instante con `Date.now()` la marcaba vencida desde las 00:00 UTC del mismo día.
+ */
+export function isOverdue(dueDate: string, now: number): boolean {
+  const today = new Date(now);
+  const todayDay = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  return dueDate.slice(0, 10) < todayDay;
+}
+
+// Formateador de módulo (se crea una vez). `timeZone: "UTC"` porque el dueDate es una
+// fecha de calendario guardada a medianoche UTC: formatearla en la zona local mostraba
+// el día anterior al oeste de Greenwich y descuadraba la hidratación servidor/cliente.
+const dueDayFormat = new Intl.DateTimeFormat("es-ES", {
+  day: "numeric",
+  month: "short",
+  timeZone: "UTC",
+});
+
+/** Día de vencimiento corto para las tarjetas («24 sept»), igual en cualquier zona. */
+export function formatDueDay(dueDate: string): string {
+  return dueDayFormat.format(new Date(dueDate));
+}
+
 function matchesDue(card: CardDTO, due: DueFilter, now: number): boolean {
   if (due === "any") return true;
   if (due === "none") return card.dueDate === null;
   if (!card.dueDate) return false;
   if (due === "due") return true; // tiene vencimiento
-  // "overdue": vencida (su día es anterior a hoy). Comparación por fecha, sin horas.
-  const dueDay = card.dueDate.slice(0, 10);
-  const today = new Date(now);
-  const todayDay = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-  return dueDay < todayDay;
+  return isOverdue(card.dueDate, now);
 }
 
 /**

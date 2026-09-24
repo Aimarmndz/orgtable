@@ -1382,6 +1382,27 @@ corrupto sale con 1 sin tocar nada; el procedimiento de restaurar adjuntos de
 `docs/operations.md` funciona. Las copias antiguas siguen con 644: la documentación da
 el `chmod` para cerrarlas. `update.sh` no se probó contra un remoto real (solo con los
 falsos del test).
+## 2026-09-24 — Interfaz del tablero: arrastre, fechas, teclado y móvil
+
+**Contexto.** La tarjeta que vence hoy salía en rojo (se comparaba el instante de
+medianoche UTC con `Date.now()`) mientras el filtro «Vencidas» la excluía, y la fecha se
+formateaba en la zona local: al oeste de UTC mostraba el día anterior y descuadraba la
+hidratación.
+
+**Decisión.**
+- `isOverdue(dueDate, now)` en `app/lib/board-filters.ts`: compara el día guardado
+  (`slice(0,10)`) con el día local; la usan el filtro y la tarjeta.
+- `formatDueDay` con `Intl.DateTimeFormat('es-ES', { timeZone: 'UTC' })`: el vencimiento
+  es una fecha de calendario.
+- «Vencida» depende del día del navegador, así que la tarjeta solo la calcula tras
+  hidratar (`useSyncExternalStore`); en el HTML del servidor nunca sale en rojo.
+
+**Alternativas descartadas.**
+- Formatear en la zona del servidor (`ORGTABLE_TIMEZONE`): el vencimiento no es un
+  instante, es un día, y en UTC se muestra igual en todas partes.
+
+**Consecuencias.** Tests en `test/board-filters.test.ts` (vence hoy/ayer, formato con
+`TZ=America/New_York`).
 
 ---
 

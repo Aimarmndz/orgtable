@@ -1,18 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { CardDTO } from "@/app/lib/types";
 import { labelBackground } from "@/app/lib/colors";
+import { formatDueDay, isOverdue } from "@/app/lib/board-filters";
 import { useBoardPerms } from "./board-perms";
 
-function formatDue(d: Date): string {
-  return new Intl.DateTimeFormat("es", {
-    day: "numeric",
-    month: "short",
-  }).format(d);
-}
+// Suscripción vacía: solo se usa useSyncExternalStore para saber si ya se hidrató.
+const subscribeNothing = () => () => {};
 
 export function CardItem({
   card,
@@ -61,8 +58,16 @@ export function CardItem({
   // Date.now() se lee una vez al montar (no en cada render) para no romper la pureza
   // del render; el badge de "vencida" no necesita actualizarse al segundo.
   const [now] = useState(() => Date.now());
-  const due = card.dueDate ? new Date(card.dueDate) : null;
-  const overdue = due ? due.getTime() < now : false;
+  // "Vencida" depende del día LOCAL del navegador, que el servidor no conoce: se calcula
+  // solo tras hidratar (en el servidor y durante la hidratación vale false), para que el
+  // HTML del servidor y el primer render del cliente coincidan.
+  const hydrated = useSyncExternalStore(
+    subscribeNothing,
+    () => true,
+    () => false,
+  );
+  const due = card.dueDate;
+  const overdue = hydrated && due ? isOverdue(due, now) : false;
 
   return (
     <div
@@ -138,7 +143,7 @@ export function CardItem({
                 <rect x="3" y="4" width="18" height="18" rx="2" />
                 <path d="M16 2v4M8 2v4M3 10h18" />
               </svg>
-              {formatDue(due)}
+              {formatDueDay(due)}
             </span>
           )}
           {attachCount > 0 && (

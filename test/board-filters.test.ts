@@ -1,7 +1,9 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import {
   cardMatchesFilters,
   filtersActive,
+  formatDueDay,
+  isOverdue,
   EMPTY_FILTERS,
   type BoardFilters,
 } from "@/app/lib/board-filters";
@@ -77,5 +79,41 @@ describe("board-filters", () => {
 
     expect(cardMatchesFilters(undated, f({ due: "none" }), NOW)).toBe(true);
     expect(cardMatchesFilters(future, f({ due: "none" }), NOW)).toBe(false);
+  });
+});
+
+describe("isOverdue", () => {
+  // `now` construido con fecha LOCAL (la del navegador), como en la app.
+  const now = new Date(2026, 8, 24, 10, 0, 0).getTime(); // 24/09/2026 10:00 local
+
+  it("la tarjeta que vence hoy no está vencida", () => {
+    expect(isOverdue("2026-09-24T00:00:00.000Z", now)).toBe(false);
+  });
+
+  it("la que venció ayer sí", () => {
+    expect(isOverdue("2026-09-23T00:00:00.000Z", now)).toBe(true);
+  });
+
+  it("coincide con el filtro «Vencidas»", () => {
+    const today = card({ dueDate: "2026-09-24T00:00:00.000Z" });
+    const yesterday = card({ dueDate: "2026-09-23T00:00:00.000Z" });
+    expect(cardMatchesFilters(today, f({ due: "overdue" }), now)).toBe(false);
+    expect(cardMatchesFilters(yesterday, f({ due: "overdue" }), now)).toBe(true);
+  });
+});
+
+describe("formatDueDay", () => {
+  const originalTz = process.env.TZ;
+  afterEach(() => {
+    process.env.TZ = originalTz;
+  });
+
+  it("muestra el día guardado aunque la zona local vaya por detrás de UTC", () => {
+    // Antes se formateaba en la zona local: en Nueva York (UTC-4) salía «23 sept».
+    process.env.TZ = "America/New_York";
+    expect(new Date("2026-09-24T00:00:00.000Z").getDate()).toBe(23); // la trampa
+    const label = formatDueDay("2026-09-24T00:00:00.000Z");
+    expect(label).toContain("24");
+    expect(label).toContain("sept");
   });
 });
