@@ -22,47 +22,69 @@ en tres ficheros de Server Actions:
 ## El modal
 
 El componente `CardModal` recibe la tarjeta (`CardDTO`), el `boardId`, las etiquetas del
-tablero (`boardLabels: LabelDTO[]`) y un callback `onClose`.
+tablero (`boardLabels: LabelDTO[]`), los miembros del tablero (`members`, para la sección
+de asignados), el id del usuario actual (`currentUserId`, para saber qué comentarios puede
+borrar) y un callback `onClose`.
 
 ```tsx
 export function CardModal({
   card,
   boardId,
   boardLabels,
+  members,
+  currentUserId,
   onClose,
 }: {
   card: CardDTO;
   boardId: string;
   boardLabels: LabelDTO[];
+  members: BoardMemberDTO[];
+  currentUserId: string;
   onClose: () => void;
 }) { /* … */ }
 ```
 
 ### Estructura y cierre
 
-El modal se construye como un **overlay a pantalla completa** (`fixed inset-0 z-40`) con
-un panel `role="dialog"` `aria-modal="true"` centrado. Se cierra de tres maneras:
+El modal es un **`<dialog>` nativo** que se abre con `showModal()` dentro de un
+`useLayoutEffect`, con `close()` en el cleanup. Así el navegador:
+
+- vuelve **inerte** el resto de la página (el Tab no sale al tablero) y enfoca el primer
+  control del modal;
+- al cerrar, **devuelve el foco** a la tarjeta que lo abrió. Se usa un layout effect para
+  que `close()` ocurra antes de que React quite el nodo: si se retira abierto, el foco no
+  se restaura.
+
+El `<dialog>` lleva `aria-labelledby` apuntando al título de la tarjeta. Ocupa toda la
+ventana y hace de contenedor con scroll; el panel va dentro. Se cierra de tres maneras:
 
 | Gesto | Mecanismo |
 |-------|-----------|
-| **Escape** | `useEffect` registra un listener `keydown` en `window` que llama a `onClose` cuando `e.key === "Escape"`; se limpia al desmontar. |
-| **Click fuera** | El `onClick` del overlay llama a `onClose`. El panel interior hace `onClick={(e) => e.stopPropagation()}` para que los clics dentro no se propaguen y no cierren. |
+| **Escape** | `onCancel` del `<dialog>`: `e.preventDefault()` + `onClose()`, para que cierre React (desmontando el modal) y no el navegador por su cuenta. |
+| **Clic fuera** | `onClick` del `<dialog>` con `e.target === dialogRef.current`: como el panel va dentro, un clic cuyo destino es el propio `<dialog>` cae fuera del panel. |
 | **Botón ✕** | El botón "Cerrar" de la cabecera llama a `onClose` directamente. |
 
-> Nota de implementación: aunque el rol ARIA es `dialog`, el cierre por Escape se gestiona
-> de forma manual con un listener de teclado (no se delega en el comportamiento nativo del
-> elemento `<dialog>`), lo que mantiene el control de cierre unificado con el click fuera.
+La entrada se anima con dos keyframes definidos en `globals.css`: `overlay-in` sobre el
+`::backdrop` (fade, 150 ms, solo con `motion-safe`) y `dialog-in` sobre el panel (fade +
+leve `translateY`/`scale`, 180 ms). Ambas respetan `prefers-reduced-motion` (ver
+[`docs/design-system.md`](./design-system.md)). El porqué del cambio a `<dialog>` está en
+[`DECISIONES.md`](./DECISIONES.md) («Modal de tarjeta: `<dialog>` nativo, fechas y
+confirmación de borrado»).
 
-La entrada se anima con dos keyframes definidos en `globals.css`: `overlay-in` (fade del
-backdrop, 150 ms) y `dialog-in` (fade + leve `translateY`/`scale`, 180 ms). Ambas
-respetan `prefers-reduced-motion` (ver [`docs/design-system.md`](./design-system.md)).
+### Borrar la tarjeta
+
+Solo quien puede editar ve **«Borrar tarjeta»** al pie del modal. Borrar es irreversible,
+así que el primer clic no borra: muestra en línea «¿Borrar la tarjeta?» con **«Sí,
+borrar»** y **«No»**, y mueve el foco a «No» (el botón pulsado desaparece y el teclado no
+debe quedarse en `<body>`). Al cancelar, el foco vuelve a «Borrar tarjeta». No se usa
+`window.confirm`. «Sí, borrar» envía `deleteCard` y cierra el modal.
 
 ### Origen de los datos (resincronización)
 
 El modal **no mantiene su propia copia mutable** del estado de la tarjeta: lee los datos
 directamente del estado del board (la `card` que recibe por props). Las acciones de
-servidor llaman a `revalidatePath(\`/board/${boardId}\`)`, lo que provoca que el board se
-vuelva a renderizar con los datos frescos y el modal reciba la nueva `card`. Es decir, la
+servidor llaman a `revalidateBoard(boardId)`, que revalida `/board/${boardId}` y publica
+el cambio por el bus de tiempo real; eso provoca que el board se vuelva a renderizar con los datos frescos y el modal reciba la nueva `card`. Es decir, la
 fuente de verdad es siempre el servidor: tras cada mutación el modal se **resincroniza**
 en lugar de gestionar estado optimista local para estos campos.
 
@@ -88,18 +110,33 @@ Descripción y vencimiento comparten un único `<form action={updateCard}>`:
 
 La acción **`updateCard(formData)`** ([`cards.ts`](../app/lib/actions/cards.ts)):
 
-1. Resuelve el `boardId` de la tarjeta y autoriza con `requireBoardAccess`.
-2. Normaliza los campos: `description` se recorta; si queda vacía se guarda como `null`.
-3. `dueDate` se convierte a `Date`; si está vacía o es inválida (`Number.isNaN(getTime())`)
-   se guarda como `null`.
-4. Persiste con `prisma.card.update` y revalida `/board/${boardId}`.
+1. Resuelve el `boardId` de la tarjeta, autoriza con `requireBoardAccess` y exige
+   `canEditBoard(role)`. Si la tarjeta no existe o el rol no puede editar, sale sin hacer
+   nada.
+2. Valida `{ description, dueDate }` con `cardDetailsSchema`
+   ([`validators.ts`](../app/lib/validators.ts)): `description` se recorta y admite como
+   máximo `CARD_DESCRIPTION_MAX` caracteres; `dueDate` tiene que ser `""` o una fecha
+   `YYYY-MM-DD` válida (`z.iso.date()`, que rechaza fechas imposibles como `2026-02-31`).
+3. **Si algo no valida, no se guarda nada**, ni siquiera la descripción, y el
+   vencimiento anterior se mantiene. Guardar solo una parte perdería en silencio lo
+   escrito en el otro campo; y antes una fecha no válida se convertía en `null` y
+   **borraba** el vencimiento sin avisar.
+4. Persiste `description || null` y `dueDate: toDueDate(...)` (`""` pasa a `null` y
+   `YYYY-MM-DD` a medianoche UTC) con `prisma.card.update`, y llama a
+   `revalidateBoard(boardId)`.
 
 ```ts
+const parsed = cardDetailsSchema.safeParse({
+  description: String(formData.get("description") ?? ""),
+  dueDate: String(formData.get("dueDate") ?? "").trim(),
+});
+if (!parsed.success) return;
+
 await prisma.card.update({
   where: { id: cardId },
   data: {
-    description: description || null,
-    dueDate: due && !Number.isNaN(due.getTime()) ? due : null,
+    description: parsed.data.description || null,
+    dueDate: toDueDate(parsed.data.dueDate),
   },
 });
 ```
@@ -160,20 +197,36 @@ Cada etiqueta del tablero se pinta como un botón. Su estado (`on`) se calcula c
 const assigned = new Set(card.labels.map((l) => l.id));
 ```
 
-Al pulsar, se invoca **`toggleCardLabel`** dentro de `startTransition`:
+Al pulsar, se invoca **`toggleCardLabel`** dentro de `startTransition`, envuelta en
+`runToggle` ([`card-modal-helpers.ts`](../app/components/card/card-modal-helpers.ts)):
 
 ```tsx
 onClick={() =>
-  startTransition(() => {
-    toggleCardLabel({ cardId: card.id, labelId: l.id });
+  startTransition(async () => {
+    setLabelError(
+      await runToggle(
+        () => toggleCardLabel({ cardId: card.id, labelId: l.id }),
+        "No se pudo cambiar la etiqueta.",
+        "toggleCardLabel",
+      ),
+    );
   })
 }
 ```
 
-`toggleCardLabel` busca la fila `CardLabel` por su clave compuesta
-`cardId_labelId`; si existe la borra, si no la crea — un **toggle** puro. La etiqueta
-asignada se resalta con un anillo (`ring-2`) y un "✓"; las no asignadas se atenúan
-(`opacity-55`). El fondo de cada pastilla usa `labelBackground(l.color)`.
+`runToggle` devuelve el mensaje de error para la interfaz si la acción responde
+`{ ok: false }` o lanza (y lo registra en consola con el contexto), o `null` si fue bien;
+los errores internos de Next (redirect a `/login` al caducar la sesión, `notFound`) los
+relanza. El aviso sale con `role="alert"` **bajo la sección Etiquetas**, junto a lo que
+falló (el modal tiene scroll y uno arriba del todo no se vería), y se borra en cuanto
+otro cambio de etiqueta sale bien.
+
+`toggleCardLabel` comprueba que la etiqueta sea del mismo tablero que la tarjeta, busca
+la fila `CardLabel` por su clave compuesta `cardId_labelId` y, si existe, la borra; si
+no, la crea: un **toggle** puro. Cada pastilla lleva `aria-pressed`; la asignada se
+resalta con un anillo (`ring-2`) y un "✓". Las no asignadas **no** se atenúan: la
+antigua `opacity-55` bajaba el contraste del texto blanco a ~2,2:1, por debajo de AA. El
+fondo de cada pastilla usa `labelBackground(l.color)`.
 
 ---
 
@@ -249,22 +302,29 @@ se ejecutan dentro de una transición de React. El componente obtiene
 const [, startTransition] = useTransition();
 ```
 
-y lo pasa a cada `ChecklistBlock`. Marcar un ítem invoca:
+y lo pasa a cada `ChecklistBlock`. Marcar un ítem invoca `toggleChecklistItem` con el
+mismo patrón `startTransition` + `runToggle` que las etiquetas:
 
 ```tsx
 onClick={() =>
-  startTransition(() => {
-    toggleChecklistItem({ itemId: it.id, done: !it.done });
+  canEdit &&
+  startTransition(async () => {
+    setItemError(
+      await runToggle(
+        () => toggleChecklistItem({ itemId: it.id, done: !it.done }),
+        "No se pudo actualizar el ítem.",
+        "toggleChecklistItem",
+      ),
+    );
   })
 }
 ```
 
 Esto mantiene la UI responsiva mientras la Server Action y la subsiguiente revalidación
-están en curso: el board se resincroniza al volver `revalidatePath`, y el modal refleja el
-nuevo estado del ítem (tachado + casilla en verde) sin recargar la página.
-
-`toggleCardLabel` (sección de etiquetas) usa exactamente el mismo patrón
-`startTransition`.
+están en curso: el board se resincroniza tras `revalidateBoard`, y el modal refleja el
+nuevo estado del ítem (tachado + casilla en verde) sin recargar la página. Si falla, el
+aviso (`role="alert"`) sale **bajo esa checklist**: cada `ChecklistBlock` guarda su propio
+error, para que aparezca junto al ítem que falló.
 
 ---
 
@@ -275,7 +335,7 @@ nuevo estado del ítem (tachado + casilla en verde) sin recargar la página.
    (`createLabel` / `toggleCardLabel`) o checklists
    (`createChecklist` / `addChecklistItem` / `toggleChecklistItem` /
    `deleteChecklistItem` / `deleteChecklist`).
-3. Cada acción persiste en la base de datos y llama a `revalidatePath`.
+3. Cada acción persiste en la base de datos y llama a `revalidateBoard`.
 4. El board se vuelve a renderizar; el modal recibe la `card` actualizada y se
    **resincroniza**. No hay estado local duplicado para estos datos.
 
