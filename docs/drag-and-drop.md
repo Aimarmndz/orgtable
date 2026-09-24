@@ -10,6 +10,9 @@ Archivos implicados:
 - `app/components/board/board-view.tsx` — orquesta todo el D&D y el estado optimista.
 - `app/components/board/list-column.tsx` — columna/lista arrastrable + `SortableContext` de sus tarjetas.
 - `app/components/board/card-item.tsx` — tarjeta arrastrable.
+- `app/lib/board-collision.ts` — detección de colisiones y flechas del teclado (puro,
+  cubierto por `test/board-collision.test.ts`).
+- `app/lib/optimistic.ts` — `persistOptimistic`: guarda el cambio y lo deshace si falla.
 - `app/lib/actions/cards.ts` — Server Action `moveCard`.
 - `app/lib/actions/lists.ts` — Server Action `reorderList`.
 - `app/lib/ordering.ts` — ayudantes de ordenación en el servidor.
@@ -26,17 +29,25 @@ Se usan tres paquetes de `@dnd-kit`:
 
 ### Estructura de contextos
 
-`BoardView` envuelve todo el tablero en un único `DndContext` con detección de
-colisiones `closestCorners` (que funciona mejor que `closestCenter` cuando se
-arrastra entre contenedores verticales y horizontales):
+`BoardView` envuelve todo el tablero en un único `DndContext`. La detección de
+colisiones es `boardCollisionDetection` (`app/lib/board-collision.ts`): `closestCorners`
+(que funciona mejor que `closestCenter` entre contenedores verticales y horizontales),
+pero **al arrastrar una lista solo considera otras listas**. Sin ese filtro, la copia
+flotante de la lista (baja, en la parte de arriba de la columna) queda más cerca de la
+primera tarjeta de la columna de destino que de la propia columna, `over` es una tarjeta
+y el reordenado se descartaba. `handleDragEnd` además traduce una tarjeta a su lista
+como defensa.
 
 ```tsx
 <DndContext
+  id={dndId}
   sensors={sensors}
-  collisionDetection={closestCorners}
+  collisionDetection={boardCollisionDetection}
+  accessibility={{ screenReaderInstructions, announcements }}
   onDragStart={handleDragStart}
   onDragOver={handleDragOver}
   onDragEnd={handleDragEnd}
+  onDragCancel={handleDragCancel}
 >
 ```
 
@@ -75,20 +86,31 @@ y `data: { type: "card", listId }` respectivamente) y aplican
 `CSS.Translate.toString(transform)` para moverse mientras se arrastran, bajando la
 opacidad a `0.4` en su sitio original (`isDragging`).
 
-### Sensor
-
-Se registra un único `PointerSensor` con una restricción de activación por
-distancia:
+### Sensores
 
 ```tsx
 const sensors = useSensors(
   useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  useSensor(KeyboardSensor, {
+    coordinateGetter: boardKeyboardCoordinates,
+    keyboardCodes: DRAG_KEYBOARD_CODES,
+  }),
 );
 ```
 
-El `distance: 5` significa que el puntero debe desplazarse al menos 5 px antes de
-que comience un arrastre. Así un simple clic (por ejemplo en "borrar tarjeta" o en
-el formulario de "añadir") no inicia un arrastre accidental.
+- **Puntero**: el `distance: 5` significa que el puntero debe desplazarse al menos 5 px
+  antes de que comience un arrastre. Así un simple clic (abrir la tarjeta, el formulario
+  de "añadir") no inicia un arrastre accidental.
+- **Teclado**: con el foco en una tarjeta (o en el título de una lista), **Espacio** la
+  coge, las **flechas** la mueven, **Espacio** o **Intro** la sueltan y **Escape**
+  cancela. **Intro no coge**: con el foco en una tarjeta, Intro (y Espacio si no se
+  puede arrastrar, p. ej. como Lector o con filtros) la abre. Las tarjetas usan las
+  coordenadas de `@dnd-kit/sortable`; las listas, `boardKeyboardCoordinates`, que salta
+  directamente a la columna vecina (las de sortable se iban primero a la primera tarjeta
+  de la propia columna y la primera flecha no hacía nada).
+- **Lectores de pantalla**: las instrucciones y los anuncios de dnd-kit (en inglés por
+  defecto) se pasan en español por `accessibility`, y `aria-roledescription` es
+  «tarjeta»/«lista» en vez de «sortable».
 
 ---
 
@@ -107,18 +129,32 @@ interfaz se sienta fluida, antes (y con independencia) de que la Server Action
 confirme el cambio.
 
 Cuando el servidor envía datos nuevos —por ejemplo al crear o borrar una lista o
-tarjeta, o tras un `revalidatePath`— el estado local se resincroniza con un
-`useEffect` que depende del `board`:
+tarjeta, o tras un `revalidatePath`— el estado local se resincroniza durante el render
+(patrón «ajustar estado cuando cambia una prop», sin `useEffect`):
 
 ```tsx
-useEffect(() => {
+const [syncedBoard, setSyncedBoard] = useState(board);
+if (board !== syncedBoard) {
+  setSyncedBoard(board);
   setLists(board.lists);
-}, [board]);
+  if (dragSnapshot) setDragSnapshot(board.lists);
+}
 ```
 
-De este modo el estado optimista nunca diverge permanentemente del servidor: las
-acciones de arrastre actualizan la UI de inmediato y la siguiente revalidación
-trae la verdad canónica.
+### Deshacer
+
+Al empezar un arrastre se guarda una **instantánea** de las listas (`dragSnapshot`). Se
+vuelve a ella si:
+
+- se **cancela** el arrastre (Escape) o se suelta fuera de cualquier zona: `onDragOver`
+  puede haber movido la tarjeta a otra lista solo en el estado local;
+- el servidor **rechaza** el cambio (`{ ok: false }`) o la llamada **falla**: la Server
+  Action se ejecuta con `persistOptimistic`, que en ese caso restaura la instantánea y
+  hace `router.refresh()` para traer los datos reales. Las redirecciones de Next (sesión
+  caducada) se relanzan sin tocar y las gestiona el router.
+
+Si llegan datos del servidor en mitad del arrastre, la instantánea pasa a ser esos
+datos, para no volver a un estado anterior a ellos.
 
 ---
 
@@ -134,8 +170,11 @@ saber qué pintar en el `DragOverlay` y para localizar el elemento activo.
 ```tsx
 function handleDragStart(event: DragStartEvent) {
   setActiveId(String(event.active.id));
+  setDragSnapshot(lists);
 }
 ```
+
+`onDragCancel` (`handleDragCancel`) limpia el `activeId` y restaura la instantánea.
 
 ### `onDragOver` — `handleDragOver`
 
@@ -169,7 +208,11 @@ const position = generateKeyBetween(
   reordered[movedIdx + 1]?.position ?? null,
 );
 setLists(/* aplica la nueva position a la lista movida */);
-void reorderList({ listId: activeIdStr, position });
+void persistOptimistic(
+  () => reorderList({ listId: activeIdStr, position }),
+  () => revertTo(snapshot),
+  { message: "[tablero] fallo al reordenar la lista", context: { listId: activeIdStr } },
+);
 ```
 
 **2. Mover/reordenar una tarjeta.** Una tarjeta puede:
@@ -188,7 +231,11 @@ const position = generateKeyBetween(
   finalList.cards[idx + 1]?.position ?? null,
 );
 setLists(/* aplica la nueva position a la tarjeta movida */);
-void moveCard({ cardId: activeIdStr, toListId: container, position });
+void persistOptimistic(
+  () => moveCard({ cardId: activeIdStr, toListId: container, position }),
+  () => revertTo(snapshot),
+  { message: "[tablero] fallo al mover la tarjeta", context: { cardId: activeIdStr, toListId: container } },
+);
 ```
 
 ---
@@ -380,7 +427,9 @@ vea correctamente.
    revalidatePath('/board/<id>')
                  │
                  ▼
-   Llegan datos nuevos  →  useEffect([board])  →  setLists(board.lists)
+   Llegan datos nuevos  →  resincronización en el render  →  setLists(board.lists)
+   (si la acción devuelve { ok: false } o falla: se restaura la instantánea
+    y router.refresh())
                  (resincroniza el estado optimista con el servidor)
 ```
 

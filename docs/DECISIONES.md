@@ -1391,7 +1391,11 @@ hidratación. Las tarjetas no se podían abrir con el teclado y, sin permisos de
 con filtros, ni siquiera recibían foco. Los chips del filtro no exponían su estado, las
 etiquetas sin seleccionar tenían ~2,2:1 de contraste y los campos de añadir
 lista/tarjeta solo tenían placeholder. El ✕ de una lista la borraba con todas sus
-tarjetas al primer clic, junto al asa de arrastre.
+tarjetas al primer clic, junto al asa de arrastre. Reordenar listas arrastrando casi
+nunca funcionaba (`over` resultaba ser una tarjeta), Escape dejaba la tarjeta en otra
+lista sin guardarse, el resultado de `moveCard`/`reorderList`/`setCardDueDate` se
+ignoraba y el calendario no se podía usar con teclado ni mostraba la pastilla bajo el
+puntero.
 
 **Decisión.**
 - `isOverdue(dueDate, now)` en `app/lib/board-filters.ts`: compara el día guardado
@@ -1413,6 +1417,21 @@ tarjetas al primer clic, junto al asa de arrastre.
   se salga a 375 px.
 - Borrar lista pide un segundo clic en línea («¿Borrar? Sí / No», el foco va a «No»),
   sin `window.confirm`.
+- `boardCollisionDetection` (`app/lib/board-collision.ts`): `closestCorners` filtrado a
+  listas cuando se arrastra una lista; `handleDragEnd` traduce además una tarjeta a su
+  lista.
+- `KeyboardSensor` con Espacio para coger y Espacio/Intro para soltar (Intro no coge,
+  queda para abrir). Las listas usan `boardKeyboardCoordinates` (salta a la columna
+  vecina) y el calendario `calendarKeyboardCoordinates` (día o semana vecinos).
+  Instrucciones y anuncios en español.
+- Instantánea de las listas al empezar el arrastre: se restaura con Escape, al soltar
+  fuera o si la acción falla. `persistOptimistic` (`app/lib/optimistic.ts`) deshace ante
+  `{ ok: false }` o excepción, hace `router.refresh()` y relanza las redirecciones de
+  Next (`unstable_rethrow`).
+- Título del tablero truncado (`min-w-0 truncate`) para que un nombre largo no desborde
+  en móvil.
+- Calendario: `DragOverlay` con la pastilla, `id` estable y aviso «No se pudo cambiar la
+  fecha. Inténtalo de nuevo.» con `role="alert"` si el servidor no guarda.
 
 **Alternativas descartadas.**
 - Formatear en la zona del servidor (`ORGTABLE_TIMEZONE`): el vencimiento no es un
@@ -1420,11 +1439,18 @@ tarjetas al primer clic, junto al asa de arrastre.
 - Un asa de arrastre separada dentro de la tarjeta: añade un control más; con Espacio
   para coger e Intro para abrir basta.
 - `window.confirm`: bloquea la página y no sigue el estilo de la app.
+- `useOptimistic`: exigiría reestructurar el estado del arrastre; la instantánea
+  resuelve lo mismo con menos cambios. Un aviso visible al fallar un movimiento en el
+  tablero: queda pendiente de que el propietario decida el texto (hoy se deshace en
+  silencio y se refresca).
 
 **Consecuencias.** Tests en `test/board-filters.test.ts` (vence hoy/ayer, formato con
 `TZ=America/New_York`). Test de render en servidor (`test/card-item.test.ts`) para rol,
 foco y ausencia de «vencida» en el HTML inicial. Sin test automático (no hay entorno
-DOM); verificación manual pendiente.
+DOM); verificación manual pendiente. Tests con rectángulos sintéticos en
+`test/board-collision.test.ts` (incluido el fallo de `closestCorners` a secas) y de
+`persistOptimistic` en `test/optimistic.test.ts`. El arrastre real con ratón y teclado
+queda por verificar a mano en el navegador.
 
 ---
 

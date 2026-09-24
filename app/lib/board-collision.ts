@@ -1,0 +1,145 @@
+// Detección de colisiones y navegación por teclado del arrastre del tablero, en un
+// módulo PURO (sin React ni DOM) para poder testearlo con rectángulos sintéticos
+// (test/board-collision.test.ts). Ver docs/drag-and-drop.md.
+import {
+  closestCorners,
+  KeyboardCode,
+  type CollisionDetection,
+  type KeyboardCodes,
+  type KeyboardCoordinateGetter,
+} from "@dnd-kit/core";
+import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+
+type Typed = { data: { current?: { type?: unknown } } };
+
+function isListDroppable(c: Typed): boolean {
+  return c.data.current?.type === "list";
+}
+
+/**
+ * `closestCorners`, pero al arrastrar una LISTA solo considera otras listas. Sin el
+ * filtro, el rectángulo flotante de la lista (bajo, arriba de la columna) queda más
+ * cerca de la primera tarjeta de la columna que de la propia columna, `over` resultaba
+ * ser una tarjeta y el reordenado de listas se descartaba en casi todos los casos.
+ */
+export const boardCollisionDetection: CollisionDetection = (args) => {
+  if (args.active.data.current?.type !== "list") return closestCorners(args);
+  return closestCorners({
+    ...args,
+    droppableContainers: args.droppableContainers.filter(isListDroppable),
+  });
+};
+
+/**
+ * Teclas del `KeyboardSensor`. Espacio coge y suelta; Intro NO coge (queda libre para
+ * abrir la tarjeta), pero sí suelta. Escape cancela.
+ */
+export const DRAG_KEYBOARD_CODES: KeyboardCodes = {
+  start: [KeyboardCode.Space],
+  cancel: [KeyboardCode.Esc],
+  end: [KeyboardCode.Space, KeyboardCode.Enter, KeyboardCode.Tab],
+};
+
+/**
+ * Coordenadas del teclado para el tablero. Las tarjetas usan las de `@dnd-kit/sortable`.
+ * Para una LISTA, `sortableKeyboardCoordinates` mezcla tarjetas y columnas y su propia
+ * primera tarjeta queda «a la derecha» (8 px de margen), así que la primera flecha no
+ * hacía nada; aquí la flecha salta directamente a la columna vecina.
+ */
+export const boardKeyboardCoordinates: KeyboardCoordinateGetter = (
+  event,
+  args,
+) => {
+  const { active, collisionRect, droppableContainers, droppableRects } =
+    args.context;
+  if (active?.data.current?.type !== "list") {
+    return sortableKeyboardCoordinates(event, args);
+  }
+  const right = event.code === KeyboardCode.Right;
+  const left = event.code === KeyboardCode.Left;
+  if (!right && !left) {
+    // Las listas solo se mueven en horizontal: arriba/abajo no hacen nada (y no
+    // desplazan la página).
+    if (event.code === KeyboardCode.Up || event.code === KeyboardCode.Down) {
+      event.preventDefault();
+    }
+    return undefined;
+  }
+  event.preventDefault();
+  if (!collisionRect) return undefined;
+
+  let best: { left: number; top: number; distance: number } | null = null;
+  for (const container of droppableContainers.getEnabled()) {
+    if (!isListDroppable(container)) continue;
+    const rect = droppableRects.get(container.id);
+    if (!rect) continue;
+    const dx = rect.left - collisionRect.left;
+    if ((right && dx <= 0) || (left && dx >= 0)) continue;
+    const distance = Math.abs(dx);
+    if (!best || distance < best.distance) {
+      best = { left: rect.left, top: rect.top, distance };
+    }
+  }
+  return best ? { x: best.left, y: best.top } : undefined;
+};
+
+/**
+ * Coordenadas del teclado para el calendario: cada flecha lleva la pastilla a la celda
+ * vecina (día anterior/siguiente, misma columna una semana antes/después). Las de
+ * `@dnd-kit/sortable` no sirven aquí porque la pastilla no es un elemento ordenable
+ * (no devuelven nada) y las de por defecto avanzan 25 px por pulsación.
+ */
+export const calendarKeyboardCoordinates: KeyboardCoordinateGetter = (
+  event,
+  { context },
+) => {
+  const dir = {
+    [KeyboardCode.Right]: { x: 1, y: 0 },
+    [KeyboardCode.Left]: { x: -1, y: 0 },
+    [KeyboardCode.Down]: { x: 0, y: 1 },
+    [KeyboardCode.Up]: { x: 0, y: -1 },
+  }[event.code];
+  if (!dir) return undefined;
+  event.preventDefault(); // las flechas desplazarían la página
+  const { collisionRect, droppableContainers, droppableRects, over } = context;
+  if (!collisionRect) return undefined;
+
+  const cells = droppableContainers
+    .getEnabled()
+    .map((c) => droppableRects.get(c.id))
+    .filter((r) => r !== undefined);
+  // Celda actual: la que está debajo o, si no hay, la que contiene la pastilla.
+  const current =
+    (over ? droppableRects.get(over.id) : undefined) ??
+    cells.find(
+      (r) =>
+        collisionRect.left >= r.left &&
+        collisionRect.left < r.right &&
+        collisionRect.top >= r.top &&
+        collisionRect.top < r.bottom,
+    );
+  if (!current) return undefined;
+
+  let best: { left: number; top: number; distance: number } | null = null;
+  for (const r of cells) {
+    const dx = r.left - current.left;
+    const dy = r.top - current.top;
+    // Misma fila (para izquierda/derecha) o misma columna (para arriba/abajo).
+    const aligned =
+      dir.x !== 0
+        ? Math.abs(dy) < current.height / 2
+        : Math.abs(dx) < current.width / 2;
+    const ahead = dir.x !== 0 ? dx * dir.x > 0 : dy * dir.y > 0;
+    if (!aligned || !ahead) continue;
+    const distance = Math.abs(dx) + Math.abs(dy);
+    if (!best || distance < best.distance) {
+      best = { left: r.left, top: r.top, distance };
+    }
+  }
+  if (!best) return undefined;
+  // Conserva el desplazamiento de la pastilla dentro de la celda.
+  return {
+    x: best.left + (collisionRect.left - current.left),
+    y: best.top + (collisionRect.top - current.top),
+  };
+};

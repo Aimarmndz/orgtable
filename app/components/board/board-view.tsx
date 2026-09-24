@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   DndContext,
   DragOverlay,
@@ -8,16 +9,17 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  closestCorners,
+  type Announcements,
   type DragStartEvent,
   type DragOverEvent,
   type DragEndEvent,
+  type ScreenReaderInstructions,
+  type UniqueIdentifier,
 } from "@dnd-kit/core";
 import {
   SortableContext,
   horizontalListSortingStrategy,
   arrayMove,
-  sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
 import { generateKeyBetween } from "fractional-indexing";
 import type { BoardDTO, ListDTO, CardDTO } from "@/app/lib/types";
@@ -26,6 +28,12 @@ import { canEditBoard, canManageBoard, BOARD_ROLE_LABELS } from "@/app/lib/roles
 import { moveCard } from "@/app/lib/actions/cards";
 import { reorderList } from "@/app/lib/actions/lists";
 import { boardBackgroundFor } from "@/app/lib/colors";
+import {
+  boardCollisionDetection,
+  boardKeyboardCoordinates,
+  DRAG_KEYBOARD_CODES,
+} from "@/app/lib/board-collision";
+import { persistOptimistic } from "@/app/lib/optimistic";
 import { ListColumn } from "./list-column";
 import { CardItem } from "./card-item";
 import { AddListForm } from "./add-list-form";
@@ -40,6 +48,12 @@ import { BoardPermsProvider } from "./board-perms";
 import { MembersPanel, type BoardMemberDTO } from "./members-panel";
 import { CardModal } from "../card/card-modal";
 
+// Instrucciones para lectores de pantalla (dnd-kit las trae en inglés).
+const screenReaderInstructions: ScreenReaderInstructions = {
+  draggable:
+    "Pulsa Espacio para coger el elemento, las flechas para moverlo, Espacio para soltarlo y Escape para cancelar. Intro abre la tarjeta.",
+};
+
 export function BoardView({
   board,
   viewerRole,
@@ -53,8 +67,12 @@ export function BoardView({
   currentUserId: string;
   initialCardId?: string | null;
 }) {
+  const router = useRouter();
   const [lists, setLists] = useState<ListDTO[]>(board.lists);
   const [activeId, setActiveId] = useState<string | null>(null);
+  // Listas tal como estaban al empezar el arrastre, para deshacer el movimiento
+  // optimista si se cancela (Escape) o si el servidor lo rechaza.
+  const [dragSnapshot, setDragSnapshot] = useState<ListDTO[] | null>(null);
   // Tarjeta abierta. Puede venir preseleccionada por deep-link (?card=…) desde /search.
   const [selectedCardId, setSelectedCardId] = useState<string | null>(
     initialCardId,
@@ -77,14 +95,19 @@ export function BoardView({
   if (board !== syncedBoard) {
     setSyncedBoard(board);
     setLists(board.lists);
+    // Si llegan datos del servidor en mitad de un arrastre, la instantánea ya es vieja:
+    // cancelar debe volver a estos datos, no a los de antes.
+    if (dragSnapshot) setDragSnapshot(board.lists);
   }
 
   // Teclado además de puntero: con el foco en una tarjeta o lista, Espacio la coge,
-  // las flechas la mueven y Espacio la suelta (accesibilidad sin ratón).
+  // las flechas la mueven y Espacio la suelta (accesibilidad sin ratón). Intro no coge:
+  // queda para abrir la tarjeta (ver DRAG_KEYBOARD_CODES).
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
+      coordinateGetter: boardKeyboardCoordinates,
+      keyboardCodes: DRAG_KEYBOARD_CODES,
     }),
   );
   // dnd-kit genera ids de accesibilidad con un contador global que no coincide entre
@@ -108,8 +131,44 @@ export function BoardView({
     ? lists.flatMap((l) => l.cards).find((c) => c.id === selectedCardId)
     : undefined;
 
+  // Nombre legible de un elemento arrastrable/soltable para los anuncios accesibles.
+  const describe = (id: UniqueIdentifier | undefined): string => {
+    if (id === undefined) return "";
+    const key = String(id);
+    const list = lists.find((l) => l.id === key);
+    if (list) return `la lista «${list.title}»`;
+    const card = lists.flatMap((l) => l.cards).find((c) => c.id === key);
+    return card ? `la tarjeta «${card.title}»` : "";
+  };
+  const announcements: Announcements = {
+    onDragStart: ({ active }) => `Has cogido ${describe(active.id)}.`,
+    onDragOver: ({ over }) =>
+      over ? `Sobre ${describe(over.id)}.` : "Fuera de cualquier lista.",
+    onDragEnd: ({ active, over }) =>
+      over
+        ? `Has soltado ${describe(active.id)} sobre ${describe(over.id)}.`
+        : `Has soltado ${describe(active.id)} fuera de cualquier lista; no se mueve.`,
+    onDragCancel: ({ active }) =>
+      `Movimiento cancelado; ${describe(active.id)} vuelve a su sitio.`,
+  };
+
+  // Deshace un movimiento optimista que el servidor no guardó y pide los datos reales.
+  const revertTo = (snapshot: ListDTO[]) => {
+    setLists(snapshot);
+    router.refresh();
+  };
+
   function handleDragStart(event: DragStartEvent) {
     setActiveId(String(event.active.id));
+    setDragSnapshot(lists);
+  }
+
+  // Escape (teclado) o arrastre abortado: handleDragOver puede haber movido la tarjeta
+  // a otra lista en el estado local; se vuelve a la instantánea.
+  function handleDragCancel() {
+    setActiveId(null);
+    if (dragSnapshot) setLists(dragSnapshot);
+    setDragSnapshot(null);
   }
 
   function handleDragOver(event: DragOverEvent) {
@@ -152,15 +211,24 @@ export function BoardView({
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
+    const snapshot = dragSnapshot ?? lists;
     setActiveId(null);
-    if (!over) return;
+    setDragSnapshot(null);
+    if (!over) {
+      // Soltado fuera de cualquier zona: nada que guardar, se deshace lo que movió
+      // handleDragOver.
+      setLists(snapshot);
+      return;
+    }
     const activeIdStr = String(active.id);
     const overIdStr = String(over.id);
 
     // Reordenar listas (columnas)
     if (isList(activeIdStr)) {
       const oldIndex = lists.findIndex((l) => l.id === activeIdStr);
-      const newIndex = lists.findIndex((l) => l.id === overIdStr);
+      // Defensa: si `over` fuese una tarjeta, cuenta como su lista.
+      const overListId = containerOf(overIdStr);
+      const newIndex = lists.findIndex((l) => l.id === overListId);
       if (oldIndex < 0 || newIndex < 0 || oldIndex === newIndex) return;
       const reordered = arrayMove(lists, oldIndex, newIndex);
       const movedIdx = reordered.findIndex((l) => l.id === activeIdStr);
@@ -171,7 +239,14 @@ export function BoardView({
       setLists(
         reordered.map((l) => (l.id === activeIdStr ? { ...l, position } : l)),
       );
-      void reorderList({ listId: activeIdStr, position });
+      void persistOptimistic(
+        () => reorderList({ listId: activeIdStr, position }),
+        () => revertTo(snapshot),
+        {
+          message: "[tablero] fallo al reordenar la lista",
+          context: { listId: activeIdStr },
+        },
+      );
       return;
     }
 
@@ -216,7 +291,14 @@ export function BoardView({
           : l,
       ),
     );
-    void moveCard({ cardId: activeIdStr, toListId: container, position });
+    void persistOptimistic(
+      () => moveCard({ cardId: activeIdStr, toListId: container, position }),
+      () => revertTo(snapshot),
+      {
+        message: "[tablero] fallo al mover la tarjeta",
+        context: { cardId: activeIdStr, toListId: container },
+      },
+    );
   }
 
   return (
@@ -224,17 +306,19 @@ export function BoardView({
       <DndContext
         id={dndId}
         sensors={sensors}
-        collisionDetection={closestCorners}
+        collisionDetection={boardCollisionDetection}
+        accessibility={{ screenReaderInstructions, announcements }}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
       >
         <div
           className="flex flex-1 flex-col overflow-hidden"
           style={{ background: boardBackgroundFor(board) }}
         >
           <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 px-4 pb-2 pt-4">
-            <h1 className="font-display text-2xl font-bold tracking-tight text-white drop-shadow-sm">
+            <h1 className="min-w-0 max-w-full truncate font-display text-2xl font-bold tracking-tight text-white drop-shadow-sm">
               {board.title}
             </h1>
             <div className="flex flex-wrap items-center gap-2">

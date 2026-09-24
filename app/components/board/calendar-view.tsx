@@ -1,18 +1,29 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import {
   DndContext,
+  DragOverlay,
+  KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
   useDraggable,
   useDroppable,
+  type Announcements,
   type DragEndEvent,
+  type DragStartEvent,
+  type ScreenReaderInstructions,
+  type UniqueIdentifier,
 } from "@dnd-kit/core";
 import type { ListDTO } from "@/app/lib/types";
 import { labelBackground } from "@/app/lib/colors";
 import { setCardDueDate } from "@/app/lib/actions/cards";
+import {
+  calendarKeyboardCoordinates,
+  DRAG_KEYBOARD_CODES,
+} from "@/app/lib/board-collision";
+import { persistOptimistic } from "@/app/lib/optimistic";
 
 // Vista de calendario mensual (Hito 7) con arrastre para reprogramar (Hito 11): coloca las
 // tarjetas con fecha de vencimiento en la rejilla del mes; al pulsar una se abre su modal y
@@ -28,12 +39,41 @@ type DayCard = {
 
 const WEEKDAYS = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"];
 
+// Instrucciones para lectores de pantalla (dnd-kit las trae en inglés).
+const screenReaderInstructions: ScreenReaderInstructions = {
+  draggable:
+    "Pulsa Espacio para coger la tarjeta, las flechas para cambiar de día, Espacio para soltarla y Escape para cancelar. Intro abre la tarjeta.",
+};
+
+// Día de una clave YYYY-MM-DD para los anuncios («24 de septiembre»). En UTC porque la
+// clave es una fecha de calendario, no un instante.
+const dayNameFormat = new Intl.DateTimeFormat("es-ES", {
+  day: "numeric",
+  month: "long",
+  timeZone: "UTC",
+});
+
 // Clave de día local YYYY-MM-DD. Se compara con dueDate.slice(0,10) (la fecha que el
 // usuario eligió), evitando desfases de zona horaria.
 function dayKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
     d.getDate(),
   ).padStart(2, "0")}`;
+}
+
+// Contenido visual de la pastilla, compartido por la pastilla real y la copia flotante
+// del DragOverlay.
+function ChipContent({ card }: { card: DayCard }) {
+  return (
+    <>
+      <span
+        aria-hidden
+        className="size-1.5 shrink-0 rounded-full"
+        style={{ background: card.color ?? "var(--ink-muted)" }}
+      />
+      <span className="min-w-0 flex-1 truncate">{card.title}</span>
+    </>
+  );
 }
 
 function CardChip({
@@ -48,7 +88,12 @@ function CardChip({
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: card.id,
     disabled: !canEdit,
+    // dnd-kit anuncia por defecto «draggable» (en inglés).
+    attributes: { roleDescription: "tarjeta" },
   });
+  // Sin transform: la pastilla original se queda en su día (atenuada) y lo que sigue al
+  // puntero es la copia del DragOverlay; moverla con transform la recortaba el
+  // overflow-y-auto del calendario.
   return (
     <button
       ref={setNodeRef}
@@ -60,12 +105,7 @@ function CardChip({
         canEdit ? "cursor-grab active:cursor-grabbing" : ""
       } ${isDragging ? "opacity-40" : ""}`}
     >
-      <span
-        aria-hidden
-        className="size-1.5 shrink-0 rounded-full"
-        style={{ background: card.color ?? "var(--ink-muted)" }}
-      />
-      <span className="min-w-0 flex-1 truncate">{card.title}</span>
+      <ChipContent card={card} />
     </button>
   );
 }
@@ -131,9 +171,20 @@ export function CalendarView({
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
 
+  // Teclado además de puntero: Espacio coge la pastilla, las flechas la llevan al día
+  // vecino y Espacio la suelta. Intro no coge: sigue abriendo la tarjeta.
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: calendarKeyboardCoordinates,
+      keyboardCodes: DRAG_KEYBOARD_CODES,
+    }),
   );
+  // Id estable entre servidor y cliente para los atributos de accesibilidad de dnd-kit.
+  const dndId = useId();
+  const [activeId, setActiveId] = useState<string | null>(null);
+  // Aviso si el servidor no guardó la nueva fecha (la tarjeta se queda en su día).
+  const [dropError, setDropError] = useState<string | null>(null);
 
   const todayKey = useMemo(() => dayKey(new Date()), []);
 
@@ -185,7 +236,7 @@ export function CalendarView({
     });
   }, [month]);
 
-  const monthLabel = new Intl.DateTimeFormat("es", {
+  const monthLabel = new Intl.DateTimeFormat("es-ES", {
     month: "long",
     year: "numeric",
   }).format(month);
@@ -197,9 +248,36 @@ export function CalendarView({
   const shift = (delta: number) =>
     setMonth((m) => new Date(m.getFullYear(), m.getMonth() + delta, 1));
 
+  const activeCard: DayCard | undefined = activeId
+    ? [...byDay.values()].flat().find((c) => c.id === activeId)
+    : undefined;
+
+  const cardTitle = (id: UniqueIdentifier) =>
+    lists.flatMap((l) => l.cards).find((c) => c.id === String(id))?.title ?? "";
+  const dayName = (id: UniqueIdentifier) =>
+    dayNameFormat.format(new Date(`${String(id)}T00:00:00Z`));
+  const announcements: Announcements = {
+    onDragStart: ({ active }) =>
+      `Has cogido la tarjeta «${cardTitle(active.id)}».`,
+    onDragOver: ({ over }) =>
+      over ? `Sobre el ${dayName(over.id)}.` : "Fuera del calendario.",
+    onDragEnd: ({ active, over }) =>
+      over
+        ? `Has soltado la tarjeta «${cardTitle(active.id)}» en el ${dayName(over.id)}.`
+        : `Has soltado la tarjeta «${cardTitle(active.id)}» fuera del calendario; no cambia.`,
+    onDragCancel: ({ active }) =>
+      `Movimiento cancelado; la tarjeta «${cardTitle(active.id)}» sigue en su día.`,
+  };
+
+  function handleDragStart(event: DragStartEvent) {
+    setActiveId(String(event.active.id));
+    setDropError(null);
+  }
+
   // Soltar una tarjeta en un día reprograma su vencimiento; el tablero se resincroniza
   // por el tiempo real tras revalidar.
   function handleDragEnd(event: DragEndEvent) {
+    setActiveId(null);
     const { active, over } = event;
     if (!over) return;
     const cardId = String(active.id);
@@ -209,7 +287,14 @@ export function CalendarView({
       .find((c) => c.id === cardId)
       ?.dueDate?.slice(0, 10);
     if (current === newKey) return;
-    void setCardDueDate({ cardId, dueDate: newKey });
+    void persistOptimistic(
+      () => setCardDueDate({ cardId, dueDate: newKey }),
+      () => setDropError("No se pudo cambiar la fecha. Inténtalo de nuevo."),
+      {
+        message: "[calendario] fallo al cambiar la fecha de vencimiento",
+        context: { cardId, dueDate: newKey },
+      },
+    );
   }
 
   return (
@@ -220,6 +305,11 @@ export function CalendarView({
           <h2 className="font-display text-lg font-bold tracking-tight first-letter:uppercase">
             {monthLabel}
           </h2>
+          {dropError && (
+            <p role="alert" className="min-w-0 flex-1 text-xs text-danger">
+              {dropError}
+            </p>
+          )}
           <div className="flex items-center gap-1">
             <button
               onClick={() => shift(-1)}
@@ -279,7 +369,14 @@ export function CalendarView({
         </div>
 
         {/* Rejilla de días (con arrastre para reprogramar si puedes editar) */}
-        <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+        <DndContext
+          id={dndId}
+          sensors={sensors}
+          accessibility={{ screenReaderInstructions, announcements }}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          onDragCancel={() => setActiveId(null)}
+        >
           <div className="grid flex-1 auto-rows-fr grid-cols-7 gap-1">
             {days.map(({ date, key, inMonth }) => (
               <DayCell
@@ -301,6 +398,13 @@ export function CalendarView({
               </DayCell>
             ))}
           </div>
+          <DragOverlay>
+            {activeCard ? (
+              <div className="flex w-full items-center gap-1.5 rounded-md border border-accent/50 bg-surface px-1.5 py-1 text-left text-xs leading-tight shadow-lg">
+                <ChipContent card={activeCard} />
+              </div>
+            ) : null}
+          </DragOverlay>
         </DndContext>
 
         {undated > 0 && (
