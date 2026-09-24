@@ -47,6 +47,29 @@ describe("resetDb", () => {
     expect(counts).toEqual([0, 0, 0, 0, 0, 0, 0]);
     expect((await cookies()).get("session")).toBeUndefined();
   });
+
+  // Lo anterior también pasaba con la lista fija (CardAssignee y Comment caen por el
+  // CASCADE de Card/User). Una tabla sin FK hacia nada solo se vacía si resetDb lee el
+  // catálogo, que es lo que se quiere garantizar para las tablas futuras.
+  it("vacía también una tabla sin FK que no conoce de antemano", async () => {
+    // Por si una ejecución anterior murió antes del finally.
+    await prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS "zz_reset_probe"`);
+    await prisma.$executeRawUnsafe(
+      `CREATE TABLE "zz_reset_probe" ("id" INTEGER PRIMARY KEY)`,
+    );
+    try {
+      await prisma.$executeRawUnsafe(`INSERT INTO "zz_reset_probe" ("id") VALUES (1)`);
+
+      await resetDb();
+
+      const rows = await prisma.$queryRawUnsafe<{ n: bigint }[]>(
+        `SELECT count(*) AS n FROM "zz_reset_probe"`,
+      );
+      expect(Number(rows[0]?.n)).toBe(0);
+    } finally {
+      await prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS "zz_reset_probe"`);
+    }
+  });
 });
 
 describe("loginAs y las cabeceras de la petición", () => {
