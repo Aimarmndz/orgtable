@@ -964,6 +964,34 @@ tests: no había forma de probar las Server Actions ni la revocación de sesione
 **Consecuencias.** Los tests pueden ejecutar Server Actions con sesión real (fila
 `Session` + JWT firmado). Quitar una comprobación de `verifySession` hace fallar
 `session.int.test.ts` (comprobado quitando `revokedAt` y el control de `userId`).
+## 2026-09-24 — Adjuntos: bloquear las filas padre antes de leer qué ficheros borrar
+
+**Contexto.** El comentario de `services/attachments.ts` decía que «lo leído es
+exactamente lo que se borra», pero con READ COMMITTED no era así: si `uploadAttachment`
+insertaba su fila entre el `findMany` y el `delete`, el borrado esperaba a esa
+inserción y la eliminaba en cascada; su fichero no estaba en la lista leída y quedaba
+huérfano, con la subida respondida como correcta.
+
+**Decisión.** Dentro de la transacción, `SELECT … FOR UPDATE` de arriba abajo antes del
+`findMany`: la tarjeta (`deleteCardWithAttachments`); la lista y sus tarjetas
+(`deleteListWithAttachments`); el tablero, sus listas y sus tarjetas
+(`deleteBoardWithAttachments`). Insertar un `Attachment` toma `FOR KEY SHARE` sobre su
+`Card`, que choca con `FOR UPDATE`; bloquear también los padres frena las altas de
+tarjetas y listas mientras se leen las hijas. Test de integración que reproduce la
+carrera con una transacción sin confirmar y falla sin los bloqueos.
+
+**Alternativas descartadas.**
+- Nivel SERIALIZABLE: obliga a reintentar ante fallos de serialización en cada llamada.
+- Solo corregir el comentario: el fichero seguiría quedando huérfano.
+- Barrido periódico de huérfanos: infraestructura nueva para un caso que el bloqueo
+  evita.
+
+**Consecuencias.** Un borrado grande de tablero bloquea sus listas y tarjetas durante la
+transacción; las ediciones concurrentes de esas filas esperan unos milisegundos. Una
+subida que llegue durante el borrado falla y `uploadAttachment` borra su fichero.
+
+---
+
 ## 2026-09-24 — Orden: tope de 1024 caracteres para las claves de posición
 
 **Contexto.** `isValidPositionKey` limitaba las claves a 64 caracteres. Medido con un

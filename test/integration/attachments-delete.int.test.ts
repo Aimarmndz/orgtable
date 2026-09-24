@@ -188,6 +188,100 @@ describe("borrar tarjeta, lista o tablero borra los ficheros de sus adjuntos", (
   });
 });
 
+/**
+ * Abre una transacción que da de alta un adjunto (con su fichero en disco) y la deja sin
+ * confirmar, como una subida a medias. Devuelve la ruta del fichero y `commit()`, que la
+ * confirma y espera a que termine.
+ */
+async function pendingUpload(cardId: string) {
+  const { storedName, size } = await saveAttachmentFile(
+    new File(["tarde"], "tarde.txt", { type: "text/plain" }),
+  );
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  let inserted!: () => void;
+  const insertedP = new Promise<void>((resolve) => (inserted = resolve));
+  const tx = prisma.$transaction(
+    async (t) => {
+      await t.attachment.create({
+        data: { cardId, filename: "tarde.txt", storedName, mimeType: "text/plain", size },
+      });
+      inserted();
+      await gate;
+    },
+    { timeout: 20_000 },
+  );
+  await insertedP;
+  return {
+    filePath: path.join(uploadDir, storedName),
+    commit: async () => {
+      release();
+      await tx;
+    },
+  };
+}
+
+/** Espera a que alguna sesión de esta BD esté bloqueada esperando un lock. */
+async function waitForLockWait(): Promise<void> {
+  for (let i = 0; i < 200; i++) {
+    const [row] = await prisma.$queryRaw<{ n: bigint }[]>`
+      SELECT count(*) AS n FROM pg_stat_activity
+      WHERE datname = current_database() AND wait_event_type = 'Lock'`;
+    if (row.n > BigInt(0)) return;
+    await new Promise((r) => setTimeout(r, 25));
+  }
+  throw new Error("ninguna sesión llegó a esperar un lock");
+}
+
+// Regresión: el borrado leía los adjuntos sin bloquear la tarjeta. Una subida confirmada
+// entre esa lectura y el delete se borraba en cascada, pero su fichero no estaba en la
+// lista leída y quedaba huérfano.
+describe("borrado concurrente con una subida en curso", () => {
+  it("deleteCardWithAttachments espera a la subida y borra también su fichero", async () => {
+    const { card, filePath } = await seedBoardWithAttachment();
+    const upload = await pendingUpload(card.id);
+
+    const deleting = deleteCard(form({ cardId: card.id }));
+    await waitForLockWait();
+    await upload.commit();
+    await deleting;
+
+    expect(await prisma.attachment.count()).toBe(0);
+    expect(await fileExists(filePath)).toBe(false);
+    expect(await fileExists(upload.filePath)).toBe(false);
+  });
+
+  it("deleteListWithAttachments espera a la subida y borra también su fichero", async () => {
+    const { list, card } = await seedBoardWithAttachment();
+    const upload = await pendingUpload(card.id);
+
+    const deleting = deleteList(form({ listId: list.id }));
+    await waitForLockWait();
+    await upload.commit();
+    await deleting;
+
+    expect(await prisma.attachment.count()).toBe(0);
+    expect(await fileExists(upload.filePath)).toBe(false);
+  });
+
+  it("deleteBoardWithAttachments espera a la subida y borra también su fichero", async () => {
+    const { owner, board, card } = await seedBoardWithAttachment();
+    const upload = await pendingUpload(card.id);
+    const token = await seedApiToken(owner.id);
+
+    const deleting = deleteBoardApi(
+      apiRequest("DELETE", `/api/v1/boards/${board.id}`, { token }),
+      ctx({ id: board.id }),
+    );
+    await waitForLockWait();
+    await upload.commit();
+    expect((await deleting).status).toBe(200);
+
+    expect(await prisma.attachment.count()).toBe(0);
+    expect(await fileExists(upload.filePath)).toBe(false);
+  });
+});
+
 describe("uploadAttachment", () => {
   it("si falla el alta en BD no deja el fichero huérfano", async () => {
     const { card } = await seedBoardWithAttachment();

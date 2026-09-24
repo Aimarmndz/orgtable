@@ -42,6 +42,14 @@ eso esos borrados pasan por [`app/lib/services/attachments.ts`](../app/lib/servi
 lee los nombres en disco y borra en la base de datos dentro de una transacción y, **solo
 después del commit**, borra los ficheros. Si la transacción falla, no se toca el disco.
 
+Antes de leer, la transacción bloquea con `FOR UPDATE` las filas padre (tablero, sus
+listas y sus tarjetas, según lo que se borre). Sin ese bloqueo, una subida que se
+confirmara entre la lectura y el borrado desaparecía en cascada con su fichero fuera de
+la lista: huérfano en disco y subida respondida como correcta. Con él, una subida en
+curso termina antes de la lectura (su fichero se borra con los demás) y una posterior
+falla por la clave ajena, así que `uploadAttachment` borra su fichero y relanza el
+error.
+
 `deleteAttachmentFile` nunca lanza: que el fichero ya no exista (`ENOENT`) es normal y
 se ignora; cualquier otro error (permisos, volumen de solo lectura…) se registra con
 `console.error` (`[storage] no se pudo borrar el adjunto`) porque deja un fichero
