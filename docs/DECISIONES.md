@@ -262,6 +262,43 @@ y ahí `deleteBoard` no hacía nada ni avisaba.
 esquina ocupan sitio fijo en móvil. El comportamiento del segundo clic no tiene test de
 interacción (no hay jsdom ni e2e); `test/delete-board-button.test.ts` comprueba que el
 estado inicial no puede enviar nada.
+## 2026-09-24 — Modal de tarjeta: `<dialog>` nativo, fechas y confirmación de borrado
+
+**Contexto.** El modal de tarjeta (`app/components/card/card-modal.tsx`) no gestionaba
+el foco (Tab recorría el tablero de fondo, sin nombre accesible), la hora de los
+comentarios provocaba un error de hidratación al abrir por `?card=` (servidor en UTC,
+navegador en su zona), el vencimiento de solo lectura salía como ISO crudo, los toggles
+de etiqueta e ítem ignoraban fallos y «Borrar tarjeta» borraba al primer clic.
+
+**Decisión.**
+- `<dialog>` nativo con `showModal()` en un layout effect y `close()` en su limpieza
+  (antes de que React retire el nodo, para que el navegador devuelva el foco a la
+  tarjeta). Escape por `onCancel`; el clic fuera se detecta con
+  `e.target === dialog`, porque el `<dialog>` ocupa la ventana y hace de scroll.
+- Hora de comentarios: solo tras hidratar (`useSyncExternalStore`), en la zona del
+  navegador y `es-ES`; antes, `<time dateTime>` sin texto.
+- Vencimiento: `Intl` `es-ES` con `timeZone: "UTC"` (es medianoche UTC).
+- Toggles: `runToggle` devuelve un mensaje para un `role="alert"`; relanza los errores
+  internos de Next con `unstable_rethrow` (API pública, no `isRedirectError` interno).
+- Borrado: confirmación en línea con un segundo clic («¿Borrar la tarjeta?» Sí,
+  borrar / No), con el foco movido al control nuevo en cada paso.
+- Etiquetas no seleccionadas: sin `opacity-55` (texto a ~2,2:1); sin relleno, texto
+  ink y un punto del color. `aria-pressed` en etiquetas y colores; colores nombrados
+  en español.
+- Lógica pura en `app/components/card/card-modal-helpers.ts` para probarla en node.
+
+**Alternativas descartadas.**
+- Atrapar el foco a mano o con una librería: `showModal()` ya vuelve inerte el fondo.
+- `suppressHydrationWarning` en la hora: calla el aviso pero deja el texto incorrecto.
+- Fijar `Atlantic/Canary` en el cliente: es self-hosted y cada usuario tiene su zona.
+- `window.confirm`: bloquea y no sigue el estilo de la app.
+
+**Consecuencias.** Con `?card=` el `<dialog>` llega cerrado en el HTML del servidor y
+se abre al hidratar (un instante sin modal). El comportamiento del diálogo (foco, Tab,
+Escape, clic fuera) no tiene test automático: no hay jsdom ni e2e en el proyecto;
+queda pendiente de verificación manual.
+
+---
 
 ## 2026-09-24 — Content-Security-Policy con nonce y HSTS
 

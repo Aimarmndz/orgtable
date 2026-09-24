@@ -3,8 +3,11 @@
 import {
   useActionState,
   useEffect,
+  useId,
+  useLayoutEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   useTransition,
   type TransitionStartFunction,
 } from "react";
@@ -20,6 +23,7 @@ import {
   labelBackground,
   LABEL_COLORS,
   LABEL_COLOR_KEYS,
+  type LabelColor,
 } from "@/app/lib/colors";
 import { updateCard, deleteCard } from "@/app/lib/actions/cards";
 import { toggleCardLabel, createLabel } from "@/app/lib/actions/labels";
@@ -41,6 +45,39 @@ import { Button } from "../ui/button";
 import { Input, Textarea } from "../ui/input";
 import { useBoardPerms } from "../board/board-perms";
 import type { BoardMemberDTO } from "../board/members-panel";
+import {
+  formatCommentTime,
+  formatDueDate,
+  runToggle,
+} from "./card-modal-helpers";
+
+// Los botones de borrar solo aparecen al pasar el ratón, pero deben verse también al
+// recibir el foco con teclado y siempre en pantallas táctiles (sin hover).
+const revealOnHover =
+  "rounded opacity-0 transition hover:text-danger group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-accent/40 pointer-coarse:opacity-100";
+
+// Nombres en español para el lector de pantalla; el Record obliga a cubrir cada color.
+const LABEL_COLOR_NAMES: Record<LabelColor, string> = {
+  green: "verde",
+  lime: "lima",
+  amber: "ámbar",
+  red: "rojo",
+  purple: "morado",
+  blue: "azul",
+  teal: "turquesa",
+  pink: "rosa",
+};
+
+const noopSubscribe = () => () => {};
+
+/** `false` en el servidor y durante la hidratación; `true` después. */
+function useHydrated(): boolean {
+  return useSyncExternalStore(
+    noopSubscribe,
+    () => true,
+    () => false,
+  );
+}
 
 const smallInput =
   "w-full rounded-lg border border-border bg-surface px-2.5 py-1.5 text-sm text-ink outline-none transition-colors placeholder:text-ink-muted/70 focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/25";
@@ -68,14 +105,21 @@ export function CardModal({
 }) {
   const { canEdit, canManage } = useBoardPerms();
   const [, startTransition] = useTransition();
+  const [actionError, setActionError] = useState<string | null>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
+  const descId = useId();
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  // <dialog> nativo con showModal(): el navegador vuelve inerte el resto de la página
+  // (el Tab no sale al tablero), enfoca el primer control y, al cerrar, devuelve el
+  // foco a la tarjeta que lo abrió. Layout effect para que close() ocurra antes de
+  // que React quite el nodo: si se retira abierto, el foco no se restaura.
+  useLayoutEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    dialog.showModal();
+    return () => dialog.close();
+  }, []);
 
   const assigned = new Set(card.labels.map((l) => l.id));
   const dueValue = card.dueDate ? card.dueDate.slice(0, 10) : "";
@@ -86,20 +130,30 @@ export function CardModal({
   );
 
   return (
-    <div
-      className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/50 p-4 sm:p-8"
-      style={{ animation: "overlay-in 150ms ease-out" }}
-      onClick={onClose}
+    // El <dialog> ocupa toda la ventana y hace de contenedor con scroll; el panel va
+    // dentro. Un clic cuyo destino es el propio <dialog> cae fuera del panel.
+    <dialog
+      ref={dialogRef}
+      aria-labelledby={titleId}
+      onCancel={(e) => {
+        // Escape: cierra React (desmonta), no el navegador por su cuenta.
+        e.preventDefault();
+        onClose();
+      }}
+      onClick={(e) => {
+        if (e.target === dialogRef.current) onClose();
+      }}
+      className="m-0 size-full max-h-none max-w-none overflow-y-auto overscroll-contain bg-transparent p-4 text-ink backdrop:bg-black/50 backdrop:animate-[overlay-in_150ms_ease-out] sm:p-8"
     >
       <div
-        role="dialog"
-        aria-modal="true"
-        className="my-4 w-full max-w-2xl rounded-2xl border border-border bg-surface p-6 shadow-[0_32px_64px_-24px_oklch(0.27_0.022_52/0.45)]"
+        className="mx-auto my-4 w-full max-w-2xl rounded-2xl border border-border bg-surface p-6 shadow-[0_32px_64px_-24px_oklch(0.27_0.022_52/0.45)]"
         style={{ animation: "dialog-in 180ms ease-out" }}
-        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
-          <h2 className="font-display text-xl font-bold leading-snug tracking-tight text-balance">
+          <h2
+            id={titleId}
+            className="font-display text-xl font-bold leading-snug tracking-tight text-balance"
+          >
             {card.title}
           </h2>
           <button
@@ -110,6 +164,15 @@ export function CardModal({
             ✕
           </button>
         </div>
+
+        {actionError && (
+          <p
+            role="alert"
+            className="mt-4 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger"
+          >
+            {actionError}
+          </p>
+        )}
 
         {/* Etiquetas */}
         <section className="mt-6">
@@ -124,18 +187,40 @@ export function CardModal({
                   return (
                     <button
                       key={l.id}
+                      aria-pressed={on}
                       onClick={() =>
-                        startTransition(() => {
-                          toggleCardLabel({ cardId: card.id, labelId: l.id });
+                        startTransition(async () => {
+                          setActionError(
+                            await runToggle(
+                              () =>
+                                toggleCardLabel({
+                                  cardId: card.id,
+                                  labelId: l.id,
+                                }),
+                              "No se pudo cambiar la etiqueta.",
+                              "toggleCardLabel",
+                            ),
+                          );
                         })
                       }
-                      style={{ background: labelBackground(l.color) }}
-                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium text-white transition ${
+                      // Sin opacidad en el no seleccionado (bajaba el texto a ~2,2:1):
+                      // va sin relleno, con texto ink y un punto del color.
+                      style={
+                        on ? { background: labelBackground(l.color) } : undefined
+                      }
+                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition ${
                         on
-                          ? "ring-2 ring-ink/40 ring-offset-1 ring-offset-surface"
-                          : "opacity-55 hover:opacity-100"
+                          ? "text-white ring-2 ring-ink/40 ring-offset-1 ring-offset-surface"
+                          : "bg-surface text-ink ring-1 ring-inset ring-border hover:bg-surface-2"
                       }`}
                     >
+                      {!on && (
+                        <span
+                          aria-hidden="true"
+                          className="size-2 rounded-full"
+                          style={{ background: labelBackground(l.color) }}
+                        />
+                      )}
                       {l.name}
                       {on && " ✓"}
                     </button>
@@ -178,10 +263,14 @@ export function CardModal({
           <form action={updateCard} className="mt-6 space-y-4">
             <input type="hidden" name="cardId" value={card.id} />
             <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+              <label
+                htmlFor={descId}
+                className="block text-xs font-semibold uppercase tracking-wide text-ink-muted"
+              >
                 Descripción
-              </h3>
+              </label>
               <Textarea
+                id={descId}
                 name="description"
                 rows={4}
                 defaultValue={card.description ?? ""}
@@ -216,12 +305,12 @@ export function CardModal({
                 {card.description || "Sin descripción."}
               </p>
             </div>
-            {dueValue && (
+            {card.dueDate && (
               <p className="text-sm">
                 <span className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
                   Vencimiento:{" "}
                 </span>
-                {dueValue}
+                <time dateTime={dueValue}>{formatDueDate(card.dueDate)}</time>
               </p>
             )}
           </div>
@@ -233,7 +322,7 @@ export function CardModal({
             Checklists
             {total > 0 && (
               <span className="ml-1.5 font-normal normal-case tracking-normal">
-                · {done}/{total} completado
+                · {done} de {total} completadas
               </span>
             )}
           </h3>
@@ -244,6 +333,7 @@ export function CardModal({
                 checklist={cl}
                 canEdit={canEdit}
                 startTransition={startTransition}
+                onError={setActionError}
               />
             ))}
           </div>
@@ -269,27 +359,77 @@ export function CardModal({
         {/* Borrar (solo quien puede editar) */}
         {canEdit && (
           <div className="mt-8 flex justify-end border-t border-border pt-4">
-            <form
-              action={async (formData) => {
-                await deleteCard(formData);
-                onClose();
-              }}
-            >
-              <input type="hidden" name="cardId" value={card.id} />
-              <Button variant="danger" type="submit">
-                Borrar tarjeta
-              </Button>
-            </form>
+            <DeleteCardForm cardId={card.id} onDeleted={onClose} />
           </div>
         )}
       </div>
-    </div>
+    </dialog>
+  );
+}
+
+// Borrar es irreversible: el primer clic solo pide confirmación en línea (sin
+// window.confirm, que bloquea y no sigue el estilo de la app).
+function DeleteCardForm({
+  cardId,
+  onDeleted,
+}: {
+  cardId: string;
+  onDeleted: () => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const askRef = useRef<HTMLButtonElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const wasConfirming = useRef(false);
+
+  // El botón pulsado desaparece al cambiar de paso: se mueve el foco al control
+  // equivalente para que el teclado no se quede en <body>.
+  useEffect(() => {
+    if (confirming) cancelRef.current?.focus();
+    else if (wasConfirming.current) askRef.current?.focus();
+    wasConfirming.current = confirming;
+  }, [confirming]);
+
+  if (!confirming) {
+    return (
+      <Button
+        ref={askRef}
+        variant="danger"
+        type="button"
+        onClick={() => setConfirming(true)}
+      >
+        Borrar tarjeta
+      </Button>
+    );
+  }
+
+  return (
+    <form
+      action={async (formData) => {
+        await deleteCard(formData);
+        onDeleted();
+      }}
+      className="flex flex-wrap items-center justify-end gap-2"
+    >
+      <input type="hidden" name="cardId" value={cardId} />
+      <span className="text-sm text-ink">¿Borrar la tarjeta?</span>
+      <Button variant="danger" type="submit">
+        Sí, borrar
+      </Button>
+      <Button
+        ref={cancelRef}
+        variant="subtle"
+        type="button"
+        onClick={() => setConfirming(false)}
+      >
+        No
+      </Button>
+    </form>
   );
 }
 
 function NewLabelForm({ boardId }: { boardId: string }) {
   const ref = useRef<HTMLFormElement>(null);
-  const [color, setColor] = useState<string>(LABEL_COLOR_KEYS[0]);
+  const [color, setColor] = useState<LabelColor>(LABEL_COLOR_KEYS[0]);
 
   return (
     <form
@@ -308,7 +448,8 @@ function NewLabelForm({ boardId }: { boardId: string }) {
             type="button"
             key={k}
             onClick={() => setColor(k)}
-            aria-label={`Color ${k}`}
+            aria-label={`Color ${LABEL_COLOR_NAMES[k]}`}
+            aria-pressed={color === k}
             style={{ background: LABEL_COLORS[k] }}
             className={`size-5 rounded-full transition ${
               color === k
@@ -323,6 +464,7 @@ function NewLabelForm({ boardId }: { boardId: string }) {
         required
         maxLength={40}
         placeholder="Nueva etiqueta"
+        aria-label="Nombre de la nueva etiqueta"
         className={`${smallInput} min-w-32 flex-1`}
       />
       <Button type="submit" variant="subtle" className="px-3 py-1.5">
@@ -336,10 +478,12 @@ function ChecklistBlock({
   checklist,
   canEdit,
   startTransition,
+  onError,
 }: {
   checklist: ChecklistDTO;
   canEdit: boolean;
   startTransition: TransitionStartFunction;
+  onError: (message: string | null) => void;
 }) {
   const itemRef = useRef<HTMLFormElement>(null);
   const total = checklist.items.length;
@@ -376,8 +520,15 @@ function ChecklistBlock({
             <button
               onClick={() =>
                 canEdit &&
-                startTransition(() => {
-                  toggleChecklistItem({ itemId: it.id, done: !it.done });
+                startTransition(async () => {
+                  onError(
+                    await runToggle(
+                      () =>
+                        toggleChecklistItem({ itemId: it.id, done: !it.done }),
+                      "No se pudo actualizar el ítem.",
+                      "toggleChecklistItem",
+                    ),
+                  );
                 })
               }
               disabled={!canEdit}
@@ -401,7 +552,7 @@ function ChecklistBlock({
               <form action={deleteChecklistItem}>
                 <input type="hidden" name="itemId" value={it.id} />
                 <button
-                  className="text-xs text-ink-muted opacity-0 transition hover:text-danger group-hover:opacity-100"
+                  className={`text-xs text-ink-muted ${revealOnHover}`}
                   aria-label="Borrar ítem"
                 >
                   ✕
@@ -427,6 +578,7 @@ function ChecklistBlock({
             required
             maxLength={200}
             placeholder="+ Añadir ítem"
+            aria-label={`Nuevo ítem en ${checklist.title}`}
             className={smallInput}
           />
         </form>
@@ -503,7 +655,7 @@ function AttachmentsSection({
                 <form action={deleteAttachment}>
                   <input type="hidden" name="attachmentId" value={a.id} />
                   <button
-                    className="text-xs text-ink-muted opacity-0 transition hover:text-danger group-hover:opacity-100"
+                    className={`text-xs text-ink-muted ${revealOnHover}`}
                     aria-label={`Borrar adjunto ${a.filename}`}
                   >
                     ✕
@@ -528,6 +680,7 @@ function AttachmentsSection({
             type="file"
             name="file"
             required
+            aria-label="Archivo para adjuntar a la tarjeta"
             className="max-w-full text-sm text-ink-muted file:mr-2 file:rounded-lg file:border-0 file:bg-surface-2 file:px-3 file:py-1.5 file:text-sm file:text-ink hover:file:bg-border/40"
           />
           <Button type="submit" variant="subtle" disabled={pending}>
@@ -537,7 +690,10 @@ function AttachmentsSection({
       )}
 
       {state.error && (
-        <p className="mt-2 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
+        <p
+          role="alert"
+          className="mt-2 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger"
+        >
           {state.error}
         </p>
       )}
@@ -562,6 +718,7 @@ function NewChecklistForm({ cardId }: { cardId: string }) {
         name="title"
         maxLength={80}
         placeholder="Nueva checklist"
+        aria-label="Título de la nueva checklist"
         className={`${smallInput} flex-1`}
       />
       <Button type="submit" variant="subtle">
@@ -649,13 +806,6 @@ function AssigneesSection({
   );
 }
 
-function formatCommentTime(iso: string): string {
-  return new Intl.DateTimeFormat("es", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(iso));
-}
-
 function CommentsSection({
   cardId,
   comments,
@@ -670,6 +820,9 @@ function CommentsSection({
   currentUserId: string;
 }) {
   const ref = useRef<HTMLFormElement>(null);
+  // Con ?card= el modal se renderiza en el servidor, cuya zona horaria no es la del
+  // navegador: la hora se pinta solo tras hidratar para no provocar un desajuste.
+  const hydrated = useHydrated();
 
   return (
     <section className="mt-6">
@@ -690,8 +843,11 @@ function CommentsSection({
               <div className="min-w-0 flex-1">
                 <p className="flex items-baseline gap-2">
                   <span className="text-sm font-medium">{c.authorName}</span>
-                  <time className="text-[11px] text-ink-muted">
-                    {formatCommentTime(c.createdAt)}
+                  <time
+                    dateTime={c.createdAt}
+                    className="text-[11px] text-ink-muted"
+                  >
+                    {hydrated ? formatCommentTime(c.createdAt) : ""}
                   </time>
                 </p>
                 <p className="mt-0.5 whitespace-pre-wrap break-words text-sm">
@@ -702,7 +858,7 @@ function CommentsSection({
                 <form action={deleteComment}>
                   <input type="hidden" name="commentId" value={c.id} />
                   <button
-                    className="text-xs text-ink-muted opacity-0 transition hover:text-danger group-hover:opacity-100"
+                    className={`text-xs text-ink-muted ${revealOnHover}`}
                     aria-label="Borrar comentario"
                   >
                     ✕
@@ -734,6 +890,7 @@ function CommentsSection({
             required
             maxLength={2000}
             placeholder="Escribe un comentario…"
+            aria-label="Nuevo comentario"
             className="resize-y"
           />
           <div className="mt-2 flex justify-end">
