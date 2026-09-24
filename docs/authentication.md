@@ -83,33 +83,20 @@ export async function decrypt(
 | Flag | Valor | Motivo |
 | --- | --- | --- |
 | `httpOnly` | `true` | La cookie no es accesible desde JavaScript del cliente. |
-| `secure` | `process.env.NODE_ENV === "production"` | Solo se envía por HTTPS en producción (en desarrollo se permite HTTP). |
+| `secure` | `isHttpsRequest(requestHeaders)` | Solo si la petición llegó por HTTPS (primer valor de `X-Forwarded-Proto` igual a `https`, que pone Next o el proxy TLS). No depende de `NODE_ENV`: con él, la instalación por `http://IP:3000` no dejaba entrar porque el navegador descarta una cookie `Secure` recibida por HTTP. Ver [self-hosting.md](./self-hosting.md#https-y-dominio-reverse-proxy). |
 | `sameSite` | `"lax"` | Mitiga CSRF permitiendo navegación top-level. |
 | `expires` | `Date.now() + 7 días` | Coincide con la expiración del JWT. |
 | `path` | `"/"` | Disponible en toda la aplicación. |
 
-```ts
-export async function createSession(userId: string): Promise<void> {
-  const token = await encrypt({ userId });
-  const cookieStore = await cookies();
-  cookieStore.set(COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    expires: new Date(Date.now() + MAX_AGE_MS),
-    path: "/",
-  });
-}
-```
+Antes de poner la cookie, `createSession` crea una fila en la tabla `Session` (con la
+caducidad y el `user-agent`) y firma el JWT con su id (`sid`); ver
+[Almacén de sesiones y revocación inmediata](#almacén-de-sesiones-y-revocación-inmediata-hito-4).
+El código está en [`app/lib/session.ts`](../app/lib/session.ts); no se copia aquí para
+que no se desfase. El porqué de `secure` está en [`DECISIONES.md`](./DECISIONES.md)
+(«Cookie de sesión Secure según el esquema real y SESSION_SECRET ruidoso»).
 
-`deleteSession` simplemente borra esa cookie:
-
-```ts
-export async function deleteSession(): Promise<void> {
-  const cookieStore = await cookies();
-  cookieStore.delete(COOKIE_NAME);
-}
-```
+`deleteSession` revoca la fila `Session` de la cookie actual (`revokedAt`) y borra la
+cookie.
 
 > **Nota sobre Next.js 16:** `cookies()` de `next/headers` es **asíncrono**. Siempre hay que hacer `const cookieStore = await cookies();` antes de leer o escribir. Olvidar el `await` es un error frecuente al migrar desde versiones anteriores.
 
@@ -136,6 +123,7 @@ export async function verifyPassword(
 | --- | --- |
 | `hashPassword` | Genera un hash bcrypt (con salt incorporado) a 12 rounds. |
 | `verifyPassword` | Compara una contraseña en claro contra un hash existente. |
+| `verifyPasswordOrDummy` | Igual, pero si no hay hash (la cuenta no existe) compara contra `DUMMY_PASSWORD_HASH` y devuelve `false`: el login tarda lo mismo exista o no el email. |
 
 ### ¿Por qué `bcryptjs` y no `bcrypt`?
 
@@ -298,30 +286,46 @@ Las Server Actions (`"use server"`) viven en `app/lib/actions/auth.ts`.
 
 ### `login`
 
-1. **Valida** el `email` y la `password` del `FormData` con `loginSchema` (zod, en `app/lib/validators`). Si falla, devuelve un error genérico.
-2. **Busca** al usuario por email (normalizado a minúsculas).
-3. **Verifica la contraseña siempre**, incluso si el usuario no existe.
-4. Si el usuario no existe o la contraseña no es válida, devuelve `"Credenciales incorrectas."`.
-5. Si todo es correcto, crea la sesión (`createSession`) y **redirige a `/boards`**.
+El código está en [`app/lib/actions/auth.ts`](../app/lib/actions/auth.ts); aquí va el
+orden de los pasos y el porqué, sin copiarlo.
 
-```ts
-const user = await prisma.user.findUnique({
-  where: { email: parsed.data.email.toLowerCase() },
-});
-// Verificamos siempre la contraseña (aunque el usuario no exista usamos un hash
-// ficticio) para no filtrar por tiempo si un email está registrado.
-const hash = user?.passwordHash ?? "$2a$12$invalidinvalidinvalidinvalidinvalidinvalidinvalidinv";
-const valid = await verifyPassword(parsed.data.password, hash);
+1. **Límite por IP** (`login:<ip>`, 10 intentos cada 10 minutos). Solo se aplica si hay
+   una IP fiable, es decir, con `TRUSTED_PROXY_HOPS > 0`; con el valor por defecto (0)
+   no hay límite por IP.
+2. **Valida** el `email` y la `password` del `FormData` con `loginSchema` (zod, en
+   `app/lib/validators`). Si falla, devuelve un error genérico.
+3. **Límite por cuenta** (`login-email:<email normalizado>`, 20 intentos cada 15
+   minutos). Se cuenta antes de verificar, para que no haya carreras entre peticiones
+   simultáneas, y se reinicia con un login correcto, así que en la práctica solo suman
+   los fallos. Cuenta también los emails que no existen, para no revelar cuáles existen.
+4. **Busca** al usuario por email (normalizado a minúsculas).
+5. **Verifica la contraseña siempre** con `verifyPasswordOrDummy(password,
+   user?.passwordHash ?? null)` ([`app/lib/auth.ts`](../app/lib/auth.ts)): si la cuenta
+   no existe, compara contra `DUMMY_PASSWORD_HASH`.
+6. Si el usuario no existe o la contraseña no es válida, registra `auth.login_failed`
+   (con el `userId` si la cuenta existe; **nunca** el email tecleado, que podría ser de
+   un tercero) y devuelve `"Credenciales incorrectas."`.
+7. Si todo es correcto, reinicia el límite por cuenta, crea la sesión
+   (`createSession`), registra `auth.login` y **redirige a `/boards`**.
 
-if (!user || !valid) {
-  return { error: "Credenciales incorrectas." };
-}
+Cuando salta cualquiera de los dos límites, el formulario responde con el tiempo de
+espera y se registra `auth.login_rate_limited` **una sola vez por ventana**, no en cada
+intento rechazado. Los valores y el riesgo aceptado de cada límite están en
+[operations.md](./operations.md#límite-de-intentos-de-login-rate-limiting) y en el
+[ADR 0009](./decisions/0009-in-memory-rate-limit.md).
 
-await createSession(user.id);
-redirect("/boards");
-```
+Los errores devuelven también `values: { email }` (nunca la contraseña) para que el
+formulario conserve lo tecleado.
 
-> **Protección contra timing attacks:** cuando el usuario no existe, se verifica la contraseña contra un **hash ficticio** en lugar de retornar antes. Así el tiempo de respuesta es similar exista o no la cuenta, evitando que un atacante deduzca **por tiempo** si un email está registrado. El mensaje de error también es genérico por el mismo motivo.
+> **Protección contra timing attacks:** cuando el usuario no existe, se verifica la
+> contraseña contra un **hash ficticio** en lugar de retornar antes, para que el tiempo
+> de respuesta sea similar exista o no la cuenta. Ese hash tiene que ser un **hash bcrypt
+> válido del mismo coste** (12): con un literal mal formado, `bcrypt.compare` devuelve
+> `false` al instante y el tiempo de respuesta revela qué emails tienen cuenta. Pasó con
+> el literal anterior, de 59 caracteres; ver [`DECISIONES.md`](./DECISIONES.md) («Login:
+> IP de confianza, límite por cuenta y hash ficticio válido»). No compares nunca contra
+> un literal inventado: usa `verifyPasswordOrDummy`. El mensaje de error también es
+> genérico por el mismo motivo.
 
 ### `logout`
 

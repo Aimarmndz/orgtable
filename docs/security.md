@@ -58,10 +58,17 @@ Los demás hallazgos "confirmados" por el panel eran en realidad **controles cor
   El único `dangerouslySetInnerHTML` es el script de tema, una **constante** sin input.
 - **Secretos**: contraseñas con **bcrypt** (coste 12); tokens de API guardados **hasheados**
   (SHA-256), mostrados una sola vez; el secreto del cron se compara en **tiempo constante**.
-- **Sesiones**: cookie `httpOnly`, `secure` en producción, `sameSite=lax`, expiración;
-  **revocación inmediata** (logout, reset de contraseña, cierre forzado).
+- **Sesiones**: cookie `httpOnly`, `Secure` cuando la petición llega por HTTPS (directa o
+  con `X-Forwarded-Proto: https` del proxy TLS; no depende de `NODE_ENV`, así que por
+  `http://IP:3000` va sin `Secure`), `sameSite=lax`, expiración; **revocación inmediata**
+  (logout, reset de contraseña, cierre forzado). Detrás de un proxy, este tiene que enviar
+  `X-Forwarded-Proto` (ver [self-hosting.md](./self-hosting.md#https-y-dominio-reverse-proxy)).
 - **Anti-mass-assignment**: todas las acciones validan con **zod** (whitelist de campos).
-- **Login**: rate-limiting por IP + auditoría de intentos.
+- **Login**: límite de intentos por cuenta (email) siempre; límite por IP **solo** con
+  `TRUSTED_PROXY_HOPS > 0` (por defecto 0: sin límite por IP). Más auditoría de intentos y
+  de bloqueos. Valores y configuración en
+  [operations.md](./operations.md#límite-de-intentos-de-login-rate-limiting) y
+  [ADR 0009](./decisions/0009-in-memory-rate-limit.md).
 - **Cabeceras** (`next.config.ts` + `proxy.ts`):
   - Páginas: **CSP con nonce por petición** (`app/lib/csp.ts`): `script-src` solo propios
     con nonce y `'strict-dynamic'`, sin `eval` en producción, `frame-ancestors 'none'`,
@@ -80,6 +87,14 @@ Los demás hallazgos "confirmados" por el panel eran en realidad **controles cor
   adjunto (10 MB). Límite conocido: es global y Next lo aplica **antes de autenticar**, así
   que cualquiera puede enviar hasta 11 MB a una acción; las acciones rechazan después lo
   que exceda sus límites propios.
+
+## Riesgos aceptados
+
+- **Password spraying con la configuración por defecto**: con `TRUSTED_PROXY_HOPS=0` no
+  hay límite por IP ni global, así que probar una misma contraseña contra muchos emails
+  distintos solo lo frena el coste de bcrypt (el límite por cuenta no lo detecta). Detrás
+  de un proxy de confianza, fija `TRUSTED_PROXY_HOPS` para activar el límite por IP. Ver
+  [ADR 0009](./decisions/0009-in-memory-rate-limit.md#consecuencias).
 
 ## Recomendaciones futuras (backlog)
 
