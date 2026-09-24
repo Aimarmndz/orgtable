@@ -10,9 +10,13 @@ export function positionAtEnd(lastPosition: string | null): string {
   return generateKeyBetween(lastPosition, null);
 }
 
-// Alfabeto base62 de la librería y un tope de longitud: las claves reales rara vez pasan
-// de unos pocos caracteres, así que 64 deja margen sin permitir cadenas de megabytes.
-const POSITION_KEY_SHAPE = /^[A-Za-z][0-9A-Za-z]{0,63}$/;
+// Alfabeto base62 de la librería y un tope de longitud. Las claves crecen al insertar una
+// y otra vez en el MISMO hueco (≈1 carácter cada 6 inserciones): con un tope de 64 se
+// llegaba a las 373 inserciones con un uso normal y el arrastre empezaba a fallar. 1024
+// da para unas 6000 en el mismo hueco, impide cadenas de megabytes y queda muy por debajo
+// del máximo de una entrada del índice btree (listId, position) de Card (≈2700 bytes).
+const POSITION_KEY_MAX = 1024;
+const POSITION_KEY_SHAPE = new RegExp(`^[A-Za-z][0-9A-Za-z]{0,${POSITION_KEY_MAX - 1}}$`);
 
 /**
  * ¿Es `key` una clave de posición que la librería sabrá extender? Las Server Actions de

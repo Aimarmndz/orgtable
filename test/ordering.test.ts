@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { generateKeyBetween } from "fractional-indexing";
 import { positionAtEnd, isValidPositionKey } from "@/app/lib/ordering";
 
 // El orden de listas/tarjetas es una clave string lexicográfica (fractional indexing,
@@ -24,8 +25,20 @@ describe("ordering (fractional indexing)", () => {
     expect(isValidPositionKey(positionAtEnd(positionAtEnd(null)))).toBe(true);
   });
 
+  // Regresión: con un tope de 64 caracteres, soltar tarjetas siempre en el mismo hueco
+  // superaba el tope a las 373 inserciones y moveCard/reorderList devolvían ok:false.
+  it("isValidPositionKey acepta las claves largas que salen de insertar en el mismo hueco", () => {
+    const first = generateKeyBetween(null, null);
+    let next = generateKeyBetween(first, null);
+    for (let i = 0; i < 1000; i++) {
+      next = generateKeyBetween(first, next);
+    }
+    expect(next.length).toBeGreaterThan(64);
+    expect(isValidPositionKey(next)).toBe(true);
+  });
+
   it("isValidPositionKey rechaza claves que romperían positionAtEnd", () => {
-    const bad = ["", "x", "a", "a00", "!!!", "a0 ", "zzzz~", "a" + "1".repeat(64)];
+    const bad = ["", "x", "a", "a00", "!!!", "a0 ", "zzzz~", "a" + "1".repeat(1024)];
     for (const key of bad) {
       expect(isValidPositionKey(key)).toBe(false);
     }

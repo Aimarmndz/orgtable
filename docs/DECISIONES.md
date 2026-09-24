@@ -964,6 +964,31 @@ tests: no había forma de probar las Server Actions ni la revocación de sesione
 **Consecuencias.** Los tests pueden ejecutar Server Actions con sesión real (fila
 `Session` + JWT firmado). Quitar una comprobación de `verifySession` hace fallar
 `session.int.test.ts` (comprobado quitando `revokedAt` y el control de `userId`).
+## 2026-09-24 — Orden: tope de 1024 caracteres para las claves de posición
+
+**Contexto.** `isValidPositionKey` limitaba las claves a 64 caracteres. Medido con un
+script sobre `fractional-indexing`: soltar tarjetas siempre en el mismo hueco (p. ej.
+siempre en la segunda posición) supera los 64 caracteres a las 373 inserciones. Desde
+ahí `moveCard`/`reorderList` devolvían `{ ok: false }` para ese hueco y, como
+`BoardView` ignora el resultado, el arrastre parecía funcionar y se deshacía al
+refrescar.
+
+**Decisión.** `POSITION_KEY_MAX = 1024` (unas 6000 inserciones seguidas en el mismo
+hueco). Sigue impidiendo cadenas de megabytes y queda muy por debajo del máximo de una
+entrada del índice btree `(listId, position)` de `Card` (≈2700 bytes). Documentado en
+`docs/drag-and-drop.md` junto con su consecuencia.
+
+**Alternativas descartadas.**
+- Mantener 64 y solo documentarlo: el límite se alcanza con un uso normal.
+- Quitar el tope: una clave de megabytes llegaría a la BD y rompería el índice.
+- Rebalancear las posiciones de la lista al pasar de cierta longitud: más código y
+  escrituras en varias filas por un caso que 1024 ya cubre de sobra.
+
+**Consecuencias.** El fallo silencioso de `BoardView` ante `{ ok: false }` sigue ahí
+(fuera de este lote); con 1024 solo aparece en un uso extremo.
+
+---
+
 ## 2026-09-24 — Contraseñas de 72 bytes como máximo
 
 **Contexto.** `setupSchema` y `passwordSchema` admitían 200 caracteres, pero bcryptjs
