@@ -154,6 +154,29 @@ sobrecarga y que el del proxy coincide.
 **Consecuencias.** El límite es global y se aplica antes de autenticar: cualquiera puede
 mandar 11 MB a una acción. Si cambia el máximo de adjuntos hay que subir este número (el
 test falla si se queda corto).
+## 2026-09-24 — Devolver el foco al ✕ al cancelar el borrado de un tablero
+
+**Contexto.** Al cancelar «¿Borrar? Sí / No» (con «No» o con Escape) el formulario se
+desmontaba con el foco dentro y el ✕ se volvía a pintar sin él: el foco caía al
+`<body>` y quien usa teclado o lector de pantalla perdía su sitio en la rejilla de
+`/boards`. Además el ✕ quedaba invisible (`opacity-0`), porque ya no había foco dentro
+de la tarjeta.
+
+**Decisión.** `DeleteBoardButton` guarda una ref al ✕ y un indicador `restoreFocus`
+que solo pone a `true` la cancelación; un `useEffect` sobre `confirming` lo consume y
+llama a `focus()`. El segundo clic («Sí» envía) no cambia.
+
+**Alternativas descartadas.**
+- `autoFocus` en el ✕: todos los tableros de la rejilla lo llevarían y el último
+  robaría el foco al cargar la página.
+- Dejar el ✕ montado y ocultar la confirmación con CSS: cambia la maquetación de la
+  esquina y seguiría haciendo falta mover el foco a mano.
+
+**Consecuencias.** Tras cancelar, el foco vuelve al ✕ y `group-focus-within` lo
+mantiene visible. `test/delete-board-button-focus.test.ts` lo cubre con un arnés local
+de hooks (sin jsdom): falla con la versión anterior y comprueba que el montaje inicial
+no roba el foco. No se ha probado en navegador ni con lector de pantalla.
+
 ## 2026-09-24 — Título por página en /boards, /board/[id] y /search
 
 **Contexto.** Todas las rutas compartían el `<title>` «orgtable», así que las pestañas

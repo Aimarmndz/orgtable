@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { deleteBoard } from "@/app/lib/actions/boards";
 
@@ -8,6 +8,8 @@ import { deleteBoard } from "@/app/lib/actions/boards";
 // segundo clic en línea («¿Borrar? Sí / No») en vez de window.confirm, que no se puede
 // estilar y en táctil bastaba un toque en la esquina para perderlo todo.
 // Mientras confirma queda siempre visible (no depende del hover de la tarjeta).
+// Al cancelar, el formulario se desmonta con el foco dentro; sin devolverlo al ✕ caería
+// al <body> y quien usa teclado o lector de pantalla perdería su sitio en la rejilla.
 export function DeleteBoardButton({
   boardId,
   title,
@@ -18,10 +20,27 @@ export function DeleteBoardButton({
   className: string;
 }) {
   const [confirming, setConfirming] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  // Solo se devuelve el foco tras cancelar: en el montaje inicial cada tarjeta de la
+  // rejilla tiene su ✕ y ninguno debe robar el foco.
+  const restoreFocus = useRef(false);
+
+  useEffect(() => {
+    if (!confirming && restoreFocus.current) {
+      restoreFocus.current = false;
+      triggerRef.current?.focus();
+    }
+  }, [confirming]);
+
+  function cancel() {
+    restoreFocus.current = true;
+    setConfirming(false);
+  }
 
   if (!confirming) {
     return (
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setConfirming(true)}
         className={className}
@@ -36,7 +55,7 @@ export function DeleteBoardButton({
     <form
       action={deleteBoard}
       onKeyDown={(e) => {
-        if (e.key === "Escape") setConfirming(false);
+        if (e.key === "Escape") cancel();
       }}
       className="flex h-7 items-center gap-1 rounded-md bg-black/60 pl-2 pr-0.5 text-xs font-medium text-white"
     >
@@ -47,7 +66,7 @@ export function DeleteBoardButton({
         type="button"
         // El foco va a «No»: si se pulsa Intro por inercia, no se borra nada.
         autoFocus
-        onClick={() => setConfirming(false)}
+        onClick={cancel}
         className="rounded px-1.5 py-1 hover:bg-white/20"
       >
         No
