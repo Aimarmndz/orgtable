@@ -964,6 +964,22 @@ tests: no había forma de probar las Server Actions ni la revocación de sesione
 **Consecuencias.** Los tests pueden ejecutar Server Actions con sesión real (fila
 `Session` + JWT firmado). Quitar una comprobación de `verifySession` hace fallar
 `session.int.test.ts` (comprobado quitando `revokedAt` y el control de `userId`).
+## 2026-09-24 — Tiempo real: borrar un tablero avisa por el bus en vivo
+
+**Contexto.** `deleteBoard` (acción y `DELETE` de la API) no publicaba nada: las
+pestañas que tenían el tablero abierto seguían mostrándolo hasta recargar.
+
+**Decisión.** Tras borrar, se llama a `revalidateBoard(boardId)` como en el resto de
+mutaciones; la Server Action solo lo hace si de verdad se borró (dueño).
+
+**Alternativas descartadas.** Un evento específico `board.deleted` en el bus: el cliente
+ya refresca con cualquier aviso del tablero y la página, sin membresía, redirige a
+`/boards`.
+
+**Consecuencias.** Ninguna para instalaciones existentes.
+
+---
+
 ## 2026-09-24 — Adjuntos: borrar los ficheros al borrar tarjetas, listas y tableros
 
 **Contexto.** El `onDelete: Cascade` borraba las filas `Attachment` al borrar una

@@ -88,5 +88,7 @@ export async function DELETE(
     detail: "api",
   });
   revalidatePath("/boards");
+  // Avisa a las pestañas abiertas del tablero (SSE), igual que la Server Action.
+  revalidateBoard(id);
   return apiOk({ deleted: true });
 }

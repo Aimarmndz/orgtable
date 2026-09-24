@@ -194,6 +194,8 @@ export async function deleteBoard(formData: FormData): Promise<void> {
       targetType: "board",
       targetId: boardId,
     });
+    // Avisa a las pestañas abiertas del tablero (SSE) para que dejen de mostrarlo.
+    revalidateBoard(boardId);
   }
   revalidatePath("/boards");
   redirect("/boards");

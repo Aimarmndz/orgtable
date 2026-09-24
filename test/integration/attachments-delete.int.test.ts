@@ -28,6 +28,7 @@ vi.mock("next/headers", () => ({
 
 import { prisma } from "@/app/lib/prisma";
 import { saveAttachmentFile } from "@/app/lib/storage";
+import { subscribeBoard } from "@/app/lib/realtime/bus";
 import { deleteCard } from "@/app/lib/actions/cards";
 import { deleteList } from "@/app/lib/actions/lists";
 import { deleteBoard } from "@/app/lib/actions/boards";
@@ -118,14 +119,18 @@ describe("borrar tarjeta, lista o tablero borra los ficheros de sus adjuntos", (
     expect(await fileExists(filePath)).toBe(false);
   });
 
-  it("deleteBoard (Server Action)", async () => {
+  it("deleteBoard (Server Action) borra ficheros y avisa por el bus en vivo", async () => {
     const { board, filePath } = await seedBoardWithAttachment();
+    const events: string[] = [];
+    const unsubscribe = subscribeBoard(board.id, (e) => events.push(e.boardId));
 
     // deleteBoard termina con redirect("/boards"), que lanza NEXT_REDIRECT.
     await expect(deleteBoard(form({ boardId: board.id }))).rejects.toThrow("NEXT_REDIRECT");
+    unsubscribe();
 
     expect(await prisma.board.count()).toBe(0);
     expect(await fileExists(filePath)).toBe(false);
+    expect(events).toEqual([board.id]);
   });
 
   it("deleteBoard de alguien que no es el dueño no borra nada", async () => {
@@ -151,16 +156,20 @@ describe("borrar tarjeta, lista o tablero borra los ficheros de sus adjuntos", (
     expect(await fileExists(filePath)).toBe(false);
   });
 
-  it("DELETE /api/v1/boards/:id", async () => {
+  it("DELETE /api/v1/boards/:id borra ficheros y avisa por el bus en vivo", async () => {
     const { owner, board, filePath } = await seedBoardWithAttachment();
     const token = await seedApiToken(owner.id);
+    const events: string[] = [];
+    const unsubscribe = subscribeBoard(board.id, (e) => events.push(e.boardId));
 
     const res = await deleteBoardApi(
       apiRequest("DELETE", `/api/v1/boards/${board.id}`, { token }),
       ctx({ id: board.id }),
     );
+    unsubscribe();
     expect(res.status).toBe(200);
     expect(await fileExists(filePath)).toBe(false);
+    expect(events).toEqual([board.id]);
   });
 
   it("un VIEWER recibe 403 y el fichero sigue ahí", async () => {
