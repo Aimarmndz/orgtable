@@ -78,10 +78,11 @@ export function CardItem({
       {...(draggable ? attributes : {})}
       {...(draggable ? listeners : {})}
       // Siempre enfocable y anunciada como botón (también para lectores o con filtros,
-      // cuando dnd-kit no pone sus atributos). La copia flotante no recibe foco.
+      // cuando dnd-kit no pone sus atributos). La copia flotante no recibe foco. Sin
+      // aria-label: el nombre sale del contenido (etiquetas, título, vencimiento...) y un
+      // aria-label con solo el título lo taparía.
       role="button"
       tabIndex={overlay ? -1 : 0}
-      aria-label={card.title}
       onClick={() => onOpen?.(card.id)}
       onKeyDown={(e) => {
         // Primero dnd-kit (Espacio coge la tarjeta si se puede arrastrar; si la coge,
@@ -162,6 +163,8 @@ export function CardItem({
                 <path d="M16 2v4M8 2v4M3 10h18" />
               </svg>
               {formatDueDay(due)}
+              {/* El rojo solo se ve: el lector de pantalla necesita el estado en texto. */}
+              {overdue && <span className="sr-only">, vencida</span>}
             </span>
           )}
           {attachCount > 0 && (

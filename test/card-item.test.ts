@@ -37,7 +37,17 @@ describe("CardItem", () => {
     const html = render("VIEWER");
     expect(html).toContain('role="button"');
     expect(html).toContain('tabindex="0"');
-    expect(html).toContain('aria-label="Revisar contrato"');
+  });
+
+  it("toma el nombre accesible del contenido, no de un aria-label con solo el título", () => {
+    const html = render("VIEWER");
+    // El primer elemento es la propia tarjeta: su etiqueta de apertura no lleva
+    // aria-label, así que el lector lee título, vencimiento, subtareas...
+    const openingTag = html.slice(0, html.indexOf(">") + 1);
+    expect(openingTag).toContain('role="button"');
+    expect(openingTag).not.toContain("aria-label");
+    expect(html).toContain("Revisar contrato");
+    expect(html).toContain("2 ene");
   });
 
   it("con permisos de edición mantiene el foco y describe el rol en español", () => {

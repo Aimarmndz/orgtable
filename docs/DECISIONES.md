@@ -1406,9 +1406,10 @@ componente si solo cambian los searchParams.
   es una fecha de calendario.
 - «Vencida» depende del día del navegador, así que la tarjeta solo la calcula tras
   hidratar (`useSyncExternalStore`); en el HTML del servidor nunca sale en rojo.
-- La tarjeta es siempre `role="button"`, `tabIndex=0` y `aria-label` con su título (la
-  copia flotante, `tabIndex=-1`). Intro la abre; Espacio también si no se puede
-  arrastrar.
+- La tarjeta es siempre `role="button"` y `tabIndex=0` (la copia flotante,
+  `tabIndex=-1`). Sin `aria-label`: el nombre accesible sale del contenido (etiquetas,
+  título, vencimiento, subtareas, contadores) y «vencida» se añade en texto `sr-only`,
+  porque el rojo solo se ve. Intro la abre; Espacio también si no se puede arrastrar.
 - `aria-roledescription` en español («tarjeta», «lista») en lugar del «sortable» de
   dnd-kit.
 - Filtros: `type="button"`, `aria-pressed` y grupos etiquetados por su título. Etiqueta
@@ -1450,14 +1451,16 @@ componente si solo cambian los searchParams.
   resuelve lo mismo con menos cambios. Un aviso visible al fallar un movimiento en el
   tablero: queda pendiente de que el propietario decida el texto (hoy se deshace en
   silencio y se refresca).
-- Anclar el popover a la derecha solo en `lg`: depende de que la cabecera no se parta,
-  que varía con la longitud del título.
+- `aria-label` con solo el título en la tarjeta: tapaba el vencimiento, el estado
+  «vencida» y los contadores. Anclar el popover a la derecha solo en `lg`: depende de
+  que la cabecera no se parta, que varía con la longitud del título.
 - `router.replace` con `?card`: cada apertura pediría la página al servidor. Sincronizar
   `initialCardId` durante el render: seguiría sin abrir la misma notificación dos veces.
 
 **Consecuencias.** Tests en `test/board-filters.test.ts` (vence hoy/ayer, formato con
 `TZ=America/New_York`). Test de render en servidor (`test/card-item.test.ts`) para rol,
-foco y ausencia de «vencida» en el HTML inicial. Sin test automático (no hay entorno
+foco, nombre accesible desde el contenido (sin `aria-label`) y ausencia de «vencida» en
+el HTML inicial. Sin test automático (no hay entorno
 DOM); verificación manual pendiente. Tests con rectángulos sintéticos en
 `test/board-collision.test.ts` (incluido el fallo de `closestCorners` a secas) y de
 `persistOptimistic` en `test/optimistic.test.ts`. El arrastre real con ratón y teclado
