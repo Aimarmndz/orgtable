@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { isSetupComplete, verifySession } from "@/app/lib/dal";
 import { isRegistrationOpen } from "@/app/lib/services/instance";
+import { isMailEnabled } from "@/app/lib/mail/config";
 import { PublicFooter } from "@/app/components/public-footer";
 import { getI18n } from "@/app/i18n/server";
 import { rich } from "@/app/i18n/rich";
@@ -19,12 +20,12 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ account?: string }>;
+  searchParams: Promise<{ account?: string; password?: string }>;
 }) {
   // If the instance has not been set up yet, the wizard comes first.
   if (!(await isSetupComplete())) redirect("/setup");
   if (await verifySession()) redirect("/boards");
-  const [registrationOpen, { account }, { m }] = await Promise.all([
+  const [registrationOpen, { account, password }, { m }] = await Promise.all([
     isRegistrationOpen(),
     searchParams,
     getI18n(),
@@ -45,7 +46,26 @@ export default async function LoginPage({
               {m.auth.login.accountDeleted}
             </p>
           )}
+                    {/* After choosing a password from an emailed link (actions/password.ts). */}
+          {(password === "reset" || password === "set") && (
+            <p
+              role="status"
+              className="mb-6 w-full max-w-sm rounded-lg border border-success/25 bg-success/10 px-3 py-2 text-sm text-success"
+            >
+              {password === "reset" ? m.auth.login.passwordReset : m.auth.login.passwordSet}
+            </p>
+          )}
           <LoginForm />
+          {isMailEnabled() && (
+            <p className="mt-4 w-full max-w-sm text-sm">
+              <Link
+                href="/forgot-password"
+                className="font-semibold text-accent underline-offset-2 hover:underline"
+              >
+                {m.auth.login.forgot}
+              </Link>
+            </p>
+          )}
           {registrationOpen && (
             <p className="mt-6 w-full max-w-sm text-sm text-ink-muted">
               {rich(m.auth.login.noAccount, {

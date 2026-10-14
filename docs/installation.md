@@ -150,6 +150,9 @@ The app container only receives the variables listed under `environment:` in `do
 | `ORGTABLE_SOURCE_URL` | No | The app's "Source code" link. The AGPL requires offering the source code to everyone who uses the app over a network: if you deploy a **modified** version, point this to your fork. Defaults to the original repository. Must start with `https://` or `http://`. |
 | `ORGTABLE_LANDING` | No | The public landing page at `/` for visitors without a session: `auto` (default) shows it only while sign-up is open, `on` always, `off` never (then `/` goes to sign-in). See [landing.md](./landing.md). |
 | `ORGTABLE_INSTALL_URL` | No | Install script the landing tells visitors to run (`curl -fsSL <url> \| bash`). Defaults to the original repository's `install.sh`. Must start with `https://` and contain no characters a shell would interpret. |
+| `ORGTABLE_SMTP_URL` | No | SMTP server for password reset links and employee invitations (`smtps://user:password@host:465`). Empty = email off. See [email.md](./email.md). |
+| `ORGTABLE_MAIL_FROM` | With email | Sender of the emails, e.g. `orgtable <no-reply@example.org>`. |
+| `ORGTABLE_PUBLIC_URL` | With email | The instance's public address, used in the links of the emails. |
 | `ORGTABLE_REALTIME_PG_NOTIFY` | No | `1` to propagate real-time events between several app replicas with PostgreSQL `LISTEN/NOTIFY`. Default `0`. See [realtime.md](./realtime.md). |
 | `ORGTABLE_DIR` | No | Installer only (`install.sh`, read from the shell, not from `.env`): installation directory. Default `$HOME/orgtable`. |
 | `ORGTABLE_REPO` | No | Installer only (`install.sh`, read from the shell, not from `.env`): repository URL to clone. Default `https://github.com/Aimarmndz/orgtable.git`. |

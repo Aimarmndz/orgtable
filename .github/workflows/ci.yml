@@ -52,6 +52,7 @@ jobs:
           config="$(CRON_SECRET=probe TRUSTED_PROXY_HOPS=7 ORGTABLE_TIMEZONE=Europe/Madrid \
             ORGTABLE_AUDIT_RETENTION_DAYS=45 ORGTABLE_SOURCE_URL=https://example.org/fork \
             ORGTABLE_LANDING=on ORGTABLE_INSTALL_URL=https://example.org/fork/install.sh \
+            ORGTABLE_SMTP_URL=smtp://probe ORGTABLE_PUBLIC_URL=https://example.org \
             docker compose config)"
           grep -q 'CRON_SECRET: probe' <<<"$config"
           grep -q 'TRUSTED_PROXY_HOPS: "7"' <<<"$config"
@@ -62,6 +63,8 @@ jobs:
           # the compose version.
           grep -Eq "ORGTABLE_LANDING: ['\"]on['\"]" <<<"$config"
           grep -q 'ORGTABLE_INSTALL_URL: https://example.org/fork/install.sh' <<<"$config"
+          grep -q 'ORGTABLE_SMTP_URL: smtp://probe' <<<"$config"
+          grep -q 'ORGTABLE_PUBLIC_URL: https://example.org' <<<"$config"
 
       # The current license is AGPL-3.0-or-later with an attribution term (section 7(b))
       # at the end of LICENSE (see docs/DECISIONES.md, 2026-10-14). Fails if package.json

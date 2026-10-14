@@ -1,0 +1,38 @@
+{
+  "privacy": "Privacidad",
+  "terms": "Condiciones",
+  "kickerAccount": "ORGTABLE · TU CUENTA",
+  "footerAccount": "Recibes este correo porque se pidió desde tu cuenta en {host}.",
+  "reset": {
+    "subject": "Elige una contraseña nueva",
+    "preheader": "Un enlace para poner una contraseña nueva en tu cuenta de orgtable.",
+    "title": "Elige una contraseña nueva",
+    "body": "Hola, {name}. Alguien (seguramente tú) ha pedido restablecer la contraseña de tu cuenta de orgtable. Pulsa el botón para elegir una nueva.",
+    "button": "Restablecer contraseña",
+    "expires": "el enlace caduca en {minutes} minutos",
+    "once": "solo funciona una vez",
+    "notYou": "¿No has sido tú? Ignora este correo: tu contraseña no cambia mientras nadie use el enlace."
+  },
+  "invite": {
+    "subject": "{organization} te ha creado una cuenta de orgtable",
+    "preheader": "Elige tu contraseña para entrar en {organization}.",
+    "title": "{organization} te ha creado una cuenta",
+    "body": "Hola, {name}. {inviter} te ha dado de alta en {organization} como {role}. Allí os organizáis en tableros Kanban compartidos.",
+    "address": "Tu organización está en {address}",
+    "button": "Elegir mi contraseña",
+    "expires": "el enlace caduca en {days} días",
+    "yourEmail": "tu email: {email}",
+    "ownership": "La cuenta es tuya: puedes cambiar la contraseña, descargar tus datos o borrarla desde los ajustes. {organization} puede restablecer tu contraseña o sacarte de la organización.",
+    "footer": "Recibes este correo porque {organization} creó una cuenta con esta dirección."
+  },
+  "changed": {
+    "subject": "Han cambiado la contraseña de tu cuenta de orgtable",
+    "preheader": "Si no has sido tú, restablécela ahora.",
+    "title": "Tu contraseña ha cambiado",
+    "body": "Hola, {name}. Acaban de cambiar la contraseña de tu cuenta de orgtable con un enlace de restablecimiento.",
+    "button": "No he sido yo: restablecerla",
+    "sessions": "se han cerrado todas las sesiones abiertas",
+    "tokens": "se han revocado todos los tokens de la API",
+    "notYou": "Si has sido tú, no tienes que hacer nada más."
+  }
+}

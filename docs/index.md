@@ -11,6 +11,8 @@ want to **contribute** to the code.
 - [**Installation**](./installation.md) — the one-command installer and the manual installation.
 - [**Setup wizard**](./setup-wizard.md) — what happens on first start.
 - [**Self-hosting**](./self-hosting.md) — running in production: backups, updates, reverse proxy and TLS.
+- [**Organizations and workspaces**](./workspaces.md) — free organizations, employees, roles and board URLs.
+- [**Email**](./email.md) — password reset links and invitations (optional SMTP).
 - [**Landing page**](./landing.md) — the public page at `/`: when it shows and what it offers.
 - [**Privacy, open sign-up and GDPR**](./privacy.md) — your instance's legal details, retention periods, user rights and the checklist for opening a public instance.
 

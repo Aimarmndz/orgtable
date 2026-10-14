@@ -60,9 +60,9 @@ DO $$
 DECLARE
   -- Keep in sync with RESERVED_WORKSPACE_SLUGS and RESERVED_BOARD_SLUGS in app/lib/slugs.ts.
   reserved_ws TEXT[] := ARRAY['about','account','admin','api','app','auth','board','boards',
-    'cookies','dashboard','docs','explore','health','help','invite','join','legal','login',
+    'cookies','dashboard','docs','explore','forgot-password','health','help','invite','join','legal','login',
     'logout','me','new','notice','null','org','orgs','orgtable','pricing','privacy','public',
-    'register','root','search','settings','setup','signup','static','status','support',
+    'register','reset-password','root','search','settings','setup','signup','static','status','support',
     'system','terms','undefined','user','users','workspace','workspaces','www'];
   reserved_board TEXT[] := ARRAY['members','new','settings'];
   u RECORD;

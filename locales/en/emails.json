@@ -1,0 +1,38 @@
+{
+  "privacy": "Privacy",
+  "terms": "Terms",
+  "kickerAccount": "ORGTABLE · YOUR ACCOUNT",
+  "footerAccount": "You get this email because it was requested from your account on {host}.",
+  "reset": {
+    "subject": "Choose a new password",
+    "preheader": "A link to set a new password for your orgtable account.",
+    "title": "Choose a new password",
+    "body": "Hi, {name}. Someone (probably you) asked to reset the password of your orgtable account. Use the button to choose a new one.",
+    "button": "Reset password",
+    "expires": "the link expires in {minutes} minutes",
+    "once": "it only works once",
+    "notYou": "Not you? Ignore this email: your password does not change unless someone uses the link."
+  },
+  "invite": {
+    "subject": "{organization} created an orgtable account for you",
+    "preheader": "Choose your password to get into {organization}.",
+    "title": "{organization} created an account for you",
+    "body": "Hi, {name}. {inviter} added you to {organization} as {role}. There you organize work together on shared Kanban boards.",
+    "address": "Your organization is at {address}",
+    "button": "Choose my password",
+    "expires": "the link expires in {days} days",
+    "yourEmail": "your email: {email}",
+    "ownership": "The account is yours: you can change your password, download your data or delete it from the settings. {organization} can reset your password or remove you from the organization.",
+    "footer": "You get this email because {organization} created an account with this address."
+  },
+  "changed": {
+    "subject": "Your orgtable password was changed",
+    "preheader": "If it was not you, reset it now.",
+    "title": "Your password was changed",
+    "body": "Hi, {name}. The password of your orgtable account was just changed with a reset link.",
+    "button": "It was not me: reset it",
+    "sessions": "every open session was closed",
+    "tokens": "every API token was revoked",
+    "notYou": "If it was you, there is nothing else to do."
+  }
+}

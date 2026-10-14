@@ -57,6 +57,11 @@ services:
       # docs/landing.md.
       ORGTABLE_LANDING: ${ORGTABLE_LANDING:-}
       ORGTABLE_INSTALL_URL: ${ORGTABLE_INSTALL_URL:-}
+      # Email (optional): password reset links and employee invitations. Empty = off.
+      # See docs/email.md.
+      ORGTABLE_SMTP_URL: ${ORGTABLE_SMTP_URL:-}
+      ORGTABLE_MAIL_FROM: ${ORGTABLE_MAIL_FROM:-}
+      ORGTABLE_PUBLIC_URL: ${ORGTABLE_PUBLIC_URL:-}
     volumes:
       - uploads:/data/uploads
     ports:

@@ -344,3 +344,19 @@ export const employeePasswordSchema = z.object({
 });
 
 export const boardVisibilitySchema = z.enum(["WORKSPACE", "PRIVATE"]);
+
+// --- Password links sent by email (docs/email.md) ---
+export const forgotPasswordSchema = z.object({
+  email: z.email("errors.validation.emailInvalid").max(254, "errors.validation.maxChars254"),
+});
+
+export const newPasswordSchema = z
+  .object({
+    token: z.string().min(1).max(200),
+    password: passwordSchema,
+    confirm: z.string(),
+  })
+  .refine((v) => v.password === v.confirm, {
+    message: "errors.validation.passwordsDontMatch",
+    path: ["confirm"],
+  });

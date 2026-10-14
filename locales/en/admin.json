@@ -152,7 +152,9 @@
       "workspace.member_role_changed": "Organization role changed",
       "workspace.member_removed": "Removed from an organization",
       "workspace.member_left": "Left an organization",
-      "workspace.member_password_reset": "Employee password reset"
+      "workspace.member_password_reset": "Employee password reset",
+      "auth.password_reset_requested": "Password reset requested",
+      "auth.password_reset": "Password set from an email link"
     }
   },
   "workspaces": {

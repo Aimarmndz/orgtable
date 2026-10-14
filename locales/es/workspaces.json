@@ -63,7 +63,11 @@
     "created": "Cuenta creada. Dale a la persona su email y su contraseña inicial.",
     "resetTitle": "Nueva contraseña para {name}",
     "resetSubmit": "Poner contraseña",
-    "passwordReset": "Contraseña cambiada. Se han cerrado sus sesiones y sus tokens de la API."
+    "passwordReset": "Contraseña cambiada. Se han cerrado sus sesiones y sus tokens de la API.",
+    "invited": "Cuenta creada. Hemos enviado a {email} un enlace para elegir su contraseña (vale 7 días).",
+    "inviteFailed": "La cuenta se ha creado, pero no se ha podido enviar el correo de invitación. Ponle una contraseña inicial abajo y dásela.",
+    "createTextInvite": "Le enviamos a la persona un enlace para que elija su propia contraseña: nadie más la conoce. La cuenta es de la persona; esta organización puede restablecer su contraseña o expulsarla.",
+    "createInvite": "Crear y enviar invitación"
   },
   "settings": {
     "metaTitle": "Ajustes de {name}",

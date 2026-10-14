@@ -41,7 +41,12 @@ describe("purgeExpiredData", () => {
     });
 
     const result = await purgeExpiredData(now);
-    expect(result).toEqual({ auditLogsDeleted: 1, sessionsDeleted: 2, notificationsDeleted: 1 });
+    expect(result).toEqual({
+      auditLogsDeleted: 1,
+      sessionsDeleted: 2,
+      notificationsDeleted: 1,
+      accountLinksDeleted: 0,
+    });
     expect((await prisma.auditLog.findMany()).map((a) => a.ip)).toEqual(["203.0.113.2"]);
     expect(await prisma.session.count()).toBe(2);
     expect((await prisma.notification.findMany()).map((n) => n.title)).toEqual(["recent"]);

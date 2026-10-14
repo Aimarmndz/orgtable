@@ -31,7 +31,8 @@ export const NOTIFICATION_RETENTION_DAYS = 180;
 export type MaintenanceResult = {
   auditLogsDeleted: number;
   sessionsDeleted: number;
-  notificationsDeleted: number;
+    notificationsDeleted: number;
+  accountLinksDeleted: number;
 };
 
 export async function purgeExpiredData(now: Date): Promise<MaintenanceResult> {
@@ -41,7 +42,7 @@ export async function purgeExpiredData(now: Date): Promise<MaintenanceResult> {
     now.getTime() - NOTIFICATION_RETENTION_DAYS * DAY_MS,
   );
 
-  const [audit, sessions, notifications] = await prisma.$transaction([
+    const [audit, sessions, notifications, links] = await prisma.$transaction([
     prisma.auditLog.deleteMany({ where: { createdAt: { lt: auditCutoff } } }),
     prisma.session.deleteMany({
       where: {
@@ -51,12 +52,15 @@ export async function purgeExpiredData(now: Date): Promise<MaintenanceResult> {
         ],
       },
     }),
-    prisma.notification.deleteMany({ where: { createdAt: { lt: notificationCutoff } } }),
+        prisma.notification.deleteMany({ where: { createdAt: { lt: notificationCutoff } } }),
+    // Emailed password links that expired without being used (docs/email.md).
+    prisma.accountToken.deleteMany({ where: { expiresAt: { lt: now } } }),
   ]);
 
   return {
     auditLogsDeleted: audit.count,
     sessionsDeleted: sessions.count,
     notificationsDeleted: notifications.count,
+    accountLinksDeleted: links.count,
   };
 }

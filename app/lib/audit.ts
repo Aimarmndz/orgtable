@@ -16,6 +16,8 @@ export type AuditAction =
   | "auth.logout"
   | "auth.registered"
   | "auth.register_rate_limited"
+  | "auth.password_reset_requested"
+  | "auth.password_reset"
   | "account.updated"
   | "account.password_changed"
   | "account.sessions_revoked"

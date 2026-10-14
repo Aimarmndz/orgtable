@@ -20,7 +20,8 @@ locales/
 │   ├── errors.json   # validation and error messages
 │   ├── notifications.json # in-app notification texts
 │   ├── landing.json  # the public landing page at /
-│   └── workspaces.json # organizations, members and employees
+│   ├── workspaces.json # organizations, members and employees
+│   └── emails.json   # the emails (password reset, invitation)
 └── es/               # Spanish
 ```
 

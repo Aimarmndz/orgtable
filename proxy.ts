@@ -16,7 +16,15 @@ import { buildContentSecurityPolicy, generateNonce } from "@/app/lib/csp";
 // session (the privacy policy must be readable BEFORE creating an account). Search
 // engines read /robots.txt without a cookie. `/` (exactly, not its subpaths) decides by
 // itself too: the public landing or a redirect to /login (app/page.tsx).
-const PUBLIC_PATHS = ["/login", "/setup", "/register", "/legal", "/robots.txt"];
+const PUBLIC_PATHS = [
+  "/login",
+  "/setup",
+  "/register",
+  "/forgot-password",
+  "/reset-password",
+  "/legal",
+  "/robots.txt",
+];
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;

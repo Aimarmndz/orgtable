@@ -25,6 +25,10 @@ import {
 } from "@/app/lib/services/workspaces";
 import { prisma } from "@/app/lib/prisma";
 import { rateLimit } from "@/app/lib/rate-limit";
+import { randomBytes } from "node:crypto";
+import { isMailEnabled } from "@/app/lib/mail/config";
+import { sendInvite } from "@/app/lib/services/account-tokens";
+import { fmt } from "@/app/i18n/format";
 
 // Server Actions of workspaces (organizations, their members and employees). Each one only
 // resolves WHO is acting (the session) and turns the outcome into a message: every rule
@@ -172,14 +176,18 @@ export async function createEmployeeAction(
     email: text(formData, "email", 254),
     role: text(formData, "role", 10),
   };
+    // With email, the person chooses their own password from an invitation link and nobody
+  // else ever knows it: the account starts with a random one that is never shown. Without
+  // email, the organization sets an initial password and hands it over.
+  const invite = isMailEnabled();
   const parsed = createEmployeeSchema.safeParse({
     ...values,
-    password: formData.get("password"),
+    password: invite ? randomBytes(24).toString("base64url") : formData.get("password"),
   });
   if (!parsed.success)
     return { error: issueMessage(m, parsed.error.issues[0]), values };
 
-    if (!rateLimit(`employees:${user.id}`, EMPLOYEE_LIMIT, HOUR_MS).ok) {
+  if (!rateLimit(`employees:${user.id}`, EMPLOYEE_LIMIT, HOUR_MS).ok) {
     return { error: m.errors.workspaces.rateLimited, values };
   }
   const result = await createEmployee({
@@ -196,9 +204,23 @@ export async function createEmployeeAction(
     targetId: workspaceId,
     detail: `${result.userId} (${parsed.data.role})`,
   });
-  const slug = await slugOf(workspaceId);
-  if (slug) revalidatePath(`/${slug}/settings`);
-  return { message: m.workspaces.members.created };
+    const workspace = await prisma.workspace.findUnique({
+    where: { id: workspaceId },
+    select: { slug: true, name: true },
+  });
+  if (workspace) revalidatePath(`/${workspace.slug}/settings`);
+  if (!invite) return { message: m.workspaces.members.created };
+  const sent =
+    workspace &&
+    (await sendInvite({
+      userId: result.userId,
+      organization: workspace,
+      inviterName: user.name,
+      role: parsed.data.role,
+    }));
+  return sent
+    ? { message: fmt(m.workspaces.members.invited, { email: parsed.data.email }) }
+    : { error: m.workspaces.members.inviteFailed };
 }
 
 /** Changes a member's role in the organization. */

@@ -63,7 +63,11 @@
     "created": "Account created. Give the person their email and initial password.",
     "resetTitle": "New password for {name}",
     "resetSubmit": "Set password",
-    "passwordReset": "Password changed. Their open sessions and API tokens were closed."
+    "passwordReset": "Password changed. Their open sessions and API tokens were closed.",
+    "invited": "Account created. We emailed {email} a link to choose their password (valid for 7 days).",
+    "inviteFailed": "The account was created, but the invitation email could not be sent. Set an initial password for them below and hand it over.",
+    "createTextInvite": "We email the person a link to choose their own password: nobody else ever knows it. The account belongs to the person; this organization can reset its password or remove it.",
+    "createInvite": "Create and send invitation"
   },
   "settings": {
     "metaTitle": "Settings of {name}",

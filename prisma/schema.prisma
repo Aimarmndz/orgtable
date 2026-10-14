@@ -139,6 +139,31 @@ model User {
   // can reset the password or delete it. Null for people who signed up themselves.
   managedById          String?
   managedBy            Workspace?        @relation("ManagedUsers", fields: [managedById], references: [id], onDelete: SetNull)
+  accountTokens        AccountToken[]
+}
+
+// What a single-use link sent by email lets its holder do with an account.
+enum AccountTokenPurpose {
+  // "Forgot your password": choose a new one. Valid for an hour.
+  PASSWORD_RESET
+  // An organization created the account: its owner chooses their password. Valid a week.
+  INVITE
+}
+
+// Single-use links sent by email. Only the SHA-256 of the token is stored (like API
+// tokens): someone who reads the database cannot use them. Consuming one sets the
+// password, revokes every session and API token of the account and deletes the account's
+// other links. See app/lib/services/account-tokens.ts and docs/email.md.
+model AccountToken {
+  id        String              @id @default(cuid())
+  userId    String
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purpose   AccountTokenPurpose
+  tokenHash String              @unique
+  expiresAt DateTime
+  createdAt DateTime            @default(now())
+
+  @@index([userId])
 }
 
 // Server-side session. The cookie is still a signed JWT, but it carries the id of THIS
