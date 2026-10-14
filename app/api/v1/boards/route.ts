@@ -6,6 +6,7 @@ import { boardTitleSchema } from "@/app/lib/validators";
 import { authenticateApiToken, isReadOnly } from "@/app/lib/api/auth";
 import { apiError, apiOk, apiValidationError } from "@/app/lib/api/respond";
 import { serializeBoardSummary } from "@/app/lib/api/serialize";
+import { createBoardWithSlug } from "@/app/lib/services/workspaces";
 
 // Public API v1: board collection. See docs/api/public-api.md.
 
@@ -21,7 +22,10 @@ export async function GET(request: Request) {
   return apiOk({ boards: boards.map(serializeBoardSummary) });
 }
 
-/** POST /api/v1/boards: creates a board (the user becomes its owner). */
+/**
+ * POST /api/v1/boards: creates a board (the user becomes its owner) in the workspace whose
+ * slug is in `workspace`, if the user is a member of it, or in their personal workspace.
+ */
 export async function POST(request: Request) {
   const auth = await authenticateApiToken(request);
   if (!auth) return apiError(401, "Missing or invalid API token.");
@@ -33,13 +37,34 @@ export async function POST(request: Request) {
     return apiValidationError(parsed.error.issues[0]);
   }
 
-  const board = await prisma.board.create({
-    data: {
-      title: parsed.data,
-      ownerId: auth.userId,
-      members: { create: { userId: auth.userId, role: "OWNER" } },
+  const requested = (body as { workspace?: unknown })?.workspace;
+  if (requested !== undefined && typeof requested !== "string") {
+    return apiError(400, "`workspace` must be a workspace slug.");
+  }
+  // Same 404 for a workspace that does not exist and one the user is not in.
+  const workspace = await prisma.workspace.findFirst({
+    where: {
+      ...(requested
+        ? { slug: requested.toLowerCase(), members: { some: { userId: auth.userId } } }
+        : { personalOwnerId: auth.userId }),
+      suspendedAt: null,
     },
+    select: { id: true },
   });
+  if (!workspace) return apiError(404, "Workspace not found.");
+
+    const board = await createBoardWithSlug(workspace.id, parsed.data, (slug) =>
+    prisma.board.create({
+      data: {
+        title: parsed.data,
+        ownerId: auth.userId,
+        workspaceId: workspace.id,
+        slug,
+        members: { create: { userId: auth.userId, role: "OWNER" } },
+      },
+      include: { workspace: { select: { slug: true } } },
+    }),
+  );
   await recordAudit({
     action: "board.created",
     userId: auth.userId,

@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/app/lib/prisma";
+import { prepareAccountDeletion, soleOwnedOrganizations } from "@/app/lib/services/workspaces";
 import { hashPassword, verifyPassword } from "@/app/lib/auth";
 import { deleteBoardWithAttachments } from "@/app/lib/services/attachments";
 import { isUniqueViolation } from "@/app/lib/services/users";
@@ -116,7 +117,8 @@ export async function revokeOtherSessions(
 
 export type DeleteOwnAccountResult =
   | { ok: true; boardsDeleted: number }
-  | { ok: false; error: "not_found" | "wrong_password" | "last_admin" };
+  | { ok: false; error: "not_found" | "wrong_password" | "last_admin" }
+  | { ok: false; error: "sole_owner"; organizations: string[] };
 
 /**
  * Deletes the account and everything hanging off it (right to erasure, GDPR art. 17):
@@ -151,6 +153,14 @@ export async function deleteOwnAccount(
     if (otherAdmins === 0) return { ok: false, error: "last_admin" };
   }
 
+  // Organizations: the ones only this person owns (with other members) block the
+  // deletion; the rest are deleted (if alone) or keep the boards they created under
+  // another owner (services/workspaces.ts). Their personal workspace goes with the account.
+  const organizations = await prepareAccountDeletion(userId);
+  if (!organizations.ok) {
+    return { ok: false, error: "sole_owner", organizations: organizations.organizations };
+  }
+
   // Boards one by one: each deletion locks its tree and then removes the files (see
   // services/attachments.ts). Retried in case one is created meanwhile (another tab or
   // the API), so the final DELETE with `boards: none` does not fail because of that race.
@@ -165,7 +175,9 @@ export async function deleteOwnAccount(
     }
 
     const result = await prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT 1 FROM "User" WHERE role = 'ADMIN' FOR UPDATE`;
+            await tx.$queryRaw`SELECT 1 FROM "User" WHERE role = 'ADMIN' FOR UPDATE`;
+      // Re-checked under lock: another owner may have left meanwhile.
+      if ((await soleOwnedOrganizations(tx, userId)).length > 0) return "sole_owner" as const;
       if (user.role === "ADMIN") {
         const others = await tx.user.count({
           where: { role: "ADMIN", id: { not: userId } },
@@ -182,7 +194,11 @@ export async function deleteOwnAccount(
       return count > 0 ? ("deleted" as const) : ("owns_boards" as const);
     });
 
-    if (result === "last_admin") return { ok: false, error: "last_admin" };
+        if (result === "last_admin") return { ok: false, error: "last_admin" };
+    if (result === "sole_owner") {
+      const again = await prepareAccountDeletion(userId);
+      return { ok: false, error: "sole_owner", organizations: again.ok ? [] : again.organizations };
+    }
     if (result === "deleted") return { ok: true, boardsDeleted };
   }
   throw new Error("Could not delete the account: new boards keep appearing");

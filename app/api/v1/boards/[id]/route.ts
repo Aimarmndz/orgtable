@@ -6,6 +6,7 @@ import { canManageBoard } from "@/app/lib/roles";
 import { recordAudit } from "@/app/lib/audit";
 import { boardTitleSchema } from "@/app/lib/validators";
 import { deleteBoardWithAttachments } from "@/app/lib/services/attachments";
+import { freeBoardSlug } from "@/app/lib/services/workspaces";
 import { authenticateApiToken, apiBoardRole, isReadOnly } from "@/app/lib/api/auth";
 import { apiError, apiOk, apiValidationError } from "@/app/lib/api/respond";
 import {
@@ -55,9 +56,17 @@ export async function PATCH(
     return apiValidationError(parsed.error.issues[0]);
   }
 
+  const current = await prisma.board.findUniqueOrThrow({
+    where: { id },
+    select: { workspaceId: true },
+  });
   const board = await prisma.board.update({
     where: { id },
-    data: { title: parsed.data },
+    data: {
+      title: parsed.data,
+      slug: await freeBoardSlug(prisma, current.workspaceId, parsed.data, id),
+    },
+    include: { workspace: { select: { slug: true } } },
   });
   revalidateBoard(id);
   return apiOk(serializeBoardSummary(board));

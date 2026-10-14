@@ -1,9 +1,10 @@
 import { verifySession } from "@/app/lib/dal";
 import { prisma } from "@/app/lib/prisma";
+import { accessibleBoardsWhere } from "@/app/lib/access";
 import { readAttachmentFile } from "@/app/lib/storage";
 
 // Serves an attachment's file, with authorization. Not under /public because
-// attachments are private: any board member can download them, nobody else. See
+// attachments are private: whoever can open the board can download them, nobody else. See
 // docs/attachments.md.
 
 export const dynamic = "force-dynamic";
@@ -18,12 +19,12 @@ export async function GET(
   const session = await verifySession();
   if (!session) return new Response("Unauthorized", { status: 401 });
 
-  // A single query scoped by membership: a missing attachment and one from someone else's
+  // A single query scoped by access (app/lib/access.ts): a missing attachment and one from someone else's
   // board give the SAME 404, so as not to reveal which ids exist (like API v1).
   const attachment = await prisma.attachment.findFirst({
     where: {
       id,
-      card: { list: { board: { members: { some: { userId: session.userId } } } } },
+      card: { list: { board: accessibleBoardsWhere(session.userId) } },
     },
     select: {
       filename: true,

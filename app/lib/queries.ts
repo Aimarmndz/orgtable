@@ -2,47 +2,174 @@ import "server-only";
 import { cache } from "react";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/app/lib/prisma";
+import { accessibleBoardsWhere } from "@/app/lib/access";
+import { boardRoleFromWorkspace, canManageBoard, maxBoardRole } from "@/app/lib/roles";
 
 // Read queries. Authorization (which boards a user can see) is expressed in the WHERE
-// itself: owner or member of the board.
+// itself, always with accessibleBoardsWhere (app/lib/access.ts).
 
 export async function getBoardsForUser(userId: string) {
   return prisma.board.findMany({
-    where: {
-      OR: [{ ownerId: userId }, { members: { some: { userId } } }],
-    },
+    where: accessibleBoardsWhere(userId),
     orderBy: { updatedAt: "desc" },
+    include: { workspace: { select: { slug: true } } },
   });
 }
 
 /**
- * The user's boards with what their tile on /boards shows: how many cards they hold and
- * who else is in them. Separate from getBoardsForUser so the shape returned by the public
- * API does not change.
+ * The user's boards with what their tile shows: how many cards they hold, who else is in
+ * them, where they live (/<workspace>/<slug>) and whether the user may manage them (delete).
+ * `workspaceId` narrows them to one workspace (its page). Separate from getBoardsForUser so
+ * the shape returned by the public API does not change.
  */
-export async function getBoardSummariesForUser(userId: string) {
+export async function getBoardSummariesForUser(userId: string, workspaceId?: string) {
   const boards = await prisma.board.findMany({
-    where: {
-      OR: [{ ownerId: userId }, { members: { some: { userId } } }],
-    },
+    where: workspaceId
+      ? { AND: [{ workspaceId }, accessibleBoardsWhere(userId)] }
+      : accessibleBoardsWhere(userId),
     orderBy: { updatedAt: "desc" },
     select: {
       id: true,
       title: true,
+      slug: true,
       background: true,
       ownerId: true,
+      visibility: true,
+      workspace: {
+        select: {
+          id: true,
+          slug: true,
+          members: { where: { userId }, select: { role: true } },
+        },
+      },
       lists: { select: { _count: { select: { cards: true } } } },
       members: {
         orderBy: { addedAt: "asc" },
-        select: { user: { select: { id: true, name: true } } },
+        select: { role: true, user: { select: { id: true, name: true } } },
       },
     },
   });
-  return boards.map(({ lists, members, ...b }) => ({
-    ...b,
-    cardCount: lists.reduce((n, l) => n + l._count.cards, 0),
-    members: members.map((m) => m.user),
+  return boards.map(({ lists, members, workspace, ...b }) => {
+    const explicit = members.find((m) => m.user.id === userId)?.role ?? null;
+    const fromWorkspace = workspace.members[0]
+      ? boardRoleFromWorkspace(workspace.members[0].role, b.visibility)
+      : null;
+    const role = maxBoardRole(explicit, fromWorkspace);
+    return {
+      ...b,
+      workspaceId: workspace.id,
+      workspaceSlug: workspace.slug,
+      canManage: role !== null && canManageBoard(role),
+      cardCount: lists.reduce((n, l) => n + l._count.cards, 0),
+      members: members.map((m) => m.user),
+    };
+  });
+}
+
+export type BoardSummary = Awaited<ReturnType<typeof getBoardSummariesForUser>>[number];
+
+/**
+ * The workspaces the user belongs to, personal first, then organizations by name, with
+ * their role. For /boards and the "new board" workspace picker.
+ */
+export async function getWorkspacesForUser(userId: string) {
+  const rows = await prisma.workspaceMember.findMany({
+    where: { userId },
+    select: {
+      role: true,
+      workspace: {
+        select: { id: true, slug: true, name: true, kind: true, suspendedAt: true },
+      },
+    },
+  });
+  return rows
+    .map((r) => ({ ...r.workspace, role: r.role }))
+    .sort((a, b) =>
+      a.kind === b.kind ? a.name.localeCompare(b.name) : a.kind === "PERSONAL" ? -1 : 1,
+    );
+}
+
+/**
+ * A workspace by slug as the user sees it: its data, their role (null if they are not a
+ * member) and whether it is suspended. Null if it does not exist, or if the user is neither
+ * a member nor has access to any of its boards (the same answer, so the page does not
+ * reveal which workspaces exist).
+ */
+export async function getWorkspaceForUser(slug: string, userId: string) {
+  const workspace = await prisma.workspace.findUnique({
+    where: { slug },
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+      kind: true,
+      suspendedAt: true,
+      suspendedReason: true,
+      members: { where: { userId }, select: { role: true } },
+    },
+  });
+  if (!workspace) return null;
+  const role = workspace.members[0]?.role ?? null;
+  if (!role) {
+    const anyBoard = await prisma.board.findFirst({
+      where: { AND: [{ workspaceId: workspace.id }, accessibleBoardsWhere(userId)] },
+      select: { id: true },
+    });
+    if (!anyBoard) return null;
+  }
+  return {
+    id: workspace.id,
+    slug: workspace.slug,
+    name: workspace.name,
+    kind: workspace.kind,
+    suspendedAt: workspace.suspendedAt,
+    suspendedReason: workspace.suspendedReason,
+    role,
+  };
+}
+
+/** An organization's members, for its settings page (only for its members). */
+export async function getWorkspaceMembers(workspaceId: string) {
+  const rows = await prisma.workspaceMember.findMany({
+    where: { workspaceId },
+    orderBy: [{ role: "asc" }, { addedAt: "asc" }],
+    select: {
+      role: true,
+      addedAt: true,
+      user: { select: { id: true, name: true, email: true, managedById: true } },
+    },
+  });
+  return rows.map((r) => ({
+    id: r.user.id,
+    name: r.user.name,
+    email: r.user.email,
+    role: r.role,
+    addedAt: r.addedAt,
+    managedHere: r.user.managedById === workspaceId,
   }));
+}
+
+/**
+ * The board a URL names: /<workspace>/<board> where <board> is its slug or its id. Returns
+ * the canonical slugs too, so the page can redirect an id or an old address to them. Does
+ * NOT check access: the page loads the board with getBoardWithLists, which does.
+ */
+export async function findBoardByPath(workspaceSlug: string, boardRef: string) {
+  const workspace = await prisma.workspace.findUnique({
+    where: { slug: workspaceSlug },
+    select: { id: true },
+  });
+  const bySlug = workspace
+    ? await prisma.board.findUnique({
+        where: { workspaceId_slug: { workspaceId: workspace.id, slug: boardRef } },
+        select: { id: true, slug: true, workspace: { select: { slug: true } } },
+      })
+    : null;
+  if (bySlug) return bySlug;
+  return prisma.board.findUnique({
+    where: { id: boardRef },
+    select: { id: true, slug: true, workspace: { select: { slug: true } } },
+  });
 }
 
 /** Every user of the instance, for the administration panel. */
@@ -56,6 +183,60 @@ export async function getAllUsers() {
       role: true,
       createdAt: true,
       _count: { select: { boards: true, memberships: true } },
+    },
+  });
+}
+
+/**
+ * Figures of the whole service for the instance administrator (/admin/workspaces). Only
+ * counts: the administrator sees no board content.
+ */
+export async function getInstanceStats() {
+  const [users, organizations, boards, cards, activeSessions, suspended] = await Promise.all([
+    prisma.user.count(),
+    prisma.workspace.count({ where: { kind: "ORGANIZATION" } }),
+    prisma.board.count(),
+    prisma.card.count(),
+    prisma.session.count({ where: { revokedAt: null, expiresAt: { gt: new Date() } } }),
+    prisma.workspace.count({ where: { suspendedAt: { not: null } } }),
+  ]);
+  return { users, organizations, boards, cards, activeSessions, suspended };
+}
+
+/**
+ * Workspaces for the instance administrator: their name, address, owners and how many
+ * members and boards they have, never what the boards contain. Organizations by default;
+ * `kind` PERSONAL lists the personal ones (to act on abuse), newest first.
+ */
+export async function getWorkspacesForAdmin(kind: "ORGANIZATION" | "PERSONAL", query = "") {
+  const q = query.trim();
+  return prisma.workspace.findMany({
+    where: {
+      kind,
+      ...(q
+        ? {
+            OR: [
+              { slug: { contains: q, mode: "insensitive" } },
+              { name: { contains: q, mode: "insensitive" } },
+            ],
+          }
+        : {}),
+    },
+    orderBy: { createdAt: "desc" },
+    take: 200,
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+      kind: true,
+      createdAt: true,
+      suspendedAt: true,
+      suspendedReason: true,
+      _count: { select: { members: true, boards: true } },
+      members: {
+        where: { role: "OWNER" },
+        select: { user: { select: { name: true, email: true } } },
+      },
     },
   });
 }
@@ -79,24 +260,61 @@ export async function getRecentAuditLogs(limit = 200) {
 }
 
 /**
- * Members of a board (with user data) plus the ownerId, for the members panel. The owner
- * is identified from ownerId.
+ * Everyone who can open a board, for the members panel and the assignee picker: its
+ * explicit members (with their board role) and, for organization boards, the workspace
+ * members who reach it through the organization (app/lib/access.ts), marked `viaWorkspace`.
  */
-export async function getBoardMembers(boardId: string) {
+export async function getBoardPeople(boardId: string, viewerId: string) {
   const board = await prisma.board.findUnique({
     where: { id: boardId },
     select: {
       ownerId: true,
+      visibility: true,
       members: {
         orderBy: { addedAt: "asc" },
+        select: { role: true, user: { select: { id: true, name: true, email: true } } },
+      },
+      workspace: {
         select: {
-          role: true,
-          user: { select: { id: true, name: true, email: true } },
+          members: {
+            orderBy: { addedAt: "asc" },
+            select: { role: true, user: { select: { id: true, name: true, email: true } } },
+          },
         },
       },
     },
   });
-  return board;
+  if (!board) return [];
+  const workspaceGrant = (userId: string) => {
+    const w = board.workspace.members.find((x) => x.user.id === userId);
+    return w ? boardRoleFromWorkspace(w.role, board.visibility) : null;
+  };
+  const people = board.members.map((m) => ({
+    ...m.user,
+    // The effective role: the higher of the board's and the one the organization gives.
+    role: maxBoardRole(m.role, workspaceGrant(m.user.id)) ?? m.role,
+    isOwner: m.user.id === board.ownerId,
+    viaWorkspace: false,
+  }));
+    const explicit = new Set(people.map((p) => p.id));
+  // A guest (someone added to this board but not to its organization) sees the names of
+  // the organization's people, not their email addresses: the organization's directory is
+  // not theirs to read.
+  const viewerInWorkspace = board.workspace.members.some((w) => w.user.id === viewerId);
+  for (const w of board.workspace.members) {
+    if (explicit.has(w.user.id)) continue;
+    const role = boardRoleFromWorkspace(w.role, board.visibility);
+    if (role) {
+      people.push({
+        ...w.user,
+        email: viewerInWorkspace ? w.user.email : "",
+        role,
+        isOwner: false,
+        viaWorkspace: true,
+      });
+    }
+  }
+  return people;
 }
 
 /** The user's notifications, newest first (for the navbar bell). */
@@ -171,7 +389,7 @@ export async function searchForUser(
     prisma.board.findMany({
       where: {
         AND: [
-          { OR: [{ ownerId: userId }, { members: { some: { userId } } }] },
+          accessibleBoardsWhere(userId),
           {
             OR: [
               { title: { contains: q, mode: "insensitive" } },
@@ -189,9 +407,7 @@ export async function searchForUser(
         AND: [
           {
             list: {
-              board: {
-                OR: [{ ownerId: userId }, { members: { some: { userId } } }],
-              },
+              board: accessibleBoardsWhere(userId),
             },
           },
           {
@@ -230,16 +446,13 @@ export async function searchForUser(
   };
 }
 
-// Access guard of the board page: owner or member. Shared by the page and its <title> so
+// Access guard of the board page (app/lib/access.ts). Shared by the page and its <title> so
 // the title never reveals the name of someone else's board.
 function boardAccessWhere(
   boardId: string,
   userId: string,
 ): Prisma.BoardWhereInput {
-  return {
-    id: boardId,
-    OR: [{ ownerId: userId }, { members: { some: { userId } } }],
-  };
+  return { AND: [{ id: boardId }, accessibleBoardsWhere(userId)] };
 }
 
 /** Board title if the user has access; null otherwise. For generateMetadata. */
@@ -257,6 +470,7 @@ export async function getBoardWithLists(boardId: string, userId: string) {
   return prisma.board.findFirst({
     where: boardAccessWhere(boardId, userId),
     include: {
+      workspace: { select: { slug: true, name: true, kind: true } },
       labels: { orderBy: { name: "asc" } },
       lists: {
         orderBy: { position: "asc" },

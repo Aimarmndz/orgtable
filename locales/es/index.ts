@@ -12,6 +12,7 @@ import boards from "./boards.json";
 import errors from "./errors.json";
 import notifications from "./notifications.json";
 import landing from "./landing.json";
+import workspaces from "./workspaces.json";
 
 const messages = {
   common,
@@ -25,6 +26,7 @@ const messages = {
   errors,
   notifications,
   landing,
+  workspaces,
 };
 
 const languagePack = { language, messages };

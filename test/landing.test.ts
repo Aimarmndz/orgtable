@@ -123,6 +123,9 @@ vi.mock("next/font/google", () => ({
   Silkscreen: () => ({ variable: "" }),
   VT323: () => ({ variable: "" }),
 }));
+vi.mock("next/headers", () => ({
+  headers: async () => new Headers({ host: "orgtable.test" }),
+}));
 vi.mock("next/navigation", () => ({
   redirect: (to: string) => {
     throw new Error(`redirect:${to}`);

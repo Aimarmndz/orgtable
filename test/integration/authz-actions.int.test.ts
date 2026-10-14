@@ -211,7 +211,8 @@ describe("board export/import", () => {
 
     await expect(
       importBoard({}, fd({ file: new File([json], "board.json", { type: "application/json" }) })),
-    ).rejects.toMatchObject({ digest: expect.stringContaining(";/board/") });
+    // Into the importer's personal workspace: /<their handle>/<board slug>.
+    ).rejects.toMatchObject({ digest: expect.stringMatching(/;\/[a-z0-9-]+\/[a-z0-9-]+;/) });
 
     const imported = await prisma.board.findFirstOrThrow({
       where: { ownerId: viewer.id },

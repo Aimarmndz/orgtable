@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useId, useRef } from "react";
+import { setBoardVisibility } from "@/app/lib/actions/boards";
 import {
   addBoardMember,
   updateBoardMemberRole,
@@ -19,6 +20,9 @@ export type BoardMemberDTO = {
   email: string;
   role: BoardRole;
   isOwner: boolean;
+  // Has access through the board's organization (app/lib/access.ts), not as a member of
+  // the board: their role is managed in the organization, so no controls here.
+  viaWorkspace?: boolean;
 };
 
 // Board members panel. Everyone can open it; only the owner gets the controls. Inviting
@@ -28,11 +32,14 @@ export function MembersPanel({
   boardId,
   members,
   canManage,
+  visibility,
   onClose,
 }: {
   boardId: string;
   members: BoardMemberDTO[];
   canManage: boolean;
+  // Organization boards only (null on a personal board): who besides its members sees it.
+  visibility: "WORKSPACE" | "PRIVATE" | null;
   onClose: () => void;
 }) {
   const { m } = useI18n();
@@ -97,6 +104,36 @@ export function MembersPanel({
             <p id={descriptionId} className="mt-1 text-sm text-ink-muted">
               {canManage ? t.descriptionManage : t.descriptionView}
             </p>
+            {visibility && canManage && (
+              <form action={setBoardVisibility} className="mt-3 flex flex-wrap items-center gap-2">
+                <input type="hidden" name="boardId" value={boardId} />
+                <label className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                  {m.workspaces.visibility.label}{" "}
+                  {/* key: after the change the panel stays mounted; remounting shows the
+                      saved value instead of the stale default. */}
+                  <select
+                    key={visibility}
+                    name="visibility"
+                    defaultValue={visibility}
+                    onChange={(e) => e.currentTarget.form?.requestSubmit()}
+                    className="ml-1 h-8 rounded-lg border border-border bg-surface px-2 text-xs normal-case tracking-normal text-ink outline-none focus-visible:border-accent"
+                  >
+                    <option value="WORKSPACE">{m.workspaces.visibility.WORKSPACE}</option>
+                    <option value="PRIVATE">{m.workspaces.visibility.PRIVATE}</option>
+                  </select>
+                </label>
+                <noscript>
+                  <button type="submit" className="text-xs underline">
+                    {m.workspaces.visibility.save}
+                  </button>
+                </noscript>
+              </form>
+            )}
+            {visibility && !canManage && (
+              <p className="mt-2 text-xs text-ink-muted">
+                {m.workspaces.visibility.label}: {m.workspaces.visibility[visibility]}
+              </p>
+            )}
           </div>
           <button
             onClick={onClose}
@@ -181,10 +218,13 @@ export function MembersPanel({
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{member.name}</p>
-                <p className="truncate text-xs text-ink-muted">{member.email}</p>
+                <p className="truncate text-xs text-ink-muted">
+                  {member.email}
+                  {member.viaWorkspace && ` · ${t.viaWorkspace}`}
+                </p>
               </div>
 
-              {member.isOwner || !canManage ? (
+              {member.isOwner || member.viaWorkspace || !canManage ? (
                 <span className="rounded-full bg-surface-2 px-2.5 py-1 text-xs font-medium text-ink-muted">
                   {m.boards.roles[member.role]}
                 </span>

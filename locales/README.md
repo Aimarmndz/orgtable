@@ -19,7 +19,8 @@ locales/
 │   ├── legal.json    # privacy policy, terms, cookies, legal notice, footer
 │   ├── errors.json   # validation and error messages
 │   ├── notifications.json # in-app notification texts
-│   └── landing.json  # the public landing page at /
+│   ├── landing.json  # the public landing page at /
+│   └── workspaces.json # organizations, members and employees
 └── es/               # Spanish
 ```
 

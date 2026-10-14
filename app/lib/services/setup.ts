@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/app/lib/prisma";
+import { createPersonalWorkspace } from "@/app/lib/services/workspaces";
 
 // First-run wizard logic (/setup), separated from the Server Action so it can be tested
 // without a request (see test/integration/setup.int.test.ts).
@@ -45,6 +46,7 @@ export async function completeInstanceSetup(input: {
         role: "ADMIN",
       },
     });
+    await createPersonalWorkspace(tx, user);
     await tx.instanceConfig.upsert({
       where: { id: INSTANCE_ID },
       create: {

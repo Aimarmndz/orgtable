@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useId, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -342,9 +343,20 @@ export function BoardView({
           style={{ background: boardBackgroundFor(board) }}
         >
           <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 px-4 pb-2 pt-4">
-            <h1 className="min-w-0 max-w-full truncate font-display text-2xl font-bold tracking-tight text-white drop-shadow-sm">
-              {board.title}
-            </h1>
+            <div className="min-w-0 max-w-full">
+              {/* Where the board lives: its workspace, one click back. */}
+              <Link
+                href={`/${board.workspace.slug}`}
+                className="text-xs font-semibold text-white/80 underline-offset-2 drop-shadow-sm hover:text-white hover:underline"
+              >
+                {board.workspace.kind === "PERSONAL"
+                  ? `/${board.workspace.slug}`
+                  : `${board.workspace.name} · /${board.workspace.slug}`}
+              </Link>
+              <h1 className="truncate font-display text-2xl font-bold tracking-tight text-white drop-shadow-sm">
+                {board.title}
+              </h1>
+            </div>
             <div className="flex flex-wrap items-center gap-2">
               {view === "board" && (
                 <FilterBar
@@ -476,6 +488,7 @@ export function BoardView({
           boardId={board.id}
           members={members}
           canManage={canManage}
+          visibility={board.workspace.kind === "ORGANIZATION" ? board.visibility : null}
           onClose={() => setMembersOpen(false)}
         />
       )}

@@ -117,9 +117,11 @@
     "recipients": {
       "heading": "Quién más puede ver tus datos",
       "boardMembers": "<b>Las personas con las que compartes un tablero</b> ven tu nombre y tu email, y lo que escribes en ese tablero.",
-      "admin": "<b>Quien administra la instancia</b> ve la lista de cuentas (nombre, email, rol) y el registro de seguridad. No ve tu contraseña.",
+      "admin": "<b>Quien administra la instancia</b> ve la lista de cuentas (nombre, email, rol), los nombres de las organizaciones con cuántos miembros y tableros tienen, y el registro de seguridad. No ve tu contraseña ni el contenido de tus tableros.",
       "hosting": "<b>El proveedor de alojamiento</b> guarda los datos por cuenta del responsable, como encargado del tratamiento: {hosting}.",
-      "outsideEea": "Si los datos se alojan fuera del Espacio Económico Europeo, el responsable tiene que indicarlo arriba y aplicar las garantías del capítulo V del RGPD."
+      "outsideEea": "Si los datos se alojan fuera del Espacio Económico Europeo, el responsable tiene que indicarlo arriba y aplicar las garantías del capítulo V del RGPD.",
+      "organization": "<b>Tu organización</b>, si una organización creó tu cuenta o te uniste a una: sus propietarios y administradores ven tu nombre y tu email, gestionan tu acceso y pueden abrir todos los tableros de la organización, también los privados. Los tableros fuera de la organización siguen siendo privados para ti y para quien los compartas.",
+      "noticeBeforeSharing": "Tus datos nunca se venden ni se ceden a terceros sin decirte antes el motivo, salvo que la ley prohíba ese aviso; en ese caso se te dirá en cuanto se permita."
     },
     "cookies": {
       "heading": "Cookies y almacenamiento del navegador",
@@ -171,8 +173,11 @@
       "enforcement": "Si se incumplen estas normas, el responsable puede retirar el contenido o suspender la cuenta. Cuando sea posible, te avisará antes y te explicará el motivo."
     },
     "availability": {
-      "heading": "Disponibilidad y garantías",
-      "body": "El servicio se ofrece gratis y «tal cual», sin garantía de disponibilidad continua ni de que no haya errores. Haz copias de lo importante: puedes exportar cada tablero y todos tus datos desde la aplicación. Nada de lo anterior limita los derechos que te reconoce la ley como persona usuaria."
+      "heading": "Nivel de servicio y disponibilidad",
+      "target": "Operamos el servicio con un objetivo de disponibilidad del 99,9 % por mes natural, medido en su dirección pública. Para alcanzarlo lo supervisamos de forma continua, aplicamos con rapidez las actualizaciones de seguridad y hacemos copias de seguridad periódicas de la base de datos y de los adjuntos.",
+      "maintenance": "Los mantenimientos programados que interrumpan el servicio se anuncian con antelación siempre que sea posible y se hacen en horas de poco uso. Si un incidente afecta a tus datos, te lo comunicaremos sin dilaciones indebidas, explicando qué ha pasado y qué hemos hecho.",
+      "nature": "orgtable es software libre y gratuito, mantenido abiertamente por su autor y su comunidad. Por eso la cifra del 99,9 % es un objetivo con el que trabajamos, no una garantía contractual: no hay acuerdo de nivel de servicio, ni compensaciones por las interrupciones, ni soporte dedicado. La ayuda se presta con el mejor esfuerzo posible a través de los canales públicos del proyecto. Si tu organización necesita garantías contractuales, puede instalar su propia copia de orgtable en sus servidores, con las mismas funciones.",
+      "liability": "El servicio se ofrece «tal cual». Guarda copia de lo que te importe: puedes exportar cada tablero y todos tus datos desde la aplicación en cualquier momento. Nada de estas condiciones excluye la responsabilidad por dolo o culpa grave, ni limita los derechos que la ley te reconoce como persona usuaria."
     },
     "changes": {
       "heading": "Cambios y fin del servicio",
@@ -185,6 +190,16 @@
     "contact": {
       "heading": "Contacto",
       "body": "Para cualquier duda sobre estas condiciones: {contact}."
+    },
+    "confidentiality": {
+      "heading": "Confidencialidad, integridad y privacidad",
+      "security": "Tus datos viajan cifrados (HTTPS), las contraseñas solo se guardan como resúmenes con sal y los tokens de la API como resúmenes de un solo sentido, y cada petición se comprueba en el servidor contra tu rol, de modo que nadie puede ver ni cambiar tableros a los que no se le ha dado acceso.",
+      "access": "Quienes operamos el servicio no leemos el contenido de tus tableros. La administración del servicio solo ve lo necesario para operarlo (nombres, direcciones de email, los nombres de las organizaciones y cuántos tableros tienen) y solo puede acceder al contenido cuando la ley lo exija, o con tu permiso para resolver un problema que nos comuniques.",
+      "thirdParties": "No vendemos tus datos ni los usamos para publicidad. Nunca los cederemos a terceros sin notificarte antes el motivo, salvo que la ley prohíba ese aviso (por ejemplo, una orden judicial que exija confidencialidad); en ese caso te lo diremos en cuanto se nos permita. Los proveedores que alojan el servicio solo actúan siguiendo nuestras instrucciones y figuran en la política de privacidad."
+    },
+    "organizations": {
+      "heading": "Organizaciones",
+      "body": "Cualquiera puede registrar una organización gratis. Sus propietarios y administradores crean las cuentas de sus empleados, deciden quién forma parte de ella y gestionan sus tableros, también los privados; pueden restablecer la contraseña de las cuentas que la organización ha creado. Los tableros creados en una organización le pertenecen: si alguien se va, los tableros se quedan. Quien registra una organización confirma que está autorizado para hacerlo y responde de las cuentas que crea."
     }
   },
   "cookies": {

@@ -59,11 +59,18 @@ export async function addBoardMember(
     };
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email: parsed.data.email.toLowerCase() },
-    select: { id: true, name: true, locale: true },
-  });
-  if (!user) {
+    const [user, target] = await Promise.all([
+    prisma.user.findUnique({
+      where: { email: parsed.data.email.toLowerCase() },
+      select: { id: true, name: true, locale: true, managedById: true },
+    }),
+    prisma.board.findUnique({ where: { id: boardId }, select: { workspaceId: true } }),
+  ]);
+  // An account an organization created for an employee can only be invited to that
+  // organization's boards: the organization controls its password, so letting it receive
+  // invitations from anyone else would let an organization register someone's email and
+  // read what they are invited to. Same answer as an unknown email.
+  if (!user || (user.managedById && user.managedById !== target?.workspaceId)) {
     return { error: m.errors.members.userNotFound, values };
   }
 

@@ -117,9 +117,11 @@
     "recipients": {
       "heading": "Who else can see your data",
       "boardMembers": "<b>The people you share a board with</b> see your name and email, and what you write on that board.",
-      "admin": "<b>Whoever administers the instance</b> sees the list of accounts (name, email, role) and the security log. They cannot see your password.",
+      "admin": "<b>Whoever administers the instance</b> sees the list of accounts (name, email, role), the names of organizations with how many members and boards they have, and the security log. They do not see your password or the content of your boards.",
       "hosting": "<b>The hosting provider</b> stores the data on behalf of the controller, as a processor: {hosting}.",
-      "outsideEea": "If the data is hosted outside the European Economic Area, the controller must state so above and apply the safeguards of Chapter V of the GDPR."
+      "outsideEea": "If the data is hosted outside the European Economic Area, the controller must state so above and apply the safeguards of Chapter V of the GDPR.",
+      "organization": "<b>Your organization</b>, if an organization created your account or you joined one: its owners and administrators see your name and email, manage your access and can open every board of the organization, including private ones. Boards outside the organization stay private to you and the people you share them with.",
+      "noticeBeforeSharing": "Your data is never sold or passed on to third parties without first telling you the reason, unless the law forbids that notice; then you will be told as soon as it is allowed."
     },
     "cookies": {
       "heading": "Cookies and browser storage",
@@ -171,8 +173,11 @@
       "enforcement": "If these rules are broken, the controller may remove the content or suspend the account. Where possible, they will warn you first and explain why."
     },
     "availability": {
-      "heading": "Availability and warranties",
-      "body": "The service is offered free of charge and “as is”, with no guarantee of continuous availability or of being error-free. Keep copies of what matters: you can export each board and all your data from the app. Nothing above limits the rights the law grants you as a user."
+      "heading": "Service level and availability",
+      "target": "We operate the service with a target availability of 99.9% per calendar month, measured on its public address. To reach it we monitor it continuously, apply security updates promptly and keep regular backups of the database and attachments.",
+      "maintenance": "Planned maintenance that interrupts the service is announced in advance whenever possible and scheduled at quiet hours. If an incident affects your data, we will tell you without undue delay, explaining what happened and what we did about it.",
+      "nature": "orgtable is free, open-source software maintained in the open by its author and community. That is why the 99.9% figure is a goal we work towards, not a contractual guarantee: there is no service-level agreement, no compensation for downtime and no dedicated support. Help is given on a best-effort basis through the project's public channels. If your organization needs contractual guarantees, you can run your own copy of orgtable on your servers, with the same features.",
+      "liability": "The service is provided “as is”. Keep copies of what matters to you: you can export each board and all your data from the app at any time. Nothing in these terms excludes liability for wilful misconduct or gross negligence, nor limits the rights the law grants you as a user."
     },
     "changes": {
       "heading": "Changes and end of the service",
@@ -185,6 +190,16 @@
     "contact": {
       "heading": "Contact",
       "body": "For any questions about these terms: {contact}."
+    },
+    "confidentiality": {
+      "heading": "Confidentiality, integrity and privacy",
+      "security": "Your data travels encrypted (HTTPS), passwords are stored only as salted hashes and API tokens as one-way hashes, and every request is checked on the server against your role, so nobody can see or change boards they have not been given access to.",
+      "access": "The people who run the service do not read the content of your boards. The service administrator sees only what is needed to operate it (names, email addresses, the names of organizations and how many boards they have) and may access content only when the law requires it, or with your permission to solve a problem you report.",
+      "thirdParties": "We do not sell your data or use it for advertising. We will never pass it on to third parties without first notifying you of the reason, unless the law forbids that notice (for example, a court order that requires confidentiality); in that case we will tell you as soon as we are allowed to. The providers that host the service act only on our instructions and are listed in the privacy policy."
+    },
+    "organizations": {
+      "heading": "Organizations",
+      "body": "Anyone can register an organization for free. Its owners and administrators create their employees' accounts, decide who belongs to it and manage its boards, including private ones; they can reset the password of the accounts the organization created. Boards created in an organization belong to it: when someone leaves, the boards stay. Whoever registers an organization confirms they are authorized to do so and is responsible for the accounts they create."
     }
   },
   "cookies": {

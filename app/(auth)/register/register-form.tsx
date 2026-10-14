@@ -9,7 +9,13 @@ import { useI18n } from "@/app/i18n/client";
 import { fmt } from "@/app/i18n/format";
 import { rich } from "@/app/i18n/rich";
 
-export function RegisterForm({ operatorName }: { operatorName: string }) {
+export function RegisterForm({
+  operatorName,
+  defaultType,
+}: {
+  operatorName: string;
+  defaultType: "personal" | "organization";
+}) {
   const [state, action, pending] = useActionState<RegisterState, FormData>(register, {});
   const invalid = (f: RegisterState["field"]) => (state.field === f && !pending) || undefined;
   const { m } = useI18n();
@@ -21,7 +27,9 @@ export function RegisterForm({ operatorName }: { operatorName: string }) {
   );
 
   return (
-    <form action={action} className="w-full max-w-sm">
+    // `group`: the organization fields show while its option is checked (CSS only, so it
+    // works before hydration and without JavaScript).
+    <form action={action} className="group w-full max-w-sm">
       <div className="flex items-center gap-2.5 lg:hidden">
         <span className="grid size-8 place-items-center rounded-lg bg-accent font-display text-lg font-extrabold text-accent-ink">
           o
@@ -54,6 +62,74 @@ export function RegisterForm({ operatorName }: { operatorName: string }) {
       )}
 
       <div className="mt-7 space-y-4">
+        <fieldset>
+          <legend className="text-sm font-medium">{t.typeLegend}</legend>
+          <div className="mt-1.5 grid grid-cols-2 gap-2">
+            {(["personal", "organization"] as const).map((type) => (
+              <label
+                key={type}
+                className="flex cursor-pointer flex-col rounded-lg border border-border bg-surface p-3 text-sm has-[:checked]:border-accent has-[:checked]:bg-accent/5 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent/40"
+              >
+                <span className="flex items-center gap-2 font-semibold">
+                  <input
+                    type="radio"
+                    name="accountType"
+                    value={type}
+                    id={`type-${type}`}
+                    defaultChecked={(state.values?.accountType ?? defaultType) === type}
+                    className="accent-accent"
+                  />
+                  {t.types[type].title}
+                </span>
+                <span className="mt-1 text-xs text-ink-muted">{t.types[type].text}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        <fieldset className="hidden space-y-4 rounded-lg border border-border p-3 group-has-[#type-organization:checked]:block">
+          <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+            {t.organizationLegend}
+          </legend>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="organizationName" className="text-sm font-medium">
+              {m.workspaces.createOrg.name}
+            </label>
+            <Input
+              id="organizationName"
+              name="organizationName"
+              maxLength={60}
+              autoComplete="organization"
+              defaultValue={state.values?.organizationName}
+              aria-invalid={invalid("organizationName")}
+              aria-describedby={invalid("organizationName") ? "register-error" : undefined}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="organizationSlug" className="text-sm font-medium">
+              {m.workspaces.createOrg.slug}
+            </label>
+            <Input
+              id="organizationSlug"
+              name="organizationSlug"
+              maxLength={39}
+              autoCapitalize="none"
+              spellCheck={false}
+              className="font-mono"
+              defaultValue={state.values?.organizationSlug}
+              aria-invalid={invalid("organizationSlug")}
+              aria-describedby={
+                invalid("organizationSlug") ? "register-error org-slug-hint" : "org-slug-hint"
+              }
+            />
+            <p id="org-slug-hint" className="text-xs text-ink-muted">
+              {fmt(m.workspaces.createOrg.slugHint, {
+                slug: state.values?.organizationSlug || "acme",
+              })}
+            </p>
+          </div>
+        </fieldset>
+
         <div className="flex flex-col gap-1.5">
           <label htmlFor="name" className="text-sm font-medium">
             {m.auth.fields.name}

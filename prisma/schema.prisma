@@ -18,14 +18,14 @@ datasource db {
 // A non-null `setupCompletedAt` is the source of truth for "the instance is already
 // set up"; while it is null, the setup wizard (/setup) is active.
 model InstanceConfig {
-  id               String    @id @default("singleton")
-  instanceName     String
-  setupCompletedAt DateTime?
-  createdAt        DateTime  @default(now())
+  id                  String    @id @default("singleton")
+  instanceName        String
+  setupCompletedAt    DateTime?
+  createdAt           DateTime  @default(now())
   // Open sign-up: anyone can create an account at /register. Closed by default (private
   // instance, the admin creates accounts). It can only be opened once the controller and
   // the privacy contact are set, because the privacy policy needs them.
-  registrationOpen Boolean   @default(false)
+  registrationOpen    Boolean   @default(false)
   // Legal details of WHOEVER OPERATES this instance (not the software's author). Shown
   // on /legal/*. All optional: without them the legal pages say so instead of making
   // anything up. See docs/privacy.md.
@@ -51,29 +51,94 @@ enum BoardRole {
   VIEWER
 }
 
+// A workspace is the first segment of every board URL (/<workspace>/<board>). PERSONAL:
+// one per user, its slug is the user's handle. ORGANIZATION: a company or team that
+// anyone can register for free; its admins create the employees' accounts. See
+// docs/workspaces.md.
+enum WorkspaceKind {
+  PERSONAL
+  ORGANIZATION
+}
+
+// Role inside a workspace. OWNER > ADMIN > MEMBER: see app/lib/roles.ts for what each
+// one can do and docs/authorization.md for the rules against privilege escalation.
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+// Who sees a board of an organization besides its explicit members: every member of the
+// workspace (WORKSPACE) or only its members plus the workspace's owners and admins
+// (PRIVATE).
+enum BoardVisibility {
+  WORKSPACE
+  PRIVATE
+}
+
+model Workspace {
+  id              String            @id @default(cuid())
+  // URL segment, unique across users and organizations (one namespace, like GitHub).
+  // Lowercase letters, digits and hyphens; reserved words are refused (app/lib/slugs.ts).
+  slug            String            @unique
+  name            String
+  kind            WorkspaceKind
+  // PERSONAL only: the user it belongs to. Deleted with them.
+  personalOwnerId String?           @unique
+  personalOwner   User?             @relation("PersonalWorkspace", fields: [personalOwnerId], references: [id], onDelete: Cascade)
+  // Set by the instance administrator (/admin/workspaces): nobody can open its boards
+  // until it is lifted. The reason is shown to the workspace's members.
+  suspendedAt     DateTime?
+  suspendedReason String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  members         WorkspaceMember[]
+  boards          Board[]
+  // Accounts this organization created for its employees (User.managedById).
+  managedUsers    User[]            @relation("ManagedUsers")
+}
+
+model WorkspaceMember {
+  workspaceId String
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        WorkspaceRole @default(MEMBER)
+  addedAt     DateTime      @default(now())
+
+  @@id([workspaceId, userId])
+  @@index([userId])
+}
+
 model User {
-  id           String        @id @default(cuid())
-  email        String        @unique
-  passwordHash String
-  name         String
-  role         Role          @default(MEMBER)
+  id                   String            @id @default(cuid())
+  email                String            @unique
+  passwordHash         String
+  name                 String
+  role                 Role              @default(MEMBER)
   // When the person accepted the privacy policy and terms on sign-up (/register).
   // Null for accounts created by the admin or by the setup wizard.
-  termsAcceptedAt DateTime?
+  termsAcceptedAt      DateTime?
   // Interface language chosen by the person ("en", "es"…; see locales/index.ts). Null
   // until they pick one: then the browser decides. Notifications for them are written in
   // this language.
-  locale       String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  boards        Board[]
-  memberships   BoardMember[]
-  sessions      Session[]
-  auditLogs     AuditLog[]
-  notifications Notification[]
-  apiTokens     ApiToken[]
-  assignedCards CardAssignee[]
-  comments      Comment[]
+  locale               String?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  boards               Board[]
+  memberships          BoardMember[]
+  sessions             Session[]
+  auditLogs            AuditLog[]
+  notifications        Notification[]
+  apiTokens            ApiToken[]
+  assignedCards        CardAssignee[]
+  comments             Comment[]
+  personalWorkspace    Workspace?        @relation("PersonalWorkspace")
+  workspaceMemberships WorkspaceMember[]
+  // Set when an organization created this account for an employee: its owners and admins
+  // can reset the password or delete it. Null for people who signed up themselves.
+  managedById          String?
+  managedBy            Workspace?        @relation("ManagedUsers", fields: [managedById], references: [id], onDelete: SetNull)
 }
 
 // Server-side session. The cookie is still a signed JWT, but it carries the id of THIS
@@ -94,18 +159,25 @@ model Session {
 }
 
 model Board {
-  id          String        @id @default(cuid())
+  id          String          @id @default(cuid())
   ownerId     String
-  owner       User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  owner       User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  workspaceId String
+  workspace   Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  // Second URL segment (/<workspace>/<slug>), from the title, unique in its workspace.
+  // The board id works in its place too and redirects here.
+  slug        String
+  visibility  BoardVisibility @default(WORKSPACE)
   title       String
   description String?
   background  String?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
   lists       List[]
   labels      Label[]
   members     BoardMember[]
 
+  @@unique([workspaceId, slug])
   @@index([ownerId])
 }
 
@@ -129,16 +201,16 @@ model List {
 }
 
 model Card {
-  id          String      @id @default(cuid())
+  id          String         @id @default(cuid())
   listId      String
-  list        List        @relation(fields: [listId], references: [id], onDelete: Cascade)
+  list        List           @relation(fields: [listId], references: [id], onDelete: Cascade)
   title       String
   description String?
   // Fractional indexing sort key (see List.position).
   position    String
   dueDate     DateTime?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
   labels      CardLabel[]
   checklists  Checklist[]
   attachments Attachment[]

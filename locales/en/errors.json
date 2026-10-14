@@ -26,7 +26,8 @@
     "backupDaysNumber": "The backup days have to be a number",
     "backupDaysInteger": "The backup days have to be a whole number",
     "backupDaysNegative": "The backup days can't be negative",
-    "backupDaysMax": "At most 3650 days"
+    "backupDaysMax": "At most 3650 days",
+    "workspaceNameRequired": "Enter a name."
   },
   "auth": {
     "checkCredentials": "Check the email and the password.",
@@ -59,7 +60,8 @@
       "other": "Password changed. {count} other sessions were signed out."
     },
     "wrongPassword": "The password is not correct.",
-    "lastAdmin": "You are the only administrator. Make someone else an administrator before deleting your account."
+    "lastAdmin": "You are the only administrator. Make someone else an administrator before deleting your account.",
+    "soleOwner": "You are the only owner of {organizations}. Make another member an owner, or delete the organization, before deleting your account."
   },
   "admin": {
     "emailTaken": "A user with that email already exists.",
@@ -97,5 +99,17 @@
     "userNotFound": "There is no user with that email. Ask the administrator to create the account first.",
     "alreadyMember": "{name} is already a member of this board.",
     "added": "{name} added as {role}."
+  },
+  "workspaces": {
+    "slugFormat": "The address must be 3 to 39 lowercase letters, digits or hyphens, and cannot start or end with a hyphen.",
+    "slugReserved": "That address is reserved. Choose another one.",
+    "slugTaken": "That address is already in use. Choose another one.",
+    "forbidden": "You do not have permission to do that in this workspace.",
+    "emailTaken": "That email already has an account. Each person can only have one.",
+    "lastOwner": "An organization always needs an owner. Make someone else an owner first.",
+    "self": "You cannot change your own role.",
+    "notMember": "That person is not a member of this organization.",
+    "suspended": "This workspace is suspended: {reason}",
+    "rateLimited": "Too many in a short time. Try again in an hour."
   }
 }

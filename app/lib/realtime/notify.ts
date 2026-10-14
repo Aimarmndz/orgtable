@@ -6,6 +6,9 @@ import { publishBoardEvent } from "./bus";
 // the board route cache for whoever reloads, and (2) publishes an event on the bus so tabs
 // connected over SSE refresh at once. See app/lib/realtime/bus.ts and docs/realtime.md.
 export function revalidateBoard(boardId: string): void {
-  revalidatePath(`/board/${boardId}`);
+  // Every board page (/<workspace>/<board>) and its workspace's index: the route pattern
+  // covers any slug, so a renamed board or a board opened by id is refreshed too.
+  revalidatePath("/[workspace]/[board]", "page");
+  revalidatePath("/[workspace]", "page");
   void publishBoardEvent(boardId);
 }

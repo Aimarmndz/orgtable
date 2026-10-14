@@ -15,7 +15,11 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: m.auth.register.metaTitle, description: m.auth.register.metaDescription };
 }
 
-export default async function RegisterPage() {
+export default async function RegisterPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ type?: string }>;
+}) {
   if (!(await isSetupComplete())) redirect("/setup");
   if (await verifySession()) redirect("/boards");
   const [open, info, { m }] = await Promise.all([
@@ -24,6 +28,8 @@ export default async function RegisterPage() {
     getI18n(),
   ]);
   const t = m.auth.register;
+  // /register?type=organization (the landing's "for your company" button) preselects it.
+  const type = (await searchParams).type === "organization" ? "organization" : "personal";
 
   return (
     <main className="grid min-h-[100dvh] flex-1 lg:grid-cols-[1.1fr_1fr]">
@@ -32,7 +38,7 @@ export default async function RegisterPage() {
       <div className="flex flex-col p-6 sm:p-10">
         <div className="flex flex-1 flex-col items-center justify-center">
           {open && info?.operatorName ? (
-            <RegisterForm operatorName={info.operatorName} />
+            <RegisterForm operatorName={info.operatorName} defaultType={type} />
           ) : (
             <div className="w-full max-w-sm">
               <h1 className="font-display text-3xl font-bold tracking-tight">

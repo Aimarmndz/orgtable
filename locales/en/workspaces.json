@@ -1,0 +1,87 @@
+{
+  "kind": {
+    "PERSONAL": "Personal",
+    "ORGANIZATION": "Organization"
+  },
+  "roles": {
+    "OWNER": "Owner",
+    "ADMIN": "Admin",
+    "MEMBER": "Member"
+  },
+  "roleHelp": {
+    "OWNER": "Everything, including the organization's name, address, admins and deletion.",
+    "ADMIN": "Creates and removes members and manages every board.",
+    "MEMBER": "Creates boards and works on the boards shared with the organization."
+  },
+  "dashboard": {
+    "personalTitle": "Your boards",
+    "sharedTitle": "Shared with you",
+    "sharedText": "Boards of other workspaces where someone added you.",
+    "createIn": "Create in",
+    "openWorkspace": "Open {name}",
+    "noBoards": "No boards here yet."
+  },
+  "createOrg": {
+    "toggle": "Create an organization",
+    "intro": "A free space for your company or team: create your employees' accounts and share boards with all of them.",
+    "name": "Organization name",
+    "slug": "Address",
+    "slugHint": "Your boards will be at /{slug}/board-name. Lowercase letters, digits and hyphens.",
+    "submit": "Create organization"
+  },
+  "page": {
+    "settings": "Settings and members",
+    "yourRole": "Your role: {role}",
+    "guest": "You see the boards someone shared with you.",
+    "suspendedTitle": "This workspace is suspended",
+    "suspendedText": "Its boards cannot be opened until the administrator of the service lifts the suspension. Reason: {reason}",
+    "noReason": "not given",
+    "boardsTitle": "Boards",
+    "empty": "No boards yet. Create the first one above."
+  },
+  "members": {
+    "title": "Members",
+    "count": {
+      "one": "{count} member",
+      "other": "{count} members"
+    },
+    "you": "you",
+    "managed": "Account created by this organization",
+    "changeRole": "Role of {name}",
+    "save": "Change",
+    "remove": "Remove",
+    "removeLabel": "Remove {name} from the organization",
+    "leave": "Leave the organization",
+    "leaveHint": "You will lose access to its boards. You can be added again later.",
+    "createTitle": "Create an employee account",
+    "createText": "The account belongs to the person; this organization can reset its password or remove it. Give them the email and password you set: they can change the password in their settings.",
+    "name": "Name",
+    "email": "Email",
+    "password": "Initial password",
+    "role": "Role",
+    "create": "Create account",
+    "created": "Account created. Give the person their email and initial password.",
+    "resetTitle": "New password for {name}",
+    "resetSubmit": "Set password",
+    "passwordReset": "Password changed. Their open sessions and API tokens were closed."
+  },
+  "settings": {
+    "metaTitle": "Settings of {name}",
+    "title": "Organization settings",
+    "name": "Name",
+    "slug": "Address",
+    "save": "Save",
+    "ownerOnly": "Only the owners can change the name, the address or delete the organization.",
+    "deleteTitle": "Delete the organization",
+    "deleteText": "Deletes the organization with all its boards, lists, cards and attachments. Employee accounts stay, without the organization. This cannot be undone.",
+    "deleteConfirm": "Type {slug} to confirm",
+    "deleteSubmit": "Delete organization",
+    "deleteConfirmMismatch": "Type the organization's address exactly to confirm."
+  },
+  "visibility": {
+    "label": "Who can see it",
+    "WORKSPACE": "Everyone in the organization",
+    "PRIVATE": "Only its members and the organization's admins",
+    "save": "Save"
+  }
+}

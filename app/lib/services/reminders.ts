@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/app/lib/prisma";
+import { effectiveBoardRole } from "@/app/lib/access";
 import { notify } from "@/app/lib/notifications";
 import { i18nFor } from "@/app/i18n/server";
 import { fmt } from "@/app/i18n/format";
@@ -62,12 +63,7 @@ export async function generateDueReminders(
       id: true,
       title: true,
       dueDate: true,
-      list: {
-        select: {
-          boardId: true,
-          board: { select: { members: { select: { userId: true } } } },
-        },
-      },
+      list: { select: { boardId: true } },
       assignees: { select: { userId: true, user: { select: { locale: true } } } },
     },
   });
@@ -81,11 +77,11 @@ export async function generateDueReminders(
     const dedupSince = overdue
       ? new Date(utcDayStart(card.dueDate).getTime() + DAY_MS)
       : todayStart;
-    // Current members only: an orphan assignment (of someone removed from the board) must
-    // not keep sending the card's title.
-    const memberIds = new Set(card.list.board.members.map((m) => m.userId));
+    // Only whoever can still open the board (app/lib/access.ts: members of it or of its
+    // organization, never a suspended one): an orphan assignment must not keep sending the
+    // card's title.
     for (const a of card.assignees) {
-      if (!memberIds.has(a.userId)) continue;
+      if (!(await effectiveBoardRole(card.list.boardId, a.userId))) continue;
       const already = await prisma.notification.findFirst({
         where: {
           userId: a.userId,

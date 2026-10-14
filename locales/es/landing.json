@@ -1,5 +1,5 @@
 {
-  "metaTitle": "Tableros Kanban en tu propio servidor",
+  "metaTitle": "Tableros Kanban gratis para personas y empresas",
   "skipToContent": "Saltar al contenido",
   "nav": {
     "label": "Principal",
@@ -8,18 +8,20 @@
     "install": "Instalar",
     "source": "Código",
     "signIn": "Iniciar sesión",
-    "useFree": "Úsalo gratis"
+    "useFree": "Úsalo gratis",
+    "teams": "Para empresas"
   },
   "hero": {
     "badge": "KANBAN LIBRE · AGPL-3.0 · v{version}",
     "titleLine1": "Tus tableros.",
     "titleLine2": "Tu servidor.",
-    "intro": "Una alternativa a Trello de código abierto: tableros, listas y tarjetas que arrastras en tiempo real. Úsalo gratis aquí mismo, o instálalo en tu propio servidor con un solo comando.",
+    "intro": "Una alternativa a Trello de código abierto y gratis para todo el mundo: regístrate tú o registra tu empresa, crea las cuentas de tu equipo y trabajad en tableros compartidos en tiempo real. O instálalo en tu propio servidor con un solo comando.",
     "ctaFree": "Crear cuenta gratis",
     "ctaSignIn": "Iniciar sesión",
     "ctaInstall": "Instalar en mi servidor",
-    "note": "Sin anuncios. Sin rastreo. Sin tarjeta de crédito.",
-    "closedNote": "El registro gratuito en esta instancia está en pausa ahora mismo. Puedes instalar la tuya igualmente."
+    "note": "Gratis para personas y empresas. Sin anuncios, sin rastreo, sin tarjeta.",
+    "closedNote": "El registro gratuito en esta instancia está en pausa ahora mismo. Puedes instalar la tuya igualmente.",
+    "ctaCompany": "Registra tu empresa"
   },
   "board": {
     "label": "Tablero de ejemplo",
@@ -34,7 +36,7 @@
     "card5": "Newsletter de octubre",
     "card6": "Elegir dominio"
   },
-  "ticker": "TUS DATOS ★ TU SERVIDOR ★ SIN ANUNCIOS ★ SIN RASTREO ★ CÓDIGO ABIERTO ★ EN TIEMPO REAL ★ ESPAÑOL E INGLÉS",
+  "ticker": "GRATIS PARA PERSONAS Y EMPRESAS ★ TUS DATOS ★ SIN ANUNCIOS ★ SIN RASTREO ★ CÓDIGO ABIERTO ★ EN TIEMPO REAL ★ ESPAÑOL E INGLÉS",
   "features": {
     "kicker": "01 / LO QUE TRAE",
     "title": "Todo lo de un Kanban de verdad. Nada de lo que sobra.",
@@ -71,13 +73,13 @@
     }
   },
   "paths": {
-    "kicker": "02 / ELIGE TU CAMINO",
+    "kicker": "03 / ELIGE TU CAMINO",
     "title": "Gratis en la nube, o en tu propia máquina.",
     "online": {
       "tag": "CAMINO A · ONLINE",
       "title": "Úsalo gratis aquí",
-      "text": "Crea una cuenta en esta instancia y empieza en un minuto. Gratis, sin anuncios y sin tarjeta. Cuando quieras irte, te llevas tus tableros en un archivo.",
-      "point1": "Sin instalar nada",
+      "text": "Crea una cuenta para ti o para tu empresa y empieza en un minuto. Gratis, sin anuncios y sin tarjeta. Cuando quieras irte, te llevas tus tableros en un archivo.",
+      "point1": "Sin instalar nada, para personas y empresas",
       "point2": "Exporta tus datos cuando quieras",
       "point3": "Las mismas funciones que una copia instalada",
       "cta": "Crear cuenta gratis",
@@ -94,7 +96,7 @@
     }
   },
   "install": {
-    "kicker": "03 / INSTALAR",
+    "kicker": "04 / INSTALAR",
     "title": "Un comando. Tres pasos.",
     "step1Title": "Pega el comando",
     "step1Text": "Instala Docker si falta, descarga orgtable y genera secretos aleatorios.",
@@ -114,5 +116,19 @@
     "log4": "[orgtable] Done! Open http://tu-servidor:3000",
     "readFirst": "¿Prefieres leerlo antes de ejecutarlo? Bien hecho: <link>install.sh</link> es corto.",
     "guide": "Guía completa: <link>instalarlo en tu servidor</link>."
+  },
+  "teams": {
+    "kicker": "02 / PARA EQUIPOS Y EMPRESAS",
+    "title": "Tu empresa tiene su propia dirección.",
+    "intro": "Registra tu organización, crea las cuentas de tus empleados y dale a cada uno un rol. Cada tablero vive en una dirección que puedes compartir.",
+    "urlLabel": "Dirección de ejemplo de un tablero de empresa",
+    "urlCompany": "tu-empresa",
+    "urlBoard": "hoja-de-ruta",
+    "rolesTitle": "Roles que no se pueden estirar",
+    "owner": "<b>Propietario</b>: el nombre, la dirección, los administradores y el borrado de la organización.",
+    "admin": "<b>Administrador</b>: crea y expulsa miembros y gestiona todos los tableros.",
+    "member": "<b>Miembro</b>: trabaja en los tableros compartidos con la organización.",
+    "private": "Los tableros privados se quedan entre sus miembros y la administración de la organización. Cada organización solo ve sus propios datos.",
+    "cta": "Registra tu empresa gratis"
   }
 }

@@ -3,7 +3,8 @@
     "label": "Administration",
     "users": "Users",
     "instance": "Instance",
-    "audit": "Audit log"
+    "audit": "Audit log",
+    "workspaces": "Overview"
   },
   "roles": {
     "MEMBER": "Member",
@@ -28,7 +29,8 @@
       "owns-boards": "That user owns boards. Transfer or delete them before deleting the account.",
       "password": "The password must be at least 8 characters long.",
       "invalid": "Invalid data.",
-      "not-found": "That user no longer exists."
+      "not-found": "That user no longer exists.",
+      "sole-owner": "That user is the only owner of an organization with other members. Another owner must be appointed, or the organization deleted, first."
     },
     "table": {
       "user": "User",
@@ -139,7 +141,64 @@
       "member.removed": "Member removed",
       "member.role_changed": "Member role changed",
       "apitoken.created": "API token created",
-      "apitoken.revoked": "API token revoked"
+      "apitoken.revoked": "API token revoked",
+      "board.visibility_changed": "Board visibility changed",
+      "workspace.created": "Organization created",
+      "workspace.updated": "Organization updated",
+      "workspace.deleted": "Organization deleted",
+      "workspace.suspended": "Workspace suspended",
+      "workspace.unsuspended": "Workspace reactivated",
+      "workspace.member_created": "Employee account created",
+      "workspace.member_role_changed": "Organization role changed",
+      "workspace.member_removed": "Removed from an organization",
+      "workspace.member_left": "Left an organization",
+      "workspace.member_password_reset": "Employee password reset"
+    }
+  },
+  "workspaces": {
+    "meta": {
+      "title": "Service overview"
+    },
+    "title": "Service overview",
+    "intro": "Figures of the whole service and every workspace. You see names, addresses, owners and counts, never what the boards contain.",
+    "stats": {
+      "users": "Accounts",
+      "organizations": "Organizations",
+      "boards": "Boards",
+      "cards": "Cards",
+      "activeSessions": "Open sessions",
+      "suspended": "Suspended"
+    },
+    "tabs": {
+      "ORGANIZATION": "Organizations",
+      "PERSONAL": "Personal"
+    },
+    "search": "Search by name or address",
+    "searchSubmit": "Search",
+    "empty": "No workspaces match.",
+    "columns": {
+      "workspace": "Workspace",
+      "owners": "Owners",
+      "members": "Members",
+      "boards": "Boards",
+      "created": "Created",
+      "status": "Status"
+    },
+    "active": "Active",
+    "suspendedLabel": "Suspended",
+    "reasonLabel": "Reason (members will see it)",
+    "suspend": "Suspend",
+    "unsuspend": "Reactivate",
+    "deleteConfirm": "Type {slug} to delete it with all its boards",
+    "delete": "Delete",
+    "ok": {
+      "suspended": "Workspace suspended. Its members can no longer open its boards.",
+      "unsuspended": "Workspace reactivated.",
+      "deleted": "Organization deleted with all its boards.",
+      "unchanged": "Nothing changed."
+    },
+    "errors": {
+      "confirm": "Type the organization's address exactly to delete it."
     }
   }
 }

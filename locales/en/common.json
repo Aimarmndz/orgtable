@@ -18,5 +18,10 @@
     "switchTo": "Change language",
     "saved": "Language changed."
   },
-  "genericError": "Something went wrong. Please try again."
+  "genericError": "Something went wrong. Please try again.",
+  "notFound": {
+    "title": "Nothing here",
+    "body": "This page does not exist, or you do not have access to it.",
+    "cta": "Go to your boards"
+  }
 }

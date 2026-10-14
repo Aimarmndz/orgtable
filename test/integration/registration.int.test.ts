@@ -263,3 +263,62 @@ describe("registration language", () => {
     expect(state.error).toBe(es.errors.register.closed);
   });
 });
+
+describe("signing up an organization", () => {
+  it("creates the account and the organization, with the person as its OWNER", async () => {
+    await seedInstance({ registrationOpen: true, ...LEGAL });
+    const to = await registerRedirect(
+      registerForm({
+        accountType: "organization",
+        organizationName: "Acme Corp",
+        organizationSlug: "Acme",
+      }),
+    );
+    expect(to).toBe("/acme/settings");
+    const user = await prisma.user.findUniqueOrThrow({ where: { email: "new@test.local" } });
+    const org = await prisma.workspace.findUniqueOrThrow({
+      where: { slug: "acme" },
+      include: { members: true },
+    });
+    expect(org).toMatchObject({ kind: "ORGANIZATION", name: "Acme Corp" });
+    expect(org.members).toEqual([expect.objectContaining({ userId: user.id, role: "OWNER" })]);
+    // Their personal workspace exists too.
+    expect(await prisma.workspace.count({ where: { personalOwnerId: user.id } })).toBe(1);
+  });
+
+  it("a reserved or taken address creates no account", async () => {
+    await seedInstance({ registrationOpen: true, ...LEGAL });
+    const reserved = await register(
+      {},
+      registerForm({ accountType: "organization", organizationName: "X", organizationSlug: "admin" }),
+    );
+    expect(reserved).toMatchObject({ error: en.errors.workspaces.slugReserved, field: "organizationSlug" });
+
+        const someone = await seedUser();
+    await prisma.workspace.create({
+      data: {
+        slug: "taken",
+        name: "Taken",
+        kind: "ORGANIZATION",
+        members: { create: { userId: someone.id, role: "OWNER" } },
+      },
+    });
+    const taken = await register(
+      {},
+      registerForm({ accountType: "organization", organizationName: "X", organizationSlug: "taken" }),
+    );
+    expect(taken).toMatchObject({ error: en.errors.workspaces.slugTaken });
+    expect(await prisma.user.count({ where: { email: "new@test.local" } })).toBe(0);
+  });
+
+  // From the name, never the email: shared board URLs must not reveal email addresses.
+  it("a personal sign-up gets a handle from the name", async () => {
+    await seedInstance({ registrationOpen: true, ...LEGAL });
+    await registerRedirect(registerForm({ name: "José Núñez", email: "secret.address@test.local" }));
+    const user = await prisma.user.findUniqueOrThrow({
+      where: { email: "secret.address@test.local" },
+      include: { personalWorkspace: true },
+    });
+    expect(user.personalWorkspace?.slug).toBe("jose-nunez");
+  });
+});

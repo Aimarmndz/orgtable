@@ -3,7 +3,8 @@
     "label": "Administración",
     "users": "Usuarios",
     "instance": "Instancia",
-    "audit": "Auditoría"
+    "audit": "Auditoría",
+    "workspaces": "Resumen"
   },
   "roles": {
     "MEMBER": "Miembro",
@@ -28,7 +29,8 @@
       "owns-boards": "Ese usuario es propietario de tableros. Transfiérelos o bórralos antes de eliminar la cuenta.",
       "password": "La contraseña debe tener al menos 8 caracteres.",
       "invalid": "Datos no válidos.",
-      "not-found": "Ese usuario ya no existe."
+      "not-found": "Ese usuario ya no existe.",
+      "sole-owner": "Esa persona es la única propietaria de una organización con más miembros. Primero hay que nombrar a otra persona propietaria, o borrar la organización."
     },
     "table": {
       "user": "Usuario",
@@ -139,7 +141,64 @@
       "member.removed": "Miembro quitado",
       "member.role_changed": "Rol de miembro cambiado",
       "apitoken.created": "Token de API creado",
-      "apitoken.revoked": "Token de API revocado"
+      "apitoken.revoked": "Token de API revocado",
+      "board.visibility_changed": "Visibilidad del tablero cambiada",
+      "workspace.created": "Organización creada",
+      "workspace.updated": "Organización actualizada",
+      "workspace.deleted": "Organización borrada",
+      "workspace.suspended": "Espacio suspendido",
+      "workspace.unsuspended": "Espacio reactivado",
+      "workspace.member_created": "Cuenta de empleado creada",
+      "workspace.member_role_changed": "Rol en la organización cambiado",
+      "workspace.member_removed": "Expulsado de una organización",
+      "workspace.member_left": "Salió de una organización",
+      "workspace.member_password_reset": "Contraseña de empleado restablecida"
+    }
+  },
+  "workspaces": {
+    "meta": {
+      "title": "Resumen del servicio"
+    },
+    "title": "Resumen del servicio",
+    "intro": "Cifras de todo el servicio y de cada espacio. Ves nombres, direcciones, propietarios y recuentos, nunca el contenido de los tableros.",
+    "stats": {
+      "users": "Cuentas",
+      "organizations": "Organizaciones",
+      "boards": "Tableros",
+      "cards": "Tarjetas",
+      "activeSessions": "Sesiones abiertas",
+      "suspended": "Suspendidos"
+    },
+    "tabs": {
+      "ORGANIZATION": "Organizaciones",
+      "PERSONAL": "Personales"
+    },
+    "search": "Buscar por nombre o dirección",
+    "searchSubmit": "Buscar",
+    "empty": "Ningún espacio coincide.",
+    "columns": {
+      "workspace": "Espacio",
+      "owners": "Propietarios",
+      "members": "Miembros",
+      "boards": "Tableros",
+      "created": "Creado",
+      "status": "Estado"
+    },
+    "active": "Activo",
+    "suspendedLabel": "Suspendido",
+    "reasonLabel": "Motivo (lo verán sus miembros)",
+    "suspend": "Suspender",
+    "unsuspend": "Reactivar",
+    "deleteConfirm": "Escribe {slug} para borrarlo con todos sus tableros",
+    "delete": "Borrar",
+    "ok": {
+      "suspended": "Espacio suspendido. Sus miembros ya no pueden abrir sus tableros.",
+      "unsuspended": "Espacio reactivado.",
+      "deleted": "Organización borrada con todos sus tableros.",
+      "unchanged": "No ha cambiado nada."
+    },
+    "errors": {
+      "confirm": "Escribe exactamente la dirección de la organización para borrarla."
     }
   }
 }

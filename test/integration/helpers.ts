@@ -1,5 +1,6 @@
 import { prisma } from "@/app/lib/prisma";
 import { createUserAccount } from "@/app/lib/services/users";
+import { freeBoardSlug } from "@/app/lib/services/workspaces";
 import { generateApiToken } from "@/app/lib/api/tokens";
 import { positionAtEnd } from "@/app/lib/ordering";
 import { createSession } from "@/app/lib/session";
@@ -123,20 +124,58 @@ export async function seedApiToken(
   return token;
 }
 
-/** Creates a board with its owner (OWNER member), as createBoard does. */
+/**
+ * Creates a board with its owner (OWNER member), as createBoard does: in the owner's
+ * personal workspace, or in `workspaceId` (an organization), with a free slug.
+ */
 export async function seedBoard(
   ownerId: string,
   title = "Test board",
-): Promise<{ id: string; title: string }> {
+  opts?: { workspaceId?: string; visibility?: "WORKSPACE" | "PRIVATE" },
+): Promise<{ id: string; title: string; slug: string; workspaceId: string }> {
+  const workspaceId =
+    opts?.workspaceId ??
+    (await prisma.workspace.findUniqueOrThrow({
+      where: { personalOwnerId: ownerId },
+      select: { id: true },
+    })).id;
   const board = await prisma.board.create({
     data: {
       title,
       ownerId,
+      workspaceId,
+      slug: await freeBoardSlug(prisma, workspaceId, title),
+      visibility: opts?.visibility ?? "WORKSPACE",
       members: { create: { userId: ownerId, role: "OWNER" } },
     },
-    select: { id: true, title: true },
+    select: { id: true, title: true, slug: true, workspaceId: true },
   });
   return board;
+}
+
+/** Creates an organization owned by `ownerId` and returns it. */
+export async function seedOrganization(
+  ownerId: string,
+  slug = `org-${Math.random().toString(36).slice(2, 10)}`,
+): Promise<{ id: string; slug: string }> {
+  return prisma.workspace.create({
+    data: {
+      slug,
+      name: `Org ${slug}`,
+      kind: "ORGANIZATION",
+      members: { create: { userId: ownerId, role: "OWNER" } },
+    },
+    select: { id: true, slug: true },
+  });
+}
+
+/** Adds a user to a workspace with a role. */
+export async function addWorkspaceMember(
+  workspaceId: string,
+  userId: string,
+  role: "OWNER" | "ADMIN" | "MEMBER" = "MEMBER",
+): Promise<void> {
+  await prisma.workspaceMember.create({ data: { workspaceId, userId, role } });
 }
 
 export async function addMember(

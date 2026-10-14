@@ -1,12 +1,13 @@
 import "server-only";
 import { prisma } from "@/app/lib/prisma";
+import { effectiveBoardRole } from "@/app/lib/access";
 import type { BoardRole } from "@/app/lib/roles";
 import { hashToken } from "./tokens";
 
 // Authentication and authorization for the public API. Unlike the DAL (cookies and
 // redirects), this works with `Authorization: Bearer <token>` and returns HTTP codes. The
-// server is still the only authority: the board role is checked again against
-// board_members on every request. See docs/api/public-api.md.
+// server is still the only authority: the board role is checked again on every request,
+// with the same rules as the app (app/lib/access.ts). See docs/api/public-api.md.
 
 export type ApiAuth = { userId: string; scope: string };
 
@@ -50,14 +51,10 @@ export function isReadOnly(auth: ApiAuth): boolean {
   return auth.scope === "read";
 }
 
-/** The user's role on a board, or null if not a member (= no access). */
+/** The user's effective role on a board, or null without access. */
 export async function apiBoardRole(
   userId: string,
   boardId: string,
 ): Promise<BoardRole | null> {
-  const membership = await prisma.boardMember.findUnique({
-    where: { boardId_userId: { boardId, userId } },
-    select: { role: true },
-  });
-  return membership?.role ?? null;
+  return effectiveBoardRole(boardId, userId);
 }

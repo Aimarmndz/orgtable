@@ -17,6 +17,8 @@ import { silkscreen, vt323 } from "./fonts";
 
 type Props = {
   registrationOpen: boolean;
+  // The address visitors typed (Host header), to show what a company's board URL looks like.
+  host: string;
   installScriptUrl: string;
   sourceUrl: string;
 };
@@ -26,6 +28,7 @@ const linkClass =
 
 export async function LandingPage({
   registrationOpen,
+  host,
   installScriptUrl,
   sourceUrl,
 }: Props) {
@@ -62,6 +65,9 @@ export async function LandingPage({
           >
             <a href="#features" className={linkClass}>
               {t.nav.features}
+            </a>
+            <a href="#teams" className={linkClass}>
+              {t.nav.teams}
             </a>
             <a href="#paths" className={linkClass}>
               {t.nav.paths}
@@ -115,6 +121,14 @@ export async function LandingPage({
                 {registrationOpen ? t.hero.ctaFree : t.hero.ctaSignIn}
                 <ArrowIcon />
               </Link>
+              {registrationOpen && (
+                <Link
+                  href="/register?type=organization"
+                  className="retro-btn bg-surface text-[17px] text-ink"
+                >
+                  {t.hero.ctaCompany}
+                </Link>
+              )}
               <a
                 href="#install"
                 className="retro-btn bg-surface text-[17px] text-ink"
@@ -185,6 +199,64 @@ export async function LandingPage({
               );
             })}
           </ul>
+        </section>
+
+        {/* Organizations: their own address, employees and roles */}
+        <section
+          id="teams"
+          aria-labelledby="teams-title"
+          className="mx-auto flex max-w-6xl scroll-mt-24 flex-wrap items-center gap-14 px-4 pb-24 sm:px-6"
+        >
+          <div className="min-w-0 flex-[1_1_26rem]">
+            <Kicker>{t.teams.kicker}</Kicker>
+            <h2
+              id="teams-title"
+              className="mt-2.5 font-display text-4xl leading-[1.05] font-extrabold text-balance sm:text-5xl"
+            >
+              {t.teams.title}
+            </h2>
+            <p className="mt-4 text-lg text-ink-muted">{t.teams.intro}</p>
+            {registrationOpen && (
+              <Link
+                href="/register?type=organization"
+                className="retro-btn mt-8 bg-accent text-accent-ink"
+              >
+                {t.teams.cta}
+                <ArrowIcon />
+              </Link>
+            )}
+          </div>
+          <div className="min-w-0 flex-[1_1_28rem]">
+            <div className="retro-window">
+              <div className="retro-titlebar" aria-hidden>
+                <span className="retro-close" />
+                <span className="retro-title">NETSCAPE.EXE</span>
+              </div>
+              <div className="p-5">
+                {/* An address bar: the shape of every board URL. */}
+                <p
+                  aria-label={t.teams.urlLabel}
+                  className="flex min-w-0 items-center overflow-hidden rounded-[3px] border-2 border-retro-edge bg-bg px-3 py-2.5 font-terminal text-xl sm:text-2xl"
+                >
+                  <span className="shrink truncate text-ink-muted">{host}/</span>
+                  <span className="shrink-0 text-accent">{t.teams.urlCompany}</span>
+                  <span className="shrink-0 text-ink-muted">/</span>
+                  <span className="shrink-0 text-ink">{t.teams.urlBoard}</span>
+                  <span aria-hidden className="crt-caret" />
+                </p>
+                <h3 className="mt-6 font-pixel text-[13px] text-accent">{t.teams.rolesTitle}</h3>
+                <ul className="mt-3 flex flex-col gap-2.5">
+                  {[t.teams.owner, t.teams.admin, t.teams.member].map((line) => (
+                    <li key={line} className="flex items-start gap-2.5 leading-relaxed">
+                      <span aria-hidden className="mt-2 size-2 flex-none bg-accent" />
+                      <span>{rich(line, { b: (c) => <strong>{c}</strong> })}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-4 text-sm leading-relaxed text-ink-muted">{t.teams.private}</p>
+              </div>
+            </div>
+          </div>
         </section>
 
         {/* Two paths: free online or self-hosted */}

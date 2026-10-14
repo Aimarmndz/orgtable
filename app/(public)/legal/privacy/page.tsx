@@ -109,6 +109,7 @@ export default async function PrivacyPage() {
       <h2>{t.recipients.heading}</h2>
       <ul>
         <li>{rich(t.recipients.boardMembers, { b })}</li>
+        <li>{rich(t.recipients.organization, { b })}</li>
         <li>{rich(t.recipients.admin, { b })}</li>
         <li>
           {richWith(
@@ -119,6 +120,7 @@ export default async function PrivacyPage() {
         </li>
       </ul>
       <p>{t.recipients.outsideEea}</p>
+      <p>{t.recipients.noticeBeforeSharing}</p>
 
       <h2>{t.cookies.heading}</h2>
       <p>

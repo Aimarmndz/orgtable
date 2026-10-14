@@ -18,5 +18,10 @@
     "switchTo": "Cambiar de idioma",
     "saved": "Idioma cambiado."
   },
-  "genericError": "Algo ha fallado. Inténtalo de nuevo."
+  "genericError": "Algo ha fallado. Inténtalo de nuevo.",
+  "notFound": {
+    "title": "Aquí no hay nada",
+    "body": "Esta página no existe, o no tienes acceso a ella.",
+    "cta": "Ir a tus tableros"
+  }
 }

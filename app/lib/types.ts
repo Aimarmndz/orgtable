@@ -63,6 +63,9 @@ export type BoardDTO = {
   id: string;
   title: string;
   background: string | null;
+  // Where it lives (/<workspace.slug>/…) and who besides its members sees it.
+  workspace: { slug: string; name: string; kind: "PERSONAL" | "ORGANIZATION" };
+  visibility: "WORKSPACE" | "PRIVATE";
   lists: ListDTO[];
   labels: LabelDTO[];
 };

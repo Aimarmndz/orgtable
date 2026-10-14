@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getI18n } from "@/app/i18n/server";
 
 const TABS = [
+  { href: "/admin/workspaces", key: "workspaces" },
   { href: "/admin/users", key: "users" },
   { href: "/admin/instance", key: "instance" },
   { href: "/admin/audit", key: "audit" },

@@ -10,6 +10,7 @@ import {
   resetPasswordAndRevokeAccess,
 } from "@/app/lib/services/users";
 import { revokeAllUserSessions } from "@/app/lib/session";
+import { purgeWorkspace } from "@/app/lib/services/workspaces";
 import { recordAudit } from "@/app/lib/audit";
 import { getI18n, issueMessage } from "@/app/i18n/server";
 import { fmt } from "@/app/i18n/format";
@@ -192,7 +193,12 @@ export async function deleteUser(formData: FormData): Promise<void> {
   const result = await deleteUserAccount(userId);
   if (!result.ok) {
     backToUsers({
-      error: result.error === "owns_boards" ? "owns-boards" : "not-found",
+            error:
+        result.error === "owns_boards"
+          ? "owns-boards"
+          : result.error === "sole_owner"
+            ? "sole-owner"
+            : "not-found",
     });
   }
   await recordAudit({
@@ -203,4 +209,79 @@ export async function deleteUser(formData: FormData): Promise<void> {
   });
   revalidatePath("/admin/users");
   backToUsers({ ok: "delete" });
+}
+
+// --- Workspaces (/admin/workspaces) ---------------------------------------------------------
+// The instance administrator can suspend a workspace (nobody can open its boards; its
+// members see the reason), lift the suspension or delete it. They never get access to the
+// boards themselves: see docs/workspaces.md and the privacy policy.
+
+const SUSPEND_REASON_MAX = 300;
+
+export async function suspendWorkspace(formData: FormData): Promise<void> {
+  const admin = await requireAdmin();
+  const workspaceId = formText(formData, "workspaceId");
+  const reason = formText(formData, "reason").trim().slice(0, SUSPEND_REASON_MAX);
+  const { count } = await prisma.workspace.updateMany({
+    where: { id: workspaceId, suspendedAt: null },
+    data: { suspendedAt: new Date(), suspendedReason: reason || null },
+  });
+  if (count > 0) {
+    await recordAudit({
+      action: "workspace.suspended",
+      userId: admin.id,
+      targetType: "workspace",
+      targetId: workspaceId,
+      detail: reason || undefined,
+    });
+  }
+  revalidatePath("/admin/workspaces");
+  redirect(`/admin/workspaces?ok=${count > 0 ? "suspended" : "unchanged"}`);
+}
+
+export async function unsuspendWorkspace(formData: FormData): Promise<void> {
+  const admin = await requireAdmin();
+  const workspaceId = formText(formData, "workspaceId");
+  const { count } = await prisma.workspace.updateMany({
+    where: { id: workspaceId, suspendedAt: { not: null } },
+    data: { suspendedAt: null, suspendedReason: null },
+  });
+  if (count > 0) {
+    await recordAudit({
+      action: "workspace.unsuspended",
+      userId: admin.id,
+      targetType: "workspace",
+      targetId: workspaceId,
+    });
+  }
+  revalidatePath("/admin/workspaces");
+  redirect(`/admin/workspaces?ok=${count > 0 ? "unsuspended" : "unchanged"}`);
+}
+
+/** Deletes an ORGANIZATION and its boards, after typing its address. */
+export async function deleteWorkspaceAsAdmin(formData: FormData): Promise<void> {
+  const admin = await requireAdmin();
+  const workspaceId = formText(formData, "workspaceId");
+  const workspace = await prisma.workspace.findUnique({
+    where: { id: workspaceId },
+    select: { slug: true, kind: true },
+  });
+  // Personal workspaces go with their account (delete the user instead).
+  if (
+    !workspace ||
+    workspace.kind !== "ORGANIZATION" ||
+    formText(formData, "confirm").trim().toLowerCase() !== workspace.slug
+  ) {
+    redirect("/admin/workspaces?error=confirm");
+  }
+  const boardsDeleted = await purgeWorkspace(workspaceId);
+  await recordAudit({
+    action: "workspace.deleted",
+    userId: admin.id,
+    targetType: "workspace",
+    targetId: workspaceId,
+    detail: `${workspace.slug}, boards deleted: ${boardsDeleted} (instance admin)`,
+  });
+  revalidatePath("/admin/workspaces");
+  redirect("/admin/workspaces?ok=deleted");
 }

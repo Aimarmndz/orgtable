@@ -5,6 +5,8 @@ import { withI18n } from "./helpers/i18n";
 
 // The server actions import Prisma; replacing them is enough to render the panel (this
 // test only looks at the HTML, it does not run any action).
+// The visibility selector posts to this Server Action (Prisma); only its markup matters.
+vi.mock("@/app/lib/actions/boards", () => ({ setBoardVisibility: vi.fn() }));
 vi.mock("@/app/lib/actions/members", () => ({
   addBoardMember: vi.fn(),
   updateBoardMemberRole: vi.fn(),
@@ -41,6 +43,7 @@ function render(): string {
         boardId: "b1",
         members: [],
         canManage: true,
+        visibility: null,
         onClose: () => {},
       }),
     ),

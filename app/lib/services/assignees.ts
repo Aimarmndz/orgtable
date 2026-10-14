@@ -1,8 +1,9 @@
 import "server-only";
 import { prisma } from "@/app/lib/prisma";
+import { effectiveBoardRole } from "@/app/lib/access";
 
-// Assignment business invariant: a card can only be assigned to someone who is ALREADY a
-// member of the board. Isolated here so the Server Action can reuse it and it can be
+// Assignment business invariant: a card can only be assigned to someone who can ALREADY
+// open the board (an explicit member or a member of its workspace, app/lib/access.ts). Isolated here so the Server Action can reuse it and it can be
 // tested directly. It does NOT authorize the actor: the action does that.
 
 export type AssignResult = {
@@ -15,11 +16,9 @@ export async function assignMemberToCard(
   cardId: string,
   userId: string,
 ): Promise<AssignResult> {
-  const member = await prisma.boardMember.findUnique({
-    where: { boardId_userId: { boardId, userId } },
-    select: { userId: true },
-  });
-  if (!member) return { assigned: false, reason: "not_member" };
+  if (!(await effectiveBoardRole(boardId, userId))) {
+    return { assigned: false, reason: "not_member" };
+  }
 
   const exists = await prisma.cardAssignee.findUnique({
     where: { cardId_userId: { cardId, userId } },

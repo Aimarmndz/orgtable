@@ -1,42 +1,41 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { requireUser } from "@/app/lib/dal";
-import { getBoardSummariesForUser } from "@/app/lib/queries";
-import { initials } from "@/app/lib/initials";
+import { getBoardSummariesForUser, getWorkspacesForUser } from "@/app/lib/queries";
 import { createBoard } from "@/app/lib/actions/boards";
-import { boardBackgroundFor } from "@/app/lib/colors";
+import { BoardGrid } from "@/app/components/workspace/board-grid";
+import { CreateOrganizationForm } from "@/app/components/workspace/forms";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { ImportBoardForm } from "./import-board-form";
-import { DeleteBoardButton } from "./delete-board-button";
 import { getI18n } from "@/app/i18n/server";
-import { fmt, plural } from "@/app/i18n/format";
+import { fmt } from "@/app/i18n/format";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { m } = await getI18n();
   return { title: m.boards.index.metaTitle };
 }
 
-// Corner actions of each board. On desktop they appear on hover or when reached with
-// the keyboard; on screens without hover (touch) they are always visible, otherwise
-// there would be no way to discover them.
-const CORNER_ACTION =
-  "grid size-7 place-items-center rounded-md bg-black/20 text-white/90 opacity-0 transition hover:bg-black/40 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100";
-
 export default async function BoardsPage() {
   const user = await requireUser();
-  const boards = await getBoardSummariesForUser(user.id);
-  const { m, intl } = await getI18n();
+  const [boards, workspaces, { m }] = await Promise.all([
+    getBoardSummariesForUser(user.id),
+    getWorkspacesForUser(user.id),
+    getI18n(),
+  ]);
   const t = m.boards.index;
+  const tw = m.workspaces;
+  const memberOf = new Set(workspaces.map((w) => w.id));
+  // Boards of workspaces the user is not in: someone added them to the board itself.
+  const shared = boards.filter((b) => !memberOf.has(b.workspaceId));
+  const creatable = workspaces.filter((w) => !w.suspendedAt);
 
   return (
     <div className="relative z-10 mx-auto w-full max-w-6xl overflow-y-auto p-6 sm:p-8">
       <h1 className="font-display text-3xl font-bold tracking-tight text-balance">
         {t.title}
       </h1>
-      <p className="mt-1.5 text-sm text-ink-muted">
-        {t.subtitle}
-      </p>
+      <p className="mt-1.5 text-sm text-ink-muted">{t.subtitle}</p>
 
       <form action={createBoard} className="mt-7 flex flex-wrap gap-2">
         <Input
@@ -47,32 +46,34 @@ export default async function BoardsPage() {
           placeholder={t.newBoardName}
           className="min-w-0 flex-1 sm:max-w-xs sm:flex-none"
         />
+        {creatable.length > 1 && (
+          <select
+            name="workspaceId"
+            aria-label={tw.dashboard.createIn}
+            className="h-[38px] rounded-lg border border-border bg-surface px-2.5 text-sm text-ink outline-none focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/25"
+          >
+            {creatable.map((w) => (
+              <option key={w.id} value={w.id}>
+                {w.kind === "PERSONAL" ? `${tw.kind.PERSONAL} · /${w.slug}` : `${w.name} · /${w.slug}`}
+              </option>
+            ))}
+          </select>
+        )}
         <Button type="submit">{t.createBoard}</Button>
       </form>
 
-      {/* Importing is rare: collapsed so it does not compete with "Create board". */}
-      <details className="group/import mt-3 text-sm">
-        <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-lg px-1 py-1 text-ink-muted transition-colors hover:text-ink [&::-webkit-details-marker]:hidden">
-          <svg
-            className="size-3.5 transition-transform group-open/import:rotate-90"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M9 6l6 6-6 6" />
-          </svg>
-          {t.importToggle}
-        </summary>
-        <div className="mt-2 rounded-xl border border-border bg-surface p-3">
+      <div className="mt-3 flex flex-wrap gap-x-6">
+        {/* Importing and creating an organization are rare: collapsed so they do not
+            compete with "Create board". */}
+        <Collapsible label={t.importToggle}>
           <ImportBoardForm />
-        </div>
-      </details>
+        </Collapsible>
+        <Collapsible label={tw.createOrg.toggle}>
+          <CreateOrganizationForm />
+        </Collapsible>
+      </div>
 
-      {boards.length === 0 ? (
+      {boards.length === 0 && !workspaces.some((w) => w.kind === "ORGANIZATION") && (
         <div className="mt-20 flex flex-col items-center text-center">
           <div className="grid size-14 place-items-center rounded-2xl border border-border bg-surface text-accent shadow-[0_8px_24px_-12px_oklch(0.27_0.022_52/0.25)]">
             <svg
@@ -89,97 +90,71 @@ export default async function BoardsPage() {
               <path d="M3 9h18M9 9v11" />
             </svg>
           </div>
-          <p className="mt-5 font-display text-lg font-bold tracking-tight">
-            {t.emptyTitle}
-          </p>
-          <p className="mt-1.5 max-w-xs text-sm text-ink-muted">
-            {t.emptyText}
-          </p>
+          <p className="mt-5 font-display text-lg font-bold tracking-tight">{t.emptyTitle}</p>
+          <p className="mt-1.5 max-w-xs text-sm text-ink-muted">{t.emptyText}</p>
         </div>
-      ) : (
-        <ul className="mt-8 grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(15rem,1fr))]">
-          {boards.map((board) => (
-            <li key={board.id} className="group relative">
-              <Link
-                href={`/board/${board.id}`}
-                style={{ background: boardBackgroundFor(board) }}
-                className="relative flex h-36 flex-col justify-end overflow-hidden rounded-2xl p-4 text-white shadow-[0_4px_16px_-8px_oklch(0.27_0.022_52/0.3)] ring-1 ring-inset ring-black/10 transition-transform duration-150 ease-out hover:-translate-y-0.5"
-              >
-                <span
-                  aria-hidden
-                  className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-white/5"
-                />
-                <span className="relative font-display text-lg font-bold leading-tight tracking-tight drop-shadow-sm">
-                  {board.title}
-                </span>
-                <span className="relative mt-2 flex items-center justify-between gap-2 text-xs font-medium text-white/85">
-                  <span>
-                    {plural(intl, t.cardCount, board.cardCount)}
-                  </span>
-                  {/* Only when shared: on a personal board your own face is redundant. */}
-                  {board.members.length > 1 && (
-                    <span className="flex -space-x-1.5">
-                      {/* aria-label does not work on a span without a role: the name goes as hidden text. */}
-                      <span className="sr-only">
-                        {plural(intl, t.sharedWith, board.members.length, {
-                          names: new Intl.ListFormat(intl, {
-                            type: "conjunction",
-                          }).format(board.members.map((member) => member.name)),
-                        })}
-                      </span>
-                      {board.members.slice(0, 4).map((member) => (
-                        <span
-                          key={member.id}
-                          aria-hidden
-                          className="grid size-6 place-items-center rounded-full bg-white/90 text-[10px] font-bold text-ink ring-2 ring-black/10"
-                        >
-                          {initials(member.name)}
-                        </span>
-                      ))}
-                      {board.members.length > 4 && (
-                        <span
-                          aria-hidden
-                          className="grid size-6 place-items-center rounded-full bg-black/30 text-[10px] font-bold text-white ring-2 ring-black/10"
-                        >
-                          +{board.members.length - 4}
-                        </span>
-                      )}
-                    </span>
-                  )}
-                </span>
-              </Link>
-              <div className="absolute right-2 top-2 flex gap-1">
-                <a
-                  href={`/api/boards/${board.id}/export`}
-                  className={CORNER_ACTION}
-                  aria-label={fmt(t.exportBoard, { title: board.title })}
-                  title={t.exportTitle}
-                >
-                  <svg
-                    className="size-4"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    aria-hidden="true"
+      )}
+
+      {workspaces.map((w) => {
+          const own = boards.filter((b) => b.workspaceId === w.id);
+          if (w.kind === "PERSONAL" && own.length === 0) return null;
+          return (
+            <section key={w.id} aria-labelledby={`ws-${w.id}`} className="mt-10">
+              <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+                <h2 id={`ws-${w.id}`} className="font-display text-xl font-bold tracking-tight">
+                  {w.kind === "PERSONAL" ? tw.dashboard.personalTitle : w.name}
+                  <span className="ml-2 font-mono text-xs font-normal text-ink-muted">/{w.slug}</span>
+                </h2>
+                {w.kind === "ORGANIZATION" && (
+                  <Link
+                    href={`/${w.slug}`}
+                    className="text-sm font-semibold text-accent underline-offset-2 hover:underline"
                   >
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
-                  </svg>
-                </a>
-                {/* Only the owner can delete it (deleteBoard requires it); members
-                    are not shown a button that does nothing. */}
-                {board.ownerId === user.id && (
-                  <DeleteBoardButton
-                    boardId={board.id}
-                    title={board.title}
-                    className={`${CORNER_ACTION} text-sm`}
-                  />
+                    {fmt(tw.dashboard.openWorkspace, { name: w.name })}
+                  </Link>
                 )}
               </div>
-            </li>
-          ))}
-        </ul>
+              {own.length > 0 ? (
+                <BoardGrid boards={own} />
+              ) : (
+                <p className="text-sm text-ink-muted">{tw.dashboard.noBoards}</p>
+              )}
+            </section>
+          );
+        })}
+
+      {shared.length > 0 && (
+        <section aria-labelledby="ws-shared" className="mt-10">
+          <h2 id="ws-shared" className="font-display text-xl font-bold tracking-tight">
+            {tw.dashboard.sharedTitle}
+          </h2>
+          <p className="mb-4 mt-1 text-sm text-ink-muted">{tw.dashboard.sharedText}</p>
+          <BoardGrid boards={shared} />
+        </section>
       )}
     </div>
+  );
+}
+
+function Collapsible({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <details className="group/fold mt-0 text-sm">
+      <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-lg px-1 py-1 text-ink-muted transition-colors hover:text-ink [&::-webkit-details-marker]:hidden">
+        <svg
+          className="size-3.5 transition-transform group-open/fold:rotate-90"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M9 6l6 6-6 6" />
+        </svg>
+        {label}
+      </summary>
+      <div className="mt-2 max-w-2xl rounded-xl border border-border bg-surface p-4">{children}</div>
+    </details>
   );
 }

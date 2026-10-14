@@ -51,8 +51,21 @@ export default async function TermsPage() {
       </ul>
       <p>{t.content.enforcement}</p>
 
+      <h2>{t.organizations.heading}</h2>
+      <p>{t.organizations.body}</p>
+
+      {/* Service level: a target, honestly framed for a free, open-source service. See
+          docs/DECISIONES.md (2026-10-15) before changing it. */}
       <h2>{t.availability.heading}</h2>
-      <p>{t.availability.body}</p>
+      <p>{t.availability.target}</p>
+      <p>{t.availability.maintenance}</p>
+      <p>{t.availability.nature}</p>
+      <p>{t.availability.liability}</p>
+
+      <h2>{t.confidentiality.heading}</h2>
+      <p>{t.confidentiality.security}</p>
+      <p>{t.confidentiality.access}</p>
+      <p>{t.confidentiality.thirdParties}</p>
 
       <h2>{t.changes.heading}</h2>
       <p>{t.changes.body}</p>

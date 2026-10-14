@@ -18,7 +18,10 @@
     "importToggle": "Importar un tablero desde JSON",
     "emptyTitle": "Todavía no tienes tableros",
     "emptyText": "Crea el primero con el campo de arriba y empieza a organizar tu trabajo en listas y tarjetas.",
-    "cardCount": { "one": "{count} tarjeta", "other": "{count} tarjetas" },
+    "cardCount": {
+      "one": "{count} tarjeta",
+      "other": "{count} tarjetas"
+    },
     "sharedWith": {
       "one": ", compartido con {count} persona: {names}",
       "other": ", compartido con {count} personas: {names}"
@@ -108,7 +111,8 @@
     "invite": "Invitar",
     "inviting": "Añadiendo…",
     "roleOf": "Rol de {name}",
-    "remove": "Quitar a {name}"
+    "remove": "Quitar a {name}",
+    "viaWorkspace": "por la organización"
   },
   "cardModal": {
     "labels": "Etiquetas",

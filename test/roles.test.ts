@@ -44,3 +44,32 @@ describe("roles", () => {
     expect(messagesFor("es").boards.roles.OWNER).toBe("Propietario");
   });
 });
+
+describe("workspace roles (no escalation)", () => {
+  it("only an owner grants ADMIN or OWNER; an admin grants MEMBER; a member nothing", async () => {
+    const { grantableWorkspaceRoles } = await import("@/app/lib/roles");
+    expect(grantableWorkspaceRoles("OWNER")).toEqual(["OWNER", "ADMIN", "MEMBER"]);
+    expect(grantableWorkspaceRoles("ADMIN")).toEqual(["MEMBER"]);
+    expect(grantableWorkspaceRoles("MEMBER")).toEqual([]);
+  });
+
+  it("an admin acts only on members; owners on anyone; members on nobody", async () => {
+    const { canActOnWorkspaceMember } = await import("@/app/lib/roles");
+    expect(canActOnWorkspaceMember("ADMIN", "MEMBER")).toBe(true);
+    expect(canActOnWorkspaceMember("ADMIN", "ADMIN")).toBe(false);
+    expect(canActOnWorkspaceMember("ADMIN", "OWNER")).toBe(false);
+    expect(canActOnWorkspaceMember("OWNER", "OWNER")).toBe(true);
+    expect(canActOnWorkspaceMember("MEMBER", "MEMBER")).toBe(false);
+  });
+
+  it("the board role a workspace role gives", async () => {
+    const { boardRoleFromWorkspace, maxBoardRole } = await import("@/app/lib/roles");
+    expect(boardRoleFromWorkspace("OWNER", "PRIVATE")).toBe("OWNER");
+    expect(boardRoleFromWorkspace("ADMIN", "WORKSPACE")).toBe("OWNER");
+    expect(boardRoleFromWorkspace("MEMBER", "WORKSPACE")).toBe("EDITOR");
+    expect(boardRoleFromWorkspace("MEMBER", "PRIVATE")).toBeNull();
+    expect(maxBoardRole("VIEWER", "EDITOR")).toBe("EDITOR");
+    expect(maxBoardRole(null, "VIEWER")).toBe("VIEWER");
+    expect(maxBoardRole(null, null)).toBeNull();
+  });
+});

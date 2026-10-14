@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { decrypt } from "@/app/lib/session";
 import { prisma } from "@/app/lib/prisma";
+import { effectiveBoardRole } from "@/app/lib/access";
 
 // Data Access Layer: the single SECURE source of truth for "who is the user" and "is the
 // instance set up". Each function is memoised per request with React's cache(), so
@@ -57,20 +58,19 @@ export const isSetupComplete = cache(async () => {
 });
 
 /**
- * Requires the current user to be a member of the board. Redirects to /boards without
- * access. Every board mutation (lists, cards…) goes through here.
+ * Requires the current user to have access to the board (app/lib/access.ts: an explicit
+ * membership or one of its workspace). Redirects to /boards without access. Every board
+ * mutation (lists, cards…) goes through here.
  *
- * Also returns the user's ROLE on the board (OWNER/EDITOR/VIEWER): "what can they do"
- * with that role is checked in each Server Action with the helpers in @/app/lib/roles
+ * Also returns the user's effective ROLE on the board (OWNER/EDITOR/VIEWER): "what can they
+ * do" with that role is checked in each Server Action with the helpers in @/app/lib/roles
  * (canEditBoard, canManageBoard). See docs/authorization.md.
  */
 export const requireBoardAccess = cache(async (boardId: string) => {
   const user = await requireUser();
-  const membership = await prisma.boardMember.findUnique({
-    where: { boardId_userId: { boardId, userId: user.id } },
-  });
-  if (!membership) redirect("/boards");
-  return { user, role: membership.role };
+  const role = await effectiveBoardRole(boardId, user.id);
+  if (!role) redirect("/boards");
+  return { user, role };
 });
 
 /**

@@ -299,3 +299,48 @@ export const instanceSettingsSchema = z.object({
         .nullable(),
     ),
 });
+
+// --- Workspaces (docs/workspaces.md) ---
+// The slug's format and reserved words are checked by app/lib/slugs.ts in the service, so
+// a slug typed in any form or the API gets the same answer; here only the length.
+const workspaceNameSchema = z
+  .string()
+  .trim()
+  .min(1, "errors.validation.workspaceNameRequired")
+  .max(60, "errors.validation.maxChars60");
+const workspaceSlugInputSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .min(3, "errors.workspaces.slugFormat")
+  .max(39, "errors.workspaces.slugFormat");
+
+export const organizationSchema = z.object({
+  name: workspaceNameSchema,
+  slug: workspaceSlugInputSchema,
+});
+
+// Sign-up as an organization: the person's account plus the organization they own.
+export const registerOrganizationSchema = registerSchema.extend({
+  organizationName: workspaceNameSchema,
+  organizationSlug: workspaceSlugInputSchema,
+});
+
+export const workspaceRoleSchema = z.enum(["OWNER", "ADMIN", "MEMBER"], {
+  error: "errors.validation.roleInvalid",
+});
+
+// An owner or admin creates an employee's account in their organization.
+export const createEmployeeSchema = z.object({
+  name: personNameSchema,
+  email: z.email("errors.validation.emailInvalid").max(254, "errors.validation.maxChars254"),
+  password: passwordSchema,
+  role: workspaceRoleSchema,
+});
+
+export const employeePasswordSchema = z.object({
+  userId: z.string().min(1),
+  password: passwordSchema,
+});
+
+export const boardVisibilitySchema = z.enum(["WORKSPACE", "PRIVATE"]);

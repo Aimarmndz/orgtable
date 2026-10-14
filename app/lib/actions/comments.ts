@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/app/lib/prisma";
+import { effectiveBoardRole } from "@/app/lib/access";
 import { revalidateBoard } from "@/app/lib/realtime/notify";
 import { requireBoardAccess } from "@/app/lib/dal";
 import { canEditBoard, canManageBoard } from "@/app/lib/roles";
@@ -27,20 +28,19 @@ export async function addComment(formData: FormData): Promise<void> {
     data: { cardId, authorId: user.id, text: parsed.data },
   });
 
-  // Notify the card's assignees (except the author) who are still board members, each in
-  // their own language. Removing a member already deletes their assignments
-  // (services/members.ts), but orphan rows from before that change may remain and must not
-  // receive the comment's text.
-  const assignees = await prisma.cardAssignee.findMany({
-    where: {
-      cardId,
-      user: { memberships: { some: { boardId: ctx.boardId } } },
-    },
+  // Notify the card's assignees (except the author) who can still open the board (members
+  // of it or of its organization, app/lib/access.ts), each in their own language. An
+  // orphan assignment of someone who lost access must not receive the comment's text.
+  const all = await prisma.cardAssignee.findMany({
+    where: { cardId, userId: { not: user.id } },
     select: { userId: true, user: { select: { locale: true } } },
   });
+  const assignees = [];
+  for (const a of all) {
+    if (await effectiveBoardRole(ctx.boardId, a.userId)) assignees.push(a);
+  }
   await Promise.all(
     assignees
-      .filter((a) => a.userId !== user.id)
       .map((a) =>
         notify({
           userId: a.userId,

@@ -26,7 +26,8 @@
     "backupDaysNumber": "Los días de las copias tienen que ser un número",
     "backupDaysInteger": "Los días de las copias tienen que ser un número entero",
     "backupDaysNegative": "Los días de las copias no pueden ser negativos",
-    "backupDaysMax": "Máximo 3650 días"
+    "backupDaysMax": "Máximo 3650 días",
+    "workspaceNameRequired": "Escribe un nombre."
   },
   "auth": {
     "checkCredentials": "Revisa el email y la contraseña.",
@@ -59,7 +60,8 @@
       "other": "Contraseña cambiada. Se cerraron {count} sesiones más."
     },
     "wrongPassword": "La contraseña no es correcta.",
-    "lastAdmin": "Eres la única persona administradora. Nombra a otra antes de borrar tu cuenta."
+    "lastAdmin": "Eres la única persona administradora. Nombra a otra antes de borrar tu cuenta.",
+    "soleOwner": "Eres la única persona propietaria de {organizations}. Haz propietaria a otra persona, o borra la organización, antes de borrar tu cuenta."
   },
   "admin": {
     "emailTaken": "Ya existe un usuario con ese email.",
@@ -97,5 +99,17 @@
     "userNotFound": "No existe ningún usuario con ese email. Pídele al administrador que cree la cuenta primero.",
     "alreadyMember": "{name} ya es miembro de este tablero.",
     "added": "{name} añadido como {role}."
+  },
+  "workspaces": {
+    "slugFormat": "La dirección debe tener de 3 a 39 letras minúsculas, números o guiones, y no puede empezar ni acabar con guion.",
+    "slugReserved": "Esa dirección está reservada. Elige otra.",
+    "slugTaken": "Esa dirección ya está en uso. Elige otra.",
+    "forbidden": "No tienes permiso para hacer eso en este espacio.",
+    "emailTaken": "Ese email ya tiene una cuenta. Cada persona solo puede tener una.",
+    "lastOwner": "Una organización siempre necesita una persona propietaria. Nombra a otra antes.",
+    "self": "No puedes cambiar tu propio rol.",
+    "notMember": "Esa persona no es miembro de esta organización.",
+    "suspended": "Este espacio está suspendido: {reason}",
+    "rateLimited": "Demasiados en poco tiempo. Vuelve a intentarlo dentro de una hora."
   }
 }

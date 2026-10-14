@@ -1,5 +1,5 @@
 {
-  "metaTitle": "Kanban boards on your own server",
+  "metaTitle": "Free Kanban boards for people and companies",
   "skipToContent": "Skip to content",
   "nav": {
     "label": "Main",
@@ -8,18 +8,20 @@
     "install": "Install",
     "source": "Code",
     "signIn": "Sign in",
-    "useFree": "Use it free"
+    "useFree": "Use it free",
+    "teams": "For companies"
   },
   "hero": {
     "badge": "OPEN-SOURCE KANBAN · AGPL-3.0 · v{version}",
     "titleLine1": "Your boards.",
     "titleLine2": "Your server.",
-    "intro": "An open-source Trello alternative: boards, lists and cards you drag around in real time. Use it for free right here, or install it on your own server with a single command.",
+    "intro": "An open-source Trello alternative, free for everyone: sign up yourself or register your company, create your team's accounts and work on shared boards in real time. Or install it on your own server with a single command.",
     "ctaFree": "Create a free account",
     "ctaSignIn": "Sign in",
     "ctaInstall": "Install on my server",
-    "note": "No ads. No tracking. No credit card.",
-    "closedNote": "Free sign-up on this instance is paused right now. You can still install your own."
+    "note": "Free for people and companies. No ads, no tracking, no card.",
+    "closedNote": "Free sign-up on this instance is paused right now. You can still install your own.",
+    "ctaCompany": "Register your company"
   },
   "board": {
     "label": "Example board",
@@ -34,7 +36,7 @@
     "card5": "October newsletter",
     "card6": "Pick a domain"
   },
-  "ticker": "YOUR DATA ★ YOUR SERVER ★ NO ADS ★ NO TRACKING ★ OPEN SOURCE ★ REAL TIME ★ ENGLISH AND SPANISH",
+  "ticker": "FREE FOR PEOPLE AND COMPANIES ★ YOUR DATA ★ NO ADS ★ NO TRACKING ★ OPEN SOURCE ★ REAL TIME ★ ENGLISH AND SPANISH",
   "features": {
     "kicker": "01 / WHAT'S INSIDE",
     "title": "Everything a real Kanban needs. Nothing it doesn't.",
@@ -71,13 +73,13 @@
     }
   },
   "paths": {
-    "kicker": "02 / PICK YOUR PATH",
+    "kicker": "03 / PICK YOUR PATH",
     "title": "Free in the cloud, or on your own machine.",
     "online": {
       "tag": "PATH A · ONLINE",
       "title": "Use it free here",
-      "text": "Create an account on this instance and start in a minute. Free, with no ads and no card. When you want to leave, take your boards with you in a file.",
-      "point1": "Nothing to install",
+      "text": "Create an account for yourself or for your company and start in a minute. Free, with no ads and no card. When you want to leave, take your boards with you in a file.",
+      "point1": "Nothing to install, for people and companies",
       "point2": "Export your data whenever you like",
       "point3": "The same features as an installed copy",
       "cta": "Create a free account",
@@ -94,7 +96,7 @@
     }
   },
   "install": {
-    "kicker": "03 / INSTALL",
+    "kicker": "04 / INSTALL",
     "title": "One command. Three steps.",
     "step1Title": "Paste the command",
     "step1Text": "It installs Docker if it is missing, downloads orgtable and generates random secrets.",
@@ -114,5 +116,19 @@
     "log4": "[orgtable] Done! Open http://your-server:3000",
     "readFirst": "Rather read it before running it? Good call: <link>install.sh</link> is short.",
     "guide": "Full guide: <link>self-hosting</link>."
+  },
+  "teams": {
+    "kicker": "02 / FOR TEAMS AND COMPANIES",
+    "title": "Your company gets its own address.",
+    "intro": "Register your organization, create your employees' accounts and give each one a role. Every board lives at an address you can share.",
+    "urlLabel": "Example address of a company board",
+    "urlCompany": "your-company",
+    "urlBoard": "roadmap",
+    "rolesTitle": "Roles that cannot be stretched",
+    "owner": "<b>Owner</b>: the organization's name, address, admins and deletion.",
+    "admin": "<b>Admin</b>: creates and removes members and manages every board.",
+    "member": "<b>Member</b>: works on the boards shared with the organization.",
+    "private": "Private boards stay between their members and the organization's admins. Each organization only sees its own data.",
+    "cta": "Register your company for free"
   }
 }

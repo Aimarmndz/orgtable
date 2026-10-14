@@ -1,5 +1,5 @@
 import { verifySession } from "@/app/lib/dal";
-import { prisma } from "@/app/lib/prisma";
+import { effectiveBoardRole } from "@/app/lib/access";
 import { subscribeBoard, type BoardEvent } from "@/app/lib/realtime/bus";
 import { createSseResponse, isSessionActive } from "@/app/lib/realtime/sse";
 
@@ -17,16 +17,14 @@ export async function GET(
 ) {
   const { id: boardId } = await params;
 
-  // Authorization: valid session + board membership. HTTP status codes (no redirect)
+  // Authorization: valid session + access to the board (app/lib/access.ts). HTTP status codes (no redirect)
   // because this is a data connection, not a navigation.
   const session = await verifySession();
   if (!session) return new Response("Unauthorized", { status: 401 });
   const { userId, sessionId } = session;
-  const membership = await prisma.boardMember.findUnique({
-    where: { boardId_userId: { boardId, userId } },
-    select: { boardId: true },
-  });
-  if (!membership) return new Response("Forbidden", { status: 403 });
+  if (!(await effectiveBoardRole(boardId, userId))) {
+    return new Response("Forbidden", { status: 403 });
+  }
 
   return createSseResponse({
     signal: request.signal,
@@ -35,15 +33,11 @@ export async function GET(
       subscribeBoard(boardId, (event: BoardEvent) => {
         send(`event: change\ndata: ${JSON.stringify(event)}\n\n`);
       }),
-    // On every heartbeat: if the session was revoked or the person is no longer a member,
-    // the stream is cut (ADR 0008: revocation is immediate, real time included).
+    // On every heartbeat: if the session was revoked or the person lost access (removed
+    // from the board or its workspace, workspace suspended), the stream is cut (ADR 0008: revocation is immediate, real time included).
     isStillAuthorized: async () => {
       if (!(await isSessionActive(sessionId))) return false;
-      const stillMember = await prisma.boardMember.findUnique({
-        where: { boardId_userId: { boardId, userId } },
-        select: { boardId: true },
-      });
-      return stillMember !== null;
+      return (await effectiveBoardRole(boardId, userId)) !== null;
     },
   });
 }

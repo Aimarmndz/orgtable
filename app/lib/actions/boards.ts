@@ -5,9 +5,16 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/app/lib/prisma";
 import { revalidateBoard } from "@/app/lib/realtime/notify";
 import { requireUser, requireBoardAccess } from "@/app/lib/dal";
+import { effectiveBoardRole } from "@/app/lib/access";
 import { canManageBoard } from "@/app/lib/roles";
+import { boardPath } from "@/app/lib/slugs";
+import { createBoardWithSlug, freeBoardSlug } from "@/app/lib/services/workspaces";
 import { recordAudit } from "@/app/lib/audit";
-import { boardTitleSchema, boardImportSchema } from "@/app/lib/validators";
+import {
+  boardTitleSchema,
+  boardImportSchema,
+  boardVisibilitySchema,
+} from "@/app/lib/validators";
 import { positionAtEnd } from "@/app/lib/ordering";
 import { deleteBoardWithAttachments } from "@/app/lib/services/attachments";
 import { getI18n } from "@/app/i18n/server";
@@ -15,20 +22,41 @@ import { fmt } from "@/app/i18n/format";
 
 const IMPORT_MAX_MB = 5;
 
+/**
+ * The workspace a new board goes to: the one in the form if the user is a member of it
+ * (any member may create boards; a suspended workspace takes none), else their personal
+ * one. Null if the requested one is not allowed.
+ */
+async function targetWorkspace(userId: string, requested: FormDataEntryValue | null) {
+  const where =
+    typeof requested === "string" && requested !== ""
+      ? { id: requested, members: { some: { userId } } }
+      : { personalOwnerId: userId };
+  return prisma.workspace.findFirst({
+    where: { ...where, suspendedAt: null },
+    select: { id: true, slug: true },
+  });
+}
+
 export async function createBoard(formData: FormData): Promise<void> {
   const user = await requireUser();
   const parsed = boardTitleSchema.safeParse(formData.get("title"));
   if (!parsed.success) return;
+  const workspace = await targetWorkspace(user.id, formData.get("workspaceId"));
+  if (!workspace) return;
 
-  // The creator is the owner and, at the same time, an OWNER member of the board
-  // (authorisation is always checked against board_members).
-  const board = await prisma.board.create({
-    data: {
-      title: parsed.data,
-      ownerId: user.id,
-      members: { create: { userId: user.id, role: "OWNER" } },
-    },
-  });
+  // The creator is the owner and, at the same time, an OWNER member of the board.
+    const board = await createBoardWithSlug(workspace.id, parsed.data, (slug) =>
+    prisma.board.create({
+      data: {
+        title: parsed.data,
+        ownerId: user.id,
+        workspaceId: workspace.id,
+        slug,
+        members: { create: { userId: user.id, role: "OWNER" } },
+      },
+    }),
+  );
   await recordAudit({
     action: "board.created",
     userId: user.id,
@@ -37,7 +65,7 @@ export async function createBoard(formData: FormData): Promise<void> {
     detail: board.title,
   });
   revalidatePath("/boards");
-  redirect(`/board/${board.id}`);
+  redirect(boardPath(workspace.slug, board.slug));
 }
 
 export async function renameBoard(formData: FormData): Promise<void> {
@@ -47,9 +75,40 @@ export async function renameBoard(formData: FormData): Promise<void> {
   const parsed = boardTitleSchema.safeParse(formData.get("title"));
   if (!parsed.success) return;
 
+  // The slug follows the title; the board's id keeps working in URLs and redirects to it.
+  const current = await prisma.board.findUnique({
+    where: { id: boardId },
+    select: { workspaceId: true },
+  });
+  if (!current) return;
   await prisma.board.update({
     where: { id: boardId },
-    data: { title: parsed.data },
+    data: {
+      title: parsed.data,
+      slug: await freeBoardSlug(prisma, current.workspaceId, parsed.data, boardId),
+    },
+  });
+  revalidateBoard(boardId);
+}
+
+/** Who besides its members sees an organization board: the whole workspace, or nobody. */
+export async function setBoardVisibility(formData: FormData): Promise<void> {
+  const boardId = String(formData.get("boardId"));
+  const { user, role } = await requireBoardAccess(boardId);
+  if (!canManageBoard(role)) return;
+  const parsed = boardVisibilitySchema.safeParse(formData.get("visibility"));
+  if (!parsed.success) return;
+  const { count } = await prisma.board.updateMany({
+    where: { id: boardId, visibility: { not: parsed.data } },
+    data: { visibility: parsed.data },
+  });
+  if (count === 0) return;
+  await recordAudit({
+    action: "board.visibility_changed",
+    userId: user.id,
+    targetType: "board",
+    targetId: boardId,
+    detail: parsed.data,
   });
   revalidateBoard(boardId);
 }
@@ -67,6 +126,8 @@ export async function importBoard(
 ): Promise<ImportState> {
   const user = await requireUser();
   const { m } = await getI18n();
+  const workspace = await targetWorkspace(user.id, formData.get("workspaceId"));
+  if (!workspace) return { error: m.errors.workspaces.forbidden };
 
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
@@ -92,6 +153,7 @@ export async function importBoard(
   const background = b.background ?? null;
 
   let newBoardId = "";
+  let newBoardSlug = "";
   await prisma.$transaction(
     async (tx) => {
       const board = await tx.board.create({
@@ -99,10 +161,13 @@ export async function importBoard(
           title: b.title,
           background,
           ownerId: user.id,
+          workspaceId: workspace.id,
+          slug: await freeBoardSlug(tx, workspace.id, b.title),
           members: { create: { userId: user.id, role: "OWNER" } },
         },
       });
       newBoardId = board.id;
+      newBoardSlug = board.slug;
 
       // Labels: one per name (duplicates are ignored); colour sanitised by the schema.
       const labelIdByName = new Map<string, string>();
@@ -183,15 +248,18 @@ export async function importBoard(
     detail: `import: ${b.title}`,
   });
   revalidatePath("/boards");
-  redirect(`/board/${newBoardId}`);
+  redirect(boardPath(workspace.slug, newBoardSlug));
 }
 
 export async function deleteBoard(formData: FormData): Promise<void> {
   const user = await requireUser();
   const boardId = String(formData.get("boardId"));
-  // Only the owner can delete the board (deleteMany does not fail if nothing matches). The
-  // service also deletes the attachment files.
-  const count = await deleteBoardWithAttachments({ id: boardId, ownerId: user.id });
+  // Whoever manages the board: its owner, or the owners and admins of its organization
+  // (app/lib/access.ts). Without that role nothing happens. The service also deletes the
+  // attachment files.
+  const role = await effectiveBoardRole(boardId, user.id);
+  const count =
+    role && canManageBoard(role) ? await deleteBoardWithAttachments({ id: boardId }) : 0;
   if (count > 0) {
     await recordAudit({
       action: "board.deleted",

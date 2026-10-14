@@ -18,7 +18,10 @@
     "importToggle": "Import a board from JSON",
     "emptyTitle": "You don't have any boards yet",
     "emptyText": "Create your first one with the field above and start organizing your work in lists and cards.",
-    "cardCount": { "one": "{count} card", "other": "{count} cards" },
+    "cardCount": {
+      "one": "{count} card",
+      "other": "{count} cards"
+    },
     "sharedWith": {
       "one": ", shared with {count} person: {names}",
       "other": ", shared with {count} people: {names}"
@@ -108,7 +111,8 @@
     "invite": "Invite",
     "inviting": "Adding…",
     "roleOf": "Role of {name}",
-    "remove": "Remove {name}"
+    "remove": "Remove {name}",
+    "viaWorkspace": "through the organization"
   },
   "cardModal": {
     "labels": "Labels",

@@ -54,6 +54,8 @@ type BoardRow = {
 export function serializeBoardSummary(b: {
   id: string;
   title: string;
+  slug: string;
+  workspace: { slug: string };
   background: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -61,6 +63,9 @@ export function serializeBoardSummary(b: {
   return {
     id: b.id,
     title: b.title,
+    // Where the board lives in the web app: /<workspace>/<slug>.
+    workspace: b.workspace.slug,
+    slug: b.slug,
     background: b.background,
     createdAt: b.createdAt.toISOString(),
     updatedAt: b.updatedAt.toISOString(),

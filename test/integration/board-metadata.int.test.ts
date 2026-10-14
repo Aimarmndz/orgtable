@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterAll } from "vitest";
-import { generateMetadata } from "@/app/(app)/board/[id]/page";
+import { generateMetadata } from "@/app/(app)/[workspace]/[board]/page";
 import {
   resetDb,
   disconnect,
@@ -12,8 +12,9 @@ import {
 } from "./helpers";
 import { cookies } from "next/headers";
 
+// The board is named by id in the URL (/<workspace>/<id>): the page resolves it like a slug.
 function metadataFor(boardId: string) {
-  return generateMetadata({ params: Promise.resolve({ id: boardId }) });
+  return generateMetadata({ params: Promise.resolve({ workspace: "any", board: boardId }) });
 }
 
 beforeEach(async () => {

@@ -13,7 +13,7 @@ import {
 } from "@/app/lib/services/account";
 import { recordAudit } from "@/app/lib/audit";
 import { getI18n, issueMessage } from "@/app/i18n/server";
-import { plural } from "@/app/i18n/format";
+import { fmt, plural } from "@/app/i18n/format";
 import {
   changePasswordSchema,
   deleteAccountSchema,
@@ -181,6 +181,11 @@ export async function deleteAccount(
     }
     if (result.error === "last_admin") {
       return { error: m.errors.account.lastAdmin };
+    }
+    if (result.error === "sole_owner") {
+      return {
+        error: fmt(m.errors.account.soleOwner, { organizations: result.organizations.join(", ") }),
+      };
     }
     redirect("/login");
   }

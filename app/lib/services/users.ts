@@ -2,6 +2,11 @@ import "server-only";
 import { prisma } from "@/app/lib/prisma";
 import { hashPassword } from "@/app/lib/auth";
 import type { GlobalRole } from "@/app/lib/roles";
+import {
+  createPersonalWorkspace,
+  prepareAccountDeletion,
+  soleOwnedOrganizations,
+} from "@/app/lib/services/workspaces";
 
 // User account business logic, WITHOUT request context (cookies/session), authorization
 // or auditing: the Server Actions that call it handle those (app/lib/actions/admin.ts,
@@ -26,7 +31,8 @@ export type CreateUserResult =
 /**
  * Creates an account: lowercases the email, rejects duplicates and ALWAYS stores the
  * password hashed (bcrypt, never in plain text). Email uniqueness is also enforced by
- * the column's unique index.
+ * the column's unique index. The account's personal workspace (its handle, the first
+ * segment of its board URLs) is created in the same transaction.
  */
 export async function createUserAccount(
   input: NewUserInput,
@@ -41,16 +47,20 @@ export async function createUserAccount(
 
   const passwordHash = await hashPassword(input.password);
   try {
-    const user = await prisma.user.create({
-      data: {
-        email,
-        name: input.name,
-        passwordHash,
-        role: input.role,
-        termsAcceptedAt: input.termsAcceptedAt ?? null,
-        locale: input.locale ?? null,
-      },
-      select: { id: true, email: true },
+    const user = await prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          email,
+          name: input.name,
+          passwordHash,
+          role: input.role,
+          termsAcceptedAt: input.termsAcceptedAt ?? null,
+          locale: input.locale ?? null,
+        },
+        select: { id: true, email: true, name: true },
+      });
+      await createPersonalWorkspace(tx, created);
+      return { id: created.id, email: created.email };
     });
     return { ok: true, user };
   } catch (e) {
@@ -106,7 +116,7 @@ export async function resetPasswordAndRevokeAccess(
 
 export type DeleteUserResult =
   | { ok: true }
-  | { ok: false; error: "not_found" | "owns_boards" };
+  | { ok: false; error: "not_found" | "owns_boards" | "sole_owner" };
 
 /**
  * Deletes an account that owns NO boards. The condition lives in the DELETE itself
@@ -118,9 +128,16 @@ export type DeleteUserResult =
 export async function deleteUserAccount(
   userId: string,
 ): Promise<DeleteUserResult> {
-  const { count } = await prisma.user.deleteMany({
-    where: { id: userId, boards: { none: {} } },
+    // Organizations: the same rules as deleting one's own account (services/workspaces.ts),
+  // so an administrator cannot leave an organization without an owner either.
+  const prepared = await prepareAccountDeletion(userId);
+  if (!prepared.ok) return { ok: false, error: "sole_owner" };
+  const count = await prisma.$transaction(async (tx) => {
+    if ((await soleOwnedOrganizations(tx, userId)).length > 0) return -1;
+    const deleted = await tx.user.deleteMany({ where: { id: userId, boards: { none: {} } } });
+    return deleted.count;
   });
+  if (count === -1) return { ok: false, error: "sole_owner" };
   if (count > 0) return { ok: true };
   const exists = await prisma.user.findUnique({
     where: { id: userId },

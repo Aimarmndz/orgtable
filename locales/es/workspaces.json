@@ -1,0 +1,87 @@
+{
+  "kind": {
+    "PERSONAL": "Personal",
+    "ORGANIZATION": "Organización"
+  },
+  "roles": {
+    "OWNER": "Propietario",
+    "ADMIN": "Administrador",
+    "MEMBER": "Miembro"
+  },
+  "roleHelp": {
+    "OWNER": "Todo, incluido el nombre, la dirección, los administradores y el borrado de la organización.",
+    "ADMIN": "Crea y expulsa miembros y gestiona todos los tableros.",
+    "MEMBER": "Crea tableros y trabaja en los tableros compartidos con la organización."
+  },
+  "dashboard": {
+    "personalTitle": "Tus tableros",
+    "sharedTitle": "Compartidos contigo",
+    "sharedText": "Tableros de otros espacios en los que alguien te ha añadido.",
+    "createIn": "Crear en",
+    "openWorkspace": "Abrir {name}",
+    "noBoards": "Aún no hay tableros aquí."
+  },
+  "createOrg": {
+    "toggle": "Crear una organización",
+    "intro": "Un espacio gratis para tu empresa o equipo: crea las cuentas de tus empleados y comparte tableros con todos.",
+    "name": "Nombre de la organización",
+    "slug": "Dirección",
+    "slugHint": "Tus tableros estarán en /{slug}/nombre-del-tablero. Minúsculas, números y guiones.",
+    "submit": "Crear organización"
+  },
+  "page": {
+    "settings": "Ajustes y miembros",
+    "yourRole": "Tu rol: {role}",
+    "guest": "Ves los tableros que alguien ha compartido contigo.",
+    "suspendedTitle": "Este espacio está suspendido",
+    "suspendedText": "Sus tableros no se pueden abrir hasta que la administración del servicio levante la suspensión. Motivo: {reason}",
+    "noReason": "no indicado",
+    "boardsTitle": "Tableros",
+    "empty": "Aún no hay tableros. Crea el primero arriba."
+  },
+  "members": {
+    "title": "Miembros",
+    "count": {
+      "one": "{count} miembro",
+      "other": "{count} miembros"
+    },
+    "you": "tú",
+    "managed": "Cuenta creada por esta organización",
+    "changeRole": "Rol de {name}",
+    "save": "Cambiar",
+    "remove": "Expulsar",
+    "removeLabel": "Expulsar a {name} de la organización",
+    "leave": "Salir de la organización",
+    "leaveHint": "Perderás el acceso a sus tableros. Pueden volver a añadirte más adelante.",
+    "createTitle": "Crear una cuenta de empleado",
+    "createText": "La cuenta es de la persona; esta organización puede restablecer su contraseña o expulsarla. Dale el email y la contraseña que pongas: puede cambiar la contraseña en sus ajustes.",
+    "name": "Nombre",
+    "email": "Email",
+    "password": "Contraseña inicial",
+    "role": "Rol",
+    "create": "Crear cuenta",
+    "created": "Cuenta creada. Dale a la persona su email y su contraseña inicial.",
+    "resetTitle": "Nueva contraseña para {name}",
+    "resetSubmit": "Poner contraseña",
+    "passwordReset": "Contraseña cambiada. Se han cerrado sus sesiones y sus tokens de la API."
+  },
+  "settings": {
+    "metaTitle": "Ajustes de {name}",
+    "title": "Ajustes de la organización",
+    "name": "Nombre",
+    "slug": "Dirección",
+    "save": "Guardar",
+    "ownerOnly": "Solo las personas propietarias pueden cambiar el nombre, la dirección o borrar la organización.",
+    "deleteTitle": "Borrar la organización",
+    "deleteText": "Borra la organización con todos sus tableros, listas, tarjetas y adjuntos. Las cuentas de los empleados se quedan, sin la organización. No se puede deshacer.",
+    "deleteConfirm": "Escribe {slug} para confirmar",
+    "deleteSubmit": "Borrar organización",
+    "deleteConfirmMismatch": "Escribe exactamente la dirección de la organización para confirmar."
+  },
+  "visibility": {
+    "label": "Quién lo ve",
+    "WORKSPACE": "Toda la organización",
+    "PRIVATE": "Solo sus miembros y la administración de la organización",
+    "save": "Guardar"
+  }
+}
