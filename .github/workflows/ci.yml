@@ -110,3 +110,9 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      # Builds the production image from the committed tree only, as a deployment does.
+      # A path the Dockerfile copies but git does not track (an empty public/ only
+      # exists on a developer's machine) breaks the deploy and not the steps above.
+      - name: Docker image
+        run: docker build --tag orgtable:ci .
