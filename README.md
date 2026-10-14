@@ -27,16 +27,20 @@ in real time, with your data wherever you decide. A Trello alternative you can h
 
 ## What it is
 
-orgtable is a Kanban board app. Use it on a public instance with free sign-up, or run your
-own on any server with Docker in a single command.
-<!-- TODO: link the official public instance URL here once it is published; Aimar decides
-it. -->
+orgtable is a Kanban board app, free for people and companies. Use it at
+**[orgtable.aimar.dev](https://orgtable.aimar.dev)**: sign up yourself or register your
+organization, create your employees' accounts and share boards at addresses like
+`orgtable.aimar.dev/your-company/roadmap`. Or run your own copy on any server with Docker in a
+single command.
 
 - 🗂️ **Boards, lists and cards** with drag and drop, by mouse and by keyboard. Cards have
   labels, due dates, checklists, attachments, assignees and comments.
 - ⚡ **Real time.** What one person moves, everyone else sees instantly, without reloading.
 - 👥 **Teams.** Per-board roles (owner, editor and viewer), notifications and due-date
   reminders.
+- 🏢 **Organizations, free.** Register your company, create your employees' accounts with
+  owner, admin and member roles, and give every board an address:
+  `/<workspace>/<board>`. See [`docs/workspaces.md`](./docs/workspaces.md).
 - 🔎 **Search, filters and a calendar view**, where you drag cards to change their due date.
 - 🔌 **REST API** with personal tokens, read-only or read-write, with optional expiry.
 - 🔐 **Optional open sign-up and GDPR built in.** Legal pages adapt to each instance, and

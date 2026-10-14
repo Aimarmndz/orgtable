@@ -30,16 +30,20 @@ en tiempo real y con tus datos donde tú decidas. Una alternativa a Trello que p
 
 ## Qué es
 
-orgtable es una aplicación de tableros Kanban. Puedes usarla en una instancia pública con
-registro gratuito o levantar la tuya en cualquier servidor con Docker, con un solo comando.
-<!-- TODO: link the official public instance URL here once it is published; Aimar decides
-it. -->
+orgtable es una aplicación de tableros Kanban, gratis para personas y empresas. Úsala en
+**[orgtable.aimar.dev](https://orgtable.aimar.dev)**: regístrate tú o registra tu
+organización, crea las cuentas de tus empleados y comparte tableros en direcciones como
+`orgtable.aimar.dev/tu-empresa/hoja-de-ruta`. O levanta tu propia copia en cualquier servidor
+con Docker, con un solo comando.
 
 - 🗂️ **Tableros, listas y tarjetas** con arrastrar y soltar, con ratón y con teclado.
   Cada tarjeta tiene etiquetas, vencimiento, checklists, adjuntos, asignados y comentarios.
 - ⚡ **Tiempo real.** Lo que mueve una persona lo ven las demás al instante, sin recargar.
 - 👥 **Equipos.** Roles por tablero (propietario, editor y lector), notificaciones y
   recordatorios de vencimiento.
+- 🏢 **Organizaciones, gratis.** Registra tu empresa, crea las cuentas de tus empleados con
+  roles de propietario, administrador y miembro, y dale a cada tablero una dirección:
+  `/<espacio>/<tablero>`. Ver [`docs/workspaces.md`](./docs/workspaces.md).
 - 🔎 **Búsqueda, filtros y calendario**, este último con arrastre para cambiar fechas.
 - 🔌 **API REST** con tokens personales, de solo lectura o de escritura, con caducidad
   opcional.
