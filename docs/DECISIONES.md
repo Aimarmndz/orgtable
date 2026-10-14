@@ -8,6 +8,34 @@ arquitectura anteriores a este registro (ADR 0001–0015) siguen en
 
 ---
 
+## 2026-10-14 — Next 16.3.8 and patched sharp and source-map-js
+
+**Context.** Running the CI locally before pushing, `pnpm audit --prod --audit-level high`
+failed on three new advisories published after the last review:
+
+- GHSA-cjq9-62q9-8jv4: SSRF in Next's image optimization (`next` < 16.3.8);
+- GHSA-wq5f-xc86-pv6w: `sharp` < 0.35.5, through `next`;
+- GHSA-68fv-2mgg-jv7q: `source-map-js` < 1.2.2, through `postcss`.
+
+The same step would also fail on `main`.
+
+**Decision.**
+- Bump `next` and `eslint-config-next` to 16.3.8. These are patch releases.
+- Add two `overrides` in `pnpm-workspace.yaml`: `sharp@<0.35.5` and
+  `source-map-js@<1.2.2`. Even with next 16.3.8, the lockfile kept the old transitive
+  versions although the ranges allow the patched ones.
+
+**Alternatives considered.**
+- **next 16.4.x.** A minor release with more changes than a security fix needs. It goes in
+  its own commit after reading its changelog.
+- **Ignoring the advisories.** The Next.js one affects any deployment that serves images.
+
+**Consequences.** `pnpm audit --prod --audit-level high` passes again; only the
+previously documented ignored advisory remains. Remove the two overrides once next ships
+the patched versions itself.
+
+---
+
 ## 2026-10-14 — Icono propio, robots.txt según la instancia y Open Graph
 
 **Contexto.** El favicon era el triángulo por defecto de la plantilla de Next y `public/`
