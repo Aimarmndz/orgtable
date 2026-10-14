@@ -16,8 +16,8 @@
   --color-accent-ink: var(--accent-ink);
   --color-danger: var(--danger);
   --color-success: var(--success);
-  --font-sans: var(--font-satoshi);
-  --font-display: var(--font-cabinet);
+  --font-sans: var(--font-figtree);
+  --font-display: var(--font-bricolage);
   --font-mono: var(--font-geist-mono);
 }
 
@@ -67,7 +67,7 @@ body {
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
-/* Titulares con la display (Cabinet Grotesk): carácter editorial, tracking ceñido.
+/* Titulares con la display (Bricolage Grotesque): carácter editorial, tracking ceñido.
    Se aplica con la utilidad `font-display`; aquí solo afinamos el render. */
 .font-display {
   font-feature-settings: "ss01";

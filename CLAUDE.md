@@ -89,8 +89,9 @@ observabilidad, backups.
   escritas a mano se aplican con `migrate deploy`; al haber BD, `migrate dev` no detecta
   deriva porque coinciden esquema y SQL.
 - **Rediseño visual (Editorial cálido)**: el cromo pasó de "Trello colorido" a una
-  estética editorial cálida (arena/papel/espresso + acento terracota). Fuentes Cabinet
-  Grotesk + Satoshi auto-alojadas en `app/fonts` (Fontshare, vía `next/font/local`).
+  estética editorial cálida (arena/papel/espresso + acento terracota). Fuentes OFL
+  Bricolage Grotesque + Figtree + Geist Mono vía `next/font/google` (las de Fontshare se
+  quitaron el 2026-10-14: su licencia no permite redistribuirlas en un repo público).
   Solo presentación; sin cambios de lógica. Tokens en `app/globals.css`; ver `DESIGN.md`.
 - **Hito 6 (búsqueda)**: `searchForUser` en `app/lib/queries.ts` (ILIKE acotado por
   acceso), página `/search`, caja en la navbar (`app/components/search-box.tsx`) y

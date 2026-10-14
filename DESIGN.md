@@ -42,12 +42,17 @@ columnas son papel con un punto de translucidez (`bg-column/95`) y las tarjetas 
 
 ## Typography
 
-Dos familias con carácter (auto-alojadas en `app/fonts`, Fontshare; ver `app/layout.tsx`):
+Dos familias con carácter, ambas con licencia **SIL OFL 1.1** (Google Fonts). `next/font`
+las descarga en el build y las sirve desde la propia app (ver `app/layout.tsx`):
 
-- **Cabinet Grotesk** (`--font-display`, utilidad `font-display`): titulares y la marca.
-  Tracking ceñido (`tracking-tight`), pesos 700–900. Jerarquía por peso y color, no por
-  tamaños desmedidos.
-- **Satoshi** (`--font-sans`): interfaz y cuerpo, pesos 400/500/700.
+- **Bricolage Grotesque** (`--font-display`, utilidad `font-display`): titulares y la
+  marca. Tracking ceñido (`tracking-tight`), pesos 700–800. Jerarquía por peso y color, no
+  por tamaños desmedidos.
+- **Figtree** (`--font-sans`): interfaz y cuerpo, pesos 400/500/600/700.
+
+Solo se admiten fuentes que se puedan redistribuir con el código (OFL o similar): el
+repositorio es público y AGPL. Satoshi y Cabinet Grotesk (Fontshare, ITF FFL) se
+quitaron por eso.
 - **Geist Mono** (`--font-mono`): números tabulares, metadatos, contadores.
 
 Banned: Inter y serifas genéricas. Escala fija en rem, ratio ~1.2. `text-wrap: balance`
@@ -56,10 +61,10 @@ columna y de sección).
 
 | Token | Tamaño / peso / familia | Uso |
 |-------|-------------------------|-----|
-| Display de página | 1.875–3rem / 700–800 / Cabinet | "Tus tableros", título de tablero, login |
-| Subtítulo | 1.25rem / 700 / Cabinet | Título de modal |
-| Cuerpo | 0.875rem / 400–500 / Satoshi | Texto de tarjeta, formularios |
-| Micro-etiqueta | 0.625–0.75rem / 600 / Satoshi (mayús.) | Cabeceras de columna/sección |
+| Display de página | 1.875–3rem / 700–800 / Bricolage | "Tus tableros", título de tablero, login |
+| Subtítulo | 1.25rem / 700 / Bricolage | Título de modal |
+| Cuerpo | 0.875rem / 400–500 / Figtree | Texto de tarjeta, formularios |
+| Micro-etiqueta | 0.625–0.75rem / 600 / Figtree (mayús.) | Cabeceras de columna/sección |
 
 ## Components
 

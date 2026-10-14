@@ -8,6 +8,38 @@ arquitectura anteriores a este registro (ADR 0001–0015) siguen en
 
 ---
 
+## 2026-10-14 — Fuentes OFL en lugar de las de Fontshare
+
+**Contexto.** La interfaz usaba Satoshi y Cabinet Grotesk, de Fontshare, con los
+`.woff2` dentro del repo (`app/fonts`). Su licencia, la ITF Free Font License 2.0
+(leída del `FFL.txt` que viene en la descarga oficial), prohíbe distribuir los ficheros
+«through another […] repository […] publicly accessible servers» y darlos a terceros.
+Publicar el repo bajo AGPL, y que otros levanten su propia instancia, es justo eso.
+
+**Decisión.** Se sustituyen por **Bricolage Grotesque** (titulares) y **Figtree**
+(interfaz), las dos con licencia SIL OFL 1.1, cargadas con `next/font/google` como ya se
+hacía con Geist Mono. Next las descarga en el build y las sirve desde la propia app: en
+runtime no hay peticiones a Google y la CSP no cambia. Se borra `app/fonts`. Las elegí
+por cercanía al carácter anterior: una grotesca display con personalidad editorial y una
+sans geométrica cálida para el cuerpo. Se probaron antes en el lienzo de diseño.
+
+**Alternativas descartadas.**
+- **Mantener Fontshare cargando las fuentes desde su API.** La licencia también prohíbe
+  ponerlas a disposición de terceros desde un servicio, y añadiría un CDN externo a una
+  app pensada para alojarse sin dependencias.
+- **Copiar los `.woff2` OFL al repo.** Funciona igual, pero `next/font/google` ya estaba
+  en uso y evita mantener ficheros binarios.
+
+**Consecuencias.**
+- El build de Docker necesita salida a internet para descargar las fuentes. Ya la
+  necesitaba por Geist Mono, así que no cambia nada.
+- Los commits anteriores siguen conteniendo los `.woff2` de Fontshare. Si el repositorio
+  se hace público con todo su historial, esos ficheros quedan accesibles. Quitarlos
+  exige reescribir el historial (`git filter-repo`) y forzar el push. Eso es destructivo
+  y lo decide el propietario.
+
+---
+
 ## 2026-10-14 — Licencia AGPL-3.0-or-later con atribución
 
 **Contexto.** El propietario quiere publicar orgtable como código abierto: que cualquiera

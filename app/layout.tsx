@@ -1,31 +1,25 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import localFont from "next/font/local";
-import { Geist_Mono } from "next/font/google";
+import { Bricolage_Grotesque, Figtree, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-// Satoshi (Fontshare) — sans de interfaz y cuerpo. Auto-alojada en app/fonts para no
-// depender de ningún CDN en runtime (instancia self-hosted). Ver DESIGN.md.
-const satoshi = localFont({
-  variable: "--font-satoshi",
+// Todas las fuentes son OFL (Google Fonts). next/font las descarga en el build y las sirve
+// desde la propia app: en runtime no se pide nada a ningún CDN. Las anteriores (Satoshi y
+// Cabinet Grotesk, de Fontshare) prohíben redistribuir los ficheros en un repositorio
+// público, incompatible con publicar el código bajo AGPL. Ver DESIGN.md.
+
+// Figtree — sans de interfaz y cuerpo.
+const figtree = Figtree({
+  variable: "--font-figtree",
+  subsets: ["latin", "latin-ext"],
   display: "swap",
-  src: [
-    { path: "./fonts/Satoshi-400.woff2", weight: "400", style: "normal" },
-    { path: "./fonts/Satoshi-500.woff2", weight: "500", style: "normal" },
-    { path: "./fonts/Satoshi-700.woff2", weight: "700", style: "normal" },
-    { path: "./fonts/Satoshi-900.woff2", weight: "900", style: "normal" },
-  ],
 });
 
-// Cabinet Grotesk (Fontshare) — display para titulares con carácter editorial.
-const cabinet = localFont({
-  variable: "--font-cabinet",
+// Bricolage Grotesque — display para titulares y la marca, con carácter editorial.
+const bricolage = Bricolage_Grotesque({
+  variable: "--font-bricolage",
+  subsets: ["latin", "latin-ext"],
   display: "swap",
-  src: [
-    { path: "./fonts/CabinetGrotesk-700.woff2", weight: "700", style: "normal" },
-    { path: "./fonts/CabinetGrotesk-800.woff2", weight: "800", style: "normal" },
-    { path: "./fonts/CabinetGrotesk-900.woff2", weight: "900", style: "normal" },
-  ],
 });
 
 // Geist Mono — solo para números tabulares, metadatos y detalles técnicos.
@@ -57,7 +51,7 @@ export default async function RootLayout({
     <html
       lang="es"
       suppressHydrationWarning
-      className={`${satoshi.variable} ${cabinet.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${figtree.variable} ${bricolage.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeScript }} />

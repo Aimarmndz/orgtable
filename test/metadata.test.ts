@@ -11,8 +11,11 @@ vi.mock("@/app/lib/dal", () => ({
 }));
 vi.mock("@/app/(auth)/login/login-form", () => ({ LoginForm: () => null }));
 vi.mock("@/app/setup/setup-form", () => ({ SetupForm: () => null }));
-vi.mock("next/font/local", () => ({ default: () => ({ variable: "" }) }));
-vi.mock("next/font/google", () => ({ Geist_Mono: () => ({ variable: "" }) }));
+vi.mock("next/font/google", () => ({
+  Bricolage_Grotesque: () => ({ variable: "" }),
+  Figtree: () => ({ variable: "" }),
+  Geist_Mono: () => ({ variable: "" }),
+}));
 
 /** Aplica la plantilla de título del layout raíz al título de una página. */
 function resolveTitle(root: Metadata, page: Metadata): string {
