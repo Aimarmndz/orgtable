@@ -8,6 +8,48 @@ arquitectura anteriores a este registro (ADR 0001–0015) siguen en
 
 ---
 
+## 2026-10-14 — Licencia AGPL-3.0-or-later con atribución
+
+**Contexto.** El propietario quiere publicar orgtable como código abierto: que cualquiera
+pueda usarlo, modificarlo y alojarlo, siempre que lo mantenga abierto y le dé crédito. Hasta
+ahora regía la licencia propietaria de MARA-KASSA SL (ADR 0016). El repositorio se
+transfirió el mismo día a la cuenta personal `Aimarmndz`.
+
+**Decisión.** `LICENSE` pasa a ser el texto oficial de la GNU AGPL-3.0 (descargado de
+gnu.org, sin cambios) seguido de unos términos adicionales de la sección 7(b), los mismos
+que usa vibe-gambling, otro proyecto del autor:
+
+- Titular: «Aimar (https://github.com/Aimarmndz)», con la opción «or any later version».
+- Quien distribuya la app u ofrezca una versión modificada por red tiene que mantener
+  «Created by Aimar (github.com/Aimarmndz)» en el pie de las páginas públicas (login,
+  registro, páginas legales) y en «Acerca de» de los ajustes.
+- `package.json` declara `AGPL-3.0-or-later`. El paso de la CI que impedía mencionar la AGPL
+  ahora comprueba lo contrario: que `LICENSE` y `package.json` coinciden, que el término
+  de atribución sigue ahí y que no quedan restos de la licencia propietaria.
+- Contribuciones *inbound = outbound* con DCO (`git commit -s`), sin cesión de derechos.
+  Desaparece la cláusula de cesión, que además era de validez dudosa.
+
+**Alternativas descartadas.**
+- **MIT o Apache-2.0.** Dan crédito, pero no obligan a mantener abierto el código: un
+  tercero podría ofrecer orgtable como SaaS cerrado. Es lo que el propietario quiere evitar.
+- **GPL-3.0.** No cubre el uso por red: alojar una versión modificada sin distribuirla no
+  obligaría a publicar el código. La AGPL (sección 13) sí.
+- **AGPL sin términos 7(b).** El aviso de copyright ya se conserva en el código, pero
+  nada obligaría a que el crédito se viera en la interfaz de una instancia ajena.
+
+**Consecuencias.**
+- La AGPL obliga a que cada instancia ofrezca su código fuente a los usuarios por red. La
+  app enlaza al código desde el pie y desde los ajustes; quien modifique la app debe
+  apuntar ese enlace a su propio código (variable `ORGTABLE_SOURCE_URL`).
+- Las copias distribuidas mientras regía la licencia propietaria no cambian de licencia.
+  Desde ahora vale la AGPL para todo el historial que se publique.
+- Titularidad: la licencia anterior estaba a nombre de MARA-KASSA SL y la nueva a nombre
+  de Aimar, como pidió el propietario («dándome créditos»). Si la titularidad de los
+  derechos es de la sociedad, conviene dejar por escrito la cesión a Aimar o poner a la
+  sociedad como titular junto a la atribución. Lo decide el propietario.
+
+---
+
 ## 2026-09-24 — Flechas izquierda/derecha de una tarjeta con el teclado
 
 **Contexto.** Probando en el navegador el build final, una tarjeta cogida con Espacio no

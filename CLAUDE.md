@@ -55,7 +55,7 @@ observabilidad, backups.
 - ADR 0002 — Fractional indexing para el orden de listas/tarjetas.
 - ADR 0003 — Credenciales de BD en `.env`.
 - ADR 0004 — Sin Redis en el MVP (entra con tiempo real / rate-limiting).
-- ADR 0005 — Licencia inicial; sustituida por la ADR 0016.
+- ADR 0005 — Licencia inicial AGPL-3.0; histórica.
 - ADR 0006 — Autorización por rol con guardas explícitas (no `forbidden()`
   experimental). Roles de tablero OWNER/EDITOR/VIEWER en `app/lib/roles.ts`.
 - ADR 0007 — PostgreSQL `LISTEN/NOTIFY` (no Redis) para el pub/sub del tiempo real.
@@ -67,7 +67,8 @@ observabilidad, backups.
 - ADR 0013 — API pública con tokens personales hasheados (Bearer, reutiliza el RBAC).
 - ADR 0014 — Colaboración en la tarjeta: asignados (solo miembros) y comentarios (hilo plano, cascade).
 - ADR 0015 — Recordatorios de vencimiento por endpoint cron externo (secreto, sin scheduler en proceso).
-- ADR 0016 — Licencia propietaria (MARA-KASSA SL): la vigente es `LICENSE`.
+- ADR 0016 — Licencia propietaria (MARA-KASSA SL); histórica. Desde el 2026-10-14 la
+  vigente es AGPL-3.0-or-later con atribución 7(b) (`LICENSE`, ver `docs/DECISIONES.md`).
 
 ## Notas de hito
 

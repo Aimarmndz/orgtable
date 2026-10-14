@@ -219,10 +219,14 @@ Cuando dudes sobre cualquiera de estas APIs, la fuente de verdad es
 
 ## Licencia
 
-orgtable es software propietario de MARA-KASSA SL. Antes de contribuir, lee
-[`LICENSE`](../LICENSE): hacer una aportación implica aceptar el apartado «Cesión de
-derechos por aportaciones». El contexto de la decisión está en
-[ADR 0016](./decisions/0016-licencia-propietaria.md).
+orgtable es software libre bajo la **GNU AGPL-3.0-or-later** con un término adicional de
+atribución (sección 7(b)): ver [`LICENSE`](../LICENSE). Tus aportaciones se publican bajo
+esa misma licencia (*inbound = outbound*): no cedes la titularidad y no hay que firmar
+ningún acuerdo aparte.
+
+Cada commit lleva una línea `Signed-off-by` ([DCO](https://developercertificate.org/)):
+con ella certificas que tienes derecho a aportar ese código bajo la licencia del
+proyecto. Se añade sola con `git commit -s`.
 
 ---
 

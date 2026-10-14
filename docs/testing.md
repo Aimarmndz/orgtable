@@ -122,10 +122,10 @@ Cómo funcionan:
    CRON_SECRET=probe TRUSTED_PROXY_HOPS=7 ORGTABLE_TIMEZONE=Europe/Madrid docker compose config \
      | grep -E 'CRON_SECRET|TRUSTED_PROXY_HOPS|ORGTABLE_TIMEZONE'
    ```
-3. **Referencias de licencia**: un `git grep` falla si reaparece la licencia anterior
-   fuera de los archivos excluidos. La expresión y la lista de exclusiones están en el
-   paso «Check license references» de `ci.yml` (el porqué, en la ADR 0016); para
-   reproducirlo en local se copia de ahí.
+3. **Licencia**: comprueba que `package.json` declara `AGPL-3.0-or-later`, que `LICENSE`
+   es la AGPL con su término de atribución (sección 7(b)) y que no quedan restos de la
+   licencia propietaria fuera del registro histórico. Los comandos están en el paso
+   «Check license» de `ci.yml`; para reproducirlo en local se copian de ahí.
 
 Estos tres pasos corren antes de instalar pnpm y Node. Después, sobre Node 22 (pnpm llega
 con `pnpm/action-setup`, que lee `packageManager`):

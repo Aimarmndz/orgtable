@@ -11,13 +11,13 @@ correcciones de seguridad llegan a `main`. Mantén tu instalación al día con
 
 **No** abras un issue público para un problema de seguridad.
 
-<!-- TODO: falta el canal privado de reporte: un email de seguridad y el plazo de
-respuesta. El reporte privado de GitHub solo existe en repositorios públicos, así que
-no sirve si el repositorio es privado. Lo desbloquea el propietario (MARA-KASSA SL)
-decidiendo el email y el plazo. -->
+Usa el reporte privado de GitHub: pestaña **Security** del repositorio →
+**Report a vulnerability** ([enlace directo](https://github.com/Aimarmndz/orgtable/security/advisories/new)).
+Solo funciona cuando el repositorio es público; mientras sea privado, escribe al autor
+desde su perfil, [github.com/Aimarmndz](https://github.com/Aimarmndz).
 
-Mientras no haya un canal publicado, contacta directamente con el propietario del
-repositorio.
+<!-- TODO: plazo de respuesta comprometido. Lo decide Aimar; mientras tanto no se
+promete ninguno. -->
 
 Incluye, si puedes: la versión o el commit afectado, una descripción, los pasos para
 reproducirlo y el impacto.

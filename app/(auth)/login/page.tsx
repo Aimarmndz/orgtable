@@ -45,7 +45,6 @@ export default async function LoginPage() {
           </p>
         </div>
 
-        {/* Sin mención a la licencia: la vigente es propietaria (LICENSE). */}
         <p className="relative font-mono text-xs uppercase tracking-widest text-accent-ink/60">
           Kanban · Self-hosted
         </p>

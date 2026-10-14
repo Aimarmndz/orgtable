@@ -35,8 +35,7 @@ const geistMono = Geist_Mono({
 });
 
 // Cada página exporta su propio `title` y la plantilla le añade el nombre de la app, para
-// que cada ruta tenga un título distinto (WCAG 2.4.2). La descripción no menciona la
-// licencia: la vigente es la propietaria de LICENSE (ver docs/DECISIONES.md).
+// que cada ruta tenga un título distinto (WCAG 2.4.2).
 export const metadata: Metadata = {
   title: { template: "%s · orgtable", default: "orgtable" },
   description: "Tableros Kanban self-hosted, una alternativa a Trello",

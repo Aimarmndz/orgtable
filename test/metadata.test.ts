@@ -35,15 +35,12 @@ describe("metadatos de las páginas públicas", () => {
     expect(resolveTitle(root, setup)).toBe("Configuración inicial · orgtable");
   });
 
-  // La licencia vigente es la propietaria de LICENSE: la descripción no puede decir
-  // open source ni AGPL.
-  it("la descripción no menciona una licencia que no es la vigente", async () => {
+  it("la descripción del layout raíz describe el producto", async () => {
     const { metadata: root } = await import("@/app/layout");
     expect(root.description).toBe("Tableros Kanban self-hosted, una alternativa a Trello");
-    expect(root.description).not.toMatch(/open.?source|AGPL/i);
   });
 
-  it("la pantalla de login no menciona open source ni AGPL", async () => {
+  it("la pantalla de login presenta el producto", async () => {
     const dal = await import("@/app/lib/dal");
     vi.mocked(dal.isSetupComplete).mockResolvedValue(true);
     vi.mocked(dal.verifySession).mockResolvedValue(null);
@@ -51,6 +48,5 @@ describe("metadatos de las páginas públicas", () => {
 
     const html = renderToStaticMarkup(await LoginPage());
     expect(html).toContain("Tableros Kanban self-hosted");
-    expect(html).not.toMatch(/open.?source|AGPL/i);
   });
 });

@@ -54,15 +54,20 @@ jobs:
           grep -q 'TRUSTED_PROXY_HOPS: "7"' <<<"$config"
           grep -q 'ORGTABLE_TIMEZONE: Europe/Madrid' <<<"$config"
 
-      # La licencia vigente es la de LICENSE (ADR 0016). Falla si vuelve a aparecer la
-      # antigua (AGPL) u «open source» fuera del ADR sustituido, del registro de decisiones y
-      # del test que comprueba precisamente que no aparecen en la interfaz.
-      - name: Check license references
+      # La licencia vigente es AGPL-3.0-or-later con un término de atribución (sección
+      # 7(b)) al final de LICENSE (ver docs/DECISIONES.md, 2026-10-14). Falla si
+      # package.json y LICENSE dejan de coincidir, si se pierde el término de atribución o
+      # si reaparecen restos de la licencia propietaria fuera del registro histórico.
+      - name: Check license
         run: |
-          if git grep -n -E 'AGPL|[Oo]pen[ -][Ss]ource' -- \
+          grep -q '"license": "AGPL-3.0-or-later"' package.json
+          head -n 1 LICENSE | grep -q 'GNU AFFERO GENERAL PUBLIC LICENSE'
+          grep -q 'ADDITIONAL TERMS UNDER SECTION 7(b) OF THE GNU AGPL' LICENSE
+          grep -q 'Created by Aimar (github.com/Aimarmndz)' LICENSE
+          if git grep -n -E 'MARA-KASSA|UNLICENSED|[Tt]odos los derechos reservados' -- \
             ':!docs/decisions/0005-agpl.md' ':!docs/decisions/0016-licencia-propietaria.md' \
-            ':!docs/DECISIONES.md' ':!.github/workflows/ci.yml' ':!test/metadata.test.ts'; then
-            echo "Hay referencias a una licencia que no es la vigente (ver LICENSE)." >&2
+            ':!docs/DECISIONES.md' ':!.github/workflows/ci.yml' ':!CLAUDE.md'; then
+            echo "Quedan restos de la licencia anterior (la vigente es la de LICENSE)." >&2
             exit 1
           fi
 

@@ -139,5 +139,5 @@ autorización, [decisiones de arquitectura (ADRs)](./docs/decisions/) y
 
 ## Licencia
 
-Software propietario de MARA-KASSA SL. Todos los derechos reservados: ver
+**GNU AGPL-3.0-or-later** con un término adicional de atribución (sección 7(b)): ver
 [`LICENSE`](./LICENSE).

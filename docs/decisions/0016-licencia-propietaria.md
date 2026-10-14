@@ -1,6 +1,10 @@
 # ADR 0016 — Licencia propietaria (MARA-KASSA SL)
 
-**Estado:** aceptada · **Fecha:** 2026-08-05 · **Sustituye a:** [ADR 0005](./0005-agpl.md)
+**Estado:** sustituida el 2026-10-14 (ver [`docs/DECISIONES.md`](../DECISIONES.md#2026-10-14--licencia-agpl-30-or-later-con-atribución)) · **Fecha:** 2026-08-05 · **Sustituye a:** [ADR 0005](./0005-agpl.md)
+
+> Esta decisión ya no está vigente: el 2026-10-14 el proyecto volvió a la AGPL
+> (AGPL-3.0-or-later con un término de atribución). La licencia vigente es la de
+> [`LICENSE`](../../LICENSE). Se conserva como registro histórico.
 
 ## Contexto
 
