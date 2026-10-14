@@ -25,4 +25,6 @@ const messages = {
   notifications,
 };
 
-export default { language, messages };
+const languagePack = { language, messages };
+
+export default languagePack;

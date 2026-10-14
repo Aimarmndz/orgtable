@@ -4,30 +4,31 @@ import { redirect } from "next/navigation";
 import { createUserAccount } from "@/app/lib/services/users";
 import { isRegistrationOpen } from "@/app/lib/services/instance";
 import { createSession } from "@/app/lib/session";
-import { getLocale } from "@/app/i18n/server";
+import { getI18n, issueMessage } from "@/app/i18n/server";
+import { plural } from "@/app/i18n/format";
 import { registerSchema } from "@/app/lib/validators";
 import { rateLimit } from "@/app/lib/rate-limit";
 import { recordAudit, clientIp } from "@/app/lib/audit";
 
-// Registro abierto (/register). Solo funciona si el admin lo ha abierto en
-// /admin/instance y la instancia tiene responsable y contacto (sin ellos la política de
-// privacidad estaría incompleta). Las cuentas nuevas son siempre MEMBER. Ver
-// docs/privacy.md y docs/authentication.md.
+// Open registration (/register). It only works if the admin opened it in /admin/instance
+// and the instance has an operator and a contact (without them the privacy policy would be
+// incomplete). New accounts are always MEMBER. See docs/privacy.md and
+// docs/authentication.md.
 
 export type RegisterState = {
   error?: string;
   field?: "name" | "email" | "password" | "acceptTerms";
-  // Lo tecleado, para repintar el formulario tras un error. Nunca la contraseña.
+  // What was typed, to repaint the form after an error. Never the password.
   values?: { name: string; email: string };
 };
 
-// Por IP: 5 altas por hora. Solo si hay IP fiable (TRUSTED_PROXY_HOPS > 0); sin ella no se
-// agrupa a todo el mundo en un bucket común.
+// Per IP: 5 sign-ups per hour. Only with a trustworthy IP (TRUSTED_PROXY_HOPS > 0); without
+// one, everybody is not lumped into a shared bucket.
 const IP_LIMIT = 5;
 const IP_WINDOW_MS = 60 * 60 * 1000;
-// Tope de toda la instancia: frena una oleada de bots aunque no haya IP fiable o vengan de
-// muchas IPs. Riesgo aceptado: durante un ataque, la gente real tampoco puede registrarse
-// hasta que pase la hora (se ve en /admin/audit como auth.register_rate_limited).
+// Instance-wide cap: slows down a wave of bots even without a trustworthy IP or when they
+// come from many IPs. Accepted risk: during an attack, real people cannot sign up either
+// until the hour passes (visible in /admin/audit as auth.register_rate_limited).
 const GLOBAL_LIMIT = 30;
 const GLOBAL_WINDOW_MS = 60 * 60 * 1000;
 
@@ -41,15 +42,16 @@ export async function register(
   formData: FormData,
 ): Promise<RegisterState> {
   const values = { name: text(formData, "name", 60), email: text(formData, "email", 254) };
+  const { locale, intl, m } = await getI18n();
 
   if (!(await isRegistrationOpen())) {
-    return { error: "El registro está cerrado en esta instancia.", values };
+    return { error: m.errors.register.closed, values };
   }
 
-  // Campo trampa: invisible para las personas (y fuera del orden de tabulación), los bots
-  // que rellenan todo lo escriben. Se responde con un error genérico, sin pistas.
+  // Honeypot field: invisible to people (and out of the tab order), bots that fill in
+  // everything write in it. The answer is a generic error, without hints.
   if (text(formData, "website", 200) !== "") {
-    return { error: "No se pudo crear la cuenta. Inténtalo de nuevo.", values };
+    return { error: m.errors.register.failed, values };
   }
 
   const parsed = registerSchema.safeParse({
@@ -62,7 +64,7 @@ export async function register(
     const issue = parsed.error.issues[0];
     const field = issue?.path[0];
     return {
-      error: issue?.message ?? "Revisa los datos.",
+      error: issueMessage(m, issue),
       field:
         field === "name" || field === "email" || field === "password" || field === "acceptTerms"
           ? field
@@ -71,8 +73,8 @@ export async function register(
     };
   }
 
-  // Se cuenta tras validar: un error al teclear no gasta el cupo de nadie. Lo que sí
-  // cuenta es cada alta (o intento con un email ya registrado) con datos válidos.
+  // Counted after validating: a typo does not use up anyone's quota. What counts is each
+  // sign-up (or attempt with an already registered email) with valid data.
   const ip = await clientIp();
   const limits = [
     ...(ip ? [rateLimit(`register:${ip}`, IP_LIMIT, IP_WINDOW_MS)] : []),
@@ -85,7 +87,7 @@ export async function register(
     }
     const minutes = Math.ceil(blocked.retryAfterSec / 60);
     return {
-      error: `Se han creado demasiadas cuentas seguidas. Inténtalo dentro de ${minutes} min.`,
+      error: plural(intl, m.errors.register.rateLimited, minutes, { minutes }),
       values,
     };
   }
@@ -96,13 +98,14 @@ export async function register(
     password: parsed.data.password,
     role: "MEMBER",
     termsAcceptedAt: new Date(),
-    locale: await getLocale(),
+    locale,
   });
   if (!result.ok) {
-    // Revela que el email ya tiene cuenta. Sin verificación por email no hay forma de
-    // evitarlo sin romper el registro; el límite de altas frena la enumeración masiva.
+    // Reveals that the email already has an account. Without email verification there is
+    // no way to avoid it without breaking sign-up; the sign-up limit slows down mass
+    // enumeration.
     return {
-      error: "Ya existe una cuenta con ese email. Inicia sesión.",
+      error: m.errors.register.emailTaken,
       field: "email",
       values,
     };

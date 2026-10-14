@@ -1,9 +1,9 @@
 import type { MetadataRoute } from "next";
 import { isRegistrationOpen } from "@/app/lib/services/instance";
 
-// Una instancia privada (registro cerrado) no tiene nada que indexar: se pide a los
-// buscadores que no entren. Con el registro abierto se permiten solo las páginas públicas
-// (login, registro y legales); los tableros exigen sesión de todas formas.
+// A private instance (sign-up closed) has nothing to index, so search engines are asked to
+// stay out. With open sign-up only the public pages are allowed (sign-in, sign-up and
+// legal pages); boards require a session anyway.
 export const dynamic = "force-dynamic";
 
 export default async function robots(): Promise<MetadataRoute.Robots> {

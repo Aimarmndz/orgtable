@@ -1,1 +1,101 @@
-{}
+{
+  "validation": {
+    "emailInvalid": "Enter a valid email address",
+    "contactEmailInvalid": "Enter a valid contact email address",
+    "passwordRequired": "Enter your password",
+    "passwordTooShort": "The password must be at least 8 characters long",
+    "passwordTooLong": "At most 72 bytes (about 72 characters without accents or emoji)",
+    "currentPasswordRequired": "Enter your current password",
+    "passwordsDontMatch": "The two new passwords don't match",
+    "passwordToConfirm": "Enter your password to confirm",
+    "instanceNameRequired": "The instance name is required",
+    "yourNameRequired": "Your name is required",
+    "nameRequired": "The name is required",
+    "titleRequired": "The title is required",
+    "commentRequired": "The comment can't be empty",
+    "roleInvalid": "Choose a valid role",
+    "acceptTermsRequired": "You have to accept the privacy policy and the terms",
+    "noFieldsToUpdate": "There are no fields to update.",
+    "maxChars40": "At most 40 characters",
+    "maxChars60": "At most 60 characters",
+    "maxChars120": "At most 120 characters",
+    "maxChars200": "At most 200 characters",
+    "maxChars254": "At most 254 characters",
+    "maxChars500": "At most 500 characters",
+    "maxChars2000": "At most 2000 characters",
+    "backupDaysNumber": "The backup days have to be a number",
+    "backupDaysInteger": "The backup days have to be a whole number",
+    "backupDaysNegative": "The backup days can't be negative",
+    "backupDaysMax": "At most 3650 days"
+  },
+  "auth": {
+    "checkCredentials": "Check the email and the password.",
+    "invalidCredentials": "Wrong email or password.",
+    "tooManyAttempts": {
+      "one": "Too many attempts. Try again in {seconds} second.",
+      "other": "Too many attempts. Try again in {seconds} seconds."
+    }
+  },
+  "register": {
+    "closed": "Registration is closed on this instance.",
+    "failed": "The account could not be created. Please try again.",
+    "rateLimited": {
+      "one": "Too many accounts were created in a row. Try again in {minutes} minute.",
+      "other": "Too many accounts were created in a row. Try again in {minutes} minutes."
+    },
+    "emailTaken": "An account with that email already exists. Sign in."
+  },
+  "setup": {
+    "failed": "The setup could not be completed. Please try again."
+  },
+  "account": {
+    "emailChangeNeedsPassword": "To change the email, enter your current password.",
+    "emailTaken": "That email is already used by another account.",
+    "profileSaved": "Profile saved.",
+    "wrongCurrentPassword": "The current password is not correct.",
+    "passwordChanged": "Password changed.",
+    "passwordChangedSessionsClosed": {
+      "one": "Password changed. {count} other session was signed out.",
+      "other": "Password changed. {count} other sessions were signed out."
+    },
+    "wrongPassword": "The password is not correct.",
+    "lastAdmin": "You are the only administrator. Make someone else an administrator before deleting your account."
+  },
+  "admin": {
+    "emailTaken": "A user with that email already exists.",
+    "userCreated": "Account created for {name}."
+  },
+  "instance": {
+    "legalInfoRequired": "To open registration, first fill in the operator and the contact email: the privacy policy needs them.",
+    "notConfigured": "The instance is not set up yet.",
+    "saved": "Settings saved."
+  },
+  "tokens": {
+    "invalidScope": "Invalid permissions.",
+    "invalidExpiry": "Invalid expiry."
+  },
+  "boards": {
+    "importNoFile": "Choose a JSON file.",
+    "importTooLarge": "The file is too large (max. {megabytes} MB).",
+    "importInvalidJson": "The file is not valid JSON.",
+    "importInvalidFormat": "The file is not an orgtable board."
+  },
+  "cards": {
+    "notFound": "This card no longer exists.",
+    "noPermission": "You don't have permission to edit this card.",
+    "invalidDueDate": "The due date is not valid.",
+    "descriptionTooLong": "The description can't be longer than {max} characters (it has {length})."
+  },
+  "attachments": {
+    "cardNotFound": "Card not found.",
+    "noPermission": "You don't have permission to attach files.",
+    "noFile": "Choose a file.",
+    "tooLarge": "The file is larger than the {megabytes} MB limit."
+  },
+  "members": {
+    "ownerOnly": "Only the owner can manage members.",
+    "userNotFound": "There is no user with that email. Ask the administrator to create the account first.",
+    "alreadyMember": "{name} is already a member of this board.",
+    "added": "{name} added as {role}."
+  }
+}

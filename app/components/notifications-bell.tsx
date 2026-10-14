@@ -16,6 +16,9 @@ import {
   markNotificationRead,
   markAllNotificationsRead,
 } from "@/app/lib/actions/notifications";
+import { useI18n } from "@/app/i18n/client";
+import { fmt } from "@/app/i18n/format";
+import type { Messages } from "@/app/i18n/config";
 
 export type NotificationDTO = {
   id: string;
@@ -28,20 +31,24 @@ export type NotificationDTO = {
   createdAt: string; // ISO
 };
 
-// Tiempo relativo legible en español. Depende de la hora y la zona del navegador, así que
-// solo se pinta tras montar (ver useMounted): en el SSR daría otro texto y React
-// avisaría de un desajuste de hidratación.
-function relTime(iso: string): string {
+// Readable relative time. It depends on the browser's clock and time zone, so it is only
+// rendered after mounting (see useMounted): during SSR it would produce different text
+// and React would warn about a hydration mismatch.
+function relTime(
+  iso: string,
+  t: Messages["nav"]["notifications"]["time"],
+  intl: string,
+): string {
   const then = new Date(iso).getTime();
   const min = Math.floor((Date.now() - then) / 60000);
-  if (min < 1) return "ahora";
-  if (min < 60) return `hace ${min} min`;
+  if (min < 1) return t.now;
+  if (min < 60) return fmt(t.minutes, { count: min });
   const h = Math.floor(min / 60);
-  if (h < 24) return `hace ${h} h`;
+  if (h < 24) return fmt(t.hours, { count: h });
   const d = Math.floor(h / 24);
-  if (d === 1) return "ayer";
-  if (d < 7) return `hace ${d} d`;
-  return new Intl.DateTimeFormat("es-ES", {
+  if (d === 1) return t.yesterday;
+  if (d < 7) return fmt(t.days, { count: d });
+  return new Intl.DateTimeFormat(intl, {
     day: "numeric",
     month: "short",
   }).format(then);
@@ -49,7 +56,7 @@ function relTime(iso: string): string {
 
 const noopSubscribe = () => () => {};
 
-// false en el servidor y en la hidratación, true en el cliente ya montado.
+// false on the server and during hydration, true once mounted on the client.
 function useMounted(): boolean {
   return useSyncExternalStore(
     noopSubscribe,
@@ -58,10 +65,10 @@ function useMounted(): boolean {
   );
 }
 
-// Campana de notificaciones (Hito 8). Recibe los datos del servidor (renderizados en el
-// layout) y se mantiene viva con un EventSource al stream del usuario: cuando llega una
-// notificación nueva, hace router.refresh() para repintar con datos frescos. El estado
-// de "abierto" es local y sobrevive al refresh. Ver docs/notifications.md.
+// Notifications bell. Gets its data from the server (rendered in the layout) and stays
+// live with an EventSource on the user's stream: when a new notification arrives it calls
+// router.refresh() to repaint with fresh data. The "open" state is local and survives the
+// refresh. Titles and bodies are stored data, shown as they are. See docs/notifications.md.
 export function NotificationsBell({
   notifications,
   unreadCount,
@@ -70,31 +77,33 @@ export function NotificationsBell({
   unreadCount: number;
 }) {
   const router = useRouter();
+  const { m, intl } = useI18n();
+  const t = m.nav.notifications;
   const [open, setOpen] = useState(false);
   const [, startTransition] = useTransition();
   const mounted = useMounted();
 
-  // Entrega en vivo: refresca (con un pequeño debounce) cuando el bus avisa. El
-  // debounce es compartido con BoardRealtime (scheduleRefresh): en la página del tablero
-  // los dos streams caen y vuelven a la vez, y un solo refresh ya repinta ambos.
+  // Live delivery: refresh (slightly debounced) when the bus says so. The debounce is
+  // shared with BoardRealtime (scheduleRefresh): on the board page both streams drop and
+  // come back together, and a single refresh repaints both.
   useEffect(() => {
     const url = "/api/notifications/stream";
     const onEvent = () => scheduleRefresh(() => router.refresh());
     return keepEventSourceOpen({
       create: () => new EventSource(url),
       events: { notification: onEvent },
-      // Al reconectar, trae las notificaciones que llegaron durante el corte (el
-      // servidor no las reenvía). Ver app/lib/realtime/reconnect.ts.
+      // On reconnect, fetch the notifications that arrived during the outage (the server
+      // does not resend them). See app/lib/realtime/reconnect.ts.
       onReconnect: onEvent,
-      // CLOSED: se pregunta el estado al endpoint. Solo con 401 (sesión revocada) se
-      // refresca para que el layout redirija a /login; ante un 502 del proxy durante un
-      // reinicio refrescar navegaría a su página de error, así que solo se reintenta.
+      // CLOSED: ask the endpoint for its status. Only a 401 (revoked session) refreshes,
+      // so the layout redirects to /login; on a proxy 502 during a restart a refresh would
+      // land on its error page, so it just retries.
       probe: (signal) => probeStatus(url, signal),
       onAccessDenied: onEvent,
     });
   }, [router]);
 
-  // Cierra con Escape (setOpen es estable, no hace falta ref).
+  // Close on Escape (setOpen is stable, no ref needed).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
@@ -106,14 +115,14 @@ export function NotificationsBell({
   const openItem = (n: NotificationDTO) => {
     setOpen(false);
     if (!n.read) {
-      // La acción llama a refresh() de next/cache: el contador se actualiza también
-      // cuando además se navega al tablero (antes solo se refrescaba sin tablero).
+      // The action calls refresh() from next/cache, so the counter also updates when we
+      // navigate to the board as well.
       startTransition(async () => {
         await markNotificationRead(n.id);
       });
     }
     if (n.boardId) {
-      // Si la notificación apunta a una tarjeta, la abre directamente (deep-link ?card=).
+      // If the notification points to a card, open it directly (?card= deep link).
       const href = n.cardId
         ? `/board/${n.boardId}?card=${n.cardId}`
         : `/board/${n.boardId}`;
@@ -135,9 +144,7 @@ export function NotificationsBell({
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label={
-          unreadCount > 0
-            ? `Notificaciones (${unreadCount} sin leer)`
-            : "Notificaciones"
+          unreadCount > 0 ? fmt(t.labelUnread, { count: unreadCount }) : t.title
         }
         aria-expanded={open}
         className="relative grid size-9 place-items-center rounded-lg text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
@@ -164,7 +171,7 @@ export function NotificationsBell({
 
       {open && (
         <>
-          {/* Capa para cerrar al pulsar fuera. */}
+          {/* Backdrop that closes the panel on outside click. */}
           <div
             className="fixed inset-0 z-30"
             aria-hidden
@@ -172,26 +179,26 @@ export function NotificationsBell({
           />
           <div
             role="dialog"
-            aria-label="Notificaciones"
+            aria-label={t.title}
             className="absolute right-0 top-11 z-40 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-border bg-surface shadow-[0_24px_48px_-24px_oklch(0.27_0.022_52/0.4)]"
           >
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <h2 className="font-display text-sm font-bold tracking-tight">
-                Notificaciones
+                {t.title}
               </h2>
               {unreadCount > 0 && (
                 <button
                   onClick={markAll}
                   className="text-xs font-medium text-accent transition-colors hover:text-accent-hover"
                 >
-                  Marcar todas
+                  {t.markAll}
                 </button>
               )}
             </div>
 
             {notifications.length === 0 ? (
               <p className="px-4 py-10 text-center text-sm text-ink-muted">
-                No tienes notificaciones.
+                {t.empty}
               </p>
             ) : (
               <ul className="max-h-96 divide-y divide-border overflow-y-auto">
@@ -222,7 +229,7 @@ export function NotificationsBell({
                           dateTime={n.createdAt}
                           className="mt-1 block text-[11px] text-ink-muted/80"
                         >
-                          {mounted ? relTime(n.createdAt) : ""}
+                          {mounted ? relTime(n.createdAt, t.time, intl) : ""}
                         </time>
                       </span>
                     </button>

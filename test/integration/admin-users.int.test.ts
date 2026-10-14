@@ -16,11 +16,12 @@ import {
   seedList,
   seedCard,
   loginAs,
+  en,
 } from "./helpers";
 
-// Las acciones responden con redirect(): se sustituye por uno que lanza un error con la
-// URL, igual que el real interrumpe la acción, para poder leer a dónde redirige. La
-// autorización (requireAdmin) es la real, con la sesión de un admin sembrado.
+// The actions answer with redirect(): it is replaced by one that throws an error with the
+// URL, just as the real one interrupts the action, so the target can be read. The
+// authorization (requireAdmin) is the real one, with the session of a seeded admin.
 class RedirectError extends Error {}
 vi.mock("next/navigation", () => ({
   redirect: (url: string) => {
@@ -34,7 +35,7 @@ function form(fields: Record<string, string>): FormData {
   return fd;
 }
 
-/** Ejecuta la acción y devuelve la URL a la que redirige. */
+/** Runs the action and returns the URL it redirects to. */
 async function redirectOf(run: Promise<void>): Promise<string> {
   try {
     await run;
@@ -42,7 +43,7 @@ async function redirectOf(run: Promise<void>): Promise<string> {
     if (err instanceof RedirectError) return err.message;
     throw err;
   }
-  throw new Error("La acción no redirigió");
+  throw new Error("The action did not redirect");
 }
 
 beforeEach(async () => {
@@ -53,10 +54,10 @@ afterAll(async () => {
   await disconnect();
 });
 
-describe("acciones de administración con un usuario inexistente (integración)", () => {
-  const ghost = "usuario-que-no-existe";
+describe("admin actions on a user that does not exist (integration)", () => {
+  const ghost = "user-that-does-not-exist";
 
-  it("cambiar el rol avisa y no audita", async () => {
+  it("changing the role reports it and does not audit", async () => {
     const url = await redirectOf(
       updateUserRole(form({ userId: ghost, role: "ADMIN" })),
     );
@@ -64,74 +65,74 @@ describe("acciones de administración con un usuario inexistente (integración)"
     expect(await prisma.auditLog.count({ where: { targetId: ghost } })).toBe(0);
   });
 
-  it("restablecer la contraseña avisa y no audita", async () => {
+  it("resetting the password reports it and does not audit", async () => {
     const url = await redirectOf(
-      resetUserPassword(form({ userId: ghost, password: "contraseña-nueva" })),
+      resetUserPassword(form({ userId: ghost, password: "new-password" })),
     );
     expect(url).toBe("/admin/users?error=not-found");
     expect(await prisma.auditLog.count({ where: { targetId: ghost } })).toBe(0);
   });
 
-  it("cerrar sesiones avisa y no audita", async () => {
+  it("revoking sessions reports it and does not audit", async () => {
     const url = await redirectOf(revokeUserSessions(form({ userId: ghost })));
     expect(url).toBe("/admin/users?error=not-found");
     expect(await prisma.auditLog.count({ where: { targetId: ghost } })).toBe(0);
   });
 
-  it("borrar avisa y no audita", async () => {
+  it("deleting reports it and does not audit", async () => {
     const url = await redirectOf(deleteUser(form({ userId: ghost })));
     expect(url).toBe("/admin/users?error=not-found");
     expect(await prisma.auditLog.count({ where: { targetId: ghost } })).toBe(0);
   });
 
-  it("sin userId en el formulario responde «invalid»", async () => {
+  it("answers “invalid” without a userId in the form", async () => {
     const url = await redirectOf(revokeUserSessions(form({})));
     expect(url).toBe("/admin/users?error=invalid");
   });
 
-  it("restablecer la contraseña sin userId responde «invalid», no el aviso de contraseña", async () => {
+  it("resetting the password without a userId answers “invalid”, not the password warning", async () => {
     const url = await redirectOf(
-      resetUserPassword(form({ password: "contraseña-nueva" })),
+      resetUserPassword(form({ password: "new-password" })),
     );
     expect(url).toBe("/admin/users?error=invalid");
   });
 });
 
-describe("createUser conserva lo escrito tras un error (integración)", () => {
-  it("con un email duplicado devuelve los valores, marca el campo y nunca la contraseña", async () => {
+describe("createUser keeps what was typed after an error (integration)", () => {
+  it("with a duplicate email returns the values, flags the field and never the password", async () => {
     await seedUser({ email: "dup@test.local" });
     const state = await createUser(
       {},
       form({
         name: "Ada",
         email: "dup@test.local",
-        password: "contraseña-secreta",
+        password: "secret-password",
         role: "ADMIN",
       }),
     );
-    expect(state.error).toBe("Ya existe un usuario con ese email.");
+    expect(state.error).toBe(en.errors.admin.emailTaken);
     expect(state.field).toBe("email");
     expect(state.values).toEqual({
       name: "Ada",
       email: "dup@test.local",
       role: "ADMIN",
     });
-    expect(JSON.stringify(state)).not.toContain("contraseña-secreta");
+    expect(JSON.stringify(state)).not.toContain("secret-password");
   });
 
-  it("con datos no válidos también devuelve los valores (sin contraseña)", async () => {
+  it("with invalid data it also returns the values (without the password)", async () => {
     const state = await createUser(
       {},
-      form({ name: "Ada", email: "no-es-email", password: "corta", role: "MEMBER" }),
+      form({ name: "Ada", email: "not-an-email", password: "short", role: "MEMBER" }),
     );
     expect(state.error).toBeDefined();
-    expect(state.values?.email).toBe("no-es-email");
-    expect(JSON.stringify(state)).not.toContain("corta");
+    expect(state.values?.email).toBe("not-an-email");
+    expect(JSON.stringify(state)).not.toContain("short");
   });
 });
 
-describe("acciones de administración con un usuario real (integración)", () => {
-  it("cerrar sesiones de un usuario sin sesiones es válido y se audita", async () => {
+describe("admin actions on a real user (integration)", () => {
+  it("revoking the sessions of a user without sessions is valid and audited", async () => {
     const user = await seedUser();
     const url = await redirectOf(revokeUserSessions(form({ userId: user.id })));
     expect(url).toBe("/admin/users?ok=revoked");
@@ -142,7 +143,7 @@ describe("acciones de administración con un usuario real (integración)", () =>
     ).toBe(1);
   });
 
-  it("cambiar el rol lo guarda y lo audita", async () => {
+  it("changing the role saves and audits it", async () => {
     const user = await seedUser();
     const url = await redirectOf(
       updateUserRole(form({ userId: user.id, role: "ADMIN" })),
@@ -153,7 +154,7 @@ describe("acciones de administración con un usuario real (integración)", () =>
     expect(await prisma.auditLog.count({ where: { targetId: user.id } })).toBe(1);
   });
 
-  it("borra un usuario sin tableros propios y lo audita", async () => {
+  it("deletes a user without boards of their own and audits it", async () => {
     const user = await seedUser();
     const url = await redirectOf(deleteUser(form({ userId: user.id })));
     expect(url).toBe("/admin/users?ok=delete");
@@ -165,7 +166,7 @@ describe("acciones de administración con un usuario real (integración)", () =>
     ).toBe(1);
   });
 
-  it("no borra a un propietario de tableros: sus adjuntos siguen en BD (nada queda huérfano)", async () => {
+  it("does not delete a board owner: their attachments stay in the DB (nothing is orphaned)", async () => {
     const owner = await seedUser();
     const board = await seedBoard(owner.id);
     const list = await seedList(board.id);
@@ -173,7 +174,7 @@ describe("acciones de administración con un usuario real (integración)", () =>
     await prisma.attachment.create({
       data: {
         cardId: card.id,
-        filename: "informe.pdf",
+        filename: "report.pdf",
         storedName: "00000000-0000-0000-0000-000000000000.pdf",
         mimeType: "application/pdf",
         size: 10,
@@ -188,13 +189,13 @@ describe("acciones de administración con un usuario real (integración)", () =>
   });
 });
 
-// La acción no comprueba los tableros por su cuenta: la única salvaguarda es la
-// condición `boards: { none: {} }` del DELETE del servicio. Se llama al servicio
-// directamente para fijar ese contrato. La carrera en sí (un tablero creado entre una
-// comprobación previa y el DELETE) no se reproduce: no hay forma determinista de
-// intercalar dos transacciones aquí.
-describe("deleteUserAccount (servicio, integración)", () => {
-  it("rechaza a un propietario de tableros sin borrar nada en cascada", async () => {
+// The action does not check the boards on its own: the only safeguard is the
+// `boards: { none: {} }` condition of the service's DELETE. The service is called
+// directly to pin that contract. The race itself (a board created between an earlier
+// check and the DELETE) is not reproduced: there is no deterministic way to interleave
+// two transactions here.
+describe("deleteUserAccount (service, integration)", () => {
+  it("rejects a board owner without cascading any deletion", async () => {
     const owner = await seedUser();
     const board = await seedBoard(owner.id);
     const list = await seedList(board.id);
@@ -202,7 +203,7 @@ describe("deleteUserAccount (servicio, integración)", () => {
     await prisma.attachment.create({
       data: {
         cardId: card.id,
-        filename: "informe.pdf",
+        filename: "report.pdf",
         storedName: "00000000-0000-0000-0000-000000000001.pdf",
         mimeType: "application/pdf",
         size: 10,
@@ -218,8 +219,8 @@ describe("deleteUserAccount (servicio, integración)", () => {
     expect(await prisma.attachment.count()).toBe(1);
   });
 
-  it("distingue un usuario inexistente y borra uno sin tableros", async () => {
-    expect(await deleteUserAccount("usuario-que-no-existe")).toEqual({
+  it("tells apart a user that does not exist and deletes one without boards", async () => {
+    expect(await deleteUserAccount("user-that-does-not-exist")).toEqual({
       ok: false,
       error: "not_found",
     });

@@ -14,7 +14,7 @@ afterAll(async () => {
 });
 
 describe("purgeExpiredData", () => {
-  it("borra lo caducado según los plazos de la política de privacidad y nada más", async () => {
+  it("deletes what expired under the privacy policy's retention periods, and nothing else", async () => {
     const now = new Date("2026-10-14T12:00:00Z");
     const ago = (days: number) => new Date(now.getTime() - days * DAY);
     const user = await seedUser();
@@ -27,16 +27,16 @@ describe("purgeExpiredData", () => {
     });
     await prisma.session.createMany({
       data: [
-        { userId: user.id, createdAt: ago(40), expiresAt: ago(33) }, // caducada hace >30 d
-        { userId: user.id, createdAt: ago(10), expiresAt: ago(3) }, // caducada hace poco
-        { userId: user.id, createdAt: ago(40), expiresAt: ago(33 - 7), revokedAt: ago(35) }, // revocada hace >30 d
-        { userId: user.id, createdAt: ago(1), expiresAt: new Date(now.getTime() + 6 * DAY) }, // vigente
+        { userId: user.id, createdAt: ago(40), expiresAt: ago(33) }, // expired >30 d ago
+        { userId: user.id, createdAt: ago(10), expiresAt: ago(3) }, // expired recently
+        { userId: user.id, createdAt: ago(40), expiresAt: ago(33 - 7), revokedAt: ago(35) }, // revoked >30 d ago
+        { userId: user.id, createdAt: ago(1), expiresAt: new Date(now.getTime() + 6 * DAY) }, // still valid
       ],
     });
     await prisma.notification.createMany({
       data: [
-        { userId: user.id, type: "x", title: "vieja", createdAt: ago(181) },
-        { userId: user.id, type: "x", title: "reciente", createdAt: ago(179) },
+        { userId: user.id, type: "x", title: "old", createdAt: ago(181) },
+        { userId: user.id, type: "x", title: "recent", createdAt: ago(179) },
       ],
     });
 
@@ -44,10 +44,10 @@ describe("purgeExpiredData", () => {
     expect(result).toEqual({ auditLogsDeleted: 1, sessionsDeleted: 2, notificationsDeleted: 1 });
     expect((await prisma.auditLog.findMany()).map((a) => a.ip)).toEqual(["203.0.113.2"]);
     expect(await prisma.session.count()).toBe(2);
-    expect((await prisma.notification.findMany()).map((n) => n.title)).toEqual(["reciente"]);
+    expect((await prisma.notification.findMany()).map((n) => n.title)).toEqual(["recent"]);
   });
 
-  it("respeta ORGTABLE_AUDIT_RETENTION_DAYS y falla con un valor no válido", async () => {
+  it("honours ORGTABLE_AUDIT_RETENTION_DAYS and fails with an invalid value", async () => {
     const now = new Date();
     await prisma.auditLog.create({
       data: { action: "auth.login", createdAt: new Date(now.getTime() - 10 * DAY) },
@@ -70,14 +70,14 @@ describe("POST /api/cron/maintenance", () => {
       headers: auth ? { authorization: auth } : {},
     });
 
-  it("503 sin CRON_SECRET, 401 con un secreto incorrecto y 200 con el bueno", async () => {
+  it("503 without CRON_SECRET, 401 with a wrong secret and 200 with the right one", async () => {
     delete process.env.CRON_SECRET;
     expect((await POST(req("Bearer x"))).status).toBe(503);
 
-    process.env.CRON_SECRET = "secreto-de-prueba-largo";
+    process.env.CRON_SECRET = "long-test-secret";
     try {
-      expect((await POST(req("Bearer otro"))).status).toBe(401);
-      const ok = await POST(req("Bearer secreto-de-prueba-largo"));
+      expect((await POST(req("Bearer other"))).status).toBe(401);
+      const ok = await POST(req("Bearer long-test-secret"));
       expect(ok.status).toBe(200);
       expect(await ok.json()).toMatchObject({ auditLogsDeleted: 0 });
     } finally {

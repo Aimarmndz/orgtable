@@ -4,16 +4,19 @@ import { useActionState } from "react";
 import { login, type AuthState } from "@/app/lib/actions/auth";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
+import { useI18n } from "@/app/i18n/client";
 
 export function LoginForm() {
   const [state, action, pending] = useActionState<AuthState, FormData>(
     login,
     {},
   );
+  const { m } = useI18n();
+  const t = m.auth.login;
 
   return (
     <form action={action} className="w-full max-w-sm">
-      {/* Marca compacta (visible sobre todo en móvil, donde no hay panel lateral). */}
+      {/* Compact brand mark (mostly for mobile, where there is no side panel). */}
       <div className="flex items-center gap-2.5 lg:hidden">
         <span className="grid size-8 place-items-center rounded-lg bg-accent font-display text-lg font-extrabold text-accent-ink">
           o
@@ -24,14 +27,14 @@ export function LoginForm() {
       </div>
 
       <h1 className="mt-8 font-display text-3xl font-bold tracking-tight lg:mt-0">
-        Bienvenido de nuevo
+        {t.title}
       </h1>
       <p className="mt-2 text-sm text-ink-muted">
-        Accede a tu instancia para seguir con tus tableros.
+        {t.subtitle}
       </p>
 
-      {/* role="alert" para que el lector de pantalla lo anuncie. Se retira mientras se
-          envía: así un segundo error idéntico se vuelve a insertar y se anuncia de nuevo. */}
+      {/* role="alert" so screen readers announce it. It is removed while submitting, so an
+          identical second error is inserted again and announced again. */}
       {state.error && !pending && (
         <p
           role="alert"
@@ -44,7 +47,7 @@ export function LoginForm() {
       <div className="mt-7 space-y-4">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="email" className="text-sm font-medium">
-            Email
+            {m.auth.fields.email}
           </label>
           <Input
             id="email"
@@ -52,13 +55,13 @@ export function LoginForm() {
             type="email"
             required
             autoComplete="email"
-            placeholder="tu@correo.com"
+            placeholder={m.auth.fields.emailPlaceholder}
             defaultValue={state.values?.email}
           />
         </div>
         <div className="flex flex-col gap-1.5">
           <label htmlFor="password" className="text-sm font-medium">
-            Contraseña
+            {m.auth.fields.password}
           </label>
           <Input
             id="password"
@@ -73,10 +76,10 @@ export function LoginForm() {
 
       <Button type="submit" disabled={pending} className="mt-7 w-full">
         {pending ? (
-          "Entrando…"
+          t.submitting
         ) : (
           <>
-            Entrar
+            {t.submit}
             <svg
               className="size-4"
               viewBox="0 0 24 24"

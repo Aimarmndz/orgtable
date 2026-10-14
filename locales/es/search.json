@@ -1,1 +1,12 @@
-{}
+{
+  "meta": {
+    "title": "Búsqueda"
+  },
+  "title": "Búsqueda",
+  "tooShort": "Escribe al menos {min} caracteres para buscar en tus tableros y tarjetas.",
+  "noResults": "Sin resultados para «{query}»",
+  "noResultsHint": "Prueba con otras palabras. Solo se buscan tableros y tarjetas a los que tienes acceso.",
+  "boards": "Tableros · {count}",
+  "cards": "Tarjetas · {count}",
+  "boardBadge": "Tablero"
+}

@@ -3,8 +3,8 @@ import { prisma } from "@/app/lib/prisma";
 import { recordAudit } from "@/app/lib/audit";
 import { resetDb, disconnect } from "./helpers";
 
-// recordAudit es best-effort: si la escritura falla no debe romper la acción, pero
-// tampoco perder el evento en silencio. El log no lleva detail, ip ni datos personales.
+// recordAudit is best-effort: if the write fails it must not break the action, but it must
+// not lose the event silently either. The log carries no detail, ip or personal data.
 
 beforeEach(async () => {
   await resetDb();
@@ -16,11 +16,11 @@ afterAll(async () => {
   await disconnect();
 });
 
-describe("recordAudit: fallo de escritura", () => {
+describe("recordAudit: write failure", () => {
   it.each([
-    ["FK de userId inexistente", { userId: "no-existe", detail: "dato-privado-xyz" }],
-    ["byte nulo en detail", { detail: "dato-privado-xyz\u0000" }],
-  ])("%s: resuelve sin lanzar y lo registra sin el detail", async (_caso, extra) => {
+    ["FK to a userId that does not exist", { userId: "does-not-exist", detail: "private-data-xyz" }],
+    ["null byte in detail", { detail: "private-data-xyz\u0000" }],
+  ])("%s: resolves without throwing and logs it without the detail", async (_case, extra) => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     await expect(
@@ -31,13 +31,13 @@ describe("recordAudit: fallo de escritura", () => {
     expect(spy).toHaveBeenCalledTimes(1);
     const logged = JSON.stringify(spy.mock.calls[0]);
     expect(logged).toContain("auth.login");
-    expect(logged).not.toContain("dato-privado-xyz");
+    expect(logged).not.toContain("private-data-xyz");
     expect(logged).not.toContain("192.0.2.10");
-    // Tampoco el userId: el error de FK de Postgres lo repite («Key (userId)=(…)»).
-    expect(logged).not.toContain("no-existe");
+    // Nor the userId: the Postgres FK error repeats it ("Key (userId)=(…)").
+    expect(logged).not.toContain("does-not-exist");
   });
 
-  it("si la escritura va bien no registra nada en el log", async () => {
+  it("logs nothing if the write succeeds", async () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     await recordAudit({ action: "auth.login", ip: null });
     expect(await prisma.auditLog.count()).toBe(1);

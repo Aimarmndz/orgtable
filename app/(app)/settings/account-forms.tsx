@@ -9,11 +9,12 @@ import {
 } from "@/app/lib/actions/account";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
+import { useI18n } from "@/app/i18n/client";
 
-// Formularios de la cuenta propia en /settings. Cada uno usa useActionState: la acción
-// devuelve un error (con el campo al que se refiere) o un mensaje de éxito.
+// Forms for your own account in /settings. Each uses useActionState: the action returns
+// an error (with the field it refers to) or a success message.
 
-/** Error (role="alert") o confirmación (role="status") del formulario. */
+/** Form error (role="alert") or confirmation (role="status"). */
 function FormFeedback({
   state,
   pending,
@@ -23,7 +24,7 @@ function FormFeedback({
   pending: boolean;
   id: string;
 }) {
-  // Se retira mientras se envía: así un segundo error idéntico se vuelve a anunciar.
+  // Removed while submitting, so a second identical error is announced again.
   if (pending) return <div role="status" id={id} />;
   if (state.error) {
     return (
@@ -83,13 +84,15 @@ export function ProfileForm({ name, email }: { name: string; email: string }) {
     updateProfile,
     {},
   );
+  const { m } = useI18n();
+  const t = m.settings.profile;
   const feedbackId = useId();
   const bad = (f: string) => (!pending && state.field === f) || undefined;
 
   return (
     <form action={action} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Nombre">
+        <Field label={t.name}>
           {({ inputId }) => (
             <Input
               id={inputId}
@@ -103,7 +106,7 @@ export function ProfileForm({ name, email }: { name: string; email: string }) {
             />
           )}
         </Field>
-        <Field label="Email">
+        <Field label={t.email}>
           {({ inputId }) => (
             <Input
               id={inputId}
@@ -119,10 +122,7 @@ export function ProfileForm({ name, email }: { name: string; email: string }) {
           )}
         </Field>
       </div>
-      <Field
-        label="Contraseña actual"
-        hint="Solo hace falta si cambias el email."
-      >
+      <Field label={t.currentPassword} hint={t.currentPasswordHint}>
         {({ inputId, hintId }) => (
           <Input
             id={inputId}
@@ -138,7 +138,7 @@ export function ProfileForm({ name, email }: { name: string; email: string }) {
       <FormFeedback state={state} pending={pending} id={feedbackId} />
       <div className="flex justify-end">
         <Button type="submit" disabled={pending}>
-          {pending ? "Guardando…" : "Guardar perfil"}
+          {pending ? m.common.actions.saving : t.save}
         </Button>
       </div>
     </form>
@@ -150,13 +150,14 @@ export function PasswordForm() {
     changePassword,
     {},
   );
+  const t = useI18n().m.settings.security;
   const feedbackId = useId();
   const bad = (f: string) => (!pending && state.field === f) || undefined;
 
   return (
     <form action={action} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-3">
-        <Field label="Contraseña actual">
+        <Field label={t.currentPassword}>
           {({ inputId }) => (
             <Input
               id={inputId}
@@ -169,7 +170,7 @@ export function PasswordForm() {
             />
           )}
         </Field>
-        <Field label="Nueva contraseña" hint="Al menos 8 caracteres.">
+        <Field label={t.newPassword} hint={t.newPasswordHint}>
           {({ inputId, hintId }) => (
             <Input
               id={inputId}
@@ -183,7 +184,7 @@ export function PasswordForm() {
             />
           )}
         </Field>
-        <Field label="Repite la nueva">
+        <Field label={t.confirmPassword}>
           {({ inputId }) => (
             <Input
               id={inputId}
@@ -200,7 +201,7 @@ export function PasswordForm() {
       <FormFeedback state={state} pending={pending} id={feedbackId} />
       <div className="flex justify-end">
         <Button type="submit" variant="subtle" disabled={pending}>
-          {pending ? "Cambiando…" : "Cambiar contraseña"}
+          {pending ? t.submitting : t.submit}
         </Button>
       </div>
     </form>
@@ -212,6 +213,7 @@ export function DeleteAccountForm() {
     deleteAccount,
     {},
   );
+  const t = useI18n().m.settings.data.delete;
   const feedbackId = useId();
   const bad = !pending && state.field === "password";
 
@@ -219,7 +221,7 @@ export function DeleteAccountForm() {
     <form action={action} className="space-y-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="flex-1">
-          <Field label="Escribe tu contraseña para confirmar">
+          <Field label={t.confirmPassword}>
             {({ inputId }) => (
               <Input
                 id={inputId}
@@ -238,7 +240,7 @@ export function DeleteAccountForm() {
           disabled={pending}
           className="bg-danger text-accent-ink hover:bg-danger/90"
         >
-          {pending ? "Borrando…" : "Borrar mi cuenta"}
+          {pending ? t.submitting : t.submit}
         </Button>
       </div>
       <FormFeedback state={state} pending={pending} id={feedbackId} />

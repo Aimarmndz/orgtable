@@ -25,40 +25,36 @@ import {
   DRAG_KEYBOARD_CODES,
 } from "@/app/lib/board-collision";
 import { persistOptimistic } from "@/app/lib/optimistic";
+import { useI18n } from "@/app/i18n/client";
+import { fmt, plural } from "@/app/i18n/format";
 
-// Vista de calendario mensual (Hito 7) con arrastre para reprogramar (Hito 11): coloca las
-// tarjetas con fecha de vencimiento en la rejilla del mes; al pulsar una se abre su modal y
-// (si puedes editar) arrastrarla a otro día cambia su vencimiento. Ver docs/calendar.md.
+// Monthly calendar view with drag to reschedule: places the cards that have a due date
+// on the month grid; clicking one opens its modal and (if you can edit) dragging it to
+// another day changes its due date. See docs/calendar.md.
 
 type DayCard = {
   id: string;
   title: string;
-  dueKey: string; // YYYY-MM-DD (parte de fecha del dueDate, sin zona horaria)
-  color: string | null; // color de la primera etiqueta, si la hay
+  dueKey: string; // YYYY-MM-DD (date part of dueDate, no time zone)
+  color: string | null; // colour of the first label, if any
   listTitle: string;
 };
 
-const WEEKDAYS = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"];
+// Short weekday names in the language `intl`, starting on Monday (the week always starts
+// on Monday, whatever the language). 2024-01-01 was a Monday; UTC so the local zone
+// cannot shift the day.
+function weekdayNames(intl: string): string[] {
+  const format = new Intl.DateTimeFormat(intl, { weekday: "short", timeZone: "UTC" });
+  return Array.from({ length: 7 }, (_, i) =>
+    format.format(new Date(Date.UTC(2024, 0, 1 + i))),
+  );
+}
 
-// Instrucciones para lectores de pantalla (dnd-kit las trae en inglés).
-const screenReaderInstructions: ScreenReaderInstructions = {
-  draggable:
-    "Pulsa Espacio para coger la tarjeta, las flechas para cambiar de día, Espacio para soltarla y Escape para cancelar. Intro abre la tarjeta.",
-};
-
-// Día de una clave YYYY-MM-DD para los anuncios («24 de septiembre»). En UTC porque la
-// clave es una fecha de calendario, no un instante.
-const dayNameFormat = new Intl.DateTimeFormat("es-ES", {
-  day: "numeric",
-  month: "long",
-  timeZone: "UTC",
-});
-
-// Espacio siempre coge o suelta una pastilla arrastrable (DRAG_KEYBOARD_CODES), así que
-// nunca debe abrirla. dnd-kit solo cancela el keydown, pero un <button> nativo se activa
-// en el keyup de Espacio (Firefox lo hace aunque el keydown esté cancelado): cancelar
-// también el keyup evita que coger o soltar la pastilla abra además el modal. Intro no
-// necesita esto: el botón se activa en el keydown, que dnd-kit ya cancela al soltar.
+// Space always picks up or drops a draggable chip (DRAG_KEYBOARD_CODES), so it must never
+// open it. dnd-kit only cancels the keydown, but a native <button> activates on the Space
+// keyup (Firefox does even when the keydown was cancelled): cancelling the keyup too
+// stops picking up or dropping the chip from also opening the modal. Enter does not need
+// this: the button activates on keydown, which dnd-kit already cancels when dropping.
 export function preventSpaceActivation(e: {
   code: string;
   preventDefault: () => void;
@@ -66,19 +62,19 @@ export function preventSpaceActivation(e: {
   if (e.code === "Space") e.preventDefault();
 }
 
-// Suscripción vacía para saber, con useSyncExternalStore, si ya estamos en el navegador.
+// Empty subscription to know, with useSyncExternalStore, whether we are in the browser.
 const subscribeNothing = () => () => {};
 
-// Clave de día local YYYY-MM-DD. Se compara con dueDate.slice(0,10) (la fecha que el
-// usuario eligió), evitando desfases de zona horaria.
+// Local day key YYYY-MM-DD. Compared with dueDate.slice(0,10) (the date the user
+// picked), avoiding time zone shifts.
 function dayKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
     d.getDate(),
   ).padStart(2, "0")}`;
 }
 
-// Contenido visual de la pastilla, compartido por la pastilla real y la copia flotante
-// del DragOverlay.
+// Visual content of the chip, shared by the real chip and the DragOverlay's floating
+// copy.
 function ChipContent({ card }: { card: DayCard }) {
   return (
     <>
@@ -101,23 +97,24 @@ function CardChip({
   canEdit: boolean;
   onOpen: (id: string) => void;
 }) {
+  const { m } = useI18n();
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: card.id,
     disabled: !canEdit,
-    // dnd-kit anuncia por defecto «draggable» (en inglés).
-    attributes: { roleDescription: "tarjeta" },
+    // dnd-kit announces "draggable" by default.
+    attributes: { roleDescription: m.boards.card.roleDescription },
   });
-  // Sin transform: la pastilla original se queda en su día (atenuada) y lo que sigue al
-  // puntero es la copia del DragOverlay; moverla con transform la recortaba el
-  // overflow-y-auto del calendario.
+  // No transform: the original chip stays on its day (dimmed) and what follows the
+  // pointer is the DragOverlay copy; moving it with transform got it clipped by the
+  // calendar's overflow-y-auto.
   return (
     <button
       ref={setNodeRef}
       {...(canEdit ? attributes : {})}
       {...(canEdit ? listeners : {})}
       onClick={() => onOpen(card.id)}
-      // Solo si se puede arrastrar: a quien solo puede ver, Espacio le sigue abriendo la
-      // tarjeta como en cualquier botón.
+      // Only when draggable: for read-only viewers Space still opens the card, as on any
+      // button.
       onKeyUp={canEdit ? preventSpaceActivation : undefined}
       title={`${card.title} · ${card.listTitle}`}
       className={`flex items-center gap-1.5 rounded-md border border-border bg-surface px-1.5 py-1 text-left text-xs leading-tight transition-colors hover:border-accent/50 ${
@@ -184,14 +181,16 @@ export function CalendarView({
   onOpenCard: (cardId: string) => void;
   canEdit: boolean;
 }) {
-  // Mes mostrado (primer día del mes). Arranca en el mes actual.
+  const { m, intl } = useI18n();
+  const t = m.boards.calendar;
+  // Month shown (first day of the month). Starts on the current month.
   const [month, setMonth] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
 
-  // Teclado además de puntero: Espacio coge la pastilla, las flechas la llevan al día
-  // vecino y Espacio la suelta. Intro no coge: sigue abriendo la tarjeta.
+  // Keyboard as well as pointer: Space picks up the chip, the arrows move it to the
+  // neighbouring day and Space drops it. Enter does not pick up: it still opens the card.
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, {
@@ -199,13 +198,13 @@ export function CalendarView({
       keyboardCodes: DRAG_KEYBOARD_CODES,
     }),
   );
-  // Id estable entre servidor y cliente para los atributos de accesibilidad de dnd-kit.
+  // Id stable between server and client for dnd-kit's accessibility attributes.
   const dndId = useId();
   const [activeId, setActiveId] = useState<string | null>(null);
-  // Aviso si el servidor no guardó la nueva fecha (la tarjeta se queda en su día).
+  // Warning if the server did not save the new date (the card stays on its day).
   const [dropError, setDropError] = useState<string | null>(null);
-  // El DragOverlay va en un portal a document.body, que solo existe en el navegador: en
-  // el servidor y durante la hidratación esto vale false y no se monta.
+  // The DragOverlay goes in a portal to document.body, which only exists in the browser:
+  // on the server and during hydration this is false and it is not mounted.
   const inBrowser = useSyncExternalStore(
     subscribeNothing,
     () => true,
@@ -214,7 +213,7 @@ export function CalendarView({
 
   const todayKey = useMemo(() => dayKey(new Date()), []);
 
-  // Tarjetas con fecha, indexadas por día. Las que no tienen fecha quedan fuera.
+  // Cards with a date, indexed by day. Those without a date are left out.
   const { byDay, undated } = useMemo(() => {
     const map = new Map<string, DayCard[]>();
     let undated = 0;
@@ -240,9 +239,9 @@ export function CalendarView({
     return { byDay: map, undated };
   }, [lists]);
 
-  // Rejilla de 6 semanas (42 días) empezando en el lunes de la semana del día 1.
+  // 6-week grid (42 days) starting on the Monday of the week of the 1st.
   const days = useMemo(() => {
-    const firstWeekday = (month.getDay() + 6) % 7; // lun=0 … dom=6
+    const firstWeekday = (month.getDay() + 6) % 7; // Mon=0 … Sun=6
     const gridStart = new Date(
       month.getFullYear(),
       month.getMonth(),
@@ -262,10 +261,22 @@ export function CalendarView({
     });
   }, [month]);
 
-  const monthLabel = new Intl.DateTimeFormat("es-ES", {
+  const monthLabel = new Intl.DateTimeFormat(intl, {
     month: "long",
     year: "numeric",
   }).format(month);
+  const weekdays = useMemo(() => weekdayNames(intl), [intl]);
+  // Day of a YYYY-MM-DD key for the announcements ("September 24"). In UTC because the
+  // key is a calendar date, not an instant.
+  const dayNameFormat = useMemo(
+    () =>
+      new Intl.DateTimeFormat(intl, {
+        day: "numeric",
+        month: "long",
+        timeZone: "UTC",
+      }),
+    [intl],
+  );
 
   const goToToday = () => {
     const now = new Date();
@@ -282,17 +293,21 @@ export function CalendarView({
     lists.flatMap((l) => l.cards).find((c) => c.id === String(id))?.title ?? "";
   const dayName = (id: UniqueIdentifier) =>
     dayNameFormat.format(new Date(`${String(id)}T00:00:00Z`));
+  // Screen reader texts: dnd-kit's defaults are English-only, so they come from the
+  // messages.
+  const screenReaderInstructions: ScreenReaderInstructions = {
+    draggable: t.instructions,
+  };
   const announcements: Announcements = {
-    onDragStart: ({ active }) =>
-      `Has cogido la tarjeta «${cardTitle(active.id)}».`,
+    onDragStart: ({ active }) => fmt(t.pickedUp, { title: cardTitle(active.id) }),
     onDragOver: ({ over }) =>
-      over ? `Sobre el ${dayName(over.id)}.` : "Fuera del calendario.",
+      over ? fmt(t.over, { day: dayName(over.id) }) : t.outside,
     onDragEnd: ({ active, over }) =>
       over
-        ? `Has soltado la tarjeta «${cardTitle(active.id)}» en el ${dayName(over.id)}.`
-        : `Has soltado la tarjeta «${cardTitle(active.id)}» fuera del calendario; no cambia.`,
+        ? fmt(t.dropped, { title: cardTitle(active.id), day: dayName(over.id) })
+        : fmt(t.droppedOutside, { title: cardTitle(active.id) }),
     onDragCancel: ({ active }) =>
-      `Movimiento cancelado; la tarjeta «${cardTitle(active.id)}» sigue en su día.`,
+      fmt(t.cancelled, { title: cardTitle(active.id) }),
   };
 
   function handleDragStart(event: DragStartEvent) {
@@ -300,8 +315,8 @@ export function CalendarView({
     setDropError(null);
   }
 
-  // Soltar una tarjeta en un día reprograma su vencimiento; el tablero se resincroniza
-  // por el tiempo real tras revalidar.
+  // Dropping a card on a day reschedules its due date; the board resyncs through
+  // realtime after revalidation.
   function handleDragEnd(event: DragEndEvent) {
     setActiveId(null);
     const { active, over } = event;
@@ -315,9 +330,9 @@ export function CalendarView({
     if (current === newKey) return;
     void persistOptimistic(
       () => setCardDueDate({ cardId, dueDate: newKey }),
-      () => setDropError("No se pudo cambiar la fecha. Inténtalo de nuevo."),
+      () => setDropError(t.dueDateFailed),
       {
-        message: "[calendario] fallo al cambiar la fecha de vencimiento",
+        message: "[calendar] failed to change the due date",
         context: { cardId, dueDate: newKey },
       },
     );
@@ -326,13 +341,13 @@ export function CalendarView({
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-4">
       <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col rounded-2xl border border-border bg-surface/90 p-3 shadow-[0_2px_8px_-4px_oklch(0.27_0.022_52/0.2)] backdrop-blur-sm sm:p-4">
-        {/* Cabecera: mes + navegación */}
+        {/* Header: month + navigation */}
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-1 pb-3">
           <h2 className="font-display text-lg font-bold tracking-tight first-letter:uppercase">
             {monthLabel}
           </h2>
-          {/* Fila propia bajo el mes y la navegación (order-last basis-full), como el aviso
-              del tablero: entre los dos, a 375 px le quedaban unos 10 px y se salía. */}
+          {/* Own row below the month and the navigation (order-last basis-full), like the
+              board's warning: between the two, at 375 px it had about 10 px and overflowed. */}
           {dropError && (
             <p role="alert" className="order-last basis-full text-xs text-danger">
               {dropError}
@@ -341,7 +356,7 @@ export function CalendarView({
           <div className="flex items-center gap-1">
             <button
               onClick={() => shift(-1)}
-              aria-label="Mes anterior"
+              aria-label={t.previousMonth}
               className="grid size-8 place-items-center rounded-lg text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
             >
               <svg
@@ -361,11 +376,11 @@ export function CalendarView({
               onClick={goToToday}
               className="rounded-lg px-2.5 py-1 text-xs font-medium text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
             >
-              Hoy
+              {t.today}
             </button>
             <button
               onClick={() => shift(1)}
-              aria-label="Mes siguiente"
+              aria-label={t.nextMonth}
               className="grid size-8 place-items-center rounded-lg text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
             >
               <svg
@@ -384,9 +399,9 @@ export function CalendarView({
           </div>
         </div>
 
-        {/* Cabecera de días de la semana */}
+        {/* Weekday header */}
         <div className="grid grid-cols-7 gap-1 px-1 pb-1">
-          {WEEKDAYS.map((w) => (
+          {weekdays.map((w) => (
             <div
               key={w}
               className="text-center text-[11px] font-semibold uppercase tracking-wide text-ink-muted"
@@ -396,7 +411,7 @@ export function CalendarView({
           ))}
         </div>
 
-        {/* Rejilla de días (con arrastre para reprogramar si puedes editar) */}
+        {/* Day grid (with drag to reschedule if you can edit) */}
         <DndContext
           id={dndId}
           sensors={sensors}
@@ -426,12 +441,12 @@ export function CalendarView({
               </DayCell>
             ))}
           </div>
-          {/* En un portal a document.body: el panel lleva backdrop-blur, y backdrop-filter
-              convierte al panel en el bloque contenedor de los descendientes fixed. Dentro
-              de él, la copia (fixed, con coordenadas de la ventana) salía desplazada por la
-              cabecera y recortada por el overflow-y-auto. El portal conserva el contexto de
-              React, así que sigue dentro del DndContext. Montado siempre (no solo con
-              activeCard) para que termine la animación de soltar. */}
+          {/* In a portal to document.body: the panel has backdrop-blur, and
+              backdrop-filter makes the panel the containing block of fixed descendants.
+              Inside it, the copy (fixed, with viewport coordinates) was offset by the
+              header and clipped by overflow-y-auto. The portal keeps the React context,
+              so it stays inside the DndContext. Always mounted (not only with activeCard)
+              so the drop animation can finish. */}
           {inBrowser &&
             createPortal(
               <DragOverlay>
@@ -447,10 +462,7 @@ export function CalendarView({
 
         {undated > 0 && (
           <p className="px-1 pt-3 text-xs text-ink-muted">
-            {undated}{" "}
-            {undated === 1
-              ? "tarjeta sin fecha de vencimiento (no aparece en el calendario)."
-              : "tarjetas sin fecha de vencimiento (no aparecen en el calendario)."}
+            {plural(intl, t.undated, undated)}
           </p>
         )}
       </div>

@@ -3,11 +3,11 @@ import { revalidateBoard } from "@/app/lib/realtime/notify";
 import { canEditBoard } from "@/app/lib/roles";
 import { apiCardUpdateSchema } from "@/app/lib/validators";
 import { authenticateApiToken, apiBoardRole, isReadOnly } from "@/app/lib/api/auth";
-import { apiError, apiOk } from "@/app/lib/api/respond";
+import { apiError, apiOk, apiValidationError } from "@/app/lib/api/respond";
 import { serializeCard } from "@/app/lib/api/serialize";
 import { deleteCardWithAttachments } from "@/app/lib/services/attachments";
 
-// API pública v1 — una tarjeta (Hito 9). Ver docs/api/public-api.md.
+// Public API v1: a single card. See docs/api/public-api.md.
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -26,7 +26,7 @@ const cardInclude = {
   },
 };
 
-// Carga la tarjeta con sus relaciones y el boardId de su lista (para autorizar).
+// Loads the card with its relations and its list's boardId (for authorization).
 async function loadCard(id: string) {
   return prisma.card.findUnique({
     where: { id },
@@ -34,48 +34,48 @@ async function loadCard(id: string) {
   });
 }
 
-/** GET /api/v1/cards/:id — el detalle de una tarjeta. */
+/** GET /api/v1/cards/:id: a card's details. */
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const auth = await authenticateApiToken(request);
-  if (!auth) return apiError(401, "Token de API no válido o ausente.");
+  if (!auth) return apiError(401, "Missing or invalid API token.");
   const { id } = await params;
 
   const card = await loadCard(id);
-  if (!card) return apiError(404, "Tarjeta no encontrada.");
+  if (!card) return apiError(404, "Card not found.");
   const role = await apiBoardRole(auth.userId, card.list.boardId);
-  if (!role) return apiError(404, "Tarjeta no encontrada.");
+  if (!role) return apiError(404, "Card not found.");
 
   return apiOk(serializeCard(card));
 }
 
-/** PATCH /api/v1/cards/:id — actualiza título, descripción o vencimiento (editor). */
+/** PATCH /api/v1/cards/:id: updates title, description or due date (editor). */
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const auth = await authenticateApiToken(request);
-  if (!auth) return apiError(401, "Token de API no válido o ausente.");
-  if (isReadOnly(auth)) return apiError(403, "Token de solo lectura.");
+  if (!auth) return apiError(401, "Missing or invalid API token.");
+  if (isReadOnly(auth)) return apiError(403, "Read-only token.");
   const { id } = await params;
 
   const existing = await prisma.card.findUnique({
     where: { id },
     select: { list: { select: { boardId: true } } },
   });
-  if (!existing) return apiError(404, "Tarjeta no encontrada.");
+  if (!existing) return apiError(404, "Card not found.");
   const role = await apiBoardRole(auth.userId, existing.list.boardId);
-  if (!role) return apiError(404, "Tarjeta no encontrada.");
+  if (!role) return apiError(404, "Card not found.");
   if (!canEditBoard(role)) {
-    return apiError(403, "Necesitas permiso de edición en el tablero.");
+    return apiError(403, "You need edit permission on this board.");
   }
 
   const body = await request.json().catch(() => null);
   const parsed = apiCardUpdateSchema.safeParse(body);
   if (!parsed.success) {
-    return apiError(422, parsed.error.issues[0]?.message ?? "Datos no válidos.");
+    return apiValidationError(parsed.error.issues[0]);
   }
 
   const data: {
@@ -88,7 +88,7 @@ export async function PATCH(
     data.description = parsed.data.description || null;
   }
   if (parsed.data.dueDate !== undefined) {
-    // apiDueDateSchema ya garantiza una fecha ISO válida (o null): nada de caer a null.
+    // apiDueDateSchema already guarantees a valid ISO date (or null): no silent fallback to null.
     data.dueDate = parsed.data.dueDate ? new Date(parsed.data.dueDate) : null;
   }
 
@@ -98,25 +98,25 @@ export async function PATCH(
   return apiOk(card ? serializeCard(card) : { id });
 }
 
-/** DELETE /api/v1/cards/:id — borra una tarjeta (editor). */
+/** DELETE /api/v1/cards/:id: deletes a card (editor). */
 export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const auth = await authenticateApiToken(request);
-  if (!auth) return apiError(401, "Token de API no válido o ausente.");
-  if (isReadOnly(auth)) return apiError(403, "Token de solo lectura.");
+  if (!auth) return apiError(401, "Missing or invalid API token.");
+  if (isReadOnly(auth)) return apiError(403, "Read-only token.");
   const { id } = await params;
 
   const existing = await prisma.card.findUnique({
     where: { id },
     select: { list: { select: { boardId: true } } },
   });
-  if (!existing) return apiError(404, "Tarjeta no encontrada.");
+  if (!existing) return apiError(404, "Card not found.");
   const role = await apiBoardRole(auth.userId, existing.list.boardId);
-  if (!role) return apiError(404, "Tarjeta no encontrada.");
+  if (!role) return apiError(404, "Card not found.");
   if (!canEditBoard(role)) {
-    return apiError(403, "Necesitas permiso de edición en el tablero.");
+    return apiError(403, "You need edit permission on this board.");
   }
 
   await deleteCardWithAttachments(id);

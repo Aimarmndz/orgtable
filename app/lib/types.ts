@@ -1,5 +1,5 @@
-// Tipos de transferencia (DTO) que viajan del servidor a los componentes cliente del
-// tablero. Serializables (sin objetos Date: las fechas viajan como ISO string).
+// Data transfer types (DTOs) sent from the server to the board's Client Components.
+// Serializable: no Date objects, dates travel as ISO strings.
 
 export type LabelDTO = {
   id: string;

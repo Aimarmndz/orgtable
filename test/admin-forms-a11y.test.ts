@@ -1,14 +1,15 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { withI18n } from "./helpers/i18n";
 
-// Las acciones de servidor importan Prisma; para renderizar los formularios basta con
-// sustituirlas (este test solo mira el HTML inicial, no ejecuta ninguna acción).
+// The server actions import Prisma; replacing them is enough to render the forms (this
+// test only looks at the initial HTML, it does not run any action).
 vi.mock("@/app/lib/actions/admin", () => ({ createUser: vi.fn() }));
 vi.mock("@/app/lib/actions/tokens", () => ({ createApiToken: vi.fn() }));
 
-// En el render de servidor useActionState siempre devuelve el estado inicial. Para
-// mirar el HTML con un token recién creado se sustituye solo cuando el test lo pide.
+// In a server render useActionState always returns the initial state. To look at the
+// HTML with a freshly created token it is replaced, only when the test asks for it.
 const actionState = vi.hoisted(() => ({ override: null as unknown }));
 vi.mock("react", async (importOriginal) => {
   const react = await importOriginal<typeof import("react")>();
@@ -31,28 +32,28 @@ const { CreateTokenForm } = await import(
   "@/app/(app)/settings/create-token-form"
 );
 
-describe("formularios de administración y ajustes — accesibilidad", () => {
-  it("crear usuario monta la región role=status antes de que llegue el aviso", () => {
-    const html = renderToStaticMarkup(createElement(CreateUserForm));
+describe("admin and settings forms — accessibility", () => {
+  it("create user mounts the role=status region before the message arrives", () => {
+    const html = renderToStaticMarkup(withI18n(createElement(CreateUserForm)));
     expect(html).toContain('role="status"');
   });
 
-  it("crear token monta la región role=status y el select conserva su valor inicial", () => {
-    const html = renderToStaticMarkup(createElement(CreateTokenForm));
+  it("create token mounts the role=status region and the select keeps its initial value", () => {
+    const html = renderToStaticMarkup(withI18n(createElement(CreateTokenForm)));
     expect(html).toContain('role="status"');
     expect(html).toMatch(/<option value="full" selected="">/);
   });
 
-  it("con un token creado, la región role=status no contiene el token ni el botón", () => {
-    const token = "ot_token-secreto-de-prueba";
+  it("with a created token, the role=status region contains neither the token nor the button", () => {
+    const token = "ot_secret-test-token";
     actionState.override = { token, name: "CI" };
-    const html = renderToStaticMarkup(createElement(CreateTokenForm));
+    const html = renderToStaticMarkup(withI18n(createElement(CreateTokenForm)));
     const status = html.match(/<div role="status">(.*?)<\/div>/);
     expect(status).not.toBeNull();
-    expect(status![1]).toContain("Token «CI» creado");
+    expect(status![1]).toContain("Token “CI” created");
     expect(status![1]).not.toContain(token);
     expect(status![1]).not.toContain("<button");
-    // El token sigue visible fuera de la región viva.
+    // The token is still visible outside the live region.
     expect(html).toContain(`>${token}</code>`);
   });
 });

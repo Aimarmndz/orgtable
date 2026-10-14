@@ -5,47 +5,48 @@ import {
   resolveClientIp,
 } from "@/app/lib/client-ip";
 
-// IP del cliente para el rate limit del login: solo se confía en X-Forwarded-For si se
-// declaran proxies de confianza, y se toma el valor que añadió el más externo (contando
-// desde la derecha). El primer valor lo escribe el cliente y no vale.
+// Client IP for the sign-in rate limit: X-Forwarded-For is only trusted if trusted proxies
+// are declared, and the value taken is the one added by the outermost one (counting from
+// the right). The first value is written by the client and is worthless.
 describe("pickClientIp", () => {
-  it("con hops = 0 ignora la cabecera", () => {
+  it("with hops = 0 it ignores the header", () => {
     expect(pickClientIp("1.2.3.4", 0)).toBeNull();
   });
 
-  it("sin cabecera o vacía devuelve null", () => {
+  it("without a header or with an empty one it returns null", () => {
     expect(pickClientIp(null, 1)).toBeNull();
     expect(pickClientIp("", 1)).toBeNull();
   });
 
-  it("toma el N-ésimo valor desde la derecha", () => {
+  it("takes the Nth value from the right", () => {
     expect(pickClientIp("1.2.3.4, 10.0.0.1", 1)).toBe("10.0.0.1");
     expect(pickClientIp("1.2.3.4, 10.0.0.1", 2)).toBe("1.2.3.4");
   });
 
-  it("con menos valores que proxies declarados devuelve null", () => {
+  it("with fewer values than declared proxies it returns null", () => {
     expect(pickClientIp("10.0.0.1", 2)).toBeNull();
   });
 
-  it("recorta espacios y acepta IPv6", () => {
+  it("trims spaces and accepts IPv6", () => {
     expect(pickClientIp("  1.2.3.4  ", 1)).toBe("1.2.3.4");
-    expect(pickClientIp("falsa, 2001:db8::1", 1)).toBe("2001:db8::1");
+    expect(pickClientIp("fake, 2001:db8::1", 1)).toBe("2001:db8::1");
   });
 
-  it("un valor que no es una IP devuelve null", () => {
+  it("a value that is not an IP returns null", () => {
     expect(pickClientIp("1.2.3.4, unknown", 1)).toBeNull();
     expect(pickClientIp("1.2.3.4, ", 1)).toBeNull();
   });
 
-  // Regresión: con proxies que escriben la IP con el puerto de origen (Azure Application
-  // Gateway, IIS ARR), el valor no pasaba isIP y el login se quedaba sin límite por IP.
-  it("quita el puerto de IPv4 y de IPv6 entre corchetes", () => {
+  // Regression: with proxies that write the IP with the source port (Azure Application
+  // Gateway, IIS ARR), the value did not pass isIP and sign-in was left without a per-IP
+  // limit.
+  it("strips the port from IPv4 and from bracketed IPv6", () => {
     expect(pickClientIp("1.2.3.4:5678", 1)).toBe("1.2.3.4");
-    expect(pickClientIp("falsa, [2001:db8::1]:443", 1)).toBe("2001:db8::1");
+    expect(pickClientIp("fake, [2001:db8::1]:443", 1)).toBe("2001:db8::1");
     expect(pickClientIp("[::1]", 1)).toBe("::1");
   });
 
-  it("no parte una IPv6 sin corchetes ni acepta basura con puerto", () => {
+  it("does not split an unbracketed IPv6 nor accept garbage with a port", () => {
     expect(pickClientIp("2001:db8::1:443", 1)).toBe("2001:db8::1:443");
     expect(pickClientIp("unknown:80", 1)).toBeNull();
     expect(pickClientIp("999.1.1.1:80", 1)).toBeNull();
@@ -55,12 +56,12 @@ describe("pickClientIp", () => {
 });
 
 describe("resolveClientIp", () => {
-  it("con hops = 0 no hay IP ni problema", () => {
+  it("with hops = 0 there is neither an IP nor a problem", () => {
     expect(resolveClientIp("1.2.3.4", 0)).toEqual({ ip: null, problem: null });
     expect(resolveClientIp(null, 0)).toEqual({ ip: null, problem: null });
   });
 
-  it("indica por qué no hay IP cuando hay proxies declarados", () => {
+  it("says why there is no IP when proxies are declared", () => {
     expect(resolveClientIp(null, 1)).toEqual({ ip: null, problem: "missing-header" });
     expect(resolveClientIp("10.0.0.1", 2)).toEqual({
       ip: null,
@@ -74,9 +75,9 @@ describe("resolveClientIp", () => {
   });
 });
 
-// El aviso se guarda en un Set del módulo: cada test importa una copia nueva para empezar
-// sin avisos previos.
-describe("aviso de proxy mal configurado", () => {
+// Warnings are remembered in a module-level Set: each test imports a fresh copy to start
+// without previous warnings.
+describe("misconfigured proxy warning", () => {
   let warn: ReturnType<typeof vi.spyOn>;
   beforeEach(() => {
     vi.resetModules();
@@ -90,24 +91,25 @@ describe("aviso de proxy mal configurado", () => {
     return (await import("@/app/lib/client-ip")).pickClientIp;
   }
 
-  it("avisa una vez por motivo, sin la cabecera ni la IP", async () => {
+  it("warns once per reason, without the header or the IP", async () => {
     const pick = await freshPick();
     pick("203.0.113.7, unknown", 1);
     pick("203.0.113.8, unknown", 1);
     expect(warn).toHaveBeenCalledTimes(1);
     const message = String(warn.mock.calls[0][0]);
     expect(message).toMatch(/TRUSTED_PROXY_HOPS=1/);
-    expect(message).toMatch(/no es una IP/);
+    expect(message).toMatch(/is not an IP/);
     expect(message).not.toMatch(/203\.0\.113/);
-    // Puede haber otro aviso con otro motivo: el texto no debe prometer que es el último.
-    expect(message).toMatch(/una vez por motivo y proceso/);
+    // There may be another warning with another reason: the text must not promise it is
+    // the last one.
+    expect(message).toMatch(/once per reason and process/);
 
     pick("10.0.0.1", 2);
     expect(warn).toHaveBeenCalledTimes(2);
-    expect(String(warn.mock.calls[1][0])).toMatch(/menos valores/);
+    expect(String(warn.mock.calls[1][0])).toMatch(/fewer values/);
   });
 
-  it("no avisa con hops = 0 ni cuando obtiene la IP", async () => {
+  it("does not warn with hops = 0 nor when it gets the IP", async () => {
     const pick = await freshPick();
     pick(null, 0);
     pick("1.2.3.4", 0);
@@ -117,20 +119,20 @@ describe("aviso de proxy mal configurado", () => {
 });
 
 describe("parseTrustedProxyHops", () => {
-  it("sin definir o vacío es 0", () => {
+  it("undefined or empty is 0", () => {
     expect(parseTrustedProxyHops(undefined)).toBe(0);
     expect(parseTrustedProxyHops("")).toBe(0);
     expect(parseTrustedProxyHops("  ")).toBe(0);
   });
 
-  it("acepta enteros >= 0", () => {
+  it("accepts integers >= 0", () => {
     expect(parseTrustedProxyHops("0")).toBe(0);
     expect(parseTrustedProxyHops("2")).toBe(2);
     expect(parseTrustedProxyHops(" 1 ")).toBe(1);
   });
 
-  it("rechaza lo que no es un entero >= 0", () => {
-    for (const bad of ["-1", "1.5", "uno", "1e2"]) {
+  it("rejects anything that is not an integer >= 0", () => {
+    for (const bad of ["-1", "1.5", "one", "1e2"]) {
       expect(() => parseTrustedProxyHops(bad)).toThrow(/TRUSTED_PROXY_HOPS/);
     }
   });

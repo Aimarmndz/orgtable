@@ -9,7 +9,9 @@ import {
   seedList,
   seedCard,
   loginAs,
+  en,
 } from "./helpers";
+import { fmt } from "@/app/i18n/format";
 
 beforeEach(async () => {
   await resetDb();
@@ -20,7 +22,7 @@ afterAll(async () => {
 
 const DUE = new Date("2026-07-01T00:00:00.000Z");
 
-/** Tarjeta con vencimiento y descripción, y el propietario ya con sesión. */
+/** Card with a due date and a description, and its owner already signed in. */
 async function seedCardWithDue() {
   const owner = await seedUser();
   const board = await seedBoard(owner.id);
@@ -48,11 +50,11 @@ function detailsForm(cardId: string, description: string, dueDate: string): Form
   return fd;
 }
 
-// Regresión: una fecha no parseable se convertía en null y BORRABA el vencimiento (y
-// setCardDueDate respondía ok:true).
-describe("setCardDueDate valida la fecha", () => {
-  it.each(["24/09/2026", "2026-02-31", "mañana"])(
-    "%s da ok:false y conserva la fecha",
+// Regression: an unparseable date turned into null and CLEARED the due date (and
+// setCardDueDate answered ok:true).
+describe("setCardDueDate validates the date", () => {
+  it.each(["24/09/2026", "2026-02-31", "tomorrow"])(
+    "%s gives ok:false and keeps the date",
     async (bad) => {
       const card = await seedCardWithDue();
       expect(await setCardDueDate({ cardId: card.id, dueDate: bad })).toEqual({
@@ -62,7 +64,7 @@ describe("setCardDueDate valida la fecha", () => {
     },
   );
 
-  it("una fecha válida se guarda a medianoche UTC", async () => {
+  it("a valid date is stored at midnight UTC", async () => {
     const card = await seedCardWithDue();
     expect(await setCardDueDate({ cardId: card.id, dueDate: "2026-09-24" })).toEqual({
       ok: true,
@@ -72,40 +74,40 @@ describe("setCardDueDate valida la fecha", () => {
     );
   });
 
-  it("null quita la fecha", async () => {
+  it("null clears the date", async () => {
     const card = await seedCardWithDue();
     expect(await setCardDueDate({ cardId: card.id, dueDate: null })).toEqual({ ok: true });
     expect((await readCard(card.id)).dueDate).toBeNull();
   });
 });
 
-describe("updateCard valida fecha y descripción", () => {
+describe("updateCard validates the date and the description", () => {
   it.each(["24/09/2026", "2026-02-31"])(
-    "con fecha %s no guarda nada y devuelve el error con lo enviado",
+    "with date %s saves nothing and returns the error with what was sent",
     async (bad) => {
       const card = await seedCardWithDue();
-      expect(await updateCard({}, detailsForm(card.id, "Cambiada", bad))).toEqual({
-        error: "La fecha de vencimiento no es válida.",
-        description: "Cambiada",
+      expect(await updateCard({}, detailsForm(card.id, "Changed", bad))).toEqual({
+        error: en.errors.cards.invalidDueDate,
+        description: "Changed",
         dueDate: bad,
       });
       expect(await readCard(card.id)).toEqual({ dueDate: DUE, description: "Original" });
     },
   );
 
-  it("una fecha vacía quita el vencimiento", async () => {
+  it("an empty date clears the due date", async () => {
     const card = await seedCardWithDue();
     expect(await updateCard({}, detailsForm(card.id, "Original", ""))).toEqual({});
     expect((await readCard(card.id)).dueDate).toBeNull();
   });
 
-  // Regresión: con más de 5000 caracteres la acción volvía sin guardar ni avisar, y el
-  // reseteo del formulario borraba lo escrito.
-  it("una descripción de 5001 caracteres no se guarda y devuelve el error", async () => {
+  // Regression: with more than 5000 characters the action returned without saving or
+  // warning, and the form reset wiped what had been typed.
+  it("a 5001-character description is not saved and returns the error", async () => {
     const card = await seedCardWithDue();
     const long = "x".repeat(5001);
     expect(await updateCard({}, detailsForm(card.id, long, "2026-07-01"))).toEqual({
-      error: "La descripción no puede superar 5000 caracteres (tiene 5001).",
+      error: fmt(en.errors.cards.descriptionTooLong, { max: 5000, length: 5001 }),
       description: long,
       dueDate: "2026-07-01",
     });
@@ -117,19 +119,19 @@ describe("updateCard valida fecha y descripción", () => {
     expect((await readCard(card.id)).description).toBe("y".repeat(5000));
   });
 
-  // El navegador envía los saltos de línea como \r\n pero maxLength los cuenta como uno:
-  // 2500 líneas de "a\n" miden 5000 en la UI y llegan con 7500 caracteres.
-  it("cuenta los saltos de línea \\r\\n como un carácter", async () => {
+  // The browser sends line breaks as \r\n but maxLength counts them as one: 2500 lines
+  // of "a\n" measure 5000 in the UI and arrive with 7500 characters.
+  it("counts \\r\\n line breaks as one character", async () => {
     const card = await seedCardWithDue();
     const sent = "a\r\n".repeat(2500);
     expect(await updateCard({}, detailsForm(card.id, sent, "2026-07-01"))).toEqual({});
-    // El trim de la validación quita el último salto de línea.
+    // The validation's trim removes the last line break.
     expect((await readCard(card.id)).description).toBe("a\n".repeat(2500).trimEnd());
   });
 
-  // Regresión: una descripción anterior al límite (más de 5000) hacía fallar la
-  // validación al reenviarla sin cambios y no se podía cambiar el vencimiento.
-  it("con una descripción heredada larga y sin cambios guarda la fecha", async () => {
+  // Regression: a description from before the limit (over 5000) failed validation when
+  // sent back unchanged, so the due date could not be changed.
+  it("with a long legacy description sent unchanged, it saves the date", async () => {
     const card = await seedCardWithDue();
     const legacy = "z\r\n".repeat(3000);
     await prisma.card.update({ where: { id: card.id }, data: { description: legacy } });
@@ -140,9 +142,11 @@ describe("updateCard valida fecha y descripción", () => {
       description: legacy,
     });
 
-    const edited = legacy + "más";
+    const edited = legacy + "more";
     const result = await updateCard({}, detailsForm(card.id, edited, "2026-09-25"));
-    expect(result.error).toMatch(/no puede superar 5000 caracteres/);
+    expect(result.error).toBe(
+      fmt(en.errors.cards.descriptionTooLong, { max: 5000, length: 6004 }),
+    );
     expect(await readCard(card.id)).toEqual({
       dueDate: new Date("2026-09-24T00:00:00.000Z"),
       description: legacy,

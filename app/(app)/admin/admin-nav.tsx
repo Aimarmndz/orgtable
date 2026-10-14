@@ -1,15 +1,17 @@
 import Link from "next/link";
+import { getI18n } from "@/app/i18n/server";
 
 const TABS = [
-  { href: "/admin/users", label: "Usuarios" },
-  { href: "/admin/instance", label: "Instancia" },
-  { href: "/admin/audit", label: "Auditoría" },
+  { href: "/admin/users", key: "users" },
+  { href: "/admin/instance", key: "instance" },
+  { href: "/admin/audit", key: "audit" },
 ] as const;
 
-/** Pestañas de las páginas de administración. */
-export function AdminNav({ current }: { current: (typeof TABS)[number]["href"] }) {
+/** Tabs of the administration pages. */
+export async function AdminNav({ current }: { current: (typeof TABS)[number]["href"] }) {
+  const { m } = await getI18n();
   return (
-    <nav aria-label="Administración" className="flex flex-wrap gap-1 text-sm">
+    <nav aria-label={m.admin.nav.label} className="flex flex-wrap gap-1 text-sm">
       {TABS.map((t) =>
         t.href === current ? (
           <span
@@ -17,7 +19,7 @@ export function AdminNav({ current }: { current: (typeof TABS)[number]["href"] }
             aria-current="page"
             className="rounded-lg bg-surface-2 px-2.5 py-1 font-medium"
           >
-            {t.label}
+            {m.admin.nav[t.key]}
           </span>
         ) : (
           <Link
@@ -25,7 +27,7 @@ export function AdminNav({ current }: { current: (typeof TABS)[number]["href"] }
             href={t.href}
             className="rounded-lg px-2.5 py-1 text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
           >
-            {t.label}
+            {m.admin.nav[t.key]}
           </Link>
         ),
       )}

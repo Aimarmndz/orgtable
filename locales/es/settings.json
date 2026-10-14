@@ -1,1 +1,121 @@
-{}
+{
+  "meta": {
+    "title": "Ajustes",
+    "description": "Tu perfil, tu seguridad, tus tokens de API y tus datos."
+  },
+  "title": "Ajustes",
+  "navLabel": "Secciones de ajustes",
+  "groups": {
+    "account": "Cuenta",
+    "data": "Tus datos"
+  },
+  "sections": {
+    "profile": "Perfil",
+    "security": "Contraseña y sesiones",
+    "api": "Tokens de API",
+    "appearance": "Apariencia",
+    "data": "Privacidad y datos",
+    "about": "Acerca de"
+  },
+  "profile": {
+    "description": "Así te ven las personas con las que compartes tableros.",
+    "name": "Nombre",
+    "email": "Email",
+    "currentPassword": "Contraseña actual",
+    "currentPasswordHint": "Solo hace falta si cambias el email.",
+    "save": "Guardar perfil"
+  },
+  "security": {
+    "description": "Al cambiar la contraseña se cierran tus otras sesiones.",
+    "currentPassword": "Contraseña actual",
+    "newPassword": "Nueva contraseña",
+    "newPasswordHint": "Al menos 8 caracteres.",
+    "confirmPassword": "Repite la nueva",
+    "submit": "Cambiar contraseña",
+    "submitting": "Cambiando…",
+    "sessionsTitle": "Sesiones abiertas",
+    "thisSession": "Esta sesión",
+    "sessionDates": "iniciada {started} · caduca {expires}",
+    "signOut": "Cerrar",
+    "signOutOthers": {
+      "one": "Cerrar la otra sesión",
+      "other": "Cerrar las otras {count} sesiones"
+    },
+    "browserOnOs": "{browser} en {os}",
+    "unknownBrowser": "Navegador desconocido"
+  },
+  "tokens": {
+    "description": "Para usar la API de orgtable desde scripts u otras aplicaciones. Un token actúa <strong>como tú</strong>, con tu mismo acceso a los tableros, y solo se muestra una vez. Consulta la <link>documentación de la API</link>.",
+    "empty": "Aún no has creado ningún token.",
+    "scopeRead": "Solo lectura",
+    "scopeFull": "Lectura y escritura",
+    "scopeWrite": "Escritura",
+    "expired": "Caducado",
+    "created": "creado {date}",
+    "expires": "caduca {date}",
+    "neverExpires": "no caduca",
+    "used": "usado {date}",
+    "neverUsed": "sin usar",
+    "revoke": "Revocar",
+    "form": {
+      "created": "Token «{name}» creado",
+      "copyNow": "Cópialo ahora: por seguridad no se volverá a mostrar.",
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "copyFailed": "No se pudo copiar automáticamente: selecciona el token y cópialo a mano.",
+      "name": "Nombre del token",
+      "namePlaceholder": "p. ej. Script de backup",
+      "scope": "Permisos",
+      "expiry": "Caduca",
+      "expiryNever": "Nunca",
+      "expiryDays": {
+        "one": "{count} día",
+        "other": "{count} días"
+      },
+      "expiryYear": "1 año",
+      "submit": "Crear token",
+      "submitting": "Creando…"
+    }
+  },
+  "appearance": {
+    "description": "El tema y el idioma de la interfaz.",
+    "theme": "Tema",
+    "themeHint": "Se guarda en este navegador.",
+    "themes": {
+      "light": {
+        "label": "Claro",
+        "hint": "Papel cálido"
+      },
+      "dark": {
+        "label": "Oscuro",
+        "hint": "Carbón cálido"
+      },
+      "system": {
+        "label": "Del sistema",
+        "hint": "Sigue a tu dispositivo"
+      }
+    }
+  },
+  "data": {
+    "description": "Tus derechos del RGPD, sin tener que escribir a nadie. El detalle está en la <link>política de privacidad</link>.",
+    "export": {
+      "title": "Descargar mis datos",
+      "description": "Un archivo JSON con tu cuenta, tus tableros, tus comentarios, tus notificaciones y tu registro de seguridad.",
+      "button": "Descargar .json"
+    },
+    "delete": {
+      "title": "Borrar mi cuenta",
+      "descriptionNoBoards": "Se borran para siempre tu cuenta y tus comentarios. Los tableros de otras personas siguen, sin ti. No se puede deshacer.",
+      "descriptionWithBoards": {
+        "one": "Se borran para siempre tu cuenta, el tablero que creaste (con sus tarjetas y adjuntos) y tus comentarios. Los tableros de otras personas siguen, sin ti. No se puede deshacer.",
+        "other": "Se borran para siempre tu cuenta, los {count} tableros que creaste (con sus tarjetas y adjuntos) y tus comentarios. Los tableros de otras personas siguen, sin ti. No se puede deshacer."
+      },
+      "confirmPassword": "Escribe tu contraseña para confirmar",
+      "submit": "Borrar mi cuenta",
+      "submitting": "Borrando…"
+    }
+  },
+  "about": {
+    "line": "orgtable <version>{version}</version> · <source>Código fuente</source> · Licencia <license>{license}</license>"
+  }
+}

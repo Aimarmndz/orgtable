@@ -5,10 +5,20 @@ import { useActionState } from "react";
 import { register, type RegisterState } from "@/app/lib/actions/register";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
+import { useI18n } from "@/app/i18n/client";
+import { fmt } from "@/app/i18n/format";
+import { rich } from "@/app/i18n/rich";
 
 export function RegisterForm({ operatorName }: { operatorName: string }) {
   const [state, action, pending] = useActionState<RegisterState, FormData>(register, {});
   const invalid = (f: RegisterState["field"]) => (state.field === f && !pending) || undefined;
+  const { m } = useI18n();
+  const t = m.auth.register;
+  const legalLink = (href: string, text: string) => (
+    <Link href={href} className="font-medium text-accent underline underline-offset-2">
+      {text}
+    </Link>
+  );
 
   return (
     <form action={action} className="w-full max-w-sm">
@@ -20,16 +30,19 @@ export function RegisterForm({ operatorName }: { operatorName: string }) {
       </div>
 
       <h1 className="mt-8 font-display text-3xl font-bold tracking-tight lg:mt-0">
-        Crea tu cuenta
+        {t.title}
       </h1>
       <p className="mt-2 text-sm text-ink-muted">
-        Es gratis. ¿Ya tienes cuenta?{" "}
-        <Link href="/login" className="font-semibold text-accent underline-offset-2 hover:underline">
-          Inicia sesión
-        </Link>
+        {rich(t.subtitle, {
+          link: (c) => (
+            <Link href="/login" className="font-semibold text-accent underline-offset-2 hover:underline">
+              {c}
+            </Link>
+          ),
+        })}
       </p>
 
-      {/* Se retira mientras se envía: así un segundo error idéntico se vuelve a anunciar. */}
+      {/* Removed while submitting, so an identical second error is announced again. */}
       {state.error && !pending && (
         <p
           role="alert"
@@ -43,7 +56,7 @@ export function RegisterForm({ operatorName }: { operatorName: string }) {
       <div className="mt-7 space-y-4">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="name" className="text-sm font-medium">
-            Nombre
+            {m.auth.fields.name}
           </label>
           <Input
             id="name"
@@ -58,7 +71,7 @@ export function RegisterForm({ operatorName }: { operatorName: string }) {
         </div>
         <div className="flex flex-col gap-1.5">
           <label htmlFor="email" className="text-sm font-medium">
-            Email
+            {m.auth.fields.email}
           </label>
           <Input
             id="email"
@@ -67,7 +80,7 @@ export function RegisterForm({ operatorName }: { operatorName: string }) {
             required
             maxLength={254}
             autoComplete="email"
-            placeholder="tu@correo.com"
+            placeholder={m.auth.fields.emailPlaceholder}
             defaultValue={state.values?.email}
             aria-invalid={invalid("email")}
             aria-describedby={invalid("email") ? "register-error" : undefined}
@@ -75,7 +88,7 @@ export function RegisterForm({ operatorName }: { operatorName: string }) {
         </div>
         <div className="flex flex-col gap-1.5">
           <label htmlFor="password" className="text-sm font-medium">
-            Contraseña
+            {m.auth.fields.password}
           </label>
           <Input
             id="password"
@@ -88,14 +101,14 @@ export function RegisterForm({ operatorName }: { operatorName: string }) {
             aria-describedby={invalid("password") ? "register-error password-hint" : "password-hint"}
           />
           <p id="password-hint" className="text-xs text-ink-muted">
-            Al menos 8 caracteres.
+            {t.passwordHint}
           </p>
         </div>
 
-        {/* Campo trampa para bots: fuera de la vista y del orden de tabulación. Las
-            personas no lo ven ni lo rellenan; si llega con texto, el alta se rechaza. */}
+        {/* Honeypot for bots: off screen and out of the tab order. People neither see nor
+            fill it; if it arrives with text, the sign-up is rejected. */}
         <div aria-hidden="true" className="absolute -left-[10000px] size-px overflow-hidden">
-          <label htmlFor="website">No rellenes este campo</label>
+          <label htmlFor="website">{t.honeypot}</label>
           <input id="website" name="website" type="text" tabIndex={-1} autoComplete="off" />
         </div>
 
@@ -108,28 +121,22 @@ export function RegisterForm({ operatorName }: { operatorName: string }) {
             aria-invalid={invalid("acceptTerms")}
           />
           <span>
-            He leído la{" "}
-            <Link href="/legal/privacidad" className="font-medium text-accent underline underline-offset-2">
-              política de privacidad
-            </Link>{" "}
-            y acepto las{" "}
-            <Link href="/legal/condiciones" className="font-medium text-accent underline underline-offset-2">
-              condiciones de uso
-            </Link>
-            .
+            {rich(t.acceptTerms, {
+              privacy: (c) => legalLink("/legal/privacy", c),
+              terms: (c) => legalLink("/legal/terms", c),
+            })}
           </span>
         </label>
       </div>
 
       <Button type="submit" disabled={pending} className="mt-7 w-full">
-        {pending ? "Creando la cuenta…" : "Crear cuenta"}
+        {pending ? t.submitting : t.submit}
       </Button>
 
-      {/* Primera capa de información (art. 13 RGPD): lo esencial junto al formulario y el
-          resto en la política enlazada arriba. */}
+      {/* First layer of information (art. 13 GDPR): the essentials next to the form, the
+          rest in the policy linked above. */}
       <p className="mt-5 text-xs leading-relaxed text-ink-muted">
-        Responsable: {operatorName}. Finalidad: darte la cuenta y el servicio. No se cede a
-        nadie. Puedes descargar o borrar tus datos desde los ajustes cuando quieras.
+        {fmt(t.firstLayer, { operator: operatorName })}
       </p>
     </form>
   );

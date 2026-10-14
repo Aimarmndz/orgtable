@@ -1,10 +1,9 @@
 import { EventEmitter } from "node:events";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-// Tests del puente LISTEN/NOTIFY del bus de tiempo real (app/lib/realtime/bus.ts). Se
-// sustituye `pg` por un cliente falso: lo que se comprueba es el ciclo de vida de la
-// conexión (cierre al fallar, reconexión con backoff) y la validación del payload, no
-// Postgres en sí.
+// Tests of the LISTEN/NOTIFY bridge of the realtime bus (app/lib/realtime/bus.ts). `pg`
+// is replaced with a fake client: what is checked is the connection life cycle (closing
+// on failure, reconnecting with backoff) and payload validation, not Postgres itself.
 
 type Behavior = { listenFails: boolean; connectDelayMs: number };
 
@@ -24,8 +23,8 @@ const pgState = vi.hoisted(() => ({
 vi.mock("pg", async () => {
   const { EventEmitter: Emitter } = await import("node:events");
   class Client extends Emitter {
-    // Sin retardo resuelve en el acto: así los temporizadores falsos solo cuentan los
-    // del bus (reintentos), no los del cliente simulado.
+    // Without a delay it resolves at once: that way the fake timers only count the bus's
+    // own (retries), not the simulated client's.
     connect = vi.fn(() =>
       pgState.behavior.connectDelayMs > 0
         ? new Promise<void>((resolve) =>
@@ -35,7 +34,7 @@ vi.mock("pg", async () => {
     );
     query = vi.fn(async (sql: string) => {
       if (sql.startsWith("LISTEN") && pgState.behavior.listenFails) {
-        throw new Error("LISTEN rechazado");
+        throw new Error("LISTEN rejected");
       }
       return { rows: [] };
     });
@@ -93,27 +92,27 @@ afterEach(() => {
 });
 
 describe("parseBridgePayload", () => {
-  it("acepta un payload válido", async () => {
+  it("accepts a valid payload", async () => {
     const { parseBridgePayload } = await loadBus();
     expect(
       parseBridgePayload(JSON.stringify({ kind: "board", id: "b1", origin: "x" })),
     ).toEqual({ kind: "board", id: "b1", origin: "x" });
   });
 
-  it("devuelve null si el payload no es válido", async () => {
+  it("returns null if the payload is not valid", async () => {
     const { parseBridgePayload } = await loadBus();
     expect(parseBridgePayload(JSON.stringify({ kind: "board", origin: "x" }))).toBeNull();
     expect(
-      parseBridgePayload(JSON.stringify({ kind: "otro", id: "b1", origin: "x" })),
+      parseBridgePayload(JSON.stringify({ kind: "other", id: "b1", origin: "x" })),
     ).toBeNull();
     expect(parseBridgePayload("null")).toBeNull();
     expect(parseBridgePayload("[]")).toBeNull();
-    expect(parseBridgePayload("no es json")).toBeNull();
+    expect(parseBridgePayload("not json")).toBeNull();
   });
 });
 
-describe("puente LISTEN/NOTIFY", () => {
-  it("cierra la conexión y lo registra si LISTEN falla, y reintenta con backoff", async () => {
+describe("LISTEN/NOTIFY bridge", () => {
+  it("closes the connection and logs it if LISTEN fails, and retries with backoff", async () => {
     const errors = vi.spyOn(console, "error").mockImplementation(() => {});
     const bus = await loadBus({ listenFails: true });
 
@@ -123,16 +122,16 @@ describe("puente LISTEN/NOTIFY", () => {
     expect(pgState.instances).toHaveLength(1);
     expect(pgState.instances[0].end).toHaveBeenCalled();
     expect(errors).toHaveBeenCalledWith(
-      "[realtime] no se pudo iniciar el puente LISTEN/NOTIFY",
+      "[realtime] could not start the LISTEN/NOTIFY bridge",
       expect.any(Error),
     );
 
-    // Otra suscripción durante el backoff no abre otra conexión.
+    // Another subscription during the backoff does not open another connection.
     const unsubscribe2 = bus.subscribeBoard("b2", () => {});
     await vi.advanceTimersByTimeAsync(0);
     expect(pgState.instances).toHaveLength(1);
 
-    // Primer reintento a 1 s, segundo a 2 s: cada cliente fallido se cierra.
+    // First retry after 1 s, second after 2 s: each failed client is closed.
     await vi.advanceTimersByTimeAsync(1_000);
     expect(pgState.instances).toHaveLength(2);
     expect(pgState.instances[1].end).toHaveBeenCalled();
@@ -141,7 +140,7 @@ describe("puente LISTEN/NOTIFY", () => {
     await vi.advanceTimersByTimeAsync(1);
     expect(pgState.instances).toHaveLength(3);
 
-    // Sin suscriptores ya no se programa ningún reintento.
+    // Without subscribers no retry is scheduled any more.
     unsubscribe();
     unsubscribe2();
     await vi.advanceTimersByTimeAsync(60_000);
@@ -149,7 +148,7 @@ describe("puente LISTEN/NOTIFY", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it("tras un error de la conexión la cierra y reconecta", async () => {
+  it("after a connection error it closes it and reconnects", async () => {
     const errors = vi.spyOn(console, "error").mockImplementation(() => {});
     const bus = await loadBus();
 
@@ -158,10 +157,10 @@ describe("puente LISTEN/NOTIFY", () => {
     expect(pgState.instances).toHaveLength(1);
     expect(pgState.instances[0].end).not.toHaveBeenCalled();
 
-    pgState.instances[0].emit("error", new Error("conexión perdida"));
+    pgState.instances[0].emit("error", new Error("connection lost"));
     expect(pgState.instances[0].end).toHaveBeenCalledTimes(1);
     expect(errors).toHaveBeenCalledWith(
-      "[realtime] error en la conexión del puente LISTEN/NOTIFY",
+      "[realtime] error on the LISTEN/NOTIFY bridge connection",
       expect.any(Error),
     );
 
@@ -170,7 +169,7 @@ describe("puente LISTEN/NOTIFY", () => {
     expect(pgState.instances[1].end).not.toHaveBeenCalled();
   });
 
-  it("publicar durante el arranque espera al puente en vez de perder el evento", async () => {
+  it("publishing during start-up waits for the bridge instead of losing the event", async () => {
     const bus = await loadBus({ connectDelayMs: 500 });
 
     bus.subscribeBoard("b1", () => {});
@@ -185,11 +184,11 @@ describe("puente LISTEN/NOTIFY", () => {
     expect(notifyCall).toBeDefined();
   });
 
-  it("reemite los NOTIFY válidos de otras instancias y descarta los inválidos", async () => {
+  it("re-emits valid NOTIFYs from other instances and discards invalid ones", async () => {
     const warns = vi.spyOn(console, "warn").mockImplementation(() => {});
     const bus = await loadBus();
     const received: string[] = [];
-    // Antes, un payload sin id se reemitía en "board:undefined".
+    // A payload without an id used to be re-emitted on "board:undefined".
     const stray = vi.fn();
     busEmitter().on("board:undefined", stray);
 
@@ -198,14 +197,14 @@ describe("puente LISTEN/NOTIFY", () => {
     const client = pgState.instances[0];
 
     client.emit("notification", {
-      payload: JSON.stringify({ kind: "board", id: "b1", origin: "otra" }),
+      payload: JSON.stringify({ kind: "board", id: "b1", origin: "other" }),
     });
     expect(received).toEqual(["b1"]);
 
     client.emit("notification", {
-      payload: JSON.stringify({ kind: "board", origin: "otra" }),
+      payload: JSON.stringify({ kind: "board", origin: "other" }),
     });
-    client.emit("notification", { payload: "{roto" });
+    client.emit("notification", { payload: "{broken" });
     expect(received).toEqual(["b1"]);
     expect(warns).toHaveBeenCalledTimes(2);
     expect(stray).not.toHaveBeenCalled();

@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Modo oscuro por clase en <html> (toggle manual + preferencia del sistema). */
+/* Dark mode via a class on <html> (manual toggle + system preference). */
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
@@ -22,12 +22,12 @@
 }
 
 /* ───────────────────────────────────────────────────────────────────────────
-   Estética: EDITORIAL CÁLIDO. Cromo en neutros cálidos (arena, papel, espresso)
-   con un único acento terracota. El color del contenido (tableros, etiquetas)
-   vive en una paleta apagada y cohesiva (app/lib/colors.ts). Tokens en OKLCH.
+   Look: WARM EDITORIAL. Chrome in warm neutrals (sand, paper, espresso) with a
+   single terracotta accent. Content colour (boards, labels) lives in a muted,
+   cohesive palette (app/lib/colors.ts). Tokens in OKLCH.
    ─────────────────────────────────────────────────────────────────────────── */
 
-/* Tema claro (por defecto) — papel cálido sobre arena */
+/* Light theme (default): warm paper on sand */
 :root {
   --bg: oklch(0.965 0.013 74);
   --surface: oklch(0.992 0.005 80);
@@ -39,13 +39,13 @@
   --accent: oklch(0.49 0.13 40);
   --accent-hover: oklch(0.44 0.13 40);
   --accent-ink: oklch(0.99 0.01 80);
-  /* danger y success oscurecidos lo justo para 4,5:1 (WCAG AA) también sobre su propio
-     fondo al 10-15 % (avisos, insignia de vencida). Lo comprueba test/contrast.test.ts. */
+  /* danger and success are darkened just enough for 4.5:1 (WCAG AA), also on their own
+     10-15 % background (notices, overdue badge). Checked by test/contrast.test.ts. */
   --danger: oklch(0.52 0.18 28);
   --success: oklch(0.48 0.1 145);
 }
 
-/* Tema oscuro — carbón cálido (espresso), mismo acento terracota más luminoso */
+/* Dark theme: warm charcoal (espresso), same terracotta accent, brighter */
 .dark {
   --bg: oklch(0.205 0.012 52);
   --surface: oklch(0.25 0.014 52);
@@ -67,15 +67,15 @@ body {
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
-/* Titulares con la display (Bricolage Grotesque): carácter editorial, tracking ceñido.
-   Se aplica con la utilidad `font-display`; aquí solo afinamos el render. */
+/* Headings in the display face (Bricolage Grotesque): editorial character, tight
+   tracking. Applied with the `font-display` utility; this only tunes the rendering. */
 .font-display {
   font-feature-settings: "ss01";
   letter-spacing: -0.02em;
 }
 
-/* Grano de papel sutil: capa fija, sin eventos de puntero y sin repintar al
-   hacer scroll (no se aplica a contenedores scrollables). Aporta textura cálida. */
+/* Subtle paper grain: a fixed layer, without pointer events and without repainting on
+   scroll (never applied to scrollable containers). Adds warm texture. */
 body::before {
   content: "";
   position: fixed;
@@ -91,7 +91,7 @@ body::before {
   opacity: 0.18;
 }
 
-/* Scrollbars discretas (las columnas del tablero scrollean a menudo). */
+/* Discreet scrollbars (board columns scroll often). */
 @media (pointer: fine) {
   * {
     scrollbar-width: thin;
@@ -99,7 +99,7 @@ body::before {
   }
 }
 
-/* Respeta la preferencia de movimiento reducido en toda la app. */
+/* Honour the reduced-motion preference across the app. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -130,9 +130,9 @@ body::before {
   }
 }
 
-/* Texto largo de las páginas legales (/legal/*). Sin el plugin de tipografía: unas pocas
-   reglas con :where() (especificidad 0), así cualquier utilidad de Tailwind puesta en un
-   elemento concreto gana sin pelearse con ellas. */
+/* Long-form text of the legal pages (/legal/*). No typography plugin: a few rules
+   wrapped in :where() (specificity 0), so any Tailwind utility on a given element wins
+   without fighting them. */
 .legal-prose {
   font-size: 0.9375rem;
   line-height: 1.7;
@@ -193,9 +193,9 @@ body::before {
   border-top: 1px solid var(--border);
 }
 
-/* Menú de la cuenta (popover nativo, app/components/account-menu.tsx). Se ancla bajo el
-   botón con anchor positioning; en los navegadores que aún no lo soportan, cae arriba a
-   la derecha, que es donde está el botón. */
+/* Account menu (native popover, app/components/account-menu.tsx). Anchored under its
+   button with anchor positioning; browsers without support fall back to the top right,
+   which is where the button is. */
 .account-menu {
   position: fixed;
   inset: auto;

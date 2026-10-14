@@ -4,33 +4,33 @@ import { getBoardsForUser } from "@/app/lib/queries";
 import { recordAudit } from "@/app/lib/audit";
 import { boardTitleSchema } from "@/app/lib/validators";
 import { authenticateApiToken, isReadOnly } from "@/app/lib/api/auth";
-import { apiError, apiOk } from "@/app/lib/api/respond";
+import { apiError, apiOk, apiValidationError } from "@/app/lib/api/respond";
 import { serializeBoardSummary } from "@/app/lib/api/serialize";
 
-// API pública v1 — colección de tableros (Hito 9). Ver docs/api/public-api.md.
+// Public API v1: board collection. See docs/api/public-api.md.
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-/** GET /api/v1/boards — tableros a los que el usuario del token tiene acceso. */
+/** GET /api/v1/boards: boards the token's user has access to. */
 export async function GET(request: Request) {
   const auth = await authenticateApiToken(request);
-  if (!auth) return apiError(401, "Token de API no válido o ausente.");
+  if (!auth) return apiError(401, "Missing or invalid API token.");
 
   const boards = await getBoardsForUser(auth.userId);
   return apiOk({ boards: boards.map(serializeBoardSummary) });
 }
 
-/** POST /api/v1/boards — crea un tablero (el usuario queda como propietario). */
+/** POST /api/v1/boards: creates a board (the user becomes its owner). */
 export async function POST(request: Request) {
   const auth = await authenticateApiToken(request);
-  if (!auth) return apiError(401, "Token de API no válido o ausente.");
-  if (isReadOnly(auth)) return apiError(403, "Token de solo lectura.");
+  if (!auth) return apiError(401, "Missing or invalid API token.");
+  if (isReadOnly(auth)) return apiError(403, "Read-only token.");
 
   const body = await request.json().catch(() => null);
   const parsed = boardTitleSchema.safeParse((body as { title?: unknown })?.title);
   if (!parsed.success) {
-    return apiError(422, parsed.error.issues[0]?.message ?? "Datos no válidos.");
+    return apiValidationError(parsed.error.issues[0]);
   }
 
   const board = await prisma.board.create({

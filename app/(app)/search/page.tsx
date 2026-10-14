@@ -5,11 +5,18 @@ import { searchForUser, type SearchResults } from "@/app/lib/queries";
 import { boardBackgroundFor } from "@/app/lib/colors";
 import { SearchBox } from "@/app/components/search-box";
 import { firstParam } from "@/app/lib/search-params";
+import { getI18n } from "@/app/i18n/server";
+import { fmt } from "@/app/i18n/format";
 
 export const dynamic = "force-dynamic";
 
-// La consulta NO va en el título: acabaría en el historial y en las pestañas.
-export const metadata: Metadata = { title: "Búsqueda" };
+const MIN_QUERY_LENGTH = 2;
+
+// The query is NOT part of the title: it would end up in the history and in tabs.
+export async function generateMetadata(): Promise<Metadata> {
+  const { m } = await getI18n();
+  return { title: m.search.meta.title };
+}
 
 export default async function SearchPage({
   searchParams,
@@ -17,26 +24,28 @@ export default async function SearchPage({
   searchParams: Promise<{ q?: string | string[] }>;
 }) {
   const user = await requireUser();
+  const { m } = await getI18n();
+  const t = m.search;
   const query = (firstParam((await searchParams).q) ?? "").trim();
 
   const results: SearchResults =
-    query.length >= 2
+    query.length >= MIN_QUERY_LENGTH
       ? await searchForUser(user.id, query)
       : { boards: [], cards: [] };
   const total = results.boards.length + results.cards.length;
 
   return (
     <div className="relative z-10 mx-auto w-full max-w-3xl overflow-y-auto p-6 sm:p-8">
-      <h1 className="font-display text-3xl font-bold tracking-tight">Búsqueda</h1>
+      <h1 className="font-display text-3xl font-bold tracking-tight">{t.title}</h1>
 
-      {/* En móvil la barra de la navbar se oculta; aquí siempre hay una grande. */}
+      {/* On mobile the top bar's box is hidden; there is always a big one here. */}
       <div className="mt-5">
         <SearchBox defaultValue={query} autoFocus size="lg" />
       </div>
 
-      {query.length < 2 ? (
+      {query.length < MIN_QUERY_LENGTH ? (
         <p className="mt-8 text-sm text-ink-muted">
-          Escribe al menos 2 caracteres para buscar en tus tableros y tarjetas.
+          {fmt(t.tooShort, { min: MIN_QUERY_LENGTH })}
         </p>
       ) : total === 0 ? (
         <div className="mt-16 flex flex-col items-center text-center">
@@ -56,19 +65,16 @@ export default async function SearchPage({
             </svg>
           </div>
           <p className="mt-5 font-display text-lg font-bold tracking-tight">
-            Sin resultados para «{query}»
+            {fmt(t.noResults, { query })}
           </p>
-          <p className="mt-1.5 max-w-xs text-sm text-ink-muted">
-            Prueba con otras palabras. Solo se buscan tableros y tarjetas a los
-            que tienes acceso.
-          </p>
+          <p className="mt-1.5 max-w-xs text-sm text-ink-muted">{t.noResultsHint}</p>
         </div>
       ) : (
         <div className="mt-8 space-y-10">
           {results.boards.length > 0 && (
             <section>
               <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
-                Tableros · {results.boards.length}
+                {fmt(t.boards, { count: results.boards.length })}
               </h2>
               <ul className="mt-3 space-y-1.5">
                 {results.boards.map((b) => (
@@ -86,7 +92,7 @@ export default async function SearchPage({
                         {b.title}
                       </span>
                       <span className="shrink-0 text-xs text-ink-muted">
-                        Tablero
+                        {t.boardBadge}
                       </span>
                     </Link>
                   </li>
@@ -98,7 +104,7 @@ export default async function SearchPage({
           {results.cards.length > 0 && (
             <section>
               <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
-                Tarjetas · {results.cards.length}
+                {fmt(t.cards, { count: results.cards.length })}
               </h2>
               <ul className="mt-3 space-y-1.5">
                 {results.cards.map((c) => (

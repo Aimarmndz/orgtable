@@ -3,10 +3,10 @@ import { prisma } from "@/app/lib/prisma";
 import { completeSetup } from "@/app/lib/actions/setup";
 import { completeInstanceSetup } from "@/app/lib/services/setup";
 import { hashPassword } from "@/app/lib/auth";
-import { resetDb, disconnect, seedUser } from "./helpers";
+import { resetDb, disconnect, seedUser, en } from "./helpers";
 
-// Espía sobre hashPassword sin cambiar su comportamiento: permite comprobar que la acción
-// no gasta bcrypt cuando el setup ya está hecho.
+// Spy on hashPassword without changing its behaviour: lets us check that the action does
+// not spend bcrypt time when the setup is already done.
 vi.mock("@/app/lib/auth", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/app/lib/auth")>();
   return { ...original, hashPassword: vi.fn(original.hashPassword) };
@@ -26,7 +26,7 @@ afterAll(async () => {
 function setupForm(fields: Partial<Record<string, string>> = {}): FormData {
   const fd = new FormData();
   const values = {
-    instanceName: "Mi equipo",
+    instanceName: "My team",
     name: "Admin",
     email: "admin@test.local",
     password: "contraseña-larga",
@@ -36,9 +36,9 @@ function setupForm(fields: Partial<Record<string, string>> = {}): FormData {
   return fd;
 }
 
-describe("completeInstanceSetup: dos envíos simultáneos", () => {
-  it("solo crea un administrador; el otro recibe ALREADY_SETUP", async () => {
-    const passwordHash = "hash-no-usado-en-login";
+describe("completeInstanceSetup: two simultaneous submissions", () => {
+  it("creates only one administrator; the other gets ALREADY_SETUP", async () => {
+    const passwordHash = "hash-not-used-for-login";
     for (let i = 0; i < 20; i++) {
       await prisma.instanceConfig.deleteMany();
       await prisma.user.deleteMany();
@@ -58,9 +58,9 @@ describe("completeInstanceSetup: dos envíos simultáneos", () => {
 });
 
 describe("completeSetup (Server Action)", () => {
-  it("con el setup ya hecho redirige a /login sin validar ni gastar bcrypt", async () => {
+  it("with the setup already done it redirects to /login without validating or spending bcrypt", async () => {
     await prisma.instanceConfig.create({
-      data: { id: "singleton", instanceName: "Hecha", setupCompletedAt: new Date() },
+      data: { id: "singleton", instanceName: "Done", setupCompletedAt: new Date() },
     });
 
     await expect(completeSetup({}, setupForm())).rejects.toMatchObject({
@@ -70,36 +70,36 @@ describe("completeSetup (Server Action)", () => {
     expect(await prisma.user.count()).toBe(0);
   });
 
-  it("si la BD rechaza el alta devuelve el error, lo registra sin el email y no marca el setup", async () => {
-    await seedUser({ email: "ya-existe@test.local" });
+  it("if the DB rejects the insert it returns the error, logs it without the email and does not mark the setup", async () => {
+    await seedUser({ email: "already-exists@test.local" });
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    const state = await completeSetup({}, setupForm({ email: "ya-existe@test.local" }));
+    const state = await completeSetup({}, setupForm({ email: "already-exists@test.local" }));
 
-    expect(state.error).toBe("No se pudo completar la configuración. Inténtalo de nuevo.");
+    expect(state.error).toBe(en.errors.setup.failed);
     expect(spy).toHaveBeenCalledTimes(1);
     const logged = JSON.stringify(spy.mock.calls[0]);
     expect(logged).toContain("P2002");
-    expect(logged).not.toContain("ya-existe@test.local");
+    expect(logged).not.toContain("already-exists@test.local");
     const config = await prisma.instanceConfig.findUnique({ where: { id: "singleton" } });
     expect(config?.setupCompletedAt ?? null).toBeNull();
   });
 
-  it("con datos no válidos devuelve lo tecleado salvo la contraseña", async () => {
+  it("with invalid data it returns what was typed except the password", async () => {
     const state = await completeSetup(
       {},
-      setupForm({ email: "no-es-email", password: "secreto-pegado" }),
+      setupForm({ email: "not-an-email", password: "pasted-secret" }),
     );
     expect(state.error).toBeTruthy();
     expect(state.values).toEqual({
-      instanceName: "Mi equipo",
+      instanceName: "My team",
       name: "Admin",
-      email: "no-es-email",
+      email: "not-an-email",
     });
-    expect(JSON.stringify(state)).not.toContain("secreto-pegado");
+    expect(JSON.stringify(state)).not.toContain("pasted-secret");
   });
 
-  it("con datos correctos crea el admin, abre sesión y redirige a /boards", async () => {
+  it("with valid data it creates the admin, signs in and redirects to /boards", async () => {
     await expect(completeSetup({}, setupForm())).rejects.toMatchObject({
       digest: expect.stringContaining(";/boards;"),
     });

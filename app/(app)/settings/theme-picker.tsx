@@ -1,23 +1,20 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { useI18n } from "@/app/i18n/client";
 
 type Theme = "light" | "dark" | "system";
 
-const OPTIONS: { value: Theme; label: string; hint: string }[] = [
-  { value: "light", label: "Claro", hint: "Papel cálido" },
-  { value: "dark", label: "Oscuro", hint: "Carbón cálido" },
-  { value: "system", label: "Del sistema", hint: "Sigue a tu dispositivo" },
-];
+const OPTIONS: Theme[] = ["light", "dark", "system"];
 
-// Misma clave y valores que el script anti-parpadeo de app/layout.tsx y que ThemeToggle:
-// «light», «dark» o nada (= seguir al sistema).
+// Same key and values as the anti-flicker script in app/layout.tsx and ThemeToggle:
+// "light", "dark" or nothing (= follow the system).
 function readTheme(): Theme {
   try {
     const t = localStorage.getItem("theme");
     return t === "light" || t === "dark" ? t : "system";
   } catch {
-    // localStorage puede no existir (modo privado estricto): se sigue al sistema.
+    // localStorage may be missing (strict private mode): follow the system.
     return "system";
   }
 }
@@ -37,7 +34,7 @@ function applyTheme(theme: Theme) {
     if (theme === "system") localStorage.removeItem("theme");
     else localStorage.setItem("theme", theme);
   } catch {
-    // Sin almacenamiento la elección dura hasta recargar; se aplica igualmente.
+    // Without storage the choice lasts until reload; it is applied anyway.
   }
   const dark =
     theme === "dark" ||
@@ -46,31 +43,32 @@ function applyTheme(theme: Theme) {
   listeners.forEach((l) => l());
 }
 
-/** Selector de tema con tres opciones (el botón de la barra solo alterna claro/oscuro). */
+/** Three-option theme picker (the top bar button only toggles light/dark). */
 export function ThemePicker() {
-  // En el servidor no hay localStorage: se pinta «Del sistema» y se corrige al hidratar.
+  const t = useI18n().m.settings.appearance;
+  // There is no localStorage on the server: render "System" and fix it on hydration.
   const current = useSyncExternalStore(subscribe, readTheme, () => "system" as Theme);
 
   return (
     <fieldset>
-      <legend className="sr-only">Tema</legend>
+      <legend className="sr-only">{t.theme}</legend>
       <div className="grid gap-3 sm:grid-cols-3">
-        {OPTIONS.map((o) => (
+        {OPTIONS.map((value) => (
           <label
-            key={o.value}
+            key={value}
             className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-surface p-3.5 transition-colors hover:bg-surface-2 has-[:checked]:border-accent has-[:checked]:bg-accent/5 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent"
           >
             <input
               type="radio"
               name="theme"
-              value={o.value}
-              checked={current === o.value}
-              onChange={() => applyTheme(o.value)}
+              value={value}
+              checked={current === value}
+              onChange={() => applyTheme(value)}
               className="mt-1 accent-accent"
             />
             <span>
-              <span className="block text-sm font-semibold">{o.label}</span>
-              <span className="block text-xs text-ink-muted">{o.hint}</span>
+              <span className="block text-sm font-semibold">{t.themes[value].label}</span>
+              <span className="block text-xs text-ink-muted">{t.themes[value].hint}</span>
             </span>
           </label>
         ))}

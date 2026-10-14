@@ -4,9 +4,10 @@ import { useActionState, useEffect, useId, useRef } from "react";
 import { createUser, type CreateUserState } from "@/app/lib/actions/admin";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
+import { useI18n } from "@/app/i18n/client";
 
-// Alta de usuario por el administrador. useActionState da feedback inline; al crear
-// con éxito se limpia el formulario. Ver app/lib/actions/admin.ts.
+// Account creation by an administrator. useActionState gives inline feedback; the form
+// is cleared after a successful creation. See app/lib/actions/admin.ts.
 export function CreateUserForm() {
   const ref = useRef<HTMLFormElement>(null);
   const errorId = useId();
@@ -14,8 +15,10 @@ export function CreateUserForm() {
     createUser,
     {},
   );
+  const { m } = useI18n();
+  const t = m.admin.users.create;
 
-  // Limpia el formulario cuando el alta tiene éxito (llega un message).
+  // Clear the form when the creation succeeds (a message arrives).
   useEffect(() => {
     if (state.message) ref.current?.reset();
   }, [state.message]);
@@ -26,13 +29,11 @@ export function CreateUserForm() {
       action={action}
       className="rounded-xl border border-border bg-surface p-5"
     >
-      <h2 className="text-sm font-semibold">Crear cuenta</h2>
-      <p className="mt-1 text-sm text-ink-muted">
-        No hay registro abierto: aquí das de alta a las personas de tu instancia.
-      </p>
+      <h2 className="text-sm font-semibold">{t.title}</h2>
+      <p className="mt-1 text-sm text-ink-muted">{t.intro}</p>
 
-      {/* role="alert" para que el lector de pantalla lo anuncie. Se retira mientras se
-          envía: así un segundo error idéntico se vuelve a insertar y se anuncia de nuevo. */}
+      {/* role="alert" so screen readers announce it. Removed while submitting, so a
+          second identical error is inserted and announced again. */}
       {state.error && !pending && (
         <p
           id={errorId}
@@ -42,8 +43,8 @@ export function CreateUserForm() {
           {state.error}
         </p>
       )}
-      {/* Región siempre montada: los lectores de pantalla solo anuncian los cambios
-          dentro de un role="status" que ya existía antes del mensaje. */}
+      {/* Always-mounted region: screen readers only announce changes inside a
+          role="status" that existed before the message. */}
       <div role="status">
         {state.message && (
           <p className="mt-3 rounded-lg bg-success/10 px-3 py-2 text-sm text-success">
@@ -55,7 +56,7 @@ export function CreateUserForm() {
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <label className="text-sm">
           <span className="block text-xs font-semibold uppercase tracking-wide text-ink-muted">
-            Nombre
+            {t.name}
           </span>
           <Input
             name="name"
@@ -67,7 +68,7 @@ export function CreateUserForm() {
         </label>
         <label className="text-sm">
           <span className="block text-xs font-semibold uppercase tracking-wide text-ink-muted">
-            Email
+            {t.email}
           </span>
           <Input
             name="email"
@@ -81,7 +82,7 @@ export function CreateUserForm() {
         </label>
         <label className="text-sm">
           <span className="block text-xs font-semibold uppercase tracking-wide text-ink-muted">
-            Contraseña inicial
+            {t.password}
           </span>
           <Input
             name="password"
@@ -94,25 +95,25 @@ export function CreateUserForm() {
         </label>
         <label className="text-sm">
           <span className="block text-xs font-semibold uppercase tracking-wide text-ink-muted">
-            Rol
+            {t.role}
           </span>
-          {/* React restablece el formulario a sus valores por defecto tras la acción,
-              pero no actualiza el defaultValue de un <select> ya montado: la key lo
-              remonta con lo elegido para no perderlo (p. ej. Administrador). */}
+          {/* React resets the form to its defaults after the action but does not update
+              the defaultValue of a mounted <select>: the key remounts it with the chosen
+              value so it is not lost (e.g. Administrator). */}
           <select
             key={state.values?.role ?? "MEMBER"}
             name="role"
             defaultValue={state.values?.role ?? "MEMBER"}
             className="mt-1.5 h-9 w-full rounded-lg border border-border bg-surface px-2.5 text-sm text-ink outline-none focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/25"
           >
-            <option value="MEMBER">Miembro</option>
-            <option value="ADMIN">Administrador</option>
+            <option value="MEMBER">{m.admin.roles.MEMBER}</option>
+            <option value="ADMIN">{m.admin.roles.ADMIN}</option>
           </select>
         </label>
       </div>
 
       <Button type="submit" disabled={pending} className="mt-4">
-        {pending ? "Creando…" : "Crear usuario"}
+        {pending ? t.submitting : t.submit}
       </Button>
     </form>
   );

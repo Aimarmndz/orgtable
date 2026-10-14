@@ -1,1 +1,30 @@
-{}
+{
+  "search": {
+    "label": "Buscar",
+    "placeholder": "Buscar tarjetas y tableros…"
+  },
+  "theme": {
+    "toggle": "Cambiar entre tema claro y oscuro"
+  },
+  "account": {
+    "label": "Tu cuenta: {name}",
+    "profile": "Perfil y ajustes",
+    "security": "Contraseña y sesiones",
+    "privacy": "Privacidad y datos",
+    "admin": "Administración",
+    "signOut": "Cerrar sesión"
+  },
+  "notifications": {
+    "title": "Notificaciones",
+    "labelUnread": "Notificaciones ({count} sin leer)",
+    "markAll": "Marcar todas",
+    "empty": "No tienes notificaciones.",
+    "time": {
+      "now": "ahora",
+      "minutes": "hace {count} min",
+      "hours": "hace {count} h",
+      "yesterday": "ayer",
+      "days": "hace {count} d"
+    }
+  }
+}

@@ -1,9 +1,17 @@
-// Panel de marca de las pantallas de acceso (login y registro). Solo en pantallas anchas;
-// en móvil cada formulario lleva su marca compacta. Acento terracota y display grande.
-export function BrandPanel() {
+import { getI18n } from "@/app/i18n/server";
+
+// Brand panel of the sign-in and sign-up screens. Wide screens only; on mobile each form
+// carries its own compact brand mark. Terracotta accent and large display type.
+export async function BrandPanel() {
+  const { m } = await getI18n();
+  const t = m.auth.brand;
+  const columns = [
+    { title: t.sample.todo, cards: [t.sample.todoCard1, t.sample.todoCard2] },
+    { title: t.sample.done, cards: [t.sample.doneCard1] },
+  ];
   return (
     <aside className="relative hidden flex-col justify-between overflow-hidden bg-accent p-12 text-accent-ink lg:flex">
-      {/* Arcos concéntricos sutiles como textura de fondo (no decorativa en exceso). */}
+      {/* Subtle concentric arcs as background texture (kept understated on purpose). */}
       <div
         aria-hidden
         className="pointer-events-none absolute -right-40 -top-40 size-[34rem] rounded-full border border-accent-ink/15"
@@ -22,19 +30,13 @@ export function BrandPanel() {
 
       <div className="relative max-w-md">
         <h2 className="font-display text-5xl font-extrabold leading-[1.05] tracking-tight text-balance">
-          Tu trabajo, en columnas que respiran.
+          {t.headline}
         </h2>
-        <p className="mt-5 max-w-sm leading-relaxed text-accent-ink/80">
-          Tableros Kanban self-hosted y de código abierto. Sin anuncios y sin terceros
-          mirando.
-        </p>
+        <p className="mt-5 max-w-sm leading-relaxed text-accent-ink/80">{t.intro}</p>
 
-        {/* Miniatura de un tablero: anticipa el producto sin capturas ni ilustraciones. */}
+        {/* Thumbnail of a board: previews the product without screenshots or illustrations. */}
         <div aria-hidden className="mt-9 grid max-w-sm grid-cols-2 gap-2.5">
-          {[
-            { title: "Por hacer", cards: ["Preparar la demo", "Revisar el presupuesto"] },
-            { title: "Hecho", cards: ["Crear el tablero"] },
-          ].map((col) => (
+          {columns.map((col) => (
             <div key={col.title} className="flex flex-col gap-2 rounded-xl bg-accent-ink/12 p-2.5">
               <span className="px-1 text-[10px] font-semibold uppercase tracking-wider opacity-80">
                 {col.title}
@@ -53,7 +55,7 @@ export function BrandPanel() {
       </div>
 
       <p className="relative font-mono text-xs uppercase tracking-widest text-accent-ink/60">
-        Kanban · Self-hosted · Código abierto
+        {t.keywords}
       </p>
     </aside>
   );

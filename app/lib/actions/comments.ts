@@ -7,10 +7,11 @@ import { canEditBoard, canManageBoard } from "@/app/lib/roles";
 import { cardContext } from "@/app/lib/services/cards";
 import { commentTextSchema } from "@/app/lib/validators";
 import { notify } from "@/app/lib/notifications";
+import { i18nFor } from "@/app/i18n/server";
+import { fmt } from "@/app/i18n/format";
 
-// Comentarios de tarjeta (Hito 10). Comentar requiere permiso de edición (los lectores
-// no comentan). Borrar lo puede hacer el autor o el propietario del tablero. Ver
-// docs/card-collaboration.md.
+// Card comments. Commenting requires edit permission (viewers do not comment). The author
+// or the board owner can delete a comment. See docs/card-collaboration.md.
 
 export async function addComment(formData: FormData): Promise<void> {
   const cardId = String(formData.get("cardId"));
@@ -26,16 +27,16 @@ export async function addComment(formData: FormData): Promise<void> {
     data: { cardId, authorId: user.id, text: parsed.data },
   });
 
-  // Avisa a los asignados de la tarjeta (menos al propio autor) que sigan siendo miembros
-  // del tablero. Expulsar ya borra sus asignaciones (services/members.ts), pero pueden
-  // quedar filas huérfanas de antes de ese cambio y no deben recibir el texto del
-  // comentario.
+  // Notify the card's assignees (except the author) who are still board members, each in
+  // their own language. Removing a member already deletes their assignments
+  // (services/members.ts), but orphan rows from before that change may remain and must not
+  // receive the comment's text.
   const assignees = await prisma.cardAssignee.findMany({
     where: {
       cardId,
       user: { memberships: { some: { boardId: ctx.boardId } } },
     },
-    select: { userId: true },
+    select: { userId: true, user: { select: { locale: true } } },
   });
   await Promise.all(
     assignees
@@ -44,7 +45,9 @@ export async function addComment(formData: FormData): Promise<void> {
         notify({
           userId: a.userId,
           type: "comment.added",
-          title: `Nuevo comentario en «${ctx.cardTitle}»`,
+          title: fmt(i18nFor(a.user.locale).m.notifications.commentAdded.title, {
+            card: ctx.cardTitle,
+          }),
           body: parsed.data.slice(0, 140),
           boardId: ctx.boardId,
           cardId,
@@ -66,7 +69,7 @@ export async function deleteComment(formData: FormData): Promise<void> {
   if (!comment) return;
   const boardId = comment.card.list.boardId;
   const { user, role } = await requireBoardAccess(boardId);
-  // Solo el autor o el propietario del tablero.
+  // Only the author or the board owner.
   if (comment.authorId !== user.id && !canManageBoard(role)) return;
 
   await prisma.comment.delete({ where: { id: commentId } });

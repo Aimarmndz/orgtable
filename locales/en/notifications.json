@@ -1,1 +1,31 @@
-{}
+{
+  "roles": {
+    "OWNER": "Owner",
+    "EDITOR": "Editor",
+    "VIEWER": "Viewer"
+  },
+  "someBoard": "a board",
+  "memberAdded": {
+    "title": "You were added to “{board}”",
+    "body": "As {role}."
+  },
+  "memberRoleChanged": {
+    "title": "Your role on “{board}” has changed",
+    "body": "Your role is now {role}."
+  },
+  "memberRemoved": {
+    "title": "You were removed from “{board}”"
+  },
+  "cardAssigned": {
+    "title": "You were assigned “{card}”",
+    "body": "On the board “{board}”."
+  },
+  "commentAdded": {
+    "title": "New comment on “{card}”"
+  },
+  "dueReminder": {
+    "soonTitle": "Due soon: “{card}”",
+    "overdueTitle": "Overdue: “{card}”",
+    "body": "Due date: {date}."
+  }
+}

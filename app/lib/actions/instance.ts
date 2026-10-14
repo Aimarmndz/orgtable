@@ -5,16 +5,17 @@ import { requireAdmin } from "@/app/lib/dal";
 import { updateInstanceSettings } from "@/app/lib/services/instance";
 import { instanceSettingsSchema } from "@/app/lib/validators";
 import { recordAudit } from "@/app/lib/audit";
+import { getI18n, issueMessage } from "@/app/i18n/server";
 
-// Ajustes de la instancia (/admin/instance): nombre, registro abierto y datos legales del
-// operador. Solo el ADMIN global. Ver docs/privacy.md.
+// Instance settings (/admin/instance): name, open registration and the operator's legal
+// details. Global ADMIN only. See docs/privacy.md.
 
 export type InstanceSettingsState = {
   error?: string;
   field?: string;
   message?: string;
-  // Lo enviado, para repintar el formulario tras un error: React 19 resetea los
-  // formularios no controlados después de cada acción y se perdería lo tecleado.
+  // What was sent, to repaint the form after an error: React 19 resets uncontrolled forms
+  // after each action and what was typed would be lost.
   values?: Record<string, string>;
 };
 
@@ -34,6 +35,7 @@ export async function saveInstanceSettings(
   formData: FormData,
 ): Promise<InstanceSettingsState> {
   const admin = await requireAdmin();
+  const { m } = await getI18n();
   const raw = Object.fromEntries(
     FIELDS.map((f) => {
       const v = formData.get(f);
@@ -44,7 +46,7 @@ export async function saveInstanceSettings(
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
     return {
-      error: issue?.message ?? "Datos no válidos.",
+      error: issueMessage(m, issue),
       field: String(issue?.path[0] ?? ""),
       values: raw,
     };
@@ -54,21 +56,20 @@ export async function saveInstanceSettings(
   if (!result.ok) {
     if (result.error === "legal_info_required") {
       return {
-        error:
-          "Para abrir el registro, rellena antes el responsable y el email de contacto: la política de privacidad los necesita.",
+        error: m.errors.instance.legalInfoRequired,
         field: "registrationOpen",
         values: raw,
       };
     }
-    return { error: "La instancia aún no está configurada.", values: raw };
+    return { error: m.errors.instance.notConfigured, values: raw };
   }
 
   await recordAudit({
     action: "instance.updated",
     userId: admin.id,
-    detail: `registro ${parsed.data.registrationOpen ? "abierto" : "cerrado"}${result.legalChanged ? ", datos legales cambiados" : ""}`,
+    detail: `registration ${parsed.data.registrationOpen ? "open" : "closed"}${result.legalChanged ? ", legal details changed" : ""}`,
   });
-  // El nombre sale en la barra de toda la app; el registro, en /login y /register.
+  // The name shows in the bar of the whole app; registration, in /login and /register.
   revalidatePath("/", "layout");
-  return { message: "Ajustes guardados." };
+  return { message: m.errors.instance.saved };
 }

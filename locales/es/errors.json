@@ -1,1 +1,101 @@
-{}
+{
+  "validation": {
+    "emailInvalid": "Email no válido",
+    "contactEmailInvalid": "Email de contacto no válido",
+    "passwordRequired": "La contraseña es obligatoria",
+    "passwordTooShort": "La contraseña debe tener al menos 8 caracteres",
+    "passwordTooLong": "Máximo 72 bytes (unos 72 caracteres sin tildes ni emojis)",
+    "currentPasswordRequired": "Escribe tu contraseña actual",
+    "passwordsDontMatch": "Las dos contraseñas nuevas no coinciden",
+    "passwordToConfirm": "Escribe tu contraseña para confirmar",
+    "instanceNameRequired": "El nombre de la instancia es obligatorio",
+    "yourNameRequired": "Tu nombre es obligatorio",
+    "nameRequired": "El nombre es obligatorio",
+    "titleRequired": "El título es obligatorio",
+    "commentRequired": "El comentario no puede estar vacío",
+    "roleInvalid": "Elige un rol válido",
+    "acceptTermsRequired": "Tienes que aceptar la política de privacidad y las condiciones",
+    "noFieldsToUpdate": "No hay campos que actualizar.",
+    "maxChars40": "Máximo 40 caracteres",
+    "maxChars60": "Máximo 60 caracteres",
+    "maxChars120": "Máximo 120 caracteres",
+    "maxChars200": "Máximo 200 caracteres",
+    "maxChars254": "Máximo 254 caracteres",
+    "maxChars500": "Máximo 500 caracteres",
+    "maxChars2000": "Máximo 2000 caracteres",
+    "backupDaysNumber": "Los días de las copias tienen que ser un número",
+    "backupDaysInteger": "Los días de las copias tienen que ser un número entero",
+    "backupDaysNegative": "Los días de las copias no pueden ser negativos",
+    "backupDaysMax": "Máximo 3650 días"
+  },
+  "auth": {
+    "checkCredentials": "Revisa el email y la contraseña.",
+    "invalidCredentials": "Credenciales incorrectas.",
+    "tooManyAttempts": {
+      "one": "Demasiados intentos. Inténtalo de nuevo en {seconds} segundo.",
+      "other": "Demasiados intentos. Inténtalo de nuevo en {seconds} segundos."
+    }
+  },
+  "register": {
+    "closed": "El registro está cerrado en esta instancia.",
+    "failed": "No se pudo crear la cuenta. Inténtalo de nuevo.",
+    "rateLimited": {
+      "one": "Se han creado demasiadas cuentas seguidas. Inténtalo dentro de {minutes} minuto.",
+      "other": "Se han creado demasiadas cuentas seguidas. Inténtalo dentro de {minutes} minutos."
+    },
+    "emailTaken": "Ya existe una cuenta con ese email. Inicia sesión."
+  },
+  "setup": {
+    "failed": "No se pudo completar la configuración. Inténtalo de nuevo."
+  },
+  "account": {
+    "emailChangeNeedsPassword": "Para cambiar el email, escribe tu contraseña actual.",
+    "emailTaken": "Ese email ya lo usa otra cuenta.",
+    "profileSaved": "Perfil guardado.",
+    "wrongCurrentPassword": "La contraseña actual no es correcta.",
+    "passwordChanged": "Contraseña cambiada.",
+    "passwordChangedSessionsClosed": {
+      "one": "Contraseña cambiada. Se cerró {count} sesión más.",
+      "other": "Contraseña cambiada. Se cerraron {count} sesiones más."
+    },
+    "wrongPassword": "La contraseña no es correcta.",
+    "lastAdmin": "Eres la única persona administradora. Nombra a otra antes de borrar tu cuenta."
+  },
+  "admin": {
+    "emailTaken": "Ya existe un usuario con ese email.",
+    "userCreated": "Cuenta creada para {name}."
+  },
+  "instance": {
+    "legalInfoRequired": "Para abrir el registro, rellena antes el responsable y el email de contacto: la política de privacidad los necesita.",
+    "notConfigured": "La instancia aún no está configurada.",
+    "saved": "Ajustes guardados."
+  },
+  "tokens": {
+    "invalidScope": "Permisos no válidos.",
+    "invalidExpiry": "Caducidad no válida."
+  },
+  "boards": {
+    "importNoFile": "Selecciona un archivo JSON.",
+    "importTooLarge": "El archivo es demasiado grande (máx. {megabytes} MB).",
+    "importInvalidJson": "El archivo no es JSON válido.",
+    "importInvalidFormat": "El archivo no tiene el formato de un tablero de orgtable."
+  },
+  "cards": {
+    "notFound": "La tarjeta ya no existe.",
+    "noPermission": "No tienes permiso para editar esta tarjeta.",
+    "invalidDueDate": "La fecha de vencimiento no es válida.",
+    "descriptionTooLong": "La descripción no puede superar {max} caracteres (tiene {length})."
+  },
+  "attachments": {
+    "cardNotFound": "Tarjeta no encontrada.",
+    "noPermission": "No tienes permiso para adjuntar.",
+    "noFile": "Selecciona un archivo.",
+    "tooLarge": "El archivo supera el límite de {megabytes} MB."
+  },
+  "members": {
+    "ownerOnly": "Solo el propietario puede gestionar los miembros.",
+    "userNotFound": "No existe ningún usuario con ese email. Pídele al administrador que cree la cuenta primero.",
+    "alreadyMember": "{name} ya es miembro de este tablero.",
+    "added": "{name} añadido como {role}."
+  }
+}

@@ -3,13 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { deleteBoard } from "@/app/lib/actions/boards";
+import { useI18n } from "@/app/i18n/client";
+import { fmt } from "@/app/i18n/format";
 
-// Borrar un tablero elimina en cascada listas, tarjetas y adjuntos, así que pide un
-// segundo clic en línea («¿Borrar? Sí / No») en vez de window.confirm, que no se puede
-// estilar y en táctil bastaba un toque en la esquina para perderlo todo.
-// Mientras confirma queda siempre visible (no depende del hover de la tarjeta).
-// Al cancelar, el formulario se desmonta con el foco dentro; sin devolverlo al ✕ caería
-// al <body> y quien usa teclado o lector de pantalla perdería su sitio en la rejilla.
+// Deleting a board cascades to its lists, cards and attachments, so it asks for a
+// second inline click ("Delete? Yes / No") instead of window.confirm, which cannot be
+// styled; on touch screens a single tap on the corner was enough to lose everything.
+// While confirming it stays visible (it does not depend on the card's hover).
+// On cancel the form unmounts with focus inside; without moving focus back to the ✕ it
+// would fall to <body> and keyboard or screen reader users would lose their place.
 export function DeleteBoardButton({
   boardId,
   title,
@@ -19,10 +21,11 @@ export function DeleteBoardButton({
   title: string;
   className: string;
 }) {
+  const { m } = useI18n();
   const [confirming, setConfirming] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  // Solo se devuelve el foco tras cancelar: en el montaje inicial cada tarjeta de la
-  // rejilla tiene su ✕ y ninguno debe robar el foco.
+  // Focus is only restored after cancelling: on the initial mount every board in the
+  // grid has its own ✕ and none of them should steal focus.
   const restoreFocus = useRef(false);
 
   useEffect(() => {
@@ -44,7 +47,7 @@ export function DeleteBoardButton({
         type="button"
         onClick={() => setConfirming(true)}
         className={className}
-        aria-label={`Borrar tablero ${title}`}
+        aria-label={fmt(m.boards.index.deleteBoard, { title })}
       >
         ✕
       </button>
@@ -60,32 +63,33 @@ export function DeleteBoardButton({
       className="flex h-7 items-center gap-1 rounded-md bg-black/60 pl-2 pr-0.5 text-xs font-medium text-white"
     >
       <input type="hidden" name="boardId" value={boardId} />
-      <span>¿Borrar?</span>
+      <span>{m.boards.confirm.deletePrompt}</span>
       <ConfirmButton title={title} />
       <button
         type="button"
-        // El foco va a «No»: si se pulsa Intro por inercia, no se borra nada.
+        // Focus goes to "No": pressing Enter out of habit deletes nothing.
         autoFocus
         onClick={cancel}
         className="rounded px-1.5 py-1 hover:bg-white/20"
       >
-        No
+        {m.boards.confirm.no}
       </button>
     </form>
   );
 }
 
 function ConfirmButton({ title }: { title: string }) {
-  // Evita el doble envío mientras la acción borra y redirige.
+  const { m } = useI18n();
+  // Prevents a double submit while the action deletes and redirects.
   const { pending } = useFormStatus();
   return (
     <button
       type="submit"
       disabled={pending}
-      aria-label={`Sí, borrar el tablero ${title}`}
+      aria-label={fmt(m.boards.index.confirmDeleteBoard, { title })}
       className="rounded px-1.5 py-1 hover:bg-white/20 disabled:opacity-60"
     >
-      Sí
+      {m.boards.confirm.yes}
     </button>
   );
 }

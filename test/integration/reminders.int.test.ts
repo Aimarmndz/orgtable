@@ -1,12 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach, afterAll } from "vitest";
 import { prisma } from "@/app/lib/prisma";
 import { generateDueReminders } from "@/app/lib/services/reminders";
+import { fmt } from "@/app/i18n/format";
 import {
   resetDb,
   disconnect,
   seedUser,
   seedBoard,
   seedList,
+  en,
+  es,
 } from "./helpers";
 
 const originalTz = process.env.TZ;
@@ -15,7 +18,7 @@ beforeEach(async () => {
   await resetDb();
 });
 afterEach(() => {
-  // Algún test cambia la zona del proceso; Node la aplica en cuanto se asigna TZ.
+  // Some tests change the process time zone; Node applies it as soon as TZ is assigned.
   if (originalTz === undefined) delete process.env.TZ;
   else process.env.TZ = originalTz;
 });
@@ -25,10 +28,11 @@ afterAll(async () => {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-// La dedup compara el createdAt REAL de la notificación (lo pone la BD al insertar) con el
-// día de `now`. Por eso cada test usa un único `now` real (o de su mismo día UTC) y saca de
-// él las fechas: si se calculara al importar el módulo, un test que cruzara la medianoche
-// UTC mezclaría dos días. No se usan fake timers porque no afectan a ese createdAt.
+// The dedup compares the notification's REAL createdAt (set by the DB on insert) with the
+// day of `now`. That is why each test uses a single real `now` (or one from the same UTC
+// day) and derives the dates from it: if it were computed when importing the module, a test
+// crossing UTC midnight would mix two days. Fake timers are not used because they do not
+// affect that createdAt.
 function isoDay(now: Date, offset: number): string {
   const d = new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
@@ -67,21 +71,21 @@ async function seedOwnerList() {
   return { owner, board, list };
 }
 
-describe("recordatorios de vencimiento (integración)", () => {
-  it("avisa de tarjetas asignadas que vencen pronto o están vencidas, y nada más", async () => {
+describe("due-date reminders (integration)", () => {
+  it("notifies about assigned cards that are due soon or overdue, and nothing else", async () => {
     const now = new Date();
     const { owner, list } = await seedOwnerList();
 
-    const soon = await seedCardDue(list.id, "Vence hoy", isoDay(now, 0), owner.id);
+    const soon = await seedCardDue(list.id, "Due today", isoDay(now, 0), owner.id);
     const overdue = await seedCardDue(
       list.id,
-      "Vencida",
+      "Overdue",
       isoDay(now, -2),
       owner.id,
     );
-    await seedCardDue(list.id, "Futura", isoDay(now, 10), owner.id); // fuera de ventana
-    await seedCardDue(list.id, "Sin asignar", isoDay(now, 0)); // sin asignado
-    await seedCardDue(list.id, "Sin fecha", null, owner.id); // sin vencimiento
+    await seedCardDue(list.id, "Future", isoDay(now, 10), owner.id); // outside the window
+    await seedCardDue(list.id, "Unassigned", isoDay(now, 0)); // no assignee
+    await seedCardDue(list.id, "No date", null, owner.id); // no due date
 
     const result = await generateDueReminders(now);
     expect(result.created).toBe(2);
@@ -93,14 +97,18 @@ describe("recordatorios de vencimiento (integración)", () => {
     expect(notes.map((n) => n.cardId).sort()).toEqual(
       [soon.id, overdue.id].sort(),
     );
-    expect(notes.some((n) => n.title.startsWith("Tarea vencida"))).toBe(true);
-    expect(notes.some((n) => n.title.startsWith("Vence pronto"))).toBe(true);
+    expect(notes.map((n) => n.title).sort()).toEqual(
+      [
+        fmt(en.notifications.dueReminder.overdueTitle, { card: "Overdue" }),
+        fmt(en.notifications.dueReminder.soonTitle, { card: "Due today" }),
+      ].sort(),
+    );
   });
 
-  it("es idempotente el mismo día (no duplica el aviso)", async () => {
+  it("is idempotent within the same day (does not duplicate the reminder)", async () => {
     const now = new Date();
     const { owner, list } = await seedOwnerList();
-    await seedCardDue(list.id, "Vence hoy", isoDay(now, 0), owner.id);
+    await seedCardDue(list.id, "Due today", isoDay(now, 0), owner.id);
 
     const first = await generateDueReminders(now);
     expect(first.created).toBe(1);
@@ -112,17 +120,17 @@ describe("recordatorios de vencimiento (integración)", () => {
     ).toBe(1);
   });
 
-  it("cuenta el día en UTC aunque el servidor esté en otra zona", async () => {
+  it("counts the day in UTC even if the server is in another time zone", async () => {
     const real = new Date();
-    // Las 15:00 UTC de hoy: en Nueva York sigue siendo el mismo día, pero su medianoche
-    // local (04:00/05:00 UTC) es posterior a la medianoche UTC en que se guarda dueDate.
+    // 15:00 UTC today: in New York it is still the same day, but its local midnight
+    // (04:00/05:00 UTC) is later than the UTC midnight dueDate is stored at.
     const now = new Date(
       Date.UTC(real.getUTCFullYear(), real.getUTCMonth(), real.getUTCDate(), 15),
     );
     process.env.TZ = "America/New_York";
     const { owner, list } = await seedOwnerList();
     const today = isoDay(now, 0);
-    await seedCardDue(list.id, "Vence hoy", today, owner.id);
+    await seedCardDue(list.id, "Due today", today, owner.id);
 
     const result = await generateDueReminders(now);
     expect(result.created).toBe(1);
@@ -130,36 +138,36 @@ describe("recordatorios de vencimiento (integración)", () => {
     const note = await prisma.notification.findFirstOrThrow({
       where: { type: "due.reminder" },
     });
-    expect(note.title).toBe("Vence pronto: «Vence hoy»");
-    const expectedDay = new Intl.DateTimeFormat("es-ES", {
+    expect(note.title).toBe(fmt(en.notifications.dueReminder.soonTitle, { card: "Due today" }));
+    const expectedDay = new Intl.DateTimeFormat("en", {
       dateStyle: "medium",
       timeZone: "UTC",
     }).format(new Date(today));
-    expect(note.body).toBe(`Vencimiento: ${expectedDay}.`);
+    expect(note.body).toBe(fmt(en.notifications.dueReminder.body, { date: expectedDay }));
   });
 
-  it("avisa de una tarea vencida una sola vez, no cada día", async () => {
+  it("notifies about an overdue card only once, not every day", async () => {
     const now = new Date();
     const { owner, list } = await seedOwnerList();
-    await seedCardDue(list.id, "Vencida", isoDay(now, -2), owner.id);
+    await seedCardDue(list.id, "Overdue", isoDay(now, -2), owner.id);
 
     expect((await generateDueReminders(now)).created).toBe(1);
-    // Al día siguiente sigue vencida, pero ya se avisó tras vencer.
+    // The next day it is still overdue, but the reminder was already sent after it fell due.
     const tomorrow = new Date(now.getTime() + DAY_MS);
     const next = await generateDueReminders(tomorrow);
     expect(next).toEqual({ created: 0, scanned: 1 });
   });
 
-  it("no repite el aviso de vencida si ya hubo uno después del vencimiento", async () => {
+  it("does not repeat the overdue reminder if one was already sent after the due date", async () => {
     const now = new Date();
     const { owner, board, list } = await seedOwnerList();
-    const card = await seedCardDue(list.id, "Vencida", isoDay(now, -3), owner.id);
-    // Aviso enviado ayer, con la tarjeta ya vencida.
+    const card = await seedCardDue(list.id, "Overdue", isoDay(now, -3), owner.id);
+    // Reminder sent yesterday, with the card already overdue.
     await prisma.notification.create({
       data: {
         userId: owner.id,
         type: "due.reminder",
-        title: "Tarea vencida: «Vencida»",
+        title: fmt(en.notifications.dueReminder.overdueTitle, { card: "Overdue" }),
         boardId: board.id,
         cardId: card.id,
         createdAt: new Date(now.getTime() - DAY_MS),
@@ -169,25 +177,55 @@ describe("recordatorios de vencimiento (integración)", () => {
     expect(await generateDueReminders(now)).toEqual({ created: 0, scanned: 1 });
   });
 
-  it("ignora las tarjetas que vencieron hace más de 7 días", async () => {
+  it("ignores cards that fell due more than 7 days ago", async () => {
     const now = new Date();
     const { owner, list } = await seedOwnerList();
-    await seedCardDue(list.id, "Olvidada", isoDay(now, -8), owner.id);
-    await seedCardDue(list.id, "Reciente", isoDay(now, -7), owner.id);
+    await seedCardDue(list.id, "Forgotten", isoDay(now, -8), owner.id);
+    await seedCardDue(list.id, "Recent", isoDay(now, -7), owner.id);
 
     expect(await generateDueReminders(now)).toEqual({ created: 1, scanned: 1 });
   });
 
-  it("no avisa a un asignado que ya no es miembro del tablero", async () => {
+  it("does not notify an assignee who is no longer a board member", async () => {
     const now = new Date();
     const { list } = await seedOwnerList();
     const expelled = await seedUser();
-    // Asignación huérfana: como las que dejaba la expulsión antes de borrarlas.
-    await seedCardDue(list.id, "Vence hoy", isoDay(now, 0), expelled.id);
+    // Orphan assignment: like the ones removal from the board used to leave behind.
+    await seedCardDue(list.id, "Due today", isoDay(now, 0), expelled.id);
 
     expect(await generateDueReminders(now)).toEqual({ created: 0, scanned: 1 });
     expect(
       await prisma.notification.count({ where: { userId: expelled.id } }),
     ).toBe(0);
+  });
+
+  it("writes each reminder in the assignee's language, with that language's date format", async () => {
+    const now = new Date();
+    const { owner, board, list } = await seedOwnerList();
+    const spanish = await seedUser();
+    await prisma.user.update({ where: { id: spanish.id }, data: { locale: "es" } });
+    await prisma.boardMember.create({
+      data: { boardId: board.id, userId: spanish.id, role: "EDITOR" },
+    });
+    const today = isoDay(now, 0);
+    const card = await seedCardDue(list.id, "Due today", today, owner.id);
+    await prisma.cardAssignee.create({ data: { cardId: card.id, userId: spanish.id } });
+
+    expect((await generateDueReminders(now)).created).toBe(2);
+
+    const day = (intl: string) =>
+      new Intl.DateTimeFormat(intl, { dateStyle: "medium", timeZone: "UTC" }).format(
+        new Date(today),
+      );
+    const toSpanish = await prisma.notification.findFirstOrThrow({
+      where: { userId: spanish.id },
+    });
+    const toOwner = await prisma.notification.findFirstOrThrow({
+      where: { userId: owner.id },
+    });
+    expect(toSpanish.title).toBe(fmt(es.notifications.dueReminder.soonTitle, { card: "Due today" }));
+    expect(toSpanish.body).toBe(fmt(es.notifications.dueReminder.body, { date: day("es-ES") }));
+    expect(toOwner.title).toBe(fmt(en.notifications.dueReminder.soonTitle, { card: "Due today" }));
+    expect(toOwner.body).toBe(fmt(en.notifications.dueReminder.body, { date: day("en") }));
   });
 });

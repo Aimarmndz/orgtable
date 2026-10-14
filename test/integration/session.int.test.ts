@@ -12,9 +12,9 @@ import { cookies } from "next/headers";
 import { __getCookieOptions, __setHeaders } from "../stubs/next-headers";
 import { resetDb, disconnect, seedUser, loginAs } from "./helpers";
 
-// Sesiones respaldadas por la tabla Session (ADR 0008): la revocación inmediata depende de
-// las comprobaciones de verifySession (app/lib/dal.ts). Si alguna se quita, estos tests
-// fallan. Usan el stub mutable de next/headers y el SESSION_SECRET de test.
+// Sessions backed by the Session table (ADR 0008): immediate revocation depends on the
+// checks in verifySession (app/lib/dal.ts). If any of them is removed, these tests fail.
+// They use the mutable next/headers stub and the test SESSION_SECRET.
 
 beforeEach(async () => {
   await resetDb();
@@ -43,10 +43,10 @@ async function signToken(
     .sign(opts.secret ?? key());
 }
 
-describe("verifySession (integración)", () => {
-  it("con una sesión recién creada devuelve el usuario y el sid", async () => {
-    // Caso obligatorio: decrypt oculta los fallos (devuelve null), así que sin este test
-    // una mala configuración haría pasar todos los "devuelve null" de abajo.
+describe("verifySession (integration)", () => {
+  it("with a freshly created session it returns the user and the sid", async () => {
+    // Required case: decrypt hides failures (returns null), so without this test a broken
+    // configuration would make every "returns null" below pass.
     const u = await seedUser();
     await loginAs(u.id);
 
@@ -55,7 +55,7 @@ describe("verifySession (integración)", () => {
     expect(session).toEqual({ userId: u.id, sessionId: row.id });
   });
 
-  it("cache() de React no memoiza fuera de RSC: cambiar de usuario se ve al instante", async () => {
+  it("React's cache() does not memoize outside RSC: switching user is visible at once", async () => {
     const a = await seedUser();
     const b = await seedUser();
     await loginAs(a.id);
@@ -64,14 +64,14 @@ describe("verifySession (integración)", () => {
     expect((await getCurrentUser())?.id).toBe(b.id);
   });
 
-  it("tras revokeAllUserSessions devuelve null", async () => {
+  it("returns null after revokeAllUserSessions", async () => {
     const u = await seedUser();
     await loginAs(u.id);
     await revokeAllUserSessions(u.id);
     expect(await verifySession()).toBeNull();
   });
 
-  it("con la sesión caducada en la BD devuelve null", async () => {
+  it("returns null with the session expired in the DB", async () => {
     const u = await seedUser();
     await loginAs(u.id);
     await prisma.session.updateMany({
@@ -81,7 +81,7 @@ describe("verifySession (integración)", () => {
     expect(await verifySession()).toBeNull();
   });
 
-  it("un JWT válido con el sid de la sesión de OTRO usuario devuelve null", async () => {
+  it("a valid JWT with the sid of ANOTHER user's session returns null", async () => {
     const victim = await seedUser();
     const attacker = await seedUser();
     await loginAs(victim.id);
@@ -93,12 +93,12 @@ describe("verifySession (integración)", () => {
     expect(await verifySession()).toBeNull();
   });
 
-  it("rechaza cookies firmadas con otra clave, con otro algoritmo o sin sid", async () => {
+  it("rejects cookies signed with another key, with another algorithm or without a sid", async () => {
     const u = await seedUser();
     await loginAs(u.id);
     const row = await prisma.session.findFirstOrThrow({ where: { userId: u.id } });
 
-    const otherKey = new TextEncoder().encode("otra-clave-distinta-de-la-de-test-000");
+    const otherKey = new TextEncoder().encode("another-key-different-from-the-test-one");
     await setSessionCookie(await signToken({ userId: u.id, sid: row.id }, { secret: otherKey }));
     expect(await verifySession()).toBeNull();
 
@@ -109,7 +109,7 @@ describe("verifySession (integración)", () => {
     expect(await verifySession()).toBeNull();
   });
 
-  it("deleteSession marca revokedAt y borra la cookie", async () => {
+  it("deleteSession sets revokedAt and deletes the cookie", async () => {
     const u = await seedUser();
     await loginAs(u.id);
     await deleteSession();
@@ -121,19 +121,19 @@ describe("verifySession (integración)", () => {
   });
 });
 
-describe("decrypt: SESSION_SECRET ausente", () => {
-  it("falla ruidosamente en vez de tratarlo como 'sin sesión'", async () => {
+describe("decrypt: missing SESSION_SECRET", () => {
+  it("fails loudly instead of treating it as 'no session'", async () => {
     vi.stubEnv("SESSION_SECRET", "");
     await expect(decrypt("x.y.z")).rejects.toThrow(/SESSION_SECRET/);
-    // Sin cookie no se necesita la clave: /login y /setup siguen funcionando.
+    // Without a cookie the key is not needed: /login and /setup keep working.
     await expect(decrypt(undefined)).resolves.toBeNull();
   });
 
-  it("con secreto válido, un token manipulado sigue devolviendo null", async () => {
+  it("with a valid secret, a tampered token still returns null", async () => {
     expect(await decrypt("x.y.z")).toBeNull();
   });
 
-  it("createSession no deja una fila huérfana si falta la clave", async () => {
+  it("createSession does not leave an orphan row if the key is missing", async () => {
     const u = await seedUser();
     vi.stubEnv("SESSION_SECRET", "");
     await expect(createSession(u.id)).rejects.toThrow(/SESSION_SECRET/);
@@ -141,15 +141,15 @@ describe("decrypt: SESSION_SECRET ausente", () => {
   });
 });
 
-describe("cookie de sesión: Secure según el esquema de la petición", () => {
-  it("por HTTP (primer arranque en http://IP:3000) la cookie no lleva Secure", async () => {
+describe("session cookie: Secure depending on the request scheme", () => {
+  it("over HTTP (first start on http://IP:3000) the cookie is not Secure", async () => {
     const u = await seedUser();
     __setHeaders({ "x-forwarded-proto": "http" });
     await createSession(u.id);
     expect(__getCookieOptions("session")).toMatchObject({ secure: false, httpOnly: true });
   });
 
-  it("por HTTPS (proxy TLS) la cookie lleva Secure", async () => {
+  it("over HTTPS (TLS proxy) the cookie is Secure", async () => {
     const u = await seedUser();
     __setHeaders({ "x-forwarded-proto": "https" });
     await createSession(u.id);

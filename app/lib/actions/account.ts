@@ -12,19 +12,21 @@ import {
   updateOwnProfile,
 } from "@/app/lib/services/account";
 import { recordAudit } from "@/app/lib/audit";
+import { getI18n, issueMessage } from "@/app/i18n/server";
+import { plural } from "@/app/i18n/format";
 import {
   changePasswordSchema,
   deleteAccountSchema,
   profileSchema,
 } from "@/app/lib/validators";
 
-// Acciones de /settings sobre la cuenta propia. La lógica vive en services/account.ts;
-// aquí se resuelve quién es el usuario, se valida, se audita y se revalida. Ver
+// /settings actions on one's own account. The logic lives in services/account.ts; here the
+// user is resolved, input validated, the event audited and the page revalidated. See
 // docs/privacy.md.
 
 export type AccountFormState = {
   error?: string;
-  // Campo al que se refiere el error, para marcarlo con aria-invalid.
+  // Field the error refers to, to mark it with aria-invalid.
   field?: string;
   message?: string;
   values?: Record<string, string>;
@@ -35,7 +37,7 @@ function text(formData: FormData, key: string): string {
   return typeof v === "string" ? v : "";
 }
 
-/** La sesión actual es obligatoria: las acciones necesitan su id para no cerrarla. */
+/** The current session is required: the actions need its id so as not to revoke it. */
 async function requireSessionId(): Promise<string> {
   const session = await verifySession();
   if (!session) redirect("/login");
@@ -47,6 +49,7 @@ export async function updateProfile(
   formData: FormData,
 ): Promise<AccountFormState> {
   const user = await requireUser();
+  const { m } = await getI18n();
   const values = { name: text(formData, "name"), email: text(formData, "email") };
   const parsed = profileSchema.safeParse({
     name: formData.get("name"),
@@ -56,7 +59,7 @@ export async function updateProfile(
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
     return {
-      error: issue?.message ?? "Revisa los datos.",
+      error: issueMessage(m, issue),
       field: String(issue?.path[0] ?? ""),
       values,
     };
@@ -66,13 +69,13 @@ export async function updateProfile(
   if (!result.ok) {
     if (result.error === "wrong_password") {
       return {
-        error: "Para cambiar el email, escribe tu contraseña actual.",
+        error: m.errors.account.emailChangeNeedsPassword,
         field: "currentPassword",
         values,
       };
     }
     if (result.error === "email_taken") {
-      return { error: "Ese email ya lo usa otra cuenta.", field: "email", values };
+      return { error: m.errors.account.emailTaken, field: "email", values };
     }
     redirect("/login");
   }
@@ -80,10 +83,10 @@ export async function updateProfile(
   await recordAudit({
     action: "account.updated",
     userId: user.id,
-    detail: result.emailChanged ? "nombre y email" : "nombre",
+    detail: result.emailChanged ? "name and email" : "name",
   });
   revalidatePath("/", "layout");
-  return { message: "Perfil guardado." };
+  return { message: m.errors.account.profileSaved };
 }
 
 export async function changePassword(
@@ -92,6 +95,7 @@ export async function changePassword(
 ): Promise<AccountFormState> {
   const user = await requireUser();
   const sessionId = await requireSessionId();
+  const { m, intl } = await getI18n();
   const parsed = changePasswordSchema.safeParse({
     currentPassword: text(formData, "currentPassword"),
     newPassword: text(formData, "newPassword"),
@@ -99,7 +103,7 @@ export async function changePassword(
   });
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
-    return { error: issue?.message ?? "Revisa los datos.", field: String(issue?.path[0] ?? "") };
+    return { error: issueMessage(m, issue), field: String(issue?.path[0] ?? "") };
   }
 
   const result = await changeOwnPassword(user.id, {
@@ -109,7 +113,7 @@ export async function changePassword(
   });
   if (!result.ok) {
     if (result.error === "wrong_password") {
-      return { error: "La contraseña actual no es correcta.", field: "currentPassword" };
+      return { error: m.errors.account.wrongCurrentPassword, field: "currentPassword" };
     }
     redirect("/login");
   }
@@ -117,23 +121,23 @@ export async function changePassword(
   await recordAudit({
     action: "account.password_changed",
     userId: user.id,
-    detail: `otras sesiones cerradas: ${result.revokedSessions}`,
+    detail: `other sessions revoked: ${result.revokedSessions}`,
   });
   revalidatePath("/settings");
   return {
     message:
       result.revokedSessions > 0
-        ? `Contraseña cambiada. Se cerraron ${result.revokedSessions} sesiones más.`
-        : "Contraseña cambiada.",
+        ? plural(intl, m.errors.account.passwordChangedSessionsClosed, result.revokedSessions)
+        : m.errors.account.passwordChanged,
   };
 }
 
-/** Cierra una sesión propia desde la lista de sesiones abiertas. */
+/** Revokes one of one's own sessions from the list of open sessions. */
 export async function revokeSession(formData: FormData): Promise<void> {
   const user = await requireUser();
   const currentId = await requireSessionId();
   const sessionId = text(formData, "sessionId");
-  // La actual se cierra con «Salir», que además borra la cookie.
+  // The current one is closed with "Sign out", which also deletes the cookie.
   if (sessionId && sessionId !== currentId) {
     const count = await revokeOwnSession(user.id, sessionId);
     if (count > 0) {
@@ -141,7 +145,7 @@ export async function revokeSession(formData: FormData): Promise<void> {
     }
   }
   revalidatePath("/settings");
-  redirect("/settings#seguridad");
+  redirect("/settings#security");
 }
 
 export async function revokeOtherSessions(): Promise<void> {
@@ -156,7 +160,7 @@ export async function revokeOtherSessions(): Promise<void> {
     });
   }
   revalidatePath("/settings");
-  redirect("/settings#seguridad");
+  redirect("/settings#security");
 }
 
 export async function deleteAccount(
@@ -164,31 +168,29 @@ export async function deleteAccount(
   formData: FormData,
 ): Promise<AccountFormState> {
   const user = await requireUser();
+  const { m } = await getI18n();
   const parsed = deleteAccountSchema.safeParse({ password: text(formData, "password") });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message, field: "password" };
+    return { error: issueMessage(m, parsed.error.issues[0]), field: "password" };
   }
 
   const result = await deleteOwnAccount(user.id, parsed.data.password);
   if (!result.ok) {
     if (result.error === "wrong_password") {
-      return { error: "La contraseña no es correcta.", field: "password" };
+      return { error: m.errors.account.wrongPassword, field: "password" };
     }
     if (result.error === "last_admin") {
-      return {
-        error:
-          "Eres la única persona administradora. Nombra a otra antes de borrar tu cuenta.",
-      };
+      return { error: m.errors.account.lastAdmin };
     }
     redirect("/login");
   }
 
-  // La fila de auditoría no lleva userId: la cuenta ya no existe y no debe quedar ligada.
+  // The audit row has no userId: the account no longer exists and must not stay linked.
   await recordAudit({
     action: "account.deleted",
-    detail: `tableros borrados: ${result.boardsDeleted}`,
+    detail: `boards deleted: ${result.boardsDeleted}`,
   });
-  // Las sesiones se borraron en cascada; la cookie ya no vale, pero se quita igualmente.
+  // Sessions were deleted in cascade; the cookie is no longer valid, but it is removed anyway.
   (await cookies()).delete("session");
-  redirect("/login?cuenta=borrada");
+  redirect("/login?account=deleted");
 }

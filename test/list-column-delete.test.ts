@@ -2,10 +2,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { ReactElement, ReactNode } from "react";
 import type { ListDTO } from "@/app/lib/types";
 
-// No hay jsdom en el proyecto (ni se monta): igual que en
-// delete-board-button-focus.test.ts, se sustituyen useState/useRef/useEffect por un
-// arnés mínimo que re-ejecuta el componente como función, adjunta la ref del ✕ a un
-// botón falso y corre los efectos cuyas dependencias cambian (render → refs → efectos).
+// The project has no jsdom (and does not set one up): as in
+// delete-board-button-focus.test.ts, useState/useRef/useEffect are replaced with a
+// minimal harness that re-runs the component as a function, attaches the ✕'s ref to a
+// fake button and runs the effects whose dependencies change (render → refs → effects).
 type Slot = unknown;
 const slots: Slot[] = [];
 let cursor = 0;
@@ -41,8 +41,8 @@ vi.mock("react", async (importOriginal) => {
     },
   };
 });
-// useSortable y el contexto de permisos necesitan un árbol de React de verdad; aquí
-// solo importa la confirmación de borrado, así que se sustituyen por valores fijos.
+// useSortable, the permissions context and the messages context need a real React tree;
+// here only the delete confirmation matters, so they are replaced with fixed values.
 vi.mock("@dnd-kit/sortable", () => ({
   SortableContext: () => null,
   verticalListSortingStrategy: {},
@@ -58,6 +58,11 @@ vi.mock("@dnd-kit/sortable", () => ({
 vi.mock("@/app/components/board/board-perms", () => ({
   useBoardPerms: () => ({ canEdit: true }),
 }));
+vi.mock("@/app/i18n/client", async () => {
+  const { messagesFor } = await import("@/app/i18n/config");
+  const m = messagesFor("en");
+  return { useI18n: () => ({ locale: "en", intl: "en", m }) };
+});
 vi.mock("@/app/lib/actions/lists", () => ({ deleteList: vi.fn() }));
 vi.mock("@/app/components/board/card-item", () => ({ CardItem: () => null }));
 vi.mock("@/app/components/board/add-card-form", () => ({
@@ -72,10 +77,10 @@ type Element = ReactElement<Props>;
 const trigger = { focus: vi.fn() };
 let triggerRef: { current: unknown } | null = null;
 
-// Con un filtro activo BoardView pasa solo las tarjetas visibles: aquí una de varias.
+// With an active filter BoardView passes only the visible cards: here one of several.
 const list = {
   id: "l1",
-  title: "Pendiente",
+  title: "To do",
   position: "a0",
   cards: [{ id: "c1" }],
 } as unknown as ListDTO;
@@ -99,7 +104,7 @@ function hasText(text: string) {
 
 function find(tree: Element, match: (el: Element) => boolean, what: string): Element {
   const found = findIn(tree, match);
-  if (!found) throw new Error(`No se encontró ${what}`);
+  if (!found) throw new Error(`Not found: ${what}`);
   return found;
 }
 
@@ -107,7 +112,7 @@ function render(): Element {
   cursor = 0;
   pendingEffects = [];
   const tree = ListColumn({ list, onOpenCard: () => {} }) as Element;
-  // React desmonta el ✕ al confirmar (ref a null) y lo vuelve a montar al cancelar.
+  // React unmounts the ✕ when confirming (ref to null) and mounts it again on cancel.
   const button = findIn(tree, hasText("✕"));
   const ref = button?.props.ref as { current: unknown } | undefined;
   if (ref) triggerRef = ref;
@@ -118,7 +123,7 @@ function render(): Element {
 
 function openConfirmation(): Element {
   const initial = render();
-  (find(initial, hasText("✕"), "el ✕").props.onClick as () => void)();
+  (find(initial, hasText("✕"), "the ✕").props.onClick as () => void)();
   return render();
 }
 
@@ -130,22 +135,22 @@ beforeEach(() => {
   trigger.focus.mockClear();
 });
 
-describe("ListColumn: confirmación de borrado", () => {
-  it("al montarse no roba el foco (cada columna del tablero tiene su ✕)", () => {
+describe("ListColumn: delete confirmation", () => {
+  it("does not steal focus on mount (every column of the board has its own ✕)", () => {
     render();
     expect(trigger.focus).not.toHaveBeenCalled();
   });
 
-  it("cancelar con «No» devuelve el foco al ✕", () => {
+  it("cancelling with \"No\" returns focus to the ✕", () => {
     const confirming = openConfirmation();
-    (find(confirming, hasText("No"), "«No»").props.onClick as () => void)();
+    (find(confirming, hasText("No"), "\"No\"").props.onClick as () => void)();
     const back = render();
     expect(findIn(back, isForm)).toBeNull();
     expect(trigger.focus).toHaveBeenCalledTimes(1);
   });
 
-  it("cancelar con Escape cierra la confirmación, devuelve el foco y no propaga", () => {
-    const form = find(openConfirmation(), isForm, "el formulario");
+  it("cancelling with Escape closes the confirmation, returns focus and does not propagate", () => {
+    const form = find(openConfirmation(), isForm, "the form");
     const stopPropagation = vi.fn();
     (form.props.onKeyDown as (e: { key: string; stopPropagation: () => void }) => void)(
       { key: "Escape", stopPropagation },
@@ -156,8 +161,8 @@ describe("ListColumn: confirmación de borrado", () => {
     expect(trigger.focus).toHaveBeenCalledTimes(1);
   });
 
-  it("otra tecla dentro de la confirmación no la cierra ni mueve el foco", () => {
-    const form = find(openConfirmation(), isForm, "el formulario");
+  it("another key inside the confirmation neither closes it nor moves focus", () => {
+    const form = find(openConfirmation(), isForm, "the form");
     (form.props.onKeyDown as (e: { key: string; stopPropagation: () => void }) => void)(
       { key: "Tab", stopPropagation: () => {} },
     );
@@ -165,12 +170,12 @@ describe("ListColumn: confirmación de borrado", () => {
     expect(trigger.focus).not.toHaveBeenCalled();
   });
 
-  it("el «Sí» no anuncia el número de tarjetas visibles (con filtros no son todas)", () => {
-    const yes = find(openConfirmation(), hasText("Sí"), "«Sí»");
-    // Antes: «…y sus 1 tarjetas», aunque el borrado en cascada se lleve también las
-    // ocultas por el filtro.
+  it("\"Yes\" does not announce the number of visible cards (with filters they are not all)", () => {
+    const yes = find(openConfirmation(), hasText("Yes"), "\"Yes\"");
+    // Before: "…and its 1 cards", although the cascading delete also takes the cards
+    // hidden by the filter.
     expect(yes.props["aria-label"]).toBe(
-      "Sí, borrar la lista Pendiente y todas sus tarjetas",
+      "Yes, delete the list To do and all its cards",
     );
   });
 });

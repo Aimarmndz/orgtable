@@ -1,15 +1,15 @@
-// Persistencia de cambios optimistas del cliente (arrastre en tablero y calendario).
-// Módulo sin React para poder testearlo directamente (test/optimistic.test.ts).
+// Persists optimistic client changes (dragging on the board and the calendar).
+// React-free so it can be tested directly (test/optimistic.test.ts).
 import { unstable_rethrow } from "next/navigation";
 
 /**
- * Ejecuta la Server Action de un cambio que la UI ya ha aplicado y llama a `onFailure`
- * si el servidor lo rechaza (`{ ok: false }`) o la llamada falla (red, excepción), para
- * que la UI deshaga el cambio o avise. Antes se hacía `void accion(...)`: el resultado
- * se ignoraba y la UI se quedaba con un estado que no existía en la base de datos.
+ * Runs the Server Action for a change the UI has already applied and calls `onFailure`
+ * if the server rejects it (`{ ok: false }`) or the call fails (network, exception), so
+ * the UI can undo the change or warn. It used to be `void action(...)`: the result was
+ * ignored and the UI kept a state that did not exist in the database.
  *
- * Las redirecciones y `notFound()` de Next (p. ej. sesión caducada → /login) se
- * relanzan sin tocar: el router de Next las recoge como rechazo no gestionado y navega.
+ * Next's redirects and `notFound()` (e.g. expired session → /login) are rethrown
+ * untouched: Next's router picks them up as an unhandled rejection and navigates.
  */
 export async function persistOptimistic(
   action: () => Promise<{ ok: boolean }>,

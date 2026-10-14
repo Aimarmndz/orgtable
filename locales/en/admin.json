@@ -1,1 +1,145 @@
-{}
+{
+  "nav": {
+    "label": "Administration",
+    "users": "Users",
+    "instance": "Instance",
+    "audit": "Audit log"
+  },
+  "roles": {
+    "MEMBER": "Member",
+    "ADMIN": "Administrator"
+  },
+  "users": {
+    "meta": {
+      "title": "Users",
+      "description": "Accounts, roles and passwords of this instance."
+    },
+    "title": "Users",
+    "intro": "Manage the accounts of your instance: new accounts, roles and passwords.",
+    "ok": {
+      "role": "Role updated.",
+      "password": "Password reset. The user's sessions have been signed out and their API tokens revoked.",
+      "delete": "User deleted.",
+      "revoked": "Sessions signed out."
+    },
+    "errors": {
+      "self-role": "You can't change your own role.",
+      "self-delete": "You can't delete your own account.",
+      "owns-boards": "That user owns boards. Transfer or delete them before deleting the account.",
+      "password": "The password must be at least 8 characters long.",
+      "invalid": "Invalid data.",
+      "not-found": "That user no longer exists."
+    },
+    "table": {
+      "user": "User",
+      "boards": "Boards",
+      "joined": "Joined",
+      "actions": "Actions"
+    },
+    "adminBadge": "Admin",
+    "ownedBoards": "Boards they own",
+    "memberBoards": "Boards they are a member of",
+    "you": "You",
+    "roleLabel": "Global role",
+    "newPassword": "New password",
+    "newPasswordFor": "New password for {name}",
+    "resetPassword": "Reset password",
+    "revokeSessions": "Sign out sessions",
+    "revokeSessionsTitle": "Signs out every active session of this user",
+    "deleteConfirm": "Delete this account? This can't be undone.",
+    "deleteLabel": "Delete user",
+    "create": {
+      "title": "Create account",
+      "intro": "Sign-up is not open: this is where you add the people of your instance.",
+      "name": "Name",
+      "email": "Email",
+      "password": "Initial password",
+      "role": "Role",
+      "submit": "Create user",
+      "submitting": "Creating…"
+    }
+  },
+  "instance": {
+    "meta": {
+      "title": "Instance",
+      "description": "Name, open sign-up and legal details of the instance."
+    },
+    "title": "Instance",
+    "intro": "Who can sign up and the details shown on the legal pages.",
+    "notConfigured": "The instance is not set up yet.",
+    "general": "General",
+    "instanceName": "Instance name",
+    "registration": {
+      "title": "Sign-up",
+      "description": "Who can create an account.",
+      "closedTitle": "Closed",
+      "closedText": "Only an administrator creates accounts.",
+      "openTitle": "Open",
+      "openText": "Anyone can sign up for free at /register."
+    },
+    "legal": {
+      "title": "Legal details",
+      "description": "Those of whoever runs this instance. They appear in the <link>privacy policy</link>, the terms and the legal notice. Anything left empty shows as “not provided”.",
+      "requiredToOpen": "Required to open sign-up.",
+      "optional": "Optional.",
+      "fields": {
+        "operatorName": "Operator (name or company name)",
+        "operatorEmail": "Contact email for privacy",
+        "operatorLegalId": "Tax ID",
+        "operatorAddress": "Postal address",
+        "hostingDescription": "Where the data is hosted",
+        "backupRetentionDays": "Days you keep backups"
+      },
+      "hostingPlaceholder": "e.g. a VPS from [provider] in the European Union",
+      "hostingHint": "Provider and country or region.",
+      "backupHint": "0 if you don't make backups. It must match your actual rotation."
+    },
+    "save": "Save settings",
+    "saving": "Saving…"
+  },
+  "audit": {
+    "meta": {
+      "title": "Audit log",
+      "description": "Recent security and operations events of the instance."
+    },
+    "title": "Audit log",
+    "intro": {
+      "one": "The latest security and operations event.",
+      "other": "The latest {count} security and operations events."
+    },
+    "empty": "No events yet.",
+    "table": {
+      "when": "When",
+      "action": "Action",
+      "who": "Who",
+      "detail": "Detail"
+    },
+    "actions": {
+      "setup.completed": "Initial setup completed",
+      "auth.login": "Sign-in",
+      "auth.login_failed": "Failed sign-in",
+      "auth.login_rate_limited": "Sign-in blocked by the attempt limit",
+      "auth.logout": "Sign-out",
+      "auth.registered": "Account created via sign-up",
+      "auth.register_rate_limited": "Sign-up blocked by the account limit",
+      "account.updated": "Profile changed",
+      "account.password_changed": "Password changed by its owner",
+      "account.sessions_revoked": "Sessions signed out by their owner",
+      "account.exported": "Personal data downloaded",
+      "account.deleted": "Account deleted by its owner",
+      "instance.updated": "Instance settings changed",
+      "user.created": "User created",
+      "user.deleted": "User deleted",
+      "user.role_changed": "User role changed",
+      "user.password_reset": "Password reset",
+      "user.sessions_revoked": "Sessions signed out",
+      "board.created": "Board created",
+      "board.deleted": "Board deleted",
+      "member.added": "Member added",
+      "member.removed": "Member removed",
+      "member.role_changed": "Member role changed",
+      "apitoken.created": "API token created",
+      "apitoken.revoked": "API token revoked"
+    }
+  }
+}

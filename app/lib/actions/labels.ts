@@ -27,7 +27,7 @@ export async function createLabel(formData: FormData): Promise<void> {
   if (!canManageBoard(role)) return;
   const name = String(formData.get("name") ?? "").trim().slice(0, 40);
   if (!name) return;
-  // Un color fuera de la paleta (incluidas claves del prototipo) se guarda como "blue".
+  // A colour outside the palette (prototype keys included) is stored as "blue".
   const color = labelColorSchema.parse(formData.get("color") ?? undefined);
 
   await prisma.label.create({ data: { boardId, name, color } });
@@ -48,7 +48,7 @@ export async function deleteLabel(formData: FormData): Promise<void> {
   revalidateBoard(label.boardId);
 }
 
-/** Asigna o quita una etiqueta a una tarjeta (toggle). */
+/** Adds or removes a label on a card (toggle). */
 export async function toggleCardLabel(input: {
   cardId: string;
   labelId: string;
@@ -60,7 +60,7 @@ export async function toggleCardLabel(input: {
   if (!boardId) return { ok: false };
   const { role } = await requireBoardAccess(boardId);
   if (!canEditBoard(role)) return { ok: false };
-  // Seguridad (IDOR): la etiqueta debe ser del MISMO tablero que la tarjeta. Ver
+  // Security (IDOR): the label must belong to the SAME board as the card. See
   // labelBelongsToBoard.
   if (!(await labelBelongsToBoard(labelId, boardId))) return { ok: false };
 

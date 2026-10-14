@@ -13,10 +13,11 @@ import { ThemeToggle } from "@/app/components/theme-toggle";
 import { SearchBox } from "@/app/components/search-box";
 import { NotificationsBell } from "@/app/components/notifications-bell";
 import { AccountMenu } from "@/app/components/account-menu";
+import { getI18n } from "@/app/i18n/server";
 
-// Todo el área autenticada depende de la sesión y de la base de datos: nunca se
-// prerenderiza en build (la consulta de setup ocurre antes del acceso a cookies, así
-// que hay que marcarlo explícitamente para que el build de Docker no toque la DB).
+// The whole signed-in area depends on the session and the database, so it is never
+// prerendered at build time. The setup query runs before any cookie access, so this must
+// be explicit or the Docker build would try to reach the DB.
 export const dynamic = "force-dynamic";
 
 export default async function AppLayout({
@@ -26,7 +27,8 @@ export default async function AppLayout({
 }) {
   if (!(await isSetupComplete())) redirect("/setup");
   const user = await requireUser();
-  const [config, notifications, unreadCount] = await Promise.all([
+  const [{ m }, config, notifications, unreadCount] = await Promise.all([
+    getI18n(),
     getInstanceConfig(),
     getNotificationsForUser(user.id),
     getUnreadNotificationCount(user.id),
@@ -39,17 +41,17 @@ export default async function AppLayout({
           <span className="grid size-7 shrink-0 place-items-center rounded-md bg-accent font-display text-sm font-extrabold text-accent-ink">
             o
           </span>
-          {/* title: el nombre admite 60 caracteres y en móvil se trunca. */}
+          {/* title: the name allows 60 characters and is truncated on mobile. */}
           <span
-            title={config?.instanceName ?? "orgtable"}
+            title={config?.instanceName ?? m.common.appName}
             className="truncate font-display font-bold tracking-tight"
           >
-            {config?.instanceName ?? "orgtable"}
+            {config?.instanceName ?? m.common.appName}
           </span>
         </Link>
 
-        {/* Búsqueda — centrada y solo en pantallas medianas hacia arriba; en móvil se
-            llega a /search desde el icono de la derecha. */}
+        {/* Search: centred, and only from medium screens up; on mobile /search is
+            reached from the icon on the right. */}
         <div className="mx-6 hidden max-w-sm flex-1 sm:block">
           <SearchBox />
         </div>
@@ -57,7 +59,7 @@ export default async function AppLayout({
         <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
           <Link
             href="/search"
-            aria-label="Buscar"
+            aria-label={m.nav.search.label}
             className="grid size-9 place-items-center rounded-lg text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink sm:hidden"
           >
             <svg

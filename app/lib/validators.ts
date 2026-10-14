@@ -2,118 +2,136 @@ import { z } from "zod";
 import { BOARD_COLOR_KEYS, LABEL_COLOR_KEYS } from "@/app/lib/colors";
 import { CARD_DESCRIPTION_MAX } from "@/app/lib/limits";
 
-// Esquemas de validación compartidos (zod). Se usan en las Server Actions para
-// validar la entrada antes de tocar la base de datos.
+// Shared validation schemas (zod), used by the Server Actions and the API to validate input
+// before touching the database.
+//
+// Human messages are KEYS into locales/<lang>/errors.json ("errors.validation.*"), not
+// text: the schemas stay language-independent. Server Actions turn them into the user's
+// language with issueMessage(m, issue) (app/i18n/server.ts); the API, into English with
+// apiValidationError (app/lib/api/respond.ts).
 
 export const loginSchema = z.object({
-  email: z.email("Email no válido"),
-  password: z.string().min(1, "La contraseña es obligatoria"),
+  email: z.email("errors.validation.emailInvalid"),
+  password: z.string().min(1, "errors.validation.passwordRequired"),
 });
 
-// Contraseña reutilizable (setup wizard, alta y reset por el administrador). bcrypt solo
-// usa los primeros 72 BYTES: más allá, dos contraseñas con el mismo prefijo serían
-// equivalentes, así que se rechazan en vez de recortarlas en silencio. Se cuentan bytes
-// UTF-8, no caracteres (una «ñ» ocupa 2). loginSchema no aplica este límite para no
-// bloquear a quien ya tenga guardada una contraseña más larga.
+// Reusable password (setup wizard, account creation and reset by the administrator,
+// registration). bcrypt only uses the first 72 BYTES: beyond that, two passwords with the
+// same prefix would be equivalent, so they are rejected instead of silently truncated.
+// UTF-8 bytes are counted, not characters (an "ñ" takes 2). loginSchema does not apply this
+// limit so as not to lock out anyone who already has a longer password stored.
 const passwordSchema = z
   .string()
-  .min(8, "La contraseña debe tener al menos 8 caracteres")
-  .max(200)
+  .min(8, "errors.validation.passwordTooShort")
+  .max(200, "errors.validation.passwordTooLong")
   .refine(
     (p) => Buffer.byteLength(p, "utf8") <= 72,
-    "Máximo 72 bytes (unos 72 caracteres sin tildes ni emojis)",
+    "errors.validation.passwordTooLong",
   );
 
 export const setupSchema = z.object({
   instanceName: z
     .string()
     .trim()
-    .min(1, "El nombre de la instancia es obligatorio")
-    .max(60, "Máximo 60 caracteres"),
-  name: z.string().trim().min(1, "Tu nombre es obligatorio").max(60),
-  email: z.email("Email no válido"),
+    .min(1, "errors.validation.instanceNameRequired")
+    .max(60, "errors.validation.maxChars60"),
+  name: z
+    .string()
+    .trim()
+    .min(1, "errors.validation.yourNameRequired")
+    .max(60, "errors.validation.maxChars60"),
+  email: z.email("errors.validation.emailInvalid"),
   password: passwordSchema,
 });
 
 export const boardTitleSchema = z
   .string()
   .trim()
-  .min(1, "El título es obligatorio")
-  .max(120, "Máximo 120 caracteres");
+  .min(1, "errors.validation.titleRequired")
+  .max(120, "errors.validation.maxChars120");
 
 export const listTitleSchema = z
   .string()
   .trim()
-  .min(1, "El título es obligatorio")
-  .max(120);
+  .min(1, "errors.validation.titleRequired")
+  .max(120, "errors.validation.maxChars120");
 
 export const cardTitleSchema = z
   .string()
   .trim()
-  .min(1, "El título es obligatorio")
-  .max(500);
+  .min(1, "errors.validation.titleRequired")
+  .max(500, "errors.validation.maxChars500");
 
-// El límite vive en limits.ts para que la UI lo use sin importar zod; se reexporta
-// para que los esquemas y las acciones sigan tomándolo de aquí.
+// The limit lives in limits.ts so that the UI can use it without importing zod; it is
+// re-exported so that schemas and actions keep taking it from here.
 export { CARD_DESCRIPTION_MAX };
 
-// Vencimiento que envía la UI (input date y arrastre en el calendario): "YYYY-MM-DD", o
-// vacío/null para quitarlo. z.iso.date() rechaza fechas imposibles como 2026-02-31; antes
-// una fecha no parseable se convertía en null y BORRABA el vencimiento sin avisar.
+// Due date sent by the UI (date input and drag in the calendar): "YYYY-MM-DD", or
+// empty/null to clear it. z.iso.date() rejects impossible dates such as 2026-02-31; an
+// unparseable date used to become null and silently CLEAR the due date.
 export const dueDateSchema = z.union([z.literal(""), z.null(), z.iso.date()]);
 
-// Actualización de descripción + vencimiento desde el modal de tarjeta (updateCard).
+// Description + due date update from the card modal (updateCard).
 export const cardDetailsSchema = z.object({
   description: z.string().trim().max(CARD_DESCRIPTION_MAX),
   dueDate: dueDateSchema,
 });
 
-// Colores de etiqueta y de fondo de tablero. Se validan contra la paleta con z.enum (no con
-// el operador `in`, que acepta claves del prototipo como 'constructor'). `.catch` mantiene
-// la tolerancia de antes: un color desconocido cae al valor por defecto en vez de fallar.
+// Label and board background colours. Validated against the palette with z.enum (not with
+// the `in` operator, which accepts prototype keys such as 'constructor'). `.catch` keeps
+// the old tolerance: an unknown colour falls back to the default instead of failing.
 export const labelColorSchema = z.enum(LABEL_COLOR_KEYS).catch("blue");
 const boardBackgroundSchema = z.enum(BOARD_COLOR_KEYS).nullable().catch(null);
 
-// Hito 10: comentarios de tarjeta.
+// Card comments.
 export const commentTextSchema = z
   .string()
   .trim()
-  .min(1, "El comentario no puede estar vacío")
-  .max(2000, "Máximo 2000 caracteres");
+  .min(1, "errors.validation.commentRequired")
+  .max(2000, "errors.validation.maxChars2000");
 
-// --- Hito 3: multiusuario ---
+// --- Board members and instance roles ---
 
-// Roles que el propietario puede asignar a un miembro de un tablero (OWNER no se
-// asigna desde la UI: es el creador del tablero). Ver app/lib/roles.ts.
-export const assignableBoardRoleSchema = z.enum(["EDITOR", "VIEWER"]);
+// Roles the owner can give a board member (OWNER is not assigned from the UI: it is the
+// board's creator). See app/lib/roles.ts.
+export const assignableBoardRoleSchema = z.enum(["EDITOR", "VIEWER"], {
+  error: "errors.validation.roleInvalid",
+});
 
-// Invitar a un miembro existente a un tablero por email.
+// Invite an existing user to a board by email.
 export const addMemberSchema = z.object({
-  email: z.email("Email no válido"),
+  email: z.email("errors.validation.emailInvalid"),
   role: assignableBoardRoleSchema,
 });
 
-// Rol global del usuario en la instancia.
-export const globalRoleSchema = z.enum(["ADMIN", "MEMBER"]);
+// Global role of the user in the instance.
+export const globalRoleSchema = z.enum(["ADMIN", "MEMBER"], {
+  error: "errors.validation.roleInvalid",
+});
 
-// Alta de usuario por el administrador. El registro abierto, si la instancia lo permite,
-// usa registerSchema. Ver docs/authorization.md.
+// Account creation by the administrator. Open registration, when the instance allows it,
+// uses registerSchema. See docs/authorization.md.
 export const createUserSchema = z.object({
-  name: z.string().trim().min(1, "El nombre es obligatorio").max(60),
-  email: z.email("Email no válido"),
+  name: z
+    .string()
+    .trim()
+    .min(1, "errors.validation.nameRequired")
+    .max(60, "errors.validation.maxChars60"),
+  email: z.email("errors.validation.emailInvalid"),
   password: passwordSchema,
   role: globalRoleSchema,
 });
 
-// Restablecer la contraseña de un usuario (por el administrador).
+// Reset a user's password (by the administrator).
 export const resetPasswordSchema = z.object({
   userId: z.string().min(1),
   password: passwordSchema,
 });
 
-// --- Hito 5: importación de tableros (JSON) ---
-// Esquema del fichero que produce GET /api/boards/[id]/export. Tolerante con el sobre
-// `orgtable` (opcional) pero estricto con la forma y los límites de tamaño.
+// --- Board import (JSON) ---
+// Schema of the file produced by GET /api/boards/[id]/export. Lenient with the `orgtable`
+// envelope (optional) but strict with the shape and the size limits. importBoard answers
+// any failure with a single message, so these schemas carry no messages of their own.
 
 const importChecklistItemSchema = z.object({
   text: z.string().max(200),
@@ -155,25 +173,25 @@ export const boardImportSchema = z.object({
   }),
 });
 
-// --- Hito 9: API pública ---
-// Cuerpos JSON de las peticiones de la API. Reutilizan los mismos límites que las
-// Server Actions (cardTitleSchema, etc.). Ver docs/api/public-api.md.
+// --- Public API ---
+// JSON request bodies of the API. They reuse the same limits as the Server Actions
+// (cardTitleSchema, etc.). See docs/api/public-api.md.
 
 export const apiTokenNameSchema = z
   .string()
   .trim()
-  .min(1, "El nombre es obligatorio")
-  .max(60, "Máximo 60 caracteres");
+  .min(1, "errors.validation.nameRequired")
+  .max(60, "errors.validation.maxChars60");
 
-// Alcance del token: "full" (lectura+escritura) o "read" (solo lectura). Hito 13.
+// Token scope: "full" (read + write) or "read" (read only).
 export const apiTokenScopeSchema = z.enum(["full", "read"]);
 
-// Caducidad elegida en /settings: nunca o un número de días.
+// Expiry chosen in /settings: never, or a number of days.
 export const apiTokenExpirySchema = z.enum(["0", "30", "90", "365"]);
 
-// Vencimiento en la API: "YYYY-MM-DD" (lo documentado) o ISO 8601 completo con zona
-// ("2026-07-01T09:00:00Z" / "+02:00"). null lo quita. Una cadena vacía o no reconocible da
-// 422 en lugar de guardarse como null (antes borraba el vencimiento y respondía 200).
+// Due date in the API: "YYYY-MM-DD" (the documented form) or full ISO 8601 with an offset
+// ("2026-07-01T09:00:00Z" / "+02:00"). null clears it. An empty or unrecognised string
+// gives 422 instead of being stored as null (it used to clear the due date and answer 200).
 export const apiDueDateSchema = z.union([
   z.iso.date(),
   z.iso.datetime({ offset: true }),
@@ -192,72 +210,79 @@ export const apiCardUpdateSchema = z
     dueDate: apiDueDateSchema.nullable().optional(),
   })
   .refine((d) => Object.keys(d).length > 0, {
-    message: "No hay campos que actualizar.",
+    message: "errors.validation.noFieldsToUpdate",
   });
 
-// --- Registro abierto y cuenta propia (ver docs/privacy.md) ----------------------------
+// --- Open registration and own account (see docs/privacy.md) ---------------------------
 
 const personNameSchema = z
   .string()
   .trim()
-  .min(1, "El nombre es obligatorio")
-  .max(60, "Máximo 60 caracteres");
+  .min(1, "errors.validation.nameRequired")
+  .max(60, "errors.validation.maxChars60");
 
-// El checkbox de aceptación llega como "on" si está marcado y no llega si no: el
-// consentimiento tiene que ser un acto afirmativo (art. 7 RGPD), nunca un valor por defecto.
+// The consent checkbox arrives as "on" when ticked and is absent otherwise: consent has to
+// be an affirmative act (GDPR art. 7), never a default value.
 export const registerSchema = z.object({
   name: personNameSchema,
-  email: z.email("Email no válido").max(254),
+  email: z.email("errors.validation.emailInvalid").max(254, "errors.validation.maxChars254"),
   password: passwordSchema,
   acceptTerms: z.literal("on", {
-    error: "Tienes que aceptar la política de privacidad y las condiciones",
+    error: "errors.validation.acceptTermsRequired",
   }),
 });
 
 export const profileSchema = z.object({
   name: personNameSchema,
-  email: z.email("Email no válido").max(254),
-  // Solo hace falta si cambia el email; se comprueba en el servicio.
-  currentPassword: z.string().max(200),
+  email: z.email("errors.validation.emailInvalid").max(254, "errors.validation.maxChars254"),
+  // Only needed when the email changes; the service checks it.
+  currentPassword: z.string().max(200, "errors.validation.maxChars200"),
 });
 
 export const changePasswordSchema = z
   .object({
-    currentPassword: z.string().min(1, "Escribe tu contraseña actual").max(200),
+    currentPassword: z
+      .string()
+      .min(1, "errors.validation.currentPasswordRequired")
+      .max(200, "errors.validation.maxChars200"),
     newPassword: passwordSchema,
     confirmPassword: z.string(),
   })
   .refine((d) => d.newPassword === d.confirmPassword, {
-    message: "Las dos contraseñas nuevas no coinciden",
+    message: "errors.validation.passwordsDontMatch",
     path: ["confirmPassword"],
   });
 
 export const deleteAccountSchema = z.object({
-  password: z.string().min(1, "Escribe tu contraseña para confirmar").max(200),
+  password: z
+    .string()
+    .min(1, "errors.validation.passwordToConfirm")
+    .max(200, "errors.validation.maxChars200"),
 });
 
-// Texto opcional de un formulario: vacío o solo espacios se guarda como null.
-const optionalText = (max: number) =>
+// Optional form text: empty or whitespace-only is stored as null. One key per limit
+// because a message key carries no parameters.
+const optionalText = (max: 40 | 120 | 200) =>
   z
     .string()
     .trim()
-    .max(max, `Máximo ${max} caracteres`)
+    .max(max, `errors.validation.maxChars${max}`)
     .transform((v) => (v === "" ? null : v));
 
 export const instanceSettingsSchema = z.object({
   instanceName: z
     .string()
     .trim()
-    .min(1, "El nombre de la instancia es obligatorio")
-    .max(60, "Máximo 60 caracteres"),
+    .min(1, "errors.validation.instanceNameRequired")
+    .max(60, "errors.validation.maxChars60"),
   registrationOpen: z.enum(["open", "closed"]).transform((v) => v === "open"),
   operatorName: optionalText(120),
   operatorEmail: z
     .string()
     .trim()
-    .max(254)
+    .max(254, "errors.validation.maxChars254")
     .transform((v) => (v === "" ? null : v))
-    .pipe(z.email("Email de contacto no válido").nullable()),
+    .pipe(z.email("errors.validation.contactEmailInvalid").nullable()),
   operatorLegalId: optionalText(40),
   operatorAddress: optionalText(200),
   hostingDescription: optionalText(200),
@@ -267,10 +292,10 @@ export const instanceSettingsSchema = z.object({
     .transform((v) => (v === "" ? null : Number(v)))
     .pipe(
       z
-        .number({ error: "Los días de las copias tienen que ser un número" })
-        .int("Los días de las copias tienen que ser un número entero")
-        .min(0, "Los días de las copias no pueden ser negativos")
-        .max(3650, "Máximo 3650 días")
+        .number({ error: "errors.validation.backupDaysNumber" })
+        .int("errors.validation.backupDaysInteger")
+        .min(0, "errors.validation.backupDaysNegative")
+        .max(3650, "errors.validation.backupDaysMax")
         .nullable(),
     ),
 });

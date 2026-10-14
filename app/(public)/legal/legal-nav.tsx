@@ -2,24 +2,26 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useI18n } from "@/app/i18n/client";
 
-const PAGES = [
-  { href: "/legal/privacidad", label: "Privacidad" },
-  { href: "/legal/condiciones", label: "Condiciones de uso" },
-  { href: "/legal/cookies", label: "Cookies" },
-  { href: "/legal/aviso-legal", label: "Aviso legal" },
-] as const;
-
-// Índice lateral de las páginas legales. Cliente solo para marcar la página actual.
+// Side index of the legal pages. A Client Component only to mark the current page.
 export function LegalNav() {
   const pathname = usePathname();
+  const { m } = useI18n();
+  const t = m.legal.nav;
+  const pages = [
+    { href: "/legal/privacy", label: t.privacy },
+    { href: "/legal/terms", label: t.terms },
+    { href: "/legal/cookies", label: t.cookies },
+    { href: "/legal/notice", label: t.legalNotice },
+  ];
   return (
-    <nav aria-label="Páginas legales" className="shrink-0 md:w-48">
+    <nav aria-label={t.label} className="shrink-0 md:w-48">
       <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
-        Legal
+        {t.heading}
       </p>
       <ul className="flex flex-wrap gap-1 md:flex-col">
-        {PAGES.map((p) => {
+        {pages.map((p) => {
           const current = pathname === p.href;
           return (
             <li key={p.href}>

@@ -5,15 +5,16 @@ import { CardItem } from "@/app/components/board/card-item";
 import { BoardPermsProvider } from "@/app/components/board/board-perms";
 import type { BoardRole } from "@/app/lib/roles";
 import type { CardDTO } from "@/app/lib/types";
+import { withI18n } from "./helpers/i18n";
 
-// Render de servidor (sin DOM): comprueba el HTML que llega al navegador antes de
-// hidratar, que es donde estaban los fallos de accesibilidad y de fechas.
+// Server render (no DOM): checks the HTML that reaches the browser before hydration,
+// which is where the accessibility and date bugs were.
 const card: CardDTO = {
   id: "c1",
-  title: "Revisar contrato",
+  title: "Review contract",
   position: "a0",
   description: null,
-  dueDate: "2020-01-02T00:00:00.000Z", // vencida hace tiempo
+  dueDate: "2020-01-02T00:00:00.000Z", // overdue long ago
   labels: [],
   checklists: [],
   attachments: [],
@@ -23,47 +24,49 @@ const card: CardDTO = {
 
 function render(role: BoardRole, props: { overlay?: boolean } = {}): string {
   return renderToString(
-    createElement(
-      BoardPermsProvider,
-      // `children` va como tercer argumento; el tipo de props lo exige igualmente.
-      { role } as ComponentProps<typeof BoardPermsProvider>,
-      createElement(CardItem, { card, listId: "l1", ...props }),
+    withI18n(
+      createElement(
+        BoardPermsProvider,
+        // `children` goes as the third argument; the props type requires it anyway.
+        { role } as ComponentProps<typeof BoardPermsProvider>,
+        createElement(CardItem, { card, listId: "l1", ...props }),
+      ),
     ),
   );
 }
 
 describe("CardItem", () => {
-  it("es enfocable y se anuncia como botón aunque no se pueda arrastrar (Lector)", () => {
+  it("is focusable and announced as a button even if it cannot be dragged (Viewer)", () => {
     const html = render("VIEWER");
     expect(html).toContain('role="button"');
     expect(html).toContain('tabindex="0"');
   });
 
-  it("toma el nombre accesible del contenido, no de un aria-label con solo el título", () => {
+  it("takes its accessible name from the content, not from an aria-label with only the title", () => {
     const html = render("VIEWER");
-    // El primer elemento es la propia tarjeta: su etiqueta de apertura no lleva
-    // aria-label, así que el lector lee título, vencimiento, subtareas...
+    // The first element is the card itself: its opening tag has no aria-label, so the
+    // screen reader reads title, due date, subtasks...
     const openingTag = html.slice(0, html.indexOf(">") + 1);
     expect(openingTag).toContain('role="button"');
     expect(openingTag).not.toContain("aria-label");
-    expect(html).toContain("Revisar contrato");
-    expect(html).toContain("2 ene");
+    expect(html).toContain("Review contract");
+    expect(html).toContain("Jan 2");
   });
 
-  it("con permisos de edición mantiene el foco y describe el rol en español", () => {
+  it("with edit permissions it keeps focus and describes the role in the interface language", () => {
     const html = render("EDITOR");
     expect(html).toContain('role="button"');
     expect(html).toContain('tabindex="0"');
-    expect(html).toContain('aria-roledescription="tarjeta"');
+    expect(html).toContain('aria-roledescription="card"');
   });
 
-  it("la copia flotante del arrastre no recibe foco", () => {
+  it("the floating drag copy does not receive focus", () => {
     expect(render("EDITOR", { overlay: true })).toContain('tabindex="-1"');
   });
 
-  it("no marca «vencida» en el HTML del servidor (depende del día del navegador)", () => {
+  it("does not mark \"overdue\" in the server HTML (it depends on the browser's day)", () => {
     const html = render("VIEWER");
     expect(html).not.toContain("text-danger");
-    expect(html).toContain("2 ene");
+    expect(html).toContain("Jan 2");
   });
 });

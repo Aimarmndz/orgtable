@@ -1,39 +1,41 @@
 import "server-only";
 
-// Formateo de fechas EN EL SERVIDOR (Server Components). El proceso de Node corre en la
-// zona del contenedor (normalmente UTC), así que sin `timeZone` explícita un evento de
-// las 10:15 en Canarias se mostraba como 9:15, y cerca de medianoche cambiaba de día.
-// La zona sale de ORGTABLE_TIMEZONE (IANA, p. ej. "Europe/Madrid") porque es una app
-// self-hosted: cada instalación tiene la suya. Por defecto, Atlantic/Canary.
+// Date formatting ON THE SERVER (Server Components). The Node process runs in the
+// container's time zone (usually UTC), so without an explicit `timeZone` an event at 10:15
+// in the Canary Islands showed as 9:15, and near midnight it changed day. The zone comes
+// from ORGTABLE_TIMEZONE (IANA, e.g. "Europe/Madrid") because the app is self-hosted: each
+// installation has its own. Defaults to Atlantic/Canary.
 //
-// NO usar para vencimientos (dueDate): son fechas de calendario guardadas a medianoche
-// UTC y se formatean con timeZone "UTC".
+// Do NOT use for due dates (dueDate): they are calendar dates stored at midnight UTC and
+// are formatted with timeZone "UTC".
 
 const DEFAULT_TIME_ZONE = "Atlantic/Canary";
 
-/** Zona horaria de la instancia. Lanza si ORGTABLE_TIMEZONE no es una zona IANA válida. */
+/** Time zone of the instance. Throws if ORGTABLE_TIMEZONE is not a valid IANA zone. */
 export function instanceTimeZone(): string {
   const configured = process.env.ORGTABLE_TIMEZONE?.trim();
   const timeZone = configured || DEFAULT_TIME_ZONE;
   try {
-    // Intl lanza RangeError con una zona desconocida: es la validación más fiable.
+    // Intl throws RangeError for an unknown zone: the most reliable validation.
     new Intl.DateTimeFormat("en", { timeZone });
   } catch (err) {
-    // Sin valor por defecto silencioso: una zona mal escrita mostraría horas falsas.
+    // No silent default: a misspelt zone would show wrong times.
     throw new Error(
-      `ORGTABLE_TIMEZONE no es una zona horaria válida: "${timeZone}". ` +
-        `Usa un nombre IANA, p. ej. "Europe/Madrid" o "Atlantic/Canary".`,
+      `ORGTABLE_TIMEZONE is not a valid time zone: "${timeZone}". ` +
+        `Use an IANA name, e.g. "Europe/Madrid" or "Atlantic/Canary".`,
       { cause: err },
     );
   }
   return timeZone;
 }
 
-/** Fecha y hora con segundos y la abreviatura de la zona (p. ej. «15/07/2026, 10:15:00 WEST»). */
-/** `intl` is the BCP 47 tag of the reader's language (getI18n().intl). */
+/**
+ * Date and time with seconds and the zone abbreviation (e.g. "15/07/2026, 10:15:00 WEST").
+ * `intl` is the BCP 47 tag of the reader's language (getI18n().intl).
+ */
 export function formatDateTime(d: Date, intl: string): string {
   return new Intl.DateTimeFormat(intl, {
-    // dateStyle/timeStyle no admiten timeZoneName, por eso se listan los campos.
+    // dateStyle/timeStyle do not allow timeZoneName, hence the fields are listed.
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -45,7 +47,7 @@ export function formatDateTime(d: Date, intl: string): string {
   }).format(d);
 }
 
-/** Solo la fecha, en la zona de la instancia (p. ej. «16 jul 2026»). */
+/** Date only, in the instance's time zone (e.g. "16 Jul 2026"). */
 export function formatDate(d: Date, intl: string): string {
   return new Intl.DateTimeFormat(intl, {
     dateStyle: "medium",

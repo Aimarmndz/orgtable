@@ -9,9 +9,11 @@ import {
   deleteAttachmentFile,
   MAX_ATTACHMENT_BYTES,
 } from "@/app/lib/storage";
+import { getI18n } from "@/app/i18n/server";
+import { fmt } from "@/app/i18n/format";
 
-// Adjuntos de tarjeta (Hito 5). Subir/borrar requiere rol EDITOR; la descarga la sirve
-// el route handler app/api/attachments/[id] con su propia autorización. Ver
+// Card attachments. Uploading/deleting requires the EDITOR role; downloads are served by the
+// route handler app/api/attachments/[id] with its own authorisation. See
 // docs/attachments.md.
 
 export type AttachmentState = { error?: string };
@@ -28,18 +30,23 @@ export async function uploadAttachment(
   _prev: AttachmentState,
   formData: FormData,
 ): Promise<AttachmentState> {
+  const { m } = await getI18n();
   const cardId = String(formData.get("cardId"));
   const boardId = await boardIdForCard(cardId);
-  if (!boardId) return { error: "Tarjeta no encontrada." };
+  if (!boardId) return { error: m.errors.attachments.cardNotFound };
   const { role } = await requireBoardAccess(boardId);
-  if (!canEditBoard(role)) return { error: "No tienes permiso para adjuntar." };
+  if (!canEditBoard(role)) return { error: m.errors.attachments.noPermission };
 
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
-    return { error: "Selecciona un archivo." };
+    return { error: m.errors.attachments.noFile };
   }
   if (file.size > MAX_ATTACHMENT_BYTES) {
-    return { error: "El archivo supera el límite de 10 MB." };
+    return {
+      error: fmt(m.errors.attachments.tooLarge, {
+        megabytes: MAX_ATTACHMENT_BYTES / (1024 * 1024),
+      }),
+    };
   }
 
   const { storedName, size } = await saveAttachmentFile(file);
@@ -47,15 +54,16 @@ export async function uploadAttachment(
     await prisma.attachment.create({
       data: {
         cardId,
-        filename: file.name.slice(0, 255) || "archivo",
+        filename: file.name.slice(0, 255) || "file",
         storedName,
         mimeType: (file.type || "application/octet-stream").slice(0, 128),
         size,
       },
     });
   } catch (err) {
-    // Sin fila no hay forma de llegar al fichero (p. ej. la tarjeta se borró mientras se
-    // subía): se borra para no dejar un huérfano en disco y se relanza el error original.
+    // Without a row there is no way to reach the file (e.g. the card was deleted during the
+    // upload): it is deleted so as not to leave an orphan on disk, and the original error is
+    // rethrown.
     await deleteAttachmentFile(storedName);
     throw err;
   }

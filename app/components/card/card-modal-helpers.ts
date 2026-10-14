@@ -1,15 +1,16 @@
-// Lógica pura del modal de tarjeta, separada del componente para poder probarla con
-// Vitest en entorno node (el componente importa Server Actions y no se carga fuera de
-// Next).
+// Pure logic of the card modal, kept apart from the component so it can be tested with
+// Vitest in a node environment (the component imports Server Actions and cannot load
+// outside Next).
 import { unstable_rethrow } from "next/navigation";
 
 /**
- * Fecha y hora de un comentario. `timeZone` sin definir = zona del navegador. El
- * componente solo la llama tras hidratar: en el servidor la zona sería la del
- * contenedor (normalmente UTC) y el texto no coincidiría con el del cliente.
+ * Date and time of a comment, in the language `intl` (a BCP 47 tag). An undefined
+ * `timeZone` means the browser's zone. The component only calls it after hydration: on
+ * the server the zone would be the container's (usually UTC) and the text would not
+ * match the client's.
  */
-export function formatCommentTime(iso: string, timeZone?: string): string {
-  return new Intl.DateTimeFormat("es-ES", {
+export function formatCommentTime(iso: string, intl: string, timeZone?: string): string {
+  return new Intl.DateTimeFormat(intl, {
     dateStyle: "medium",
     timeStyle: "short",
     timeZone,
@@ -17,20 +18,21 @@ export function formatCommentTime(iso: string, timeZone?: string): string {
 }
 
 /**
- * Vencimiento legible. `dueDate` es una fecha de calendario guardada a medianoche
- * UTC: formatearla en otra zona la movería al día anterior al oeste de Greenwich.
+ * Readable due date, in the language `intl`. `dueDate` is a calendar date stored at
+ * midnight UTC: formatting it in another zone would move it to the previous day west of
+ * Greenwich.
  */
-export function formatDueDate(iso: string): string {
-  return new Intl.DateTimeFormat("es-ES", {
+export function formatDueDate(iso: string, intl: string): string {
+  return new Intl.DateTimeFormat(intl, {
     dateStyle: "long",
     timeZone: "UTC",
   }).format(new Date(iso));
 }
 
 /**
- * Ejecuta una acción de tipo toggle y devuelve el mensaje de error para la interfaz
- * (o `null` si fue bien). Los errores internos de Next (redirect a /login cuando la
- * sesión caduca, notFound) se relanzan para que el router los gestione.
+ * Runs a toggle-style action and returns the error message for the UI (or `null` if it
+ * went well). Next's internal errors (redirect to /login when the session expires,
+ * notFound) are rethrown so the router handles them.
  */
 export async function runToggle(
   action: () => Promise<{ ok: boolean }>,
@@ -42,7 +44,7 @@ export async function runToggle(
     return result.ok ? null : failMessage;
   } catch (err) {
     unstable_rethrow(err);
-    console.error(`${context} falló`, err);
+    console.error(`${context} failed`, err);
     return failMessage;
   }
 }

@@ -1,7 +1,7 @@
-// Paletas de color del CONTENIDO (no del cromo): fondos de tablero y etiquetas.
-// Estética editorial cálida: tonos apagados y sofisticados (clay, oliva, ciruela,
-// ocre, ladrillo, pizarra) que conviven con el acento terracota. Luminosidad baja
-// (L≤0.54) para que el texto blanco encima sea legible. Ver DESIGN.md.
+// CONTENT colour palettes (not the chrome): board backgrounds and labels.
+// Warm editorial look: muted, refined tones (clay, olive, plum, ochre, brick, slate)
+// that sit well with the terracotta accent. Low lightness (L≤0.54) so white text on
+// top stays readable. See DESIGN.md.
 
 export const BOARD_COLORS = {
   blue: "oklch(0.5 0.07 248)",
@@ -15,27 +15,27 @@ export const BOARD_COLORS = {
 export type BoardColor = keyof typeof BOARD_COLORS;
 export const BOARD_COLOR_KEYS = Object.keys(BOARD_COLORS) as BoardColor[];
 
-/** Color de tablero determinista a partir de un id (para asignar al crear). */
+/** Deterministic board colour from an id (assigned on creation). */
 export function pickBoardColor(seed: string): BoardColor {
   let h = 0;
   for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
   return BOARD_COLOR_KEYS[h % BOARD_COLOR_KEYS.length];
 }
 
-/** Fondo de un tablero: su color elegido o, si no tiene, uno estable según su id. */
+/** A board's background: its chosen colour or, if none, a stable one based on its id. */
 export function boardBackgroundFor(b: {
   id: string;
   background: string | null;
 }): string {
-  // Object.hasOwn y no `in`: `in` acepta claves del prototipo ('constructor',
-  // 'toString'…) y devolvería una función en lugar de un color.
+  // Object.hasOwn rather than `in`: `in` accepts prototype keys ('constructor',
+  // 'toString'…) and would return a function instead of a colour.
   if (b.background && Object.hasOwn(BOARD_COLORS, b.background)) {
     return BOARD_COLORS[b.background as BoardColor];
   }
   return BOARD_COLORS[pickBoardColor(b.id)];
 }
 
-// Etiquetas: paleta editorial apagada, L ~0.52-0.57 → texto blanco legible encima.
+// Labels: muted editorial palette, L ~0.52-0.57 → white text readable on top.
 export const LABEL_COLORS = {
   green: "oklch(0.53 0.09 150)",
   lime: "oklch(0.56 0.1 128)",
@@ -51,7 +51,7 @@ export type LabelColor = keyof typeof LABEL_COLORS;
 export const LABEL_COLOR_KEYS = Object.keys(LABEL_COLORS) as LabelColor[];
 
 export function labelBackground(color: string | null | undefined): string {
-  // Object.hasOwn, no `in`: ver boardBackgroundFor.
+  // Object.hasOwn, not `in`: see boardBackgroundFor.
   const key =
     color && Object.hasOwn(LABEL_COLORS, color) ? (color as LabelColor) : "blue";
   return LABEL_COLORS[key];

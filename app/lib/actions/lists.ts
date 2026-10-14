@@ -10,7 +10,7 @@ import { isValidPositionKey } from "@/app/lib/ordering";
 import { createListAtEnd } from "@/app/lib/services/lists";
 import { deleteListWithAttachments } from "@/app/lib/services/attachments";
 
-// La posición llega del cliente: ver moveCardSchema en actions/cards.ts.
+// The position comes from the client: see moveCardSchema in actions/cards.ts.
 const reorderListSchema = z.object({
   listId: z.string().min(1),
   position: z.string().refine(isValidPositionKey),
@@ -53,16 +53,15 @@ export async function deleteList(formData: FormData): Promise<void> {
   const { role } = await requireBoardAccess(list.boardId);
   if (!canEditBoard(role)) return;
 
-  // Las tarjetas se borran en cascada (onDelete: Cascade en el esquema); los ficheros
-  // de sus adjuntos los borra el servicio.
+  // Cards are deleted in cascade (onDelete: Cascade in the schema); the service deletes
+  // their attachment files.
   await deleteListWithAttachments(listId);
   revalidateBoard(list.boardId);
 }
 
 /**
- * Persiste el reordenamiento de una lista tras un drag & drop. El cliente calcula la
- * nueva clave de posición (fractional indexing) y la envía; aquí solo validamos el
- * acceso y actualizamos una única fila.
+ * Persists a list reorder after drag & drop. The client computes the new position key
+ * (fractional indexing) and sends it; here we only check access and update a single row.
  */
 export async function reorderList(input: {
   listId: string;

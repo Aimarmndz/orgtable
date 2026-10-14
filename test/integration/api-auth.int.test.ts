@@ -19,8 +19,8 @@ afterAll(async () => {
   await disconnect();
 });
 
-describe("authenticateApiToken — marca de último uso (integración)", () => {
-  it("actualiza lastUsedAt en cada petición autenticada", async () => {
+describe("authenticateApiToken — last-used mark (integration)", () => {
+  it("updates lastUsedAt on every authenticated request", async () => {
     const user = await seedUser();
     const token = await seedApiToken(user.id);
 
@@ -34,14 +34,14 @@ describe("authenticateApiToken — marca de último uso (integración)", () => {
     expect(row.lastUsedAt).not.toBeNull();
   });
 
-  it("si falla la escritura, autentica igual y lo registra sin el token", async () => {
+  it("if the write fails, it still authenticates and logs it without the token", async () => {
     const user = await seedUser();
     const token = await seedApiToken(user.id);
     const row = await prisma.apiToken.findFirstOrThrow({
       where: { userId: user.id },
     });
     vi.spyOn(prisma.apiToken, "update").mockRejectedValueOnce(
-      new Error("BD caída"),
+      new Error("DB down"),
     );
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -51,10 +51,10 @@ describe("authenticateApiToken — marca de último uso (integración)", () => {
 
     expect(auth).toEqual({ userId: user.id, scope: "full" });
     expect(errorSpy).toHaveBeenCalledWith(
-      "[api-auth] no se pudo actualizar lastUsedAt",
-      { tokenId: row.id, error: "BD caída" },
+      "[api-auth] could not update lastUsedAt",
+      { tokenId: row.id, error: "DB down" },
     );
-    // Ni el token en claro ni su hash aparecen en el registro.
+    // Neither the plain token nor its hash appear in the log.
     const logged = JSON.stringify(errorSpy.mock.calls);
     expect(logged).not.toContain(token);
     expect(logged).not.toContain(row.tokenHash);

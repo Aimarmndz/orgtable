@@ -1,12 +1,12 @@
 import "server-only";
 import { prisma } from "@/app/lib/prisma";
 
-// Lógica del asistente de primer arranque (/setup), separada de la Server Action para
-// poder probarla sin request (ver test/integration/setup.int.test.ts).
+// First-run wizard logic (/setup), separated from the Server Action so it can be tested
+// without a request (see test/integration/setup.int.test.ts).
 
 const INSTANCE_ID = "singleton";
-// Clave del advisory lock que serializa el setup (cualquier texto fijo sirve: hashtext
-// lo convierte en el entero que pide pg_advisory_xact_lock).
+// Advisory lock key that serializes setup (any fixed text works: hashtext turns it into
+// the integer pg_advisory_xact_lock expects).
 const SETUP_LOCK_KEY = "orgtable:setup";
 
 export type SetupOutcome =
@@ -14,13 +14,13 @@ export type SetupOutcome =
   | { ok: false; reason: "ALREADY_SETUP" };
 
 /**
- * Crea el administrador y marca la instancia como configurada, una sola vez.
+ * Creates the administrator and marks the instance as configured, exactly once.
  *
- * Comprobar `setupCompletedAt` dentro de la transacción NO basta: con READ COMMITTED dos
- * envíos simultáneos leen los dos "sin configurar", cada uno crea su ADMIN y el upsert
- * de la segunda pasa como UPDATE. SELECT … FOR UPDATE tampoco sirve porque la fila de
- * InstanceConfig aún no existe. El advisory lock de transacción hace que la segunda
- * espere a que la primera confirme y, al comprobar, vea el setup ya hecho.
+ * Checking `setupCompletedAt` inside the transaction is NOT enough: under READ COMMITTED
+ * two concurrent submissions both read "not configured", each creates its ADMIN and the
+ * second upsert goes through as an UPDATE. SELECT ... FOR UPDATE does not help either
+ * because the InstanceConfig row does not exist yet. The transaction-level advisory lock
+ * makes the second wait for the first to commit and, when it checks, see setup done.
  */
 export async function completeInstanceSetup(input: {
   instanceName: string;

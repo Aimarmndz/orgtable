@@ -6,7 +6,8 @@ import { isRegistrationOpen } from "@/app/lib/services/instance";
 import { verifySession } from "@/app/lib/dal";
 import robots from "@/app/robots";
 import { __setHeaders } from "../stubs/next-headers";
-import { resetDb, disconnect, seedUser, loginAs } from "./helpers";
+import { cookies } from "next/headers";
+import { resetDb, disconnect, seedUser, loginAs, en, es } from "./helpers";
 
 beforeEach(async () => {
   await resetDb();
@@ -15,11 +16,11 @@ afterAll(async () => {
   await disconnect();
 });
 
-const LEGAL = { operatorName: "Operador de prueba", operatorEmail: "privacidad@test.local" };
+const LEGAL = { operatorName: "Test operator", operatorEmail: "privacy@test.local" };
 
 async function seedInstance(data: Partial<{ registrationOpen: boolean; operatorName: string; operatorEmail: string }> = {}) {
   await prisma.instanceConfig.create({
-    data: { id: "singleton", instanceName: "Prueba", setupCompletedAt: new Date(), ...data },
+    data: { id: "singleton", instanceName: "Test", setupCompletedAt: new Date(), ...data },
   });
 }
 
@@ -31,19 +32,19 @@ function form(fields: Record<string, string | undefined>): FormData {
 
 function registerForm(fields: Record<string, string | undefined> = {}): FormData {
   return form({
-    name: "Persona Nueva",
-    email: "Nueva@Test.local",
+    name: "New Person",
+    email: "New@Test.local",
     password: "contraseña-larga",
     acceptTerms: "on",
     ...fields,
   });
 }
 
-/** Ejecuta register y devuelve la URL de la redirección (o falla si no redirige). */
+/** Runs register and returns the redirect URL (or fails if it does not redirect). */
 async function registerRedirect(fd: FormData): Promise<string> {
   try {
     const state = await register({}, fd);
-    throw new Error(`register no redirigió: ${JSON.stringify(state)}`);
+    throw new Error(`register did not redirect: ${JSON.stringify(state)}`);
   } catch (e) {
     const digest = (e as { digest?: string }).digest;
     if (!digest?.startsWith("NEXT_REDIRECT")) throw e;
@@ -51,14 +52,14 @@ async function registerRedirect(fd: FormData): Promise<string> {
   }
 }
 
-describe("registro abierto (register)", () => {
-  it("crea una cuenta MEMBER, guarda la aceptación, inicia sesión y audita", async () => {
+describe("open registration (register)", () => {
+  it("creates a MEMBER account, stores the acceptance, signs in and audits", async () => {
     await seedInstance({ registrationOpen: true, ...LEGAL });
     const before = Date.now();
 
     expect(await registerRedirect(registerForm())).toBe("/boards");
 
-    const user = await prisma.user.findUniqueOrThrow({ where: { email: "nueva@test.local" } });
+    const user = await prisma.user.findUniqueOrThrow({ where: { email: "new@test.local" } });
     expect(user.role).toBe("MEMBER");
     expect(user.termsAcceptedAt?.getTime()).toBeGreaterThanOrEqual(before);
     expect(user.passwordHash).not.toContain("contraseña");
@@ -68,47 +69,47 @@ describe("registro abierto (register)", () => {
     ).toBe(1);
   });
 
-  it("con el registro cerrado no crea nada", async () => {
+  it("creates nothing with registration closed", async () => {
     await seedInstance({ registrationOpen: false, ...LEGAL });
     const state = await register({}, registerForm());
-    expect(state.error).toBe("El registro está cerrado en esta instancia.");
+    expect(state.error).toBe(en.errors.register.closed);
     expect(await prisma.user.count()).toBe(0);
   });
 
-  // Defensa en profundidad: si alguien vacía los datos legales directamente en la BD, el
-  // registro se cierra solo en vez de aceptar altas sin política de privacidad completa.
-  it("abierto pero sin responsable ni contacto cuenta como cerrado", async () => {
+  // Defence in depth: if someone empties the legal details directly in the DB, registration
+  // closes by itself instead of accepting sign-ups without a complete privacy policy.
+  it("open but without an operator or contact counts as closed", async () => {
     await seedInstance({ registrationOpen: true });
     expect(await isRegistrationOpen()).toBe(false);
     const state = await register({}, registerForm());
-    expect(state.error).toBe("El registro está cerrado en esta instancia.");
+    expect(state.error).toBe(en.errors.register.closed);
     expect(await prisma.user.count()).toBe(0);
   });
 
-  it("sin aceptar la política y las condiciones no crea la cuenta", async () => {
+  it("does not create the account without accepting the policy and the terms", async () => {
     await seedInstance({ registrationOpen: true, ...LEGAL });
     const state = await register({}, registerForm({ acceptTerms: undefined }));
     expect(state.field).toBe("acceptTerms");
-    expect(state.error).toMatch(/aceptar la política de privacidad/);
+    expect(state.error).toBe(en.errors.validation.acceptTermsRequired);
     expect(await prisma.user.count()).toBe(0);
   });
 
-  it("rechaza el campo trampa relleno sin dar pistas", async () => {
+  it("rejects a filled-in honeypot field without giving hints", async () => {
     await seedInstance({ registrationOpen: true, ...LEGAL });
     const state = await register({}, registerForm({ website: "https://spam.example" }));
-    expect(state.error).toBe("No se pudo crear la cuenta. Inténtalo de nuevo.");
+    expect(state.error).toBe(en.errors.register.failed);
     expect(await prisma.user.count()).toBe(0);
   });
 
-  it("un email ya registrado (en otra capitalización) no crea otra cuenta", async () => {
+  it("an email already registered (with different capitalisation) does not create another account", async () => {
     await seedInstance({ registrationOpen: true, ...LEGAL });
-    await seedUser({ email: "nueva@test.local" });
+    await seedUser({ email: "new@test.local" });
     const state = await register({}, registerForm());
-    expect(state).toMatchObject({ field: "email", values: { email: "Nueva@Test.local" } });
+    expect(state).toMatchObject({ field: "email", values: { email: "New@Test.local" } });
     expect(await prisma.user.count()).toBe(1);
   });
 
-  it("dos altas simultáneas con el mismo email: una cuenta y ningún error 500", async () => {
+  it("two simultaneous sign-ups with the same email: one account and no 500 error", async () => {
     await seedInstance({ registrationOpen: true, ...LEGAL });
     const results = await Promise.allSettled([
       registerRedirect(registerForm()),
@@ -116,11 +117,11 @@ describe("registro abierto (register)", () => {
     ]);
     expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
     const rejected = results.find((r) => r.status === "rejected") as PromiseRejectedResult;
-    expect(String(rejected.reason)).toContain("Ya existe una cuenta con ese email");
+    expect(String(rejected.reason)).toContain(en.errors.register.emailTaken);
     expect(await prisma.user.count()).toBe(1);
   });
 
-  it("limita las altas por IP cuando hay proxy de confianza", async () => {
+  it("limits sign-ups per IP when there is a trusted proxy", async () => {
     await seedInstance({ registrationOpen: true, ...LEGAL });
     process.env.TRUSTED_PROXY_HOPS = "1";
     __setHeaders({ "x-forwarded-for": "203.0.113.7" });
@@ -129,7 +130,9 @@ describe("registro abierto (register)", () => {
         await registerRedirect(registerForm({ email: `p${i}@test.local` }));
       }
       const state = await register({}, registerForm({ email: "p6@test.local" }));
-      expect(state.error).toMatch(/demasiadas cuentas seguidas/);
+      expect(state.error).toMatch(
+        new RegExp(`^${en.errors.register.rateLimited.other.split("{")[0]}`),
+      );
       expect(await prisma.user.count()).toBe(5);
       expect(
         await prisma.auditLog.count({ where: { action: "auth.register_rate_limited" } }),
@@ -140,10 +143,10 @@ describe("registro abierto (register)", () => {
   });
 });
 
-describe("ajustes de la instancia (saveInstanceSettings)", () => {
+describe("instance settings (saveInstanceSettings)", () => {
   function settingsForm(fields: Record<string, string> = {}): FormData {
     return form({
-      instanceName: "Prueba",
+      instanceName: "Test",
       registrationOpen: "closed",
       operatorName: "",
       operatorEmail: "",
@@ -155,7 +158,7 @@ describe("ajustes de la instancia (saveInstanceSettings)", () => {
     });
   }
 
-  it("no deja abrir el registro sin responsable y contacto", async () => {
+  it("does not allow opening registration without an operator and contact", async () => {
     await seedInstance();
     const admin = await seedUser({ role: "ADMIN" });
     await loginAs(admin.id);
@@ -166,7 +169,7 @@ describe("ajustes de la instancia (saveInstanceSettings)", () => {
     expect((await prisma.instanceConfig.findUniqueOrThrow({ where: { id: "singleton" } })).registrationOpen).toBe(false);
   });
 
-  it("guarda los datos legales, abre el registro y fecha la actualización", async () => {
+  it("saves the legal details, opens registration and dates the update", async () => {
     await seedInstance();
     const admin = await seedUser({ role: "ADMIN" });
     await loginAs(admin.id);
@@ -175,18 +178,18 @@ describe("ajustes de la instancia (saveInstanceSettings)", () => {
       {},
       settingsForm({
         registrationOpen: "open",
-        operatorName: "  Operador  ",
-        operatorEmail: "privacidad@test.local",
+        operatorName: "  Operator  ",
+        operatorEmail: "privacy@test.local",
         backupRetentionDays: "14",
       }),
     );
-    expect(state.message).toBe("Ajustes guardados.");
+    expect(state.message).toBe(en.errors.instance.saved);
 
     const config = await prisma.instanceConfig.findUniqueOrThrow({ where: { id: "singleton" } });
     expect(config).toMatchObject({
       registrationOpen: true,
-      operatorName: "Operador",
-      operatorEmail: "privacidad@test.local",
+      operatorName: "Operator",
+      operatorEmail: "privacy@test.local",
       operatorLegalId: null,
       backupRetentionDays: 14,
     });
@@ -195,15 +198,15 @@ describe("ajustes de la instancia (saveInstanceSettings)", () => {
     expect(await prisma.auditLog.count({ where: { action: "instance.updated" } })).toBe(1);
   });
 
-  it("rechaza un email de contacto no válido", async () => {
+  it("rejects an invalid contact email", async () => {
     await seedInstance();
     const admin = await seedUser({ role: "ADMIN" });
     await loginAs(admin.id);
-    const state = await saveInstanceSettings({}, settingsForm({ operatorEmail: "no-es-email" }));
+    const state = await saveInstanceSettings({}, settingsForm({ operatorEmail: "not-an-email" }));
     expect(state.field).toBe("operatorEmail");
   });
 
-  it("un MEMBER no puede cambiar los ajustes", async () => {
+  it("a MEMBER cannot change the settings", async () => {
     await seedInstance();
     const member = await seedUser();
     await loginAs(member.id);
@@ -215,7 +218,7 @@ describe("ajustes de la instancia (saveInstanceSettings)", () => {
 });
 
 describe("robots.txt", () => {
-  it("cerrada no deja indexar nada; abierta, solo las páginas públicas", async () => {
+  it("closed, it allows indexing nothing; open, only the public pages", async () => {
     await seedInstance({ registrationOpen: false, ...LEGAL });
     expect((await robots()).rules).toEqual({ userAgent: "*", disallow: "/" });
 
@@ -225,5 +228,37 @@ describe("robots.txt", () => {
       allow: ["/login", "/register", "/legal/"],
       disallow: "/",
     });
+  });
+});
+
+// The account keeps the language the person signed up in, so that notifications for them
+// are written in it (User.locale).
+describe("registration language", () => {
+  it("stores the request's language as the account's language", async () => {
+    await seedInstance({ registrationOpen: true, ...LEGAL });
+    (await cookies()).set("locale", "es");
+
+    expect(await registerRedirect(registerForm())).toBe("/boards");
+
+    const user = await prisma.user.findUniqueOrThrow({ where: { email: "new@test.local" } });
+    expect(user.locale).toBe("es");
+  });
+
+  it("without a language preference the account is stored in English", async () => {
+    await seedInstance({ registrationOpen: true, ...LEGAL });
+
+    await registerRedirect(registerForm());
+
+    const user = await prisma.user.findUniqueOrThrow({ where: { email: "new@test.local" } });
+    expect(user.locale).toBe("en");
+  });
+
+  it("errors follow the request's language", async () => {
+    await seedInstance({ registrationOpen: false, ...LEGAL });
+    __setHeaders({ "accept-language": "es-ES,es;q=0.9" });
+
+    const state = await register({}, registerForm());
+
+    expect(state.error).toBe(es.errors.register.closed);
   });
 });

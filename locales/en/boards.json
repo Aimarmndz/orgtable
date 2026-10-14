@@ -1,1 +1,169 @@
-{}
+{
+  "roles": {
+    "OWNER": "Owner",
+    "EDITOR": "Editor",
+    "VIEWER": "Viewer"
+  },
+  "confirm": {
+    "deletePrompt": "Delete?",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "index": {
+    "metaTitle": "Your boards",
+    "title": "Your boards",
+    "subtitle": "Organize your work in lists and cards.",
+    "newBoardName": "New board name",
+    "createBoard": "Create board",
+    "importToggle": "Import a board from JSON",
+    "emptyTitle": "You don't have any boards yet",
+    "emptyText": "Create your first one with the field above and start organizing your work in lists and cards.",
+    "cardCount": { "one": "{count} card", "other": "{count} cards" },
+    "sharedWith": {
+      "one": ", shared with {count} person: {names}",
+      "other": ", shared with {count} people: {names}"
+    },
+    "exportBoard": "Export board {title}",
+    "exportTitle": "Export to JSON",
+    "deleteBoard": "Delete board {title}",
+    "confirmDeleteBoard": "Yes, delete the board {title}"
+  },
+  "import": {
+    "fileLabel": "JSON file of the board to import",
+    "submit": "Import board",
+    "pending": "Importing…"
+  },
+  "board": {
+    "metaTitle": "Board",
+    "viewBoard": "Board",
+    "viewCalendar": "Calendar",
+    "members": "Members",
+    "viewMembers": "View members",
+    "moveListFailed": "Couldn't move the list. Please try again.",
+    "moveCardFailed": "Couldn't move the card. Please try again."
+  },
+  "dnd": {
+    "instructions": "Press Space to pick up the item, the arrow keys to move it, Space to drop it and Escape to cancel. Enter opens the card.",
+    "listName": "the list “{title}”",
+    "cardName": "the card “{title}”",
+    "pickedUp": "Picked up {item}.",
+    "over": "Over {target}.",
+    "outside": "Outside any list.",
+    "dropped": "Dropped {item} on {target}.",
+    "droppedOutside": "Dropped {item} outside any list; it doesn't move.",
+    "cancelled": "Move cancelled; {item} goes back to its place."
+  },
+  "list": {
+    "roleDescription": "list",
+    "delete": "Delete list {title}",
+    "confirmDelete": "Yes, delete the list {title} and all its cards",
+    "keep": "No, keep the list",
+    "addPlaceholder": "+ Add list",
+    "newName": "New list name"
+  },
+  "card": {
+    "roleDescription": "card",
+    "addPlaceholder": "+ Add card",
+    "newIn": "New card in {list}",
+    "subtasks": "Subtasks: {done} of {total} completed",
+    "overdue": ", overdue"
+  },
+  "filters": {
+    "button": "Filter",
+    "dialog": "Filters",
+    "labels": "Labels",
+    "noLabels": "No labels.",
+    "assignees": "Assignees",
+    "due": "Due date",
+    "dueAny": "Any",
+    "dueOverdue": "Overdue",
+    "dueSet": "With a date",
+    "dueNone": "No date",
+    "clear": "Clear filters"
+  },
+  "calendar": {
+    "instructions": "Press Space to pick up the card, the arrow keys to change the day, Space to drop it and Escape to cancel. Enter opens the card.",
+    "pickedUp": "Picked up the card “{title}”.",
+    "over": "Over {day}.",
+    "outside": "Outside the calendar.",
+    "dropped": "Dropped the card “{title}” on {day}.",
+    "droppedOutside": "Dropped the card “{title}” outside the calendar; it doesn't change.",
+    "cancelled": "Move cancelled; the card “{title}” stays on its day.",
+    "previousMonth": "Previous month",
+    "nextMonth": "Next month",
+    "today": "Today",
+    "dueDateFailed": "Couldn't change the date. Please try again.",
+    "undated": {
+      "one": "{count} card without a due date (it doesn't appear in the calendar).",
+      "other": "{count} cards without a due date (they don't appear in the calendar)."
+    }
+  },
+  "members": {
+    "title": "Members",
+    "descriptionManage": "Invite people and choose what they can do on this board.",
+    "descriptionView": "People with access to this board.",
+    "email": "Email",
+    "emailPlaceholder": "person@example.com",
+    "role": "Role",
+    "invite": "Invite",
+    "inviting": "Adding…",
+    "roleOf": "Role of {name}",
+    "remove": "Remove {name}"
+  },
+  "cardModal": {
+    "labels": "Labels",
+    "labelToggleFailed": "Couldn't change the label.",
+    "noBoardLabels": "There are no labels on this board yet.",
+    "noLabels": "No labels.",
+    "labelColor": "{color} color",
+    "colors": {
+      "green": "Green",
+      "lime": "Lime",
+      "amber": "Amber",
+      "red": "Red",
+      "purple": "Purple",
+      "blue": "Blue",
+      "teal": "Teal",
+      "pink": "Pink"
+    },
+    "newLabel": "New label",
+    "newLabelName": "New label name",
+    "add": "Add",
+    "assignees": "Assignees",
+    "unassign": "Remove {name}",
+    "nobodyAssigned": "Nobody assigned.",
+    "description": "Description",
+    "descriptionPlaceholder": "Add more detail…",
+    "noDescription": "No description.",
+    "dueDate": "Due date",
+    "dueDateInline": "Due date:",
+    "saveChanges": "Save changes",
+    "checklists": "Checklists",
+    "checklistProgress": "· {done} of {total} completed",
+    "deleteChecklist": "Delete",
+    "itemToggleFailed": "Couldn't update the item.",
+    "markNotDone": "Mark as not done",
+    "markDone": "Mark as done",
+    "deleteItem": "Delete item",
+    "addItemPlaceholder": "+ Add item",
+    "newItemIn": "New item in {checklist}",
+    "newChecklist": "New checklist",
+    "newChecklistTitle": "New checklist title",
+    "addChecklist": "Add checklist",
+    "attachments": "Attachments",
+    "noAttachments": "No attachments.",
+    "deleteAttachment": "Delete attachment {filename}",
+    "attachFile": "File to attach to the card",
+    "attach": "Attach",
+    "uploading": "Uploading…",
+    "comments": "Comments",
+    "noComments": "Be the first to comment.",
+    "deleteComment": "Delete comment",
+    "commentPlaceholder": "Write a comment…",
+    "newComment": "New comment",
+    "comment": "Comment",
+    "deleteCard": "Delete card",
+    "deleteCardPrompt": "Delete the card?",
+    "confirmDeleteCard": "Yes, delete"
+  }
+}

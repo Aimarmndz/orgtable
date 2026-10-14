@@ -1,9 +1,9 @@
 import "server-only";
 import { prisma } from "@/app/lib/prisma";
 
-// Ajustes de la instancia que gestiona el admin desde /admin/instance: registro abierto o
-// cerrado y datos legales de quien opera la instancia. Sin contexto de request ni
-// autorización (lo pone la Server Action), igual que services/users.ts. Ver
+// Instance settings the admin manages from /admin/instance: open or closed registration
+// and the legal details of whoever operates the instance. No request context or
+// authorization (the Server Action provides it), same as services/users.ts. See
 // docs/privacy.md.
 
 const INSTANCE_ID = "singleton";
@@ -20,7 +20,7 @@ export type LegalInfo = {
   registrationOpen: boolean;
 };
 
-/** Datos legales y estado del registro. null si la instancia aún no se ha configurado. */
+/** Legal details and registration state. null if the instance is not configured yet. */
 export async function getLegalInfo(): Promise<LegalInfo | null> {
   return prisma.instanceConfig.findUnique({
     where: { id: INSTANCE_ID },
@@ -39,8 +39,8 @@ export async function getLegalInfo(): Promise<LegalInfo | null> {
 }
 
 /**
- * true si la política de privacidad tiene lo mínimo que exige el RGPD (art. 13.1.a): quién
- * es el responsable y cómo contactarle. Sin eso no se puede abrir el registro.
+ * true if the privacy policy has the minimum the GDPR requires (art. 13.1.a): who the
+ * controller is and how to contact them. Without it, registration cannot be opened.
  */
 export function hasRequiredLegalInfo(
   info: Pick<LegalInfo, "operatorName" | "operatorEmail">,
@@ -50,8 +50,8 @@ export function hasRequiredLegalInfo(
 
 export async function isRegistrationOpen(): Promise<boolean> {
   const info = await getLegalInfo();
-  // Se vuelve a comprobar aquí y no solo al guardar: si alguien vacía los datos legales
-  // directamente en la BD, el registro se cierra solo en vez de aceptar altas sin política.
+  // Re-checked here and not only on save: if someone clears the legal details directly
+  // in the DB, registration closes itself instead of accepting sign-ups without a policy.
   return Boolean(info?.registrationOpen && hasRequiredLegalInfo(info));
 }
 
@@ -80,9 +80,9 @@ const LEGAL_FIELDS = [
 ] as const;
 
 /**
- * Guarda los ajustes. Abrir el registro exige responsable y contacto. Si cambia algún dato
- * legal, `legalUpdatedAt` pasa a ahora: es la «última actualización» de las páginas
- * legales, que así no puede quedarse atrás respecto a lo que dicen.
+ * Saves the settings. Opening registration requires a controller and a contact. If any
+ * legal detail changes, `legalUpdatedAt` is set to now: it is the "last updated" date of
+ * the legal pages, so it can never lag behind what they say.
  */
 export async function updateInstanceSettings(
   input: InstanceSettingsInput,

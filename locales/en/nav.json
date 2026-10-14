@@ -1,1 +1,30 @@
-{}
+{
+  "search": {
+    "label": "Search",
+    "placeholder": "Search cards and boards…"
+  },
+  "theme": {
+    "toggle": "Switch between light and dark theme"
+  },
+  "account": {
+    "label": "Your account: {name}",
+    "profile": "Profile and settings",
+    "security": "Password and sessions",
+    "privacy": "Privacy and data",
+    "admin": "Administration",
+    "signOut": "Sign out"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "labelUnread": "Notifications ({count} unread)",
+    "markAll": "Mark all as read",
+    "empty": "You have no notifications.",
+    "time": {
+      "now": "just now",
+      "minutes": "{count} min ago",
+      "hours": "{count} h ago",
+      "yesterday": "yesterday",
+      "days": "{count} d ago"
+    }
+  }
+}

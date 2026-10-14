@@ -1,9 +1,9 @@
 /**
- * Primer valor de un parámetro de búsqueda de la URL.
+ * First value of a URL search parameter.
  *
- * En Next, `searchParams` da un array cuando la clave se repite (`?q=a&q=b`), aunque el
- * tipo de la página diga `string`. Tratarlo como string rompía `/search` (`q.trim()` no
- * existe en un array). Nos quedamos con el primero, que es lo que haría un formulario.
+ * In Next, `searchParams` yields an array when the key is repeated (`?q=a&q=b`), even
+ * though the page type says `string`. Treating it as a string broke `/search`
+ * (`q.trim()` does not exist on an array). We keep the first one, as a form would.
  */
 export function firstParam(
   value: string | string[] | undefined,

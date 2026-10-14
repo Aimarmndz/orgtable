@@ -55,27 +55,17 @@ import {
   formatDueDate,
   runToggle,
 } from "./card-modal-helpers";
+import { useI18n } from "@/app/i18n/client";
+import { fmt } from "@/app/i18n/format";
 
-// Los botones de borrar solo aparecen al pasar el ratón, pero deben verse también al
-// recibir el foco con teclado y siempre en pantallas táctiles (sin hover).
+// Delete buttons only appear on hover, but they must also show when they receive
+// keyboard focus, and always on touch screens (no hover).
 const revealOnHover =
   "rounded opacity-0 transition hover:text-danger group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-accent/40 pointer-coarse:opacity-100";
 
-// Nombres en español para el lector de pantalla; el Record obliga a cubrir cada color.
-const LABEL_COLOR_NAMES: Record<LabelColor, string> = {
-  green: "verde",
-  lime: "lima",
-  amber: "ámbar",
-  red: "rojo",
-  purple: "morado",
-  blue: "azul",
-  teal: "turquesa",
-  pink: "rosa",
-};
-
 const noopSubscribe = () => () => {};
 
-/** `false` en el servidor y durante la hidratación; `true` después. */
+/** `false` on the server and during hydration; `true` afterwards. */
 function useHydrated(): boolean {
   return useSyncExternalStore(
     noopSubscribe,
@@ -108,6 +98,8 @@ export function CardModal({
   currentUserId: string;
   onClose: () => void;
 }) {
+  const { m, intl } = useI18n();
+  const t = m.boards.cardModal;
   const { canEdit, canManage } = useBoardPerms();
   const [, startTransition] = useTransition();
   const [labelError, setLabelError] = useState<string | null>(null);
@@ -120,10 +112,10 @@ export function CardModal({
     FormData
   >(updateCard, {});
 
-  // <dialog> nativo con showModal(): el navegador vuelve inerte el resto de la página
-  // (el Tab no sale al tablero), enfoca el primer control y, al cerrar, devuelve el
-  // foco a la tarjeta que lo abrió. Layout effect para que close() ocurra antes de
-  // que React quite el nodo: si se retira abierto, el foco no se restaura.
+  // Native <dialog> with showModal(): the browser makes the rest of the page inert (Tab
+  // does not escape to the board), focuses the first control and, on close, returns
+  // focus to the card that opened it. A layout effect so close() runs before React
+  // removes the node: if it is removed while open, focus is not restored.
   useLayoutEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
@@ -140,13 +132,13 @@ export function CardModal({
   );
 
   return (
-    // El <dialog> ocupa toda la ventana y hace de contenedor con scroll; el panel va
-    // dentro. Un clic cuyo destino es el propio <dialog> cae fuera del panel.
+    // The <dialog> fills the window and acts as the scroll container; the panel sits
+    // inside. A click whose target is the <dialog> itself landed outside the panel.
     <dialog
       ref={dialogRef}
       aria-labelledby={titleId}
       onCancel={(e) => {
-        // Escape: cierra React (desmonta), no el navegador por su cuenta.
+        // Escape: React closes it (unmounts), not the browser on its own.
         e.preventDefault();
         onClose();
       }}
@@ -168,17 +160,17 @@ export function CardModal({
           </h2>
           <button
             onClick={onClose}
-            aria-label="Cerrar"
+            aria-label={m.common.actions.close}
             className="grid size-8 shrink-0 place-items-center rounded-lg text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
           >
             ✕
           </button>
         </div>
 
-        {/* Etiquetas */}
+        {/* Labels */}
         <section className="mt-6">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
-            Etiquetas
+            {t.labels}
           </h3>
           {canEdit ? (
             boardLabels.length > 0 ? (
@@ -198,15 +190,15 @@ export function CardModal({
                                   cardId: card.id,
                                   labelId: l.id,
                                 }),
-                              "No se pudo cambiar la etiqueta.",
+                              t.labelToggleFailed,
                               "toggleCardLabel",
                             ),
                           );
                         })
                       }
                       style={{ background: labelBackground(l.color) }}
-                      // Sin opacity-55 en el no seleccionado: bajaba el texto blanco a
-                      // ~2,2:1. El estado se distingue por el ✓, el anillo y aria-pressed.
+                      // No opacity-55 when unselected: it dropped the white text to
+                      // ~2.2:1. The state shows through the ✓, the ring and aria-pressed.
                       className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium text-white transition ${
                         on
                           ? "ring-2 ring-ink/40 ring-offset-1 ring-offset-surface"
@@ -221,7 +213,7 @@ export function CardModal({
               </div>
             ) : (
               <p className="mt-2 text-sm text-ink-muted">
-                Aún no hay etiquetas en este tablero.
+                {t.noBoardLabels}
               </p>
             )
           ) : card.labels.length > 0 ? (
@@ -237,10 +229,10 @@ export function CardModal({
               ))}
             </div>
           ) : (
-            <p className="mt-2 text-sm text-ink-muted">Sin etiquetas.</p>
+            <p className="mt-2 text-sm text-ink-muted">{t.noLabels}</p>
           )}
-          {/* El aviso va junto a lo que falló: el modal tiene scroll y uno arriba del
-              todo no se vería. Se borra en cuanto otro cambio de etiqueta sale bien. */}
+          {/* The warning sits next to what failed: the modal scrolls and one at the very
+              top would go unseen. It clears as soon as another label change succeeds. */}
           {labelError && (
             <p
               role="alert"
@@ -252,7 +244,7 @@ export function CardModal({
           {canManage && <NewLabelForm boardId={boardId} />}
         </section>
 
-        {/* Asignados */}
+        {/* Assignees */}
         <AssigneesSection
           cardId={card.id}
           assignees={card.assignees}
@@ -260,7 +252,7 @@ export function CardModal({
           canEdit={canEdit}
         />
 
-        {/* Descripción + fecha */}
+        {/* Description + due date */}
         {canEdit ? (
           <form action={detailsAction} className="mt-6 space-y-4">
             <input type="hidden" name="cardId" value={card.id} />
@@ -269,25 +261,25 @@ export function CardModal({
                 htmlFor={descId}
                 className="block text-xs font-semibold uppercase tracking-wide text-ink-muted"
               >
-                Descripción
+                {t.description}
               </label>
               <Textarea
                 id={descId}
                 name="description"
                 rows={4}
                 maxLength={CARD_DESCRIPTION_MAX}
-                // Si no se guardó, se rehidrata con lo enviado: React resetea el
-                // formulario al acabar la acción y, si no, se perdería lo escrito.
+                // If it was not saved, it is refilled with what was sent: React resets
+                // the form when the action ends and the text would otherwise be lost.
                 defaultValue={details.description ?? card.description ?? ""}
                 aria-describedby={details.error ? detailsErrorId : undefined}
-                placeholder="Añade más detalle…"
+                placeholder={t.descriptionPlaceholder}
                 className="mt-2 resize-y"
               />
             </div>
             <div className="flex flex-wrap items-end gap-3">
               <label className="text-sm">
                 <span className="block text-xs font-semibold uppercase tracking-wide text-ink-muted">
-                  Vencimiento
+                  {t.dueDate}
                 </span>
                 <Input
                   type="date"
@@ -297,7 +289,7 @@ export function CardModal({
                 />
               </label>
               <Button type="submit" variant="subtle" disabled={detailsPending}>
-                {detailsPending ? "Guardando…" : "Guardar cambios"}
+                {detailsPending ? m.common.actions.saving : t.saveChanges}
               </Button>
             </div>
             {details.error && (
@@ -314,18 +306,18 @@ export function CardModal({
           <div className="mt-6 space-y-4">
             <div>
               <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
-                Descripción
+                {t.description}
               </h3>
               <p className="mt-2 whitespace-pre-wrap text-sm text-ink-muted">
-                {card.description || "Sin descripción."}
+                {card.description || t.noDescription}
               </p>
             </div>
             {card.dueDate && (
               <p className="text-sm">
                 <span className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
-                  Vencimiento:{" "}
+                  {t.dueDateInline}{" "}
                 </span>
-                <time dateTime={dueValue}>{formatDueDate(card.dueDate)}</time>
+                <time dateTime={dueValue}>{formatDueDate(card.dueDate, intl)}</time>
               </p>
             )}
           </div>
@@ -334,10 +326,10 @@ export function CardModal({
         {/* Checklists */}
         <section className="mt-6">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
-            Checklists
+            {t.checklists}
             {total > 0 && (
               <span className="ml-1.5 font-normal normal-case tracking-normal">
-                · {done} de {total} completadas
+                {fmt(t.checklistProgress, { done, total })}
               </span>
             )}
           </h3>
@@ -354,14 +346,14 @@ export function CardModal({
           {canEdit && <NewChecklistForm cardId={card.id} />}
         </section>
 
-        {/* Adjuntos */}
+        {/* Attachments */}
         <AttachmentsSection
           cardId={card.id}
           attachments={card.attachments}
           canEdit={canEdit}
         />
 
-        {/* Comentarios */}
+        {/* Comments */}
         <CommentsSection
           cardId={card.id}
           comments={card.comments}
@@ -370,7 +362,7 @@ export function CardModal({
           currentUserId={currentUserId}
         />
 
-        {/* Borrar (solo quien puede editar) */}
+        {/* Delete (only for people who can edit) */}
         {canEdit && (
           <div className="mt-8 flex justify-end border-t border-border pt-4">
             <DeleteCardForm cardId={card.id} onDeleted={onClose} />
@@ -381,8 +373,8 @@ export function CardModal({
   );
 }
 
-// Borrar es irreversible: el primer clic solo pide confirmación en línea (sin
-// window.confirm, que bloquea y no sigue el estilo de la app).
+// Deleting is irreversible: the first click only asks for inline confirmation (no
+// window.confirm, which blocks and does not follow the app's style).
 function DeleteCardForm({
   cardId,
   onDeleted,
@@ -390,13 +382,15 @@ function DeleteCardForm({
   cardId: string;
   onDeleted: () => void;
 }) {
+  const { m } = useI18n();
+  const t = m.boards.cardModal;
   const [confirming, setConfirming] = useState(false);
   const askRef = useRef<HTMLButtonElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const wasConfirming = useRef(false);
 
-  // El botón pulsado desaparece al cambiar de paso: se mueve el foco al control
-  // equivalente para que el teclado no se quede en <body>.
+  // The pressed button disappears when the step changes: focus moves to the equivalent
+  // control so the keyboard does not end up on <body>.
   useEffect(() => {
     if (confirming) cancelRef.current?.focus();
     else if (wasConfirming.current) askRef.current?.focus();
@@ -411,7 +405,7 @@ function DeleteCardForm({
         type="button"
         onClick={() => setConfirming(true)}
       >
-        Borrar tarjeta
+        {t.deleteCard}
       </Button>
     );
   }
@@ -425,9 +419,9 @@ function DeleteCardForm({
       className="flex flex-wrap items-center justify-end gap-2"
     >
       <input type="hidden" name="cardId" value={cardId} />
-      <span className="text-sm text-ink">¿Borrar la tarjeta?</span>
+      <span className="text-sm text-ink">{t.deleteCardPrompt}</span>
       <Button variant="danger" type="submit">
-        Sí, borrar
+        {t.confirmDeleteCard}
       </Button>
       <Button
         ref={cancelRef}
@@ -435,13 +429,15 @@ function DeleteCardForm({
         type="button"
         onClick={() => setConfirming(false)}
       >
-        No
+        {m.boards.confirm.no}
       </Button>
     </form>
   );
 }
 
 function NewLabelForm({ boardId }: { boardId: string }) {
+  const { m } = useI18n();
+  const t = m.boards.cardModal;
   const ref = useRef<HTMLFormElement>(null);
   const [color, setColor] = useState<LabelColor>(LABEL_COLOR_KEYS[0]);
 
@@ -462,7 +458,7 @@ function NewLabelForm({ boardId }: { boardId: string }) {
             type="button"
             key={k}
             onClick={() => setColor(k)}
-            aria-label={`Color ${LABEL_COLOR_NAMES[k]}`}
+            aria-label={fmt(t.labelColor, { color: t.colors[k] })}
             aria-pressed={color === k}
             style={{ background: LABEL_COLORS[k] }}
             className={`size-5 rounded-full transition ${
@@ -477,12 +473,12 @@ function NewLabelForm({ boardId }: { boardId: string }) {
         name="name"
         required
         maxLength={40}
-        placeholder="Nueva etiqueta"
-        aria-label="Nombre de la nueva etiqueta"
+        placeholder={t.newLabel}
+        aria-label={t.newLabelName}
         className={`${smallInput} min-w-32 flex-1`}
       />
       <Button type="submit" variant="subtle" className="px-3 py-1.5">
-        Añadir
+        {t.add}
       </Button>
     </form>
   );
@@ -497,8 +493,10 @@ function ChecklistBlock({
   canEdit: boolean;
   startTransition: TransitionStartFunction;
 }) {
+  const { m } = useI18n();
+  const t = m.boards.cardModal;
   const itemRef = useRef<HTMLFormElement>(null);
-  // Error propio de cada checklist, para que salga junto al ítem que falló.
+  // Each checklist has its own error, so it shows next to the item that failed.
   const [itemError, setItemError] = useState<string | null>(null);
   const total = checklist.items.length;
   const done = checklist.items.filter((i) => i.done).length;
@@ -512,7 +510,7 @@ function ChecklistBlock({
           <form action={deleteChecklist}>
             <input type="hidden" name="checklistId" value={checklist.id} />
             <button className="text-xs text-ink-muted transition-colors hover:text-danger">
-              Eliminar
+              {t.deleteChecklist}
             </button>
           </form>
         )}
@@ -539,14 +537,14 @@ function ChecklistBlock({
                     await runToggle(
                       () =>
                         toggleChecklistItem({ itemId: it.id, done: !it.done }),
-                      "No se pudo actualizar el ítem.",
+                      t.itemToggleFailed,
                       "toggleChecklistItem",
                     ),
                   );
                 })
               }
               disabled={!canEdit}
-              aria-label={it.done ? "Marcar como pendiente" : "Marcar como hecho"}
+              aria-label={it.done ? t.markNotDone : t.markDone}
               className={`grid size-4 shrink-0 place-items-center rounded border text-[10px] text-white transition-colors ${
                 it.done
                   ? "border-success bg-success"
@@ -567,7 +565,7 @@ function ChecklistBlock({
                 <input type="hidden" name="itemId" value={it.id} />
                 <button
                   className={`text-xs text-ink-muted ${revealOnHover}`}
-                  aria-label="Borrar ítem"
+                  aria-label={t.deleteItem}
                 >
                   ✕
                 </button>
@@ -600,8 +598,8 @@ function ChecklistBlock({
             name="text"
             required
             maxLength={200}
-            placeholder="+ Añadir ítem"
-            aria-label={`Nuevo ítem en ${checklist.title}`}
+            placeholder={t.addItemPlaceholder}
+            aria-label={fmt(t.newItemIn, { checklist: checklist.title })}
             className={smallInput}
           />
         </form>
@@ -619,6 +617,8 @@ function AttachmentsSection({
   attachments: AttachmentDTO[];
   canEdit: boolean;
 }) {
+  const { m } = useI18n();
+  const t = m.boards.cardModal;
   const ref = useRef<HTMLFormElement>(null);
   const firstRender = useRef(true);
   const [state, action, pending] = useActionState<AttachmentState, FormData>(
@@ -626,7 +626,7 @@ function AttachmentsSection({
     {},
   );
 
-  // Limpia el formulario tras una subida correcta (sin error).
+  // Clears the form after a successful upload (no error).
   useEffect(() => {
     if (firstRender.current) {
       firstRender.current = false;
@@ -638,7 +638,7 @@ function AttachmentsSection({
   return (
     <section className="mt-6">
       <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
-        Adjuntos
+        {t.attachments}
         {attachments.length > 0 && (
           <span className="ml-1.5 font-normal normal-case tracking-normal">
             · {attachments.length}
@@ -679,7 +679,7 @@ function AttachmentsSection({
                   <input type="hidden" name="attachmentId" value={a.id} />
                   <button
                     className={`text-xs text-ink-muted ${revealOnHover}`}
-                    aria-label={`Borrar adjunto ${a.filename}`}
+                    aria-label={fmt(t.deleteAttachment, { filename: a.filename })}
                   >
                     ✕
                   </button>
@@ -689,7 +689,7 @@ function AttachmentsSection({
           ))}
         </ul>
       ) : (
-        <p className="mt-2 text-sm text-ink-muted">No hay adjuntos.</p>
+        <p className="mt-2 text-sm text-ink-muted">{t.noAttachments}</p>
       )}
 
       {canEdit && (
@@ -703,11 +703,11 @@ function AttachmentsSection({
             type="file"
             name="file"
             required
-            aria-label="Archivo para adjuntar a la tarjeta"
+            aria-label={t.attachFile}
             className="max-w-full text-sm text-ink-muted file:mr-2 file:rounded-lg file:border-0 file:bg-surface-2 file:px-3 file:py-1.5 file:text-sm file:text-ink hover:file:bg-border/40"
           />
           <Button type="submit" variant="subtle" disabled={pending}>
-            {pending ? "Subiendo…" : "Adjuntar"}
+            {pending ? t.uploading : t.attach}
           </Button>
         </form>
       )}
@@ -725,6 +725,8 @@ function AttachmentsSection({
 }
 
 function NewChecklistForm({ cardId }: { cardId: string }) {
+  const { m } = useI18n();
+  const t = m.boards.cardModal;
   const ref = useRef<HTMLFormElement>(null);
 
   return (
@@ -740,18 +742,18 @@ function NewChecklistForm({ cardId }: { cardId: string }) {
       <input
         name="title"
         maxLength={80}
-        placeholder="Nueva checklist"
-        aria-label="Título de la nueva checklist"
+        placeholder={t.newChecklist}
+        aria-label={t.newChecklistTitle}
         className={`${smallInput} flex-1`}
       />
       <Button type="submit" variant="subtle">
-        Añadir checklist
+        {t.addChecklist}
       </Button>
     </form>
   );
 }
 
-// Avatar simple: círculo con la inicial del nombre. Sin imágenes (no las tenemos).
+// Simple avatar: a circle with the name's initial. No images (we don't have any).
 function Avatar({ name, size = 7 }: { name: string; size?: 6 | 7 | 8 }) {
   const cls = { 6: "size-6 text-[11px]", 7: "size-7 text-xs", 8: "size-8 text-sm" };
   return (
@@ -775,13 +777,15 @@ function AssigneesSection({
   members: BoardMemberDTO[];
   canEdit: boolean;
 }) {
+  const { m } = useI18n();
+  const t = m.boards.cardModal;
   const assignedIds = new Set(assignees.map((a) => a.id));
   const unassigned = members.filter((m) => !assignedIds.has(m.id));
 
   return (
     <section className="mt-6">
       <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
-        Asignados
+        {t.assignees}
       </h3>
 
       {assignees.length > 0 ? (
@@ -799,7 +803,7 @@ function AssigneesSection({
                   <input type="hidden" name="userId" value={a.id} />
                   <button
                     className="text-ink-muted transition-colors hover:text-danger"
-                    aria-label={`Quitar a ${a.name}`}
+                    aria-label={fmt(t.unassign, { name: a.name })}
                   >
                     ✕
                   </button>
@@ -809,7 +813,7 @@ function AssigneesSection({
           ))}
         </div>
       ) : (
-        <p className="mt-2 text-sm text-ink-muted">Nadie asignado.</p>
+        <p className="mt-2 text-sm text-ink-muted">{t.nobodyAssigned}</p>
       )}
 
       {canEdit && unassigned.length > 0 && (
@@ -842,15 +846,17 @@ function CommentsSection({
   canManage: boolean;
   currentUserId: string;
 }) {
+  const { m, intl } = useI18n();
+  const t = m.boards.cardModal;
   const ref = useRef<HTMLFormElement>(null);
-  // Con ?card= el modal se renderiza en el servidor, cuya zona horaria no es la del
-  // navegador: la hora se pinta solo tras hidratar para no provocar un desajuste.
+  // With ?card= the modal renders on the server, whose time zone is not the browser's:
+  // the time is only painted after hydration to avoid a mismatch.
   const hydrated = useHydrated();
 
   return (
     <section className="mt-6">
       <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
-        Comentarios
+        {t.comments}
         {comments.length > 0 && (
           <span className="ml-1.5 font-normal normal-case tracking-normal">
             · {comments.length}
@@ -870,7 +876,7 @@ function CommentsSection({
                     dateTime={c.createdAt}
                     className="text-[11px] text-ink-muted"
                   >
-                    {hydrated ? formatCommentTime(c.createdAt) : ""}
+                    {hydrated ? formatCommentTime(c.createdAt, intl) : ""}
                   </time>
                 </p>
                 <p className="mt-0.5 whitespace-pre-wrap break-words text-sm">
@@ -882,7 +888,7 @@ function CommentsSection({
                   <input type="hidden" name="commentId" value={c.id} />
                   <button
                     className={`text-xs text-ink-muted ${revealOnHover}`}
-                    aria-label="Borrar comentario"
+                    aria-label={t.deleteComment}
                   >
                     ✕
                   </button>
@@ -893,7 +899,7 @@ function CommentsSection({
         </ul>
       ) : (
         <p className="mt-2 text-sm text-ink-muted">
-          Sé el primero en comentar.
+          {t.noComments}
         </p>
       )}
 
@@ -912,13 +918,13 @@ function CommentsSection({
             rows={2}
             required
             maxLength={2000}
-            placeholder="Escribe un comentario…"
-            aria-label="Nuevo comentario"
+            placeholder={t.commentPlaceholder}
+            aria-label={t.newComment}
             className="resize-y"
           />
           <div className="mt-2 flex justify-end">
             <Button type="submit" variant="subtle">
-              Comentar
+              {t.comment}
             </Button>
           </div>
         </form>

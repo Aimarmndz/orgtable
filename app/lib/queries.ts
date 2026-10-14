@@ -3,8 +3,8 @@ import { cache } from "react";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/app/lib/prisma";
 
-// Consultas de lectura. La autorización (qué tableros puede ver un usuario) se
-// expresa en el propio WHERE: dueño o miembro del tablero.
+// Read queries. Authorization (which boards a user can see) is expressed in the WHERE
+// itself: owner or member of the board.
 
 export async function getBoardsForUser(userId: string) {
   return prisma.board.findMany({
@@ -16,9 +16,9 @@ export async function getBoardsForUser(userId: string) {
 }
 
 /**
- * Tableros del usuario con lo que enseña su tarjeta en /boards: cuántas tarjetas tiene y
- * quién más está dentro. Consulta aparte de getBoardsForUser para no cambiar la forma
- * que devuelve la API pública.
+ * The user's boards with what their tile on /boards shows: how many cards they hold and
+ * who else is in them. Separate from getBoardsForUser so the shape returned by the public
+ * API does not change.
  */
 export async function getBoardSummariesForUser(userId: string) {
   const boards = await prisma.board.findMany({
@@ -45,9 +45,7 @@ export async function getBoardSummariesForUser(userId: string) {
   }));
 }
 
-// --- Hito 3: multiusuario ---
-
-/** Todos los usuarios de la instancia, para el panel de administración. */
+/** Every user of the instance, for the administration panel. */
 export async function getAllUsers() {
   return prisma.user.findMany({
     orderBy: { createdAt: "asc" },
@@ -62,7 +60,7 @@ export async function getAllUsers() {
   });
 }
 
-/** Eventos de auditoría más recientes, para el panel /admin/audit. */
+/** Most recent audit events, for the /admin/audit panel. */
 export async function getRecentAuditLogs(limit = 200) {
   return prisma.auditLog.findMany({
     orderBy: { createdAt: "desc" },
@@ -81,8 +79,8 @@ export async function getRecentAuditLogs(limit = 200) {
 }
 
 /**
- * Miembros de un tablero (con datos del usuario) más el ownerId, para el panel de
- * miembros. El propietario se marca a partir de ownerId.
+ * Members of a board (with user data) plus the ownerId, for the members panel. The owner
+ * is identified from ownerId.
  */
 export async function getBoardMembers(boardId: string) {
   const board = await prisma.board.findUnique({
@@ -101,9 +99,7 @@ export async function getBoardMembers(boardId: string) {
   return board;
 }
 
-// --- Hito 8: notificaciones ---
-
-/** Notificaciones del usuario, más recientes primero (para la campana de la navbar). */
+/** The user's notifications, newest first (for the navbar bell). */
 export async function getNotificationsForUser(userId: string, limit = 20) {
   return prisma.notification.findMany({
     where: { userId },
@@ -122,14 +118,12 @@ export async function getNotificationsForUser(userId: string, limit = 20) {
   });
 }
 
-/** Cuántas notificaciones sin leer tiene el usuario (badge de la campana). */
+/** How many unread notifications the user has (bell badge). */
 export async function getUnreadNotificationCount(userId: string) {
   return prisma.notification.count({ where: { userId, read: false } });
 }
 
-// --- Hito 9: API pública (tokens de acceso) ---
-
-/** Tokens de API del usuario (sin el hash). Para la página /settings. */
+/** The user's API tokens (without the hash). For the /settings page. */
 export async function getApiTokensForUser(userId: string) {
   return prisma.apiToken.findMany({
     where: { userId },
@@ -146,8 +140,6 @@ export async function getApiTokensForUser(userId: string) {
   });
 }
 
-// --- Hito 6: búsqueda global ---
-
 export type SearchResults = {
   boards: { id: string; title: string; background: string | null }[];
   cards: {
@@ -161,18 +153,18 @@ export type SearchResults = {
 };
 
 /**
- * Búsqueda global acotada a lo que el usuario puede ver: tableros donde es dueño o
- * miembro, y tarjetas dentro de esos tableros. Coincidencia por subcadena insensible
- * a mayúsculas (ILIKE, vía Prisma `contains` + `mode: "insensitive"`). El filtro de
- * acceso se repite en el WHERE de cada consulta, igual que en getBoardsForUser: el
- * servidor es la única autoridad, nunca confiamos en el cliente. Ver docs/search.md.
+ * Global search limited to what the user can see: boards they own or are a member of, and
+ * cards in those boards. Case-insensitive substring match (ILIKE, via Prisma `contains` +
+ * `mode: "insensitive"`). The access filter is repeated in each query's WHERE, as in
+ * getBoardsForUser: the server is the only authority, the client is never trusted. See
+ * docs/search.md.
  */
 export async function searchForUser(
   userId: string,
   query: string,
 ): Promise<SearchResults> {
   const q = query.trim();
-  // Evita consultas con un único carácter (demasiado ruido y carga).
+  // Skips single-character queries (too much noise and load).
   if (q.length < 2) return { boards: [], cards: [] };
 
   const [boards, cards] = await Promise.all([
@@ -238,8 +230,8 @@ export async function searchForUser(
   };
 }
 
-// Guarda de acceso de la página del tablero: dueño o miembro. La comparten la página y
-// su <title> para que el título nunca revele el nombre de un tablero ajeno.
+// Access guard of the board page: owner or member. Shared by the page and its <title> so
+// the title never reveals the name of someone else's board.
 function boardAccessWhere(
   boardId: string,
   userId: string,
@@ -250,7 +242,7 @@ function boardAccessWhere(
   };
 }
 
-/** Título del tablero si el usuario tiene acceso; null si no. Para generateMetadata. */
+/** Board title if the user has access; null otherwise. For generateMetadata. */
 export const getBoardTitleForUser = cache(
   async (boardId: string, userId: string): Promise<string | null> => {
     const board = await prisma.board.findFirst({

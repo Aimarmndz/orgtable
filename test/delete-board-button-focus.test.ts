@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { ReactElement, ReactNode } from "react";
 
-// No hay jsdom en el proyecto (ni se monta): para probar la devolución del foco se
-// sustituyen useState/useRef/useEffect por un arnés mínimo que re-ejecuta el
-// componente como función, adjunta las refs a botones falsos y corre los efectos cuyas
-// dependencias cambian, en el mismo orden que React (render → refs → efectos).
+// The project has no jsdom (and does not set one up): to test focus restoration,
+// useState/useRef/useEffect are replaced with a minimal harness that re-runs the
+// component as a function, attaches the refs to fake buttons and runs the effects whose
+// dependencies change, in the same order as React (render → refs → effects).
 type Slot = unknown;
 const slots: Slot[] = [];
 let cursor = 0;
@@ -41,6 +41,12 @@ vi.mock("react", async (importOriginal) => {
   };
 });
 vi.mock("@/app/lib/actions/boards", () => ({ deleteBoard: vi.fn() }));
+// Without a React tree there is no context for useI18n(): it returns English directly.
+vi.mock("@/app/i18n/client", async () => {
+  const { messagesFor } = await import("@/app/i18n/config");
+  const m = messagesFor("en");
+  return { useI18n: () => ({ locale: "en", intl: "en", m }) };
+});
 
 const { DeleteBoardButton } = await import(
   "@/app/(app)/boards/delete-board-button"
@@ -60,7 +66,7 @@ function render(): Element {
     title: "Plan",
     className: "x",
   }) as Element;
-  // React desmonta el ✕ al confirmar (ref a null) y lo vuelve a montar al cancelar.
+  // React unmounts the ✕ when confirming (ref to null) and mounts it again on cancel.
   const ref = tree.props.ref as { current: unknown } | undefined;
   if (ref) triggerRef = ref;
   if (triggerRef) triggerRef.current = ref ? trigger : null;
@@ -82,7 +88,7 @@ function findIn(tree: Element, text: string): Element | null {
 
 function findByText(tree: Element, text: string): Element {
   const found = findIn(tree, text);
-  if (!found) throw new Error(`No se encontró el elemento con el texto «${text}»`);
+  if (!found) throw new Error(`No element found with the text "${text}"`);
   return found;
 }
 
@@ -92,13 +98,13 @@ beforeEach(() => {
   trigger.focus.mockClear();
 });
 
-describe("DeleteBoardButton: foco al cancelar", () => {
-  it("al montarse no roba el foco (cada tablero de la rejilla tiene su ✕)", () => {
+describe("DeleteBoardButton: focus on cancel", () => {
+  it("does not steal focus on mount (every board in the grid has its own ✕)", () => {
     render();
     expect(trigger.focus).not.toHaveBeenCalled();
   });
 
-  it("cancelar con «No» devuelve el foco al ✕", () => {
+  it("cancelling with \"No\" returns focus to the ✕", () => {
     const initial = render();
     (initial.props.onClick as () => void)();
     const form = render();
@@ -110,7 +116,7 @@ describe("DeleteBoardButton: foco al cancelar", () => {
     expect(trigger.focus).toHaveBeenCalledTimes(1);
   });
 
-  it("cancelar con Escape devuelve el foco al ✕", () => {
+  it("cancelling with Escape returns focus to the ✕", () => {
     (render().props.onClick as () => void)();
     const form = render();
     (form.props.onKeyDown as (e: { key: string }) => void)({ key: "Escape" });
@@ -118,7 +124,7 @@ describe("DeleteBoardButton: foco al cancelar", () => {
     expect(trigger.focus).toHaveBeenCalledTimes(1);
   });
 
-  it("otra tecla dentro de la confirmación no la cierra ni mueve el foco", () => {
+  it("another key inside the confirmation neither closes it nor moves focus", () => {
     (render().props.onClick as () => void)();
     const form = render();
     (form.props.onKeyDown as (e: { key: string }) => void)({ key: "Tab" });

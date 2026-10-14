@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { rateLimit, resetRateLimit } from "@/app/lib/rate-limit";
 
-// Limitador en memoria de ventana fija (ADR 0009). Un `>` en lugar de `>=` o un fallo al
-// reiniciar la ventana cambiaría el límite real del login sin que nada lo detectara.
+// In-memory fixed-window limiter (ADR 0009). A `>` instead of `>=` or a bug when resetting
+// the window would change the real sign-in limit without anything noticing.
 const MIN = 60 * 1000;
 
 beforeEach(() => {
@@ -17,7 +17,7 @@ afterEach(() => {
 });
 
 describe("rateLimit", () => {
-  it("permite `limit` intentos y bloquea el siguiente con el tiempo restante", () => {
+  it("allows `limit` attempts and blocks the next one with the remaining time", () => {
     for (let i = 0; i < 10; i++) {
       expect(rateLimit("k", 10, 10 * MIN).ok).toBe(true);
     }
@@ -28,25 +28,25 @@ describe("rateLimit", () => {
     });
   });
 
-  it("retryAfterSec descuenta el tiempo ya pasado", () => {
+  it("retryAfterSec subtracts the time already elapsed", () => {
     for (let i = 0; i < 10; i++) rateLimit("k", 10, 10 * MIN);
     vi.advanceTimersByTime(300 * 1000);
     expect(rateLimit("k", 10, 10 * MIN).retryAfterSec).toBe(300);
   });
 
-  it("al llegar a resetAt abre una ventana nueva", () => {
+  it("on reaching resetAt it opens a new window", () => {
     for (let i = 0; i < 11; i++) rateLimit("k", 10, 10 * MIN);
     vi.advanceTimersByTime(10 * MIN);
     expect(rateLimit("k", 10, 10 * MIN).ok).toBe(true);
   });
 
-  it("claves distintas no se interfieren", () => {
+  it("different keys do not interfere", () => {
     for (let i = 0; i < 11; i++) rateLimit("a", 10, 10 * MIN);
     expect(rateLimit("a", 10, 10 * MIN).ok).toBe(false);
     expect(rateLimit("b", 10, 10 * MIN).ok).toBe(true);
   });
 
-  it("firstBlock solo en el primer rechazo de cada ventana", () => {
+  it("firstBlock only on the first rejection of each window", () => {
     const results = Array.from({ length: 5 }, () => rateLimit("k", 2, MIN));
     expect(results.map((r) => r.ok)).toEqual([true, true, false, false, false]);
     expect(results.map((r) => r.firstBlock)).toEqual([false, false, true, false, false]);
@@ -56,7 +56,7 @@ describe("rateLimit", () => {
     expect(next.map((r) => r.firstBlock)).toEqual([false, false, true]);
   });
 
-  it("resetRateLimit olvida los intentos de esa clave", () => {
+  it("resetRateLimit forgets the attempts of that key", () => {
     for (let i = 0; i < 3; i++) rateLimit("k", 2, MIN);
     resetRateLimit("k");
     expect(rateLimit("k", 2, MIN).ok).toBe(true);

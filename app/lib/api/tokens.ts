@@ -1,33 +1,32 @@
 import "server-only";
 import { randomBytes, createHash } from "node:crypto";
 
-// Generación y hash de tokens de acceso personal (Hito 9). El token se entrega al
-// usuario UNA vez; en la base de datos solo vive su hash SHA-256. Ver
-// docs/decisions/0013-api-tokens.md.
+// Generation and hashing of personal access tokens. The token is shown to the user ONCE;
+// only its SHA-256 hash is stored in the database. See docs/decisions/0013-api-tokens.md.
 
 const PREFIX = "orgt_";
 
 export type GeneratedToken = {
-  /** Token completo en claro. Solo se muestra una vez; nunca se persiste. */
+  /** Full plain-text token. Shown only once; never persisted. */
   token: string;
-  /** Hash SHA-256 (hex) que sí se guarda y por el que se busca al autenticar. */
+  /** SHA-256 hash (hex) that is stored and looked up on authentication. */
   hash: string;
-  /** Primeros caracteres, para que el usuario identifique el token en la lista. */
+  /** First characters, so the user can identify the token in the list. */
   prefix: string;
 };
 
-/** SHA-256 en hexadecimal de un token. Determinista: misma entrada → mismo hash. */
+/** Hex SHA-256 of a token. Deterministic: same input → same hash. */
 export function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
-/** Crea un token nuevo: 24 bytes aleatorios en base64url con el prefijo `orgt_`. */
+/** Creates a new token: 24 random bytes in base64url with the `orgt_` prefix. */
 export function generateApiToken(): GeneratedToken {
   const token = PREFIX + randomBytes(24).toString("base64url");
   return {
     token,
     hash: hashToken(token),
-    // Prefijo visible (p. ej. "orgt_Ab3kQ9x"): suficiente para reconocerlo sin revelarlo.
+    // Visible prefix (e.g. "orgt_Ab3kQ9x"): enough to recognise it without revealing it.
     prefix: token.slice(0, PREFIX.length + 7),
   };
 }

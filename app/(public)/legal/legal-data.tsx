@@ -1,12 +1,39 @@
+import { Fragment, type ReactNode } from "react";
 import { formatDate } from "@/app/lib/format-date";
+import { fmt } from "@/app/i18n/format";
+import { rich, type RichTags } from "@/app/i18n/rich";
 import { getI18n } from "@/app/i18n/server";
 import type { LegalInfo } from "@/app/lib/services/instance";
 
-// Piezas comunes de las páginas legales. Lo que el operador no ha rellenado se dice tal
-// cual («sin indicar») en vez de inventarlo: el texto legal no puede afirmar datos falsos.
+// Shared pieces of the legal pages. Whatever the operator has not filled in is shown as
+// such ("not provided") instead of being made up: a legal text must not state false data.
 
-export function NotProvided() {
-  return <span className="text-ink-muted italic">sin indicar por el operador</span>;
+export async function NotProvided() {
+  const { m } = await getI18n();
+  return <span className="text-ink-muted italic">{m.legal.shared.notProvided}</span>;
+}
+
+/**
+ * Like rich(), but some {placeholders} are filled with React nodes (the operator's data or
+ * <NotProvided />). Instance data never goes through rich(): a value typed by the admin
+ * that happens to look like a <tag> must stay plain text.
+ */
+export function richWith(
+  template: string,
+  nodes: Record<string, ReactNode>,
+  tags: RichTags = {},
+): ReactNode {
+  const names = Object.keys(nodes);
+  if (names.length === 0) return rich(template, tags);
+  const parts = template.split(new RegExp(`\\{(${names.join("|")})\\}`));
+  // split() with a capture group alternates text and placeholder names.
+  return (
+    <>
+      {parts.map((part, i) => (
+        <Fragment key={i}>{i % 2 === 0 ? rich(part, tags) : nodes[part]}</Fragment>
+      ))}
+    </>
+  );
 }
 
 export async function LegalHeading({
@@ -16,41 +43,40 @@ export async function LegalHeading({
   title: string;
   info: LegalInfo | null;
 }) {
-  const { intl } = await getI18n();
+  const { m, intl } = await getI18n();
+  const t = m.legal.shared;
   return (
     <header className="mb-8">
       <h1 className="font-display text-4xl font-extrabold leading-[1.05] tracking-tight text-balance sm:text-5xl">
         {title}
       </h1>
       <p className="mt-3 text-sm text-ink-muted">
-        Se aplica a esta instancia de orgtable
-        {info ? <> ({info.instanceName})</> : null}.
+        {info ? fmt(t.appliesToNamed, { instance: info.instanceName }) : t.appliesTo}
         {info?.legalUpdatedAt ? (
-          <> Última actualización: {formatDate(info.legalUpdatedAt, intl)}.</>
+          <> {fmt(t.lastUpdated, { date: formatDate(info.legalUpdatedAt, intl) })}</>
         ) : null}
       </p>
     </header>
   );
 }
 
-/** Ficha del responsable: quién opera la instancia y cómo contactarle. */
-export function OperatorCard({ info }: { info: LegalInfo | null }) {
-  const rows: { label: string; value: React.ReactNode }[] = [
-    { label: "Responsable", value: info?.operatorName ?? <NotProvided /> },
+/** Controller card: who operates the instance and how to contact them. */
+export async function OperatorCard({ info }: { info: LegalInfo | null }) {
+  const { m } = await getI18n();
+  const t = m.legal.shared.operator;
+  const rows: { label: string; value: ReactNode }[] = [
+    { label: t.controller, value: info?.operatorName ?? <NotProvided /> },
     {
-      label: "Contacto",
+      label: t.contact,
       value: info?.operatorEmail ? (
         <a href={`mailto:${info.operatorEmail}`}>{info.operatorEmail}</a>
       ) : (
         <NotProvided />
       ),
     },
-    { label: "NIF", value: info?.operatorLegalId ?? <NotProvided /> },
-    { label: "Dirección", value: info?.operatorAddress ?? <NotProvided /> },
-    {
-      label: "Dónde se alojan los datos",
-      value: info?.hostingDescription ?? <NotProvided />,
-    },
+    { label: t.taxId, value: info?.operatorLegalId ?? <NotProvided /> },
+    { label: t.address, value: info?.operatorAddress ?? <NotProvided /> },
+    { label: t.hosting, value: info?.hostingDescription ?? <NotProvided /> },
   ];
   return (
     <dl className="not-prose grid gap-x-6 gap-y-4 rounded-2xl border border-border bg-surface p-5 text-sm sm:grid-cols-2">
@@ -66,16 +92,16 @@ export function OperatorCard({ info }: { info: LegalInfo | null }) {
   );
 }
 
-/** Aviso cuando el admin aún no ha rellenado los datos legales de la instancia. */
-export function MissingLegalInfoNotice({ info }: { info: LegalInfo | null }) {
+/** Warning shown while the admin has not filled in the instance's legal details. */
+export async function MissingLegalInfoNotice({ info }: { info: LegalInfo | null }) {
   if (info?.operatorName && info.operatorEmail) return null;
+  const { m } = await getI18n();
   return (
     <p
       role="note"
       className="not-prose mb-8 rounded-xl border border-danger/25 bg-danger/10 px-4 py-3 text-sm text-danger"
     >
-      El administrador de esta instancia todavía no ha indicado quién es el responsable ni
-      cómo contactarle. Mientras falten esos datos, el registro abierto está desactivado.
+      {m.legal.shared.missingInfo}
     </p>
   );
 }

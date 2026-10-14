@@ -1,10 +1,10 @@
 import { requireUser } from "@/app/lib/dal";
 import { getBoardWithLists } from "@/app/lib/queries";
 
-// Exporta un tablero completo a JSON (Hito 5): listas, tarjetas, etiquetas, fechas y
-// checklists. Las etiquetas se referencian por nombre dentro de cada tarjeta para poder
-// re-vincularlas al importar. Los binarios de los adjuntos NO se incluyen (solo viven en
-// disco); ver docs/operations.md. Cualquier miembro del tablero puede exportar.
+// Exports a full board as JSON: lists, cards, labels, dates and checklists. Labels are
+// referenced by name inside each card so they can be relinked on import. Attachment
+// files are NOT included (they only live on disk); see docs/operations.md. Any board
+// member can export.
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -71,7 +71,7 @@ export async function GET(
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "")
-      .slice(0, 40) || "tablero";
+      .slice(0, 40) || "board";
 
   return new Response(JSON.stringify(data, null, 2), {
     headers: {

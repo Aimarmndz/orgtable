@@ -1,6 +1,8 @@
-// Caja de búsqueda: un formulario GET que navega a /search?q=… No necesita JavaScript
-// (mejora progresiva); el servidor renderiza los resultados. Ver docs/search.md.
-export function SearchBox({
+import { getI18n } from "@/app/i18n/server";
+
+// Search box: a GET form that navigates to /search?q=… It needs no JavaScript
+// (progressive enhancement); the server renders the results. See docs/search.md.
+export async function SearchBox({
   defaultValue = "",
   autoFocus = false,
   size = "sm",
@@ -9,6 +11,7 @@ export function SearchBox({
   autoFocus?: boolean;
   size?: "sm" | "lg";
 }) {
+  const { m } = await getI18n();
   const big = size === "lg";
   return (
     <form action="/search" role="search" className="relative">
@@ -30,8 +33,8 @@ export function SearchBox({
         name="q"
         defaultValue={defaultValue}
         autoFocus={autoFocus}
-        placeholder="Buscar tarjetas y tableros…"
-        aria-label="Buscar"
+        placeholder={m.nav.search.placeholder}
+        aria-label={m.nav.search.label}
         maxLength={120}
         className={`w-full rounded-lg border border-border bg-surface pl-9 pr-3 text-sm text-ink outline-none transition-colors placeholder:text-ink-muted/70 focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/25 ${
           big ? "py-2.5" : "h-9"

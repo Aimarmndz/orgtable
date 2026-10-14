@@ -13,17 +13,17 @@ import {
   RETRY_MAX_MS,
 } from "@/app/lib/realtime/reconnect";
 
-// Regresión: tras un corte del EventSource, los cambios hechos mientras tanto no
-// llegaban nunca porque el servidor no reenvía eventos. Ahora cada reapertura refresca.
+// Regression: after an EventSource drop, changes made in the meantime never arrived
+// because the server does not resend events. Now every reopening refreshes.
 describe("createReconnectRefresher", () => {
-  it("no refresca en la primera apertura", () => {
+  it("does not refresh on the first opening", () => {
     const onReconnect = vi.fn();
     const onOpen = createReconnectRefresher(onReconnect);
     onOpen();
     expect(onReconnect).not.toHaveBeenCalled();
   });
 
-  it("refresca en cada reapertura posterior", () => {
+  it("refreshes on every later reopening", () => {
     const onReconnect = vi.fn();
     const onOpen = createReconnectRefresher(onReconnect);
     onOpen();
@@ -32,7 +32,7 @@ describe("createReconnectRefresher", () => {
     expect(onReconnect).toHaveBeenCalledTimes(2);
   });
 
-  it("cada EventSource lleva su propio estado", () => {
+  it("each EventSource keeps its own state", () => {
     const a = vi.fn();
     const b = vi.fn();
     const onOpenA = createReconnectRefresher(a);
@@ -45,7 +45,7 @@ describe("createReconnectRefresher", () => {
   });
 });
 
-// Doble de EventSource: registra los manejadores y deja simular open/error/CLOSED.
+// EventSource double: records the handlers and lets the test simulate open/error/CLOSED.
 class FakeSource {
   readyState = 0;
   closed = false;
@@ -68,12 +68,12 @@ class FakeSource {
     this.readyState = 1;
     this.emit("open");
   }
-  // El navegador se rinde (respuesta no 200, p. ej. 502 del proxy): CLOSED + error.
+  // The browser gives up (non-200 response, e.g. a 502 from the proxy): CLOSED + error.
   fail() {
     this.readyState = 2;
     this.emit("error");
   }
-  // Corte transitorio: el navegador reintentará solo (CONNECTING + error).
+  // Transient drop: the browser will retry on its own (CONNECTING + error).
   drop() {
     this.readyState = 0;
     this.emit("error");
@@ -85,7 +85,7 @@ class FakeSource {
   }
 }
 
-// `status`: lo que respondería el endpoint al comprobar por qué se cerró la fuente.
+// `status`: what the endpoint would answer when checking why the source closed.
 function setup(status: number | null = 502) {
   const sources: FakeSource[] = [];
   const onEvent = vi.fn();
@@ -106,19 +106,19 @@ function setup(status: number | null = 502) {
   return { sources, onEvent, onReconnect, onAccessDenied, probe, stop };
 }
 
-// Deja resolver la promesa de `probe` sin adelantar el reloj.
+// Lets the `probe` promise resolve without advancing the clock.
 const flush = () => vi.advanceTimersByTimeAsync(0);
 
 describe("retryDelay", () => {
-  it("dobla desde 3 s hasta un máximo de 30 s", () => {
+  it("doubles from 3 s up to a maximum of 30 s", () => {
     expect([0, 1, 2, 3, 4, 10].map(retryDelay)).toEqual([
       3_000, 6_000, 12_000, 24_000, 30_000, 30_000,
     ]);
   });
 });
 
-// Regresión: con un 502 del proxy durante un reinicio el EventSource quedaba CLOSED y
-// nadie creaba otro; el tiempo real se perdía hasta recargar la pestaña.
+// Regression: with a 502 from the proxy during a restart the EventSource stayed CLOSED and
+// nobody created another one; realtime was lost until the tab was reloaded.
 describe("keepEventSourceOpen", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -127,7 +127,7 @@ describe("keepEventSourceOpen", () => {
     vi.useRealTimers();
   });
 
-  it("reenvía los eventos SSE al manejador", () => {
+  it("forwards SSE events to the handler", () => {
     const { sources, onEvent, stop } = setup();
     sources[0].open();
     sources[0].emit("change");
@@ -135,7 +135,7 @@ describe("keepEventSourceOpen", () => {
     stop();
   });
 
-  it("recrea la fuente tras CLOSED con backoff y refresca al reabrir", async () => {
+  it("recreates the source after CLOSED with backoff and refreshes on reopening", async () => {
     const { sources, onReconnect, onAccessDenied, probe, stop } = setup(502);
     sources[0].open();
     expect(onReconnect).not.toHaveBeenCalled();
@@ -150,7 +150,7 @@ describe("keepEventSourceOpen", () => {
     vi.advanceTimersByTime(1);
     expect(sources).toHaveLength(2);
 
-    // El servidor sigue caído: el siguiente intento espera el doble.
+    // The server is still down: the next attempt waits twice as long.
     sources[1].fail();
     await flush();
     vi.advanceTimersByTime(2 * RETRY_BASE_MS - 1);
@@ -158,11 +158,11 @@ describe("keepEventSourceOpen", () => {
     vi.advanceTimersByTime(1);
     expect(sources).toHaveLength(3);
 
-    // Vuelve: la primera apertura de la fuente recreada sí es una reconexión.
+    // It comes back: the first opening of the recreated source is a reconnection.
     sources[2].open();
     expect(onReconnect).toHaveBeenCalledTimes(1);
 
-    // Tras abrir, el backoff vuelve a empezar en 3 s.
+    // After opening, the backoff starts again at 3 s.
     sources[2].fail();
     await flush();
     vi.advanceTimersByTime(RETRY_BASE_MS);
@@ -171,11 +171,11 @@ describe("keepEventSourceOpen", () => {
     stop();
   });
 
-  // Regresión: con un 502 del proxy (o un 500 por un fallo pasajero de la BD) se hacía
-  // router.refresh(); en Next 16 un refresh con respuesta no OK navega a la página de
-  // error y la pestaña perdía la app. Ahora un 5xx o un error de red solo reintentan.
+  // Regression: with a 502 from the proxy (or a 500 from a transient DB failure) it called
+  // router.refresh(); in Next 16 a refresh with a non-OK response navigates to the error
+  // page and the tab lost the app. Now a 5xx or a network error only retries.
   it.each([500, 502, 503, null])(
-    "ante %s no avisa de acceso denegado y reintenta",
+    "on %s it does not report access denied and retries",
     async (status) => {
       const { sources, onAccessDenied, stop } = setup(status);
       sources[0].fail();
@@ -188,7 +188,7 @@ describe("keepEventSourceOpen", () => {
   );
 
   it.each([401, 403])(
-    "ante %s avisa de acceso denegado (para redirigir) y reintenta",
+    "on %s it reports access denied (to redirect) and retries",
     async (status) => {
       const { sources, onAccessDenied, stop } = setup(status);
       sources[0].fail();
@@ -200,7 +200,7 @@ describe("keepEventSourceOpen", () => {
     },
   );
 
-  it("si la comprobación falla, reintenta sin avisar de acceso denegado", async () => {
+  it("if the check fails, it retries without reporting access denied", async () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const sources: FakeSource[] = [];
     const onAccessDenied = vi.fn();
@@ -212,7 +212,7 @@ describe("keepEventSourceOpen", () => {
       },
       events: {},
       onReconnect: () => {},
-      probe: () => Promise.reject(new Error("fallo inesperado")),
+      probe: () => Promise.reject(new Error("unexpected failure")),
       onAccessDenied,
     });
     sources[0].fail();
@@ -225,7 +225,7 @@ describe("keepEventSourceOpen", () => {
     errorSpy.mockRestore();
   });
 
-  it("no reintenta ni avisa si se desmonta mientras se comprueba el estado", async () => {
+  it("neither retries nor reports if it unmounts while the status is being checked", async () => {
     const { sources, onAccessDenied, stop } = setup(401);
     sources[0].fail();
     stop();
@@ -235,10 +235,10 @@ describe("keepEventSourceOpen", () => {
     expect(sources).toHaveLength(1);
   });
 
-  // Regresión: el reintento se programaba solo al terminar la comprobación; si el proxy
-  // retenía la conexión o el servidor no llegaba a responder, no se recreaba la fuente
-  // nunca y el tiempo real se perdía hasta recargar la pestaña.
-  it("si la comprobación no responde, reintenta tras el plazo sin avisar", async () => {
+  // Regression: the retry was only scheduled when the check finished; if the proxy held
+  // the connection or the server never answered, the source was never recreated and
+  // realtime was lost until the tab was reloaded.
+  it("if the check does not answer, it retries after the timeout without reporting", async () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const sources: FakeSource[] = [];
     const onAccessDenied = vi.fn();
@@ -251,7 +251,7 @@ describe("keepEventSourceOpen", () => {
       },
       events: {},
       onReconnect: () => {},
-      // Ignora la señal a propósito: el plazo no puede depender de que la respete.
+      // Ignores the signal on purpose: the timeout cannot depend on it being honoured.
       probe: (signal) => {
         signals.push(signal);
         return new Promise<number | null>(() => {});
@@ -271,7 +271,7 @@ describe("keepEventSourceOpen", () => {
     errorSpy.mockRestore();
   });
 
-  it("el desmontaje aborta la comprobación en curso", async () => {
+  it("unmounting aborts the check in progress", async () => {
     const { sources, probe, stop } = setup(502);
     sources[0].fail();
     const signal = probe.mock.calls[0][0];
@@ -282,7 +282,7 @@ describe("keepEventSourceOpen", () => {
     expect(sources).toHaveLength(1);
   });
 
-  it("no recrea la fuente en un corte que el navegador reintenta solo", async () => {
+  it("does not recreate the source on a drop the browser retries on its own", async () => {
     const { sources, probe, onReconnect, stop } = setup();
     sources[0].open();
     sources[0].drop();
@@ -295,7 +295,7 @@ describe("keepEventSourceOpen", () => {
     stop();
   });
 
-  it("la limpieza cierra la fuente y cancela el reintento pendiente", async () => {
+  it("cleanup closes the source and cancels the pending retry", async () => {
     const { sources, stop } = setup();
     sources[0].fail();
     await flush();
@@ -311,8 +311,8 @@ describe("keepEventSourceOpen", () => {
   });
 });
 
-// Regresión: en /board/[id] la campana y el tablero reconectan a la vez y cada uno
-// lanzaba su router.refresh(); dos renders completos del tablero en vez de uno.
+// Regression: on /board/[id] the bell and the board reconnect at the same time and each
+// fired its own router.refresh(); two full renders of the board instead of one.
 describe("scheduleRefresh", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -321,7 +321,7 @@ describe("scheduleRefresh", () => {
     vi.useRealTimers();
   });
 
-  it("agrupa en un solo refresh las peticiones de varios componentes", () => {
+  it("groups the requests of several components into a single refresh", () => {
     const refreshBoard = vi.fn();
     const refreshBell = vi.fn();
     scheduleRefresh(refreshBoard);
@@ -330,7 +330,7 @@ describe("scheduleRefresh", () => {
     expect(refreshBoard.mock.calls.length + refreshBell.mock.calls.length).toBe(1);
   });
 
-  it("vuelve a refrescar si la petición llega fuera de la ventana", () => {
+  it("refreshes again if the request arrives outside the window", () => {
     const refresh = vi.fn();
     scheduleRefresh(refresh);
     vi.advanceTimersByTime(REFRESH_DEBOUNCE_MS - 1);
@@ -343,8 +343,8 @@ describe("scheduleRefresh", () => {
   });
 });
 
-// Con un servidor HTTP real: el estado tiene que llegar sin esperar al cuerpo (un
-// stream SSE no termina nunca) y la conexión debe cerrarse al momento.
+// With a real HTTP server: the status has to arrive without waiting for the body (an SSE
+// stream never ends) and the connection must be closed right away.
 describe("probeStatus", () => {
   let server: Server;
   let base: string;
@@ -364,12 +364,12 @@ describe("probeStatus", () => {
         res.writeHead(502).end("Bad Gateway");
         return;
       }
-      // Proxy que retiene la conexión sin enviar cabeceras.
+      // A proxy that holds the connection without sending headers.
       if (req.url === "/hang") {
         res.on("close", markClosed);
         return;
       }
-      // Stream SSE que no se cierra por su cuenta.
+      // An SSE stream that does not close on its own.
       res.writeHead(200, { "Content-Type": "text/event-stream" });
       res.write(": connected\n\n");
       res.on("close", markClosed);
@@ -383,17 +383,17 @@ describe("probeStatus", () => {
     await new Promise<void>((resolve) => server.close(() => resolve()));
   });
 
-  it("devuelve el estado de error del endpoint", async () => {
+  it("returns the endpoint's error status", async () => {
     expect(await probeStatus(`${base}/401`)).toBe(401);
     expect(await probeStatus(`${base}/502`)).toBe(502);
   });
 
-  it("con un stream abierto devuelve 200 y corta la conexión", async () => {
+  it("with an open stream it returns 200 and cuts the connection", async () => {
     expect(await probeStatus(`${base}/stream`)).toBe(200);
     await streamClosed;
   });
 
-  it("si se aborta la señal antes de la respuesta devuelve null y corta", async () => {
+  it("if the signal is aborted before the response it returns null and cuts", async () => {
     const controller = new AbortController();
     const pending = probeStatus(`${base}/hang`, controller.signal);
     setTimeout(() => controller.abort(), 50);
@@ -401,17 +401,17 @@ describe("probeStatus", () => {
     await streamClosed;
   });
 
-  it("con la señal ya abortada devuelve null sin hacer la petición", async () => {
+  it("with an already aborted signal it returns null without making the request", async () => {
     const controller = new AbortController();
     controller.abort();
     expect(await probeStatus(`${base}/401`, controller.signal)).toBeNull();
   });
 
-  it("sin respuesta (servidor caído) devuelve null", async () => {
+  it("without a response (server down) it returns null", async () => {
     const port = (server.address() as AddressInfo).port;
     server.closeAllConnections();
     await new Promise<void>((resolve) => server.close(() => resolve()));
-    // Se vuelve a crear para que afterEach tenga algo que cerrar.
+    // It is created again so that afterEach has something to close.
     expect(await probeStatus(`http://127.0.0.1:${port}/401`)).toBeNull();
     server = createServer();
     await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));

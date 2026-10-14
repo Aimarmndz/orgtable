@@ -13,9 +13,9 @@ import {
   calendarKeyboardCoordinates,
 } from "@/app/lib/board-collision";
 
-// Rectángulos sintéticos con la geometría real del tablero: columnas w-72 (288 px)
-// separadas por gap-3 (12 px), tarjetas con 8 px de margen lateral bajo la cabecera, y
-// la copia flotante de una lista (DragOverlay) de 288×48.
+// Synthetic rectangles with the board's real geometry: w-72 columns (288 px) separated
+// by gap-3 (12 px), cards with an 8 px side margin under the header, and the floating
+// copy of a list (DragOverlay) of 288×48.
 function rect(left: number, top: number, width: number, height: number): ClientRect {
   return { left, top, width, height, right: left + width, bottom: top + height };
 }
@@ -39,7 +39,7 @@ function active(id: string, type: "list" | "card"): Active {
   };
 }
 
-// Columna A en x=0, B en x=300, C en x=600; una tarjeta en cada una, en y=49.
+// Column A at x=0, B at x=300, C at x=600; one card in each, at y=49.
 const rects = new Map<UniqueIdentifier, ClientRect>([
   ["A", rect(0, 0, 288, 190)],
   ["a1", rect(8, 49, 272, 60)],
@@ -58,10 +58,10 @@ const containers = [
 ];
 
 describe("boardCollisionDetection", () => {
-  // La copia de la lista A, soltada encima de la columna B.
+  // The copy of list A, dropped over column B.
   const overlayOnB = rect(300, 0, 288, 48);
 
-  it("closestCorners a secas resuelve la lista arrastrada a una TARJETA (el fallo)", () => {
+  it("plain closestCorners resolves the dragged list to a CARD (the bug)", () => {
     const [first] = closestCorners({
       active: active("A", "list"),
       collisionRect: overlayOnB,
@@ -72,7 +72,7 @@ describe("boardCollisionDetection", () => {
     expect(first.id).toBe("b1");
   });
 
-  it("con una lista activa resuelve a la columna", () => {
+  it("with an active list it resolves to the column", () => {
     const [first] = boardCollisionDetection({
       active: active("A", "list"),
       collisionRect: overlayOnB,
@@ -83,7 +83,7 @@ describe("boardCollisionDetection", () => {
     expect(first.id).toBe("B");
   });
 
-  it("con una tarjeta activa sigue resolviendo a la tarjeta", () => {
+  it("with an active card it still resolves to the card", () => {
     const [first] = boardCollisionDetection({
       active: active("a1", "card"),
       collisionRect: rect(308, 49, 272, 60),
@@ -109,14 +109,14 @@ function context(over: Partial<SensorContext>): SensorContext {
   } as unknown as SensorContext;
 }
 
-describe("boardKeyboardCoordinates (listas)", () => {
+describe("boardKeyboardCoordinates (lists)", () => {
   const args = (collisionRect: ClientRect) => ({
     active: "A",
     currentCoordinates: { x: collisionRect.left, y: collisionRect.top },
     context: context({ active: active("A", "list"), collisionRect }),
   });
 
-  it("la flecha derecha salta a la columna vecina, no a la primera tarjeta propia", () => {
+  it("the right arrow jumps to the neighbouring column, not to its own first card", () => {
     const { event, preventDefault } = key("ArrowRight");
     expect(boardKeyboardCoordinates(event, args(rect(0, 0, 288, 48)))).toEqual({
       x: 300,
@@ -128,7 +128,7 @@ describe("boardKeyboardCoordinates (listas)", () => {
     ).toEqual({ x: 600, y: 0 });
   });
 
-  it("la flecha izquierda vuelve a la columna anterior y no pasa de la primera", () => {
+  it("the left arrow goes back to the previous column and stops at the first one", () => {
     expect(
       boardKeyboardCoordinates(key("ArrowLeft").event, args(rect(300, 0, 288, 48))),
     ).toEqual({ x: 0, y: 0 });
@@ -137,16 +137,16 @@ describe("boardKeyboardCoordinates (listas)", () => {
     ).toBeUndefined();
   });
 
-  it("arriba/abajo no mueven una lista", () => {
+  it("up/down do not move a list", () => {
     const { event, preventDefault } = key("ArrowDown");
     expect(boardKeyboardCoordinates(event, args(rect(0, 0, 288, 48)))).toBeUndefined();
     expect(preventDefault).toHaveBeenCalled();
   });
 });
 
-describe("boardKeyboardCoordinates (tarjetas, izquierda/derecha)", () => {
-  // Regresión: con la flecha izquierda, la propia columna de la tarjeta (su borde está
-  // 8 px antes) contaba como «a la izquierda» y la tarjeta volvía a su sitio sin moverse.
+describe("boardKeyboardCoordinates (cards, left/right)", () => {
+  // Regression: with the left arrow, the card's own column (its edge is 8 px before)
+  // counted as "to the left" and the card went back to its place without moving.
   const args = (id: string, collisionRect: ClientRect, extra?: [string, ClientRect][]) => {
     const r = new Map(rects);
     const cs = [...containers];
@@ -165,7 +165,7 @@ describe("boardKeyboardCoordinates (tarjetas, izquierda/derecha)", () => {
     };
   };
 
-  it("izquierda lleva la tarjeta a la tarjeta de la columna anterior", () => {
+  it("left takes the card to the card of the previous column", () => {
     const { event, preventDefault } = key("ArrowLeft");
     expect(boardKeyboardCoordinates(event, args("b1", rect(308, 49, 272, 60)))).toEqual({
       x: 8,
@@ -174,13 +174,13 @@ describe("boardKeyboardCoordinates (tarjetas, izquierda/derecha)", () => {
     expect(preventDefault).toHaveBeenCalled();
   });
 
-  it("derecha lleva la tarjeta a la columna siguiente", () => {
+  it("right takes the card to the next column", () => {
     expect(
       boardKeyboardCoordinates(key("ArrowRight").event, args("b1", rect(308, 49, 272, 60))),
     ).toEqual({ x: 608, y: 49 });
   });
 
-  it("en una columna vacía apunta a la propia columna", () => {
+  it("in an empty column it points at the column itself", () => {
     expect(
       boardKeyboardCoordinates(
         key("ArrowRight").event,
@@ -189,7 +189,7 @@ describe("boardKeyboardCoordinates (tarjetas, izquierda/derecha)", () => {
     ).toEqual({ x: 900, y: 0 });
   });
 
-  it("no pasa de la primera ni de la última columna", () => {
+  it("does not go past the first or the last column", () => {
     expect(
       boardKeyboardCoordinates(key("ArrowLeft").event, args("a1", rect(8, 49, 272, 60))),
     ).toBeUndefined();
@@ -200,8 +200,8 @@ describe("boardKeyboardCoordinates (tarjetas, izquierda/derecha)", () => {
 });
 
 describe("calendarKeyboardCoordinates", () => {
-  // Rejilla de 3×2 celdas de 100×80 con gap-1 (4 px). La pastilla está en la celda
-  // (0,0), desplazada 6 px a la derecha y 20 px hacia abajo.
+  // Grid of 3×2 cells of 100×80 with gap-1 (4 px). The pill is in cell (0,0), shifted
+  // 6 px to the right and 20 px down.
   const cells = new Map<UniqueIdentifier, ClientRect>();
   const days: DroppableContainer[] = [];
   for (let row = 0; row < 2; row++) {
@@ -226,21 +226,21 @@ describe("calendarKeyboardCoordinates", () => {
       context: ctx(overId),
     });
 
-  it("derecha va al día siguiente y abajo a la semana siguiente", () => {
+  it("right goes to the next day and down to the next week", () => {
     expect(run("ArrowRight")).toEqual({ x: 110, y: 20 });
     expect(run("ArrowDown")).toEqual({ x: 6, y: 104 });
   });
 
-  it("sin celda vecina en esa dirección no se mueve", () => {
+  it("without a neighbouring cell in that direction it does not move", () => {
     expect(run("ArrowLeft")).toBeUndefined();
     expect(run("ArrowUp")).toBeUndefined();
   });
 
-  it("sin `over` usa la celda que contiene la pastilla", () => {
+  it("without `over` it uses the cell that contains the pill", () => {
     expect(run("ArrowRight", null)).toEqual({ x: 110, y: 20 });
   });
 
-  it("ignora las teclas que no son flechas", () => {
+  it("ignores keys that are not arrows", () => {
     const { event, preventDefault } = key("KeyA");
     expect(
       calendarKeyboardCoordinates(event, {

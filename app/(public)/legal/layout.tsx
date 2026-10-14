@@ -1,17 +1,18 @@
 import Link from "next/link";
 import { verifySession } from "@/app/lib/dal";
 import { PublicFooter } from "@/app/components/public-footer";
+import { getI18n } from "@/app/i18n/server";
 import { LegalNav } from "./legal-nav";
 
-// Páginas legales públicas (/legal/*): se leen sin sesión, también desde el registro. El
-// texto describe lo que hace ESTE código y los datos del responsable salen de los ajustes
-// de la instancia (/admin/instance), así que valen para la instancia oficial y para
-// cualquier instancia autoalojada. Ver docs/privacy.md.
+// Public legal pages (/legal/*): readable without a session, also from sign-up. The text
+// describes what THIS code does and the controller's details come from the instance
+// settings (/admin/instance), so they hold for the official instance and for any
+// self-hosted one. See docs/privacy.md.
 
 export const dynamic = "force-dynamic";
 
 export default async function LegalLayout({ children }: { children: React.ReactNode }) {
-  const session = await verifySession();
+  const [session, { m }] = await Promise.all([verifySession(), getI18n()]);
   return (
     <div className="flex min-h-[100dvh] flex-1 flex-col">
       <header className="relative z-20 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-surface/80 px-4 backdrop-blur-sm sm:px-6">
@@ -25,7 +26,7 @@ export default async function LegalLayout({ children }: { children: React.ReactN
           href={session ? "/boards" : "/login"}
           className="rounded-lg px-3 py-1.5 text-sm font-semibold text-accent transition-colors hover:bg-surface-2"
         >
-          {session ? "Ir a tus tableros" : "Iniciar sesión"}
+          {session ? m.legal.layout.goToBoards : m.legal.layout.signIn}
         </Link>
       </header>
       <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-10 sm:px-6 md:flex-row md:gap-12 md:py-14">

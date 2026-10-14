@@ -3,16 +3,16 @@ import { prisma } from "@/app/lib/prisma";
 import type { BoardRole } from "@/app/lib/roles";
 import { hashToken } from "./tokens";
 
-// Autenticación y autorización de la API pública (Hito 9). A diferencia del DAL (que usa
-// cookies y redirige), aquí trabajamos con `Authorization: Bearer <token>` y devolvemos
-// códigos HTTP. El servidor sigue siendo la única autoridad: el rol del tablero se
-// vuelve a comprobar contra board_members en cada petición. Ver docs/api/public-api.md.
+// Authentication and authorization for the public API. Unlike the DAL (cookies and
+// redirects), this works with `Authorization: Bearer <token>` and returns HTTP codes. The
+// server is still the only authority: the board role is checked again against
+// board_members on every request. See docs/api/public-api.md.
 
 export type ApiAuth = { userId: string; scope: string };
 
 /**
- * Resuelve el usuario a partir de la cabecera Authorization. Devuelve `{ userId, scope }`
- * o null si no hay token válido o está CADUCADO. De paso, marca `lastUsedAt` (best-effort).
+ * Resolves the user from the Authorization header. Returns `{ userId, scope }`, or null
+ * when there is no valid token or it has EXPIRED. Also stamps `lastUsedAt` (best-effort).
  */
 export async function authenticateApiToken(
   request: Request,
@@ -27,16 +27,16 @@ export async function authenticateApiToken(
     select: { id: true, userId: true, scope: true, expiresAt: true },
   });
   if (!record) return null;
-  // Token caducado: deja de valer (no se borra; el usuario lo verá expirado en /settings).
+  // Expired token: no longer valid (not deleted; the user sees it as expired in /settings).
   if (record.expiresAt && record.expiresAt.getTime() < Date.now()) return null;
 
-  // Marca de último uso; nunca debe hacer fallar la petición, pero el fallo se registra:
-  // lastUsedAt es lo que mira el usuario para detectar tokens usados sin su permiso, y
-  // congelarlo en silencio lo engañaría. Nunca se registra el token ni su hash.
+  // Last-use stamp; it must never fail the request, but a failure is logged: lastUsedAt is
+  // what users check to spot tokens used without their consent, and silently freezing it
+  // would mislead them. Neither the token nor its hash is ever logged.
   await prisma.apiToken
     .update({ where: { id: record.id }, data: { lastUsedAt: new Date() } })
     .catch((err: unknown) =>
-      console.error("[api-auth] no se pudo actualizar lastUsedAt", {
+      console.error("[api-auth] could not update lastUsedAt", {
         tokenId: record.id,
         error: err instanceof Error ? err.message : String(err),
       }),
@@ -45,12 +45,12 @@ export async function authenticateApiToken(
   return { userId: record.userId, scope: record.scope };
 }
 
-/** true si el token es de solo lectura (no puede escribir). */
+/** true if the token is read-only (cannot write). */
 export function isReadOnly(auth: ApiAuth): boolean {
   return auth.scope === "read";
 }
 
-/** Rol del usuario en un tablero, o null si no es miembro (= sin acceso). */
+/** The user's role on a board, or null if not a member (= no access). */
 export async function apiBoardRole(
   userId: string,
   boardId: string,

@@ -8,36 +8,36 @@ import {
   verifyPasswordOrDummy,
 } from "@/app/lib/auth";
 
-// Hash ficticio del login: tiene que ser un hash bcrypt válido y del mismo coste que los
-// reales. El literal anterior medía 59 caracteres, bcrypt.compare devolvía false al
-// instante y un email inexistente respondía ~200 veces más rápido que uno existente.
-describe("hash ficticio del login", () => {
-  it("mide 60 caracteres y usa el mismo coste que hashPassword", () => {
+// Dummy sign-in hash: it has to be a valid bcrypt hash with the same cost as the real
+// ones. The previous literal was 59 characters long, bcrypt.compare returned false
+// instantly and a non-existent email answered ~200 times faster than an existing one.
+describe("dummy sign-in hash", () => {
+  it("is 60 characters long and uses the same cost as hashPassword", () => {
     expect(DUMMY_PASSWORD_HASH).toHaveLength(60);
     expect(bcrypt.getRounds(DUMMY_PASSWORD_HASH)).toBe(SALT_ROUNDS);
   });
 
-  it("no coincide con ninguna contraseña y no lanza", async () => {
+  it("matches no password and does not throw", async () => {
     await expect(verifyPassword("x", DUMMY_PASSWORD_HASH)).resolves.toBe(false);
     await expect(verifyPasswordOrDummy("x", null)).resolves.toBe(false);
   });
 
-  it("verifyPasswordOrDummy acepta la contraseña correcta de una cuenta real", async () => {
-    const hash = await hashPassword("correcta");
-    await expect(verifyPasswordOrDummy("correcta", hash)).resolves.toBe(true);
-    await expect(verifyPasswordOrDummy("otra", hash)).resolves.toBe(false);
+  it("verifyPasswordOrDummy accepts the correct password of a real account", async () => {
+    const hash = await hashPassword("correct");
+    await expect(verifyPasswordOrDummy("correct", hash)).resolves.toBe(true);
+    await expect(verifyPasswordOrDummy("other", hash)).resolves.toBe(false);
   });
 
-  // Antes se medían los tiempos de una sola llamada de cada tipo: una pausa del GC o un
-  // runner de CI cargado bastaba para que fallara sin cambios de código. Lo que importa es
-  // que el camino sin cuenta haga el mismo trabajo de bcrypt contra el hash ficticio; que
-  // ese hash cueste lo mismo que uno real ya lo comprueba el primer test.
-  it("sin cuenta compara contra el hash ficticio con bcrypt", async () => {
+  // It used to time a single call of each kind: a GC pause or a busy CI runner was enough
+  // to make it fail without code changes. What matters is that the no-account path does
+  // the same bcrypt work against the dummy hash; that this hash costs the same as a real
+  // one is already checked by the first test.
+  it("without an account it compares against the dummy hash with bcrypt", async () => {
     const spy = vi.spyOn(bcrypt, "compare");
     try {
-      await verifyPasswordOrDummy("mala", null);
+      await verifyPasswordOrDummy("wrong", null);
       expect(spy).toHaveBeenCalledTimes(1);
-      expect(spy).toHaveBeenCalledWith("mala", DUMMY_PASSWORD_HASH);
+      expect(spy).toHaveBeenCalledWith("wrong", DUMMY_PASSWORD_HASH);
     } finally {
       spy.mockRestore();
     }

@@ -4,16 +4,20 @@ import { useActionState, useRef, useState } from "react";
 import { createApiToken, type CreateTokenState } from "@/app/lib/actions/tokens";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
+import { useI18n } from "@/app/i18n/client";
+import { fmt, plural } from "@/app/i18n/format";
 
-// Alta de un token de API (Hito 9). useActionState devuelve el token EN CLARO una sola
-// vez; se muestra con un botón de copiar y un aviso de que no se volverá a ver.
+// Creates an API token. useActionState returns the token IN CLEAR exactly once; it is
+// shown with a copy button and a warning that it won't be shown again.
 export function CreateTokenForm() {
   const [state, action, pending] = useActionState<CreateTokenState, FormData>(
     createApiToken,
     {},
   );
-  // El resultado de copiar va ligado al token al que se refiere: al crear otro token
-  // vuelve solo a «idle» sin necesidad de un efecto.
+  const { m, intl } = useI18n();
+  const t = m.settings.tokens;
+  // The copy result is tied to the token it refers to: creating another token resets it
+  // to "idle" without an effect.
   const [copy, setCopy] = useState<{
     token: string;
     status: "copied" | "error";
@@ -30,9 +34,9 @@ export function CreateTokenForm() {
       setCopy({ token, status: "copied" });
       setTimeout(() => setCopy(null), 2000);
     } catch {
-      // Por http (contexto no seguro) el portapapeles no existe o se rechaza. El token
-      // solo se muestra una vez, así que se avisa y se deja seleccionado para copiarlo
-      // a mano. Nunca se registra el token.
+      // Over http (insecure context) the clipboard is missing or refused. The token is
+      // only shown once, so warn and leave it selected to copy by hand. The token is
+      // never logged.
       setCopy({ token, status: "error" });
       if (codeRef.current) {
         window.getSelection()?.selectAllChildren(codeRef.current);
@@ -42,10 +46,10 @@ export function CreateTokenForm() {
 
   return (
     <div>
-      {/* El recuadro existe siempre (sin estilo hasta que hay token) para que la región
-          role="status" esté montada antes del aviso. Esa región solo lleva el texto
-          corto: si envolviera el token y el botón, el lector de pantalla leería el
-          token entero cada vez que cambiara (p. ej. al pasar a «Copiado»). */}
+      {/* The box always exists (unstyled until there is a token) so the role="status"
+          region is mounted before the message. That region only holds the short text:
+          if it wrapped the token and the button, screen readers would read the whole
+          token every time it changed (e.g. when switching to "Copied"). */}
       <div
         className={
           state.token
@@ -56,10 +60,10 @@ export function CreateTokenForm() {
         <div role="status">
           {state.token && (
             <>
-              <p className="text-sm font-medium">Token «{state.name}» creado</p>
-              <p className="mt-1 text-xs text-ink-muted">
-                Cópialo ahora: por seguridad no se volverá a mostrar.
+              <p className="text-sm font-medium">
+                {fmt(t.form.created, { name: state.name ?? "" })}
               </p>
+              <p className="mt-1 text-xs text-ink-muted">{t.form.copyNow}</p>
             </>
           )}
         </div>
@@ -77,16 +81,15 @@ export function CreateTokenForm() {
               onClick={copyToken}
               className="shrink-0"
             >
-              {copyStatus === "copied" ? "Copiado" : "Copiar"}
+              {copyStatus === "copied" ? t.form.copied : t.form.copy}
             </Button>
           </div>
         )}
-        {/* Hermano de la región role="status", no hijo: dos regiones vivas anidadas
-            pueden anunciar el aviso dos veces. */}
+        {/* Sibling of the role="status" region, not a child: two nested live regions
+            may announce the message twice. */}
         {state.token && copyStatus === "error" && (
           <p role="alert" className="mt-2 text-xs text-danger">
-            No se pudo copiar automáticamente: selecciona el token y cópialo a
-            mano.
+            {t.form.copyFailed}
           </p>
         )}
       </div>
@@ -94,37 +97,37 @@ export function CreateTokenForm() {
       <form action={action} className="flex flex-wrap items-end gap-2">
         <label className="min-w-48 flex-1 text-sm">
           <span className="block text-xs font-semibold uppercase tracking-wide text-ink-muted">
-            Nombre del token
+            {t.form.name}
           </span>
           <Input
             name="name"
             required
             maxLength={60}
-            placeholder="p. ej. Script de backup"
+            placeholder={t.form.namePlaceholder}
             defaultValue={state.values?.name}
             className="mt-1.5"
           />
         </label>
         <label className="text-sm">
           <span className="block text-xs font-semibold uppercase tracking-wide text-ink-muted">
-            Permisos
+            {t.form.scope}
           </span>
-          {/* Tras un error se conserva lo elegido. La key remonta el <select>: React
-              no actualiza el defaultValue de uno ya montado y el reset automático del
-              formulario lo devolvería al valor inicial. */}
+          {/* After an error the choice is kept. The key remounts the <select>: React does
+              not update the defaultValue of a mounted one, and the form's automatic
+              reset would bring it back to the initial value. */}
           <select
             key={state.values?.scope ?? "full"}
             name="scope"
             defaultValue={state.values?.scope ?? "full"}
             className="mt-1.5 h-9 rounded-lg border border-border bg-surface px-2.5 text-sm text-ink outline-none focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/25"
           >
-            <option value="full">Lectura y escritura</option>
-            <option value="read">Solo lectura</option>
+            <option value="full">{t.scopeFull}</option>
+            <option value="read">{t.scopeRead}</option>
           </select>
         </label>
         <label className="text-sm">
           <span className="block text-xs font-semibold uppercase tracking-wide text-ink-muted">
-            Caduca
+            {t.form.expiry}
           </span>
           <select
             key={state.values?.expiry ?? "0"}
@@ -132,19 +135,19 @@ export function CreateTokenForm() {
             defaultValue={state.values?.expiry ?? "0"}
             className="mt-1.5 h-9 rounded-lg border border-border bg-surface px-2.5 text-sm text-ink outline-none focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/25"
           >
-            <option value="0">Nunca</option>
-            <option value="30">30 días</option>
-            <option value="90">90 días</option>
-            <option value="365">1 año</option>
+            <option value="0">{t.form.expiryNever}</option>
+            <option value="30">{plural(intl, t.form.expiryDays, 30)}</option>
+            <option value="90">{plural(intl, t.form.expiryDays, 90)}</option>
+            <option value="365">{t.form.expiryYear}</option>
           </select>
         </label>
         <Button type="submit" disabled={pending}>
-          {pending ? "Creando…" : "Crear token"}
+          {pending ? t.form.submitting : t.form.submit}
         </Button>
       </form>
 
-      {/* role="alert" para que el lector de pantalla lo anuncie. Se retira mientras se
-          envía: así un segundo error idéntico se vuelve a insertar y se anuncia de nuevo. */}
+      {/* role="alert" so screen readers announce it. Removed while submitting, so a
+          second identical error is inserted and announced again. */}
       {state.error && !pending && (
         <p
           role="alert"

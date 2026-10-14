@@ -8,6 +8,9 @@ import {
 } from "@/app/lib/actions/instance";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
+import { useI18n } from "@/app/i18n/client";
+import { rich } from "@/app/i18n/rich";
+import type { Messages } from "@/app/i18n/config";
 
 type Values = {
   instanceName: string;
@@ -20,51 +23,49 @@ type Values = {
   backupRetentionDays: string;
 };
 
+type LegalText = Messages["admin"]["instance"]["legal"];
+
+// Labels come from m.admin.instance.legal.fields[name]; hint and placeholder pick their
+// message from the legal texts.
 const LEGAL_FIELDS: {
-  name: keyof Values;
-  label: string;
+  name: keyof LegalText["fields"];
   type?: string;
   autoComplete?: string;
-  placeholder?: string;
-  hint?: string;
+  placeholder?: (t: LegalText) => string;
+  hint: (t: LegalText) => string;
   maxLength: number;
 }[] = [
   {
     name: "operatorName",
-    label: "Responsable (nombre o razón social)",
     autoComplete: "organization",
     maxLength: 120,
-    hint: "Obligatorio para abrir el registro.",
+    hint: (t) => t.requiredToOpen,
   },
   {
     name: "operatorEmail",
-    label: "Email de contacto para privacidad",
     type: "email",
     autoComplete: "email",
     maxLength: 254,
-    hint: "Obligatorio para abrir el registro.",
+    hint: (t) => t.requiredToOpen,
   },
-  { name: "operatorLegalId", label: "NIF", maxLength: 40, hint: "Opcional." },
+  { name: "operatorLegalId", maxLength: 40, hint: (t) => t.optional },
   {
     name: "operatorAddress",
-    label: "Dirección postal",
     autoComplete: "street-address",
     maxLength: 200,
-    hint: "Opcional.",
+    hint: (t) => t.optional,
   },
   {
     name: "hostingDescription",
-    label: "Dónde se alojan los datos",
-    placeholder: "p. ej. un VPS de <proveedor> en la Unión Europea",
+    placeholder: (t) => t.hostingPlaceholder,
     maxLength: 200,
-    hint: "Proveedor y país o región.",
+    hint: (t) => t.hostingHint,
   },
   {
     name: "backupRetentionDays",
-    label: "Días que guardas las copias de seguridad",
     type: "number",
     maxLength: 4,
-    hint: "0 si no haces copias. Debe coincidir con tu rotación real.",
+    hint: (t) => t.backupHint,
   },
 ];
 
@@ -75,6 +76,8 @@ export function InstanceSettingsForm({ initial }: { initial: Values }) {
   );
   const feedbackId = useId();
   const bad = (f: string) => (!pending && state.field === f) || undefined;
+  const { m } = useI18n();
+  const t = m.admin.instance;
 
   return (
     <form action={action} className="mt-7 space-y-5">
@@ -83,11 +86,11 @@ export function InstanceSettingsForm({ initial }: { initial: Values }) {
         className="rounded-2xl border border-border bg-surface p-5 sm:p-7"
       >
         <h2 id="instance-general" className="font-display text-xl font-bold tracking-tight">
-          General
+          {t.general}
         </h2>
         <div className="mt-4 flex max-w-sm flex-col gap-1.5">
           <label htmlFor="instanceName" className="text-sm font-medium">
-            Nombre de la instancia
+            {t.instanceName}
           </label>
           <Input
             id="instanceName"
@@ -106,25 +109,25 @@ export function InstanceSettingsForm({ initial }: { initial: Values }) {
         className="rounded-2xl border border-border bg-surface p-5 sm:p-7"
       >
         <h2 id="instance-registration" className="font-display text-xl font-bold tracking-tight">
-          Registro
+          {t.registration.title}
         </h2>
-        <p className="mt-1 text-sm text-ink-muted">Quién puede crear una cuenta.</p>
+        <p className="mt-1 text-sm text-ink-muted">{t.registration.description}</p>
         <fieldset
           className="mt-4 grid gap-2.5 sm:grid-cols-2"
           aria-invalid={bad("registrationOpen")}
           aria-describedby={bad("registrationOpen") ? feedbackId : undefined}
         >
-          <legend className="sr-only">Registro</legend>
+          <legend className="sr-only">{t.registration.title}</legend>
           {[
             {
               value: "closed",
-              title: "Cerrado",
-              text: "Solo un administrador da de alta las cuentas.",
+              title: t.registration.closedTitle,
+              text: t.registration.closedText,
             },
             {
               value: "open",
-              title: "Abierto",
-              text: "Cualquiera puede registrarse gratis en /register.",
+              title: t.registration.openTitle,
+              text: t.registration.openText,
             },
           ].map((o) => (
             <label
@@ -156,20 +159,25 @@ export function InstanceSettingsForm({ initial }: { initial: Values }) {
         className="rounded-2xl border border-border bg-surface p-5 sm:p-7"
       >
         <h2 id="instance-legal" className="font-display text-xl font-bold tracking-tight">
-          Datos legales
+          {t.legal.title}
         </h2>
         <p className="mt-1 max-w-prose text-sm text-ink-muted">
-          Los de quien opera esta instancia. Salen en la{" "}
-          <Link href="/legal/privacidad" className="text-accent underline-offset-2 hover:underline">
-            política de privacidad
-          </Link>
-          , las condiciones y el aviso legal. Lo que dejes vacío aparece como «sin indicar».
+          {rich(t.legal.description, {
+            link: (chunk) => (
+              <Link
+                href="/legal/privacy"
+                className="text-accent underline-offset-2 hover:underline"
+              >
+                {chunk}
+              </Link>
+            ),
+          })}
         </p>
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           {LEGAL_FIELDS.map((f) => (
             <div key={f.name} className="flex flex-col gap-1.5">
               <label htmlFor={f.name} className="text-sm font-medium">
-                {f.label}
+                {t.legal.fields[f.name]}
               </label>
               <Input
                 id={f.name}
@@ -179,18 +187,16 @@ export function InstanceSettingsForm({ initial }: { initial: Values }) {
                 min={f.type === "number" ? 0 : undefined}
                 max={f.type === "number" ? 3650 : undefined}
                 autoComplete={f.autoComplete ?? "off"}
-                placeholder={f.placeholder}
+                placeholder={f.placeholder?.(t.legal)}
                 defaultValue={state.values?.[f.name] ?? String(initial[f.name])}
                 aria-invalid={bad(f.name)}
-                aria-describedby={[f.hint ? `${f.name}-hint` : "", bad(f.name) ? feedbackId : ""]
+                aria-describedby={[`${f.name}-hint`, bad(f.name) ? feedbackId : ""]
                   .filter(Boolean)
-                  .join(" ") || undefined}
+                  .join(" ")}
               />
-              {f.hint && (
-                <p id={`${f.name}-hint`} className="text-xs text-ink-muted">
-                  {f.hint}
-                </p>
-              )}
+              <p id={`${f.name}-hint`} className="text-xs text-ink-muted">
+                {f.hint(t.legal)}
+              </p>
             </div>
           ))}
         </div>
@@ -218,7 +224,7 @@ export function InstanceSettingsForm({ initial }: { initial: Values }) {
 
       <div className="flex justify-end">
         <Button type="submit" disabled={pending}>
-          {pending ? "Guardando…" : "Guardar ajustes"}
+          {pending ? t.saving : t.save}
         </Button>
       </div>
     </form>

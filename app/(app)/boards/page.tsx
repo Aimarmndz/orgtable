@@ -9,26 +9,33 @@ import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { ImportBoardForm } from "./import-board-form";
 import { DeleteBoardButton } from "./delete-board-button";
+import { getI18n } from "@/app/i18n/server";
+import { fmt, plural } from "@/app/i18n/format";
 
-export const metadata: Metadata = { title: "Tus tableros" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { m } = await getI18n();
+  return { title: m.boards.index.metaTitle };
+}
 
-// Acciones de esquina de cada tablero. En escritorio aparecen al pasar el ratón o al
-// llegar con el teclado; en pantallas sin hover (táctiles) se ven siempre, porque si no
-// no hay forma de descubrirlas.
+// Corner actions of each board. On desktop they appear on hover or when reached with
+// the keyboard; on screens without hover (touch) they are always visible, otherwise
+// there would be no way to discover them.
 const CORNER_ACTION =
   "grid size-7 place-items-center rounded-md bg-black/20 text-white/90 opacity-0 transition hover:bg-black/40 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100";
 
 export default async function BoardsPage() {
   const user = await requireUser();
   const boards = await getBoardSummariesForUser(user.id);
+  const { m, intl } = await getI18n();
+  const t = m.boards.index;
 
   return (
     <div className="relative z-10 mx-auto w-full max-w-6xl overflow-y-auto p-6 sm:p-8">
       <h1 className="font-display text-3xl font-bold tracking-tight text-balance">
-        Tus tableros
+        {t.title}
       </h1>
       <p className="mt-1.5 text-sm text-ink-muted">
-        Organiza tu trabajo en listas y tarjetas.
+        {t.subtitle}
       </p>
 
       <form action={createBoard} className="mt-7 flex flex-wrap gap-2">
@@ -36,14 +43,14 @@ export default async function BoardsPage() {
           name="title"
           required
           maxLength={120}
-          aria-label="Nombre del nuevo tablero"
-          placeholder="Nombre del nuevo tablero"
+          aria-label={t.newBoardName}
+          placeholder={t.newBoardName}
           className="min-w-0 flex-1 sm:max-w-xs sm:flex-none"
         />
-        <Button type="submit">Crear tablero</Button>
+        <Button type="submit">{t.createBoard}</Button>
       </form>
 
-      {/* Importar es poco frecuente: plegado para que no compita con «Crear tablero». */}
+      {/* Importing is rare: collapsed so it does not compete with "Create board". */}
       <details className="group/import mt-3 text-sm">
         <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-lg px-1 py-1 text-ink-muted transition-colors hover:text-ink [&::-webkit-details-marker]:hidden">
           <svg
@@ -58,7 +65,7 @@ export default async function BoardsPage() {
           >
             <path d="M9 6l6 6-6 6" />
           </svg>
-          Importar un tablero desde JSON
+          {t.importToggle}
         </summary>
         <div className="mt-2 rounded-xl border border-border bg-surface p-3">
           <ImportBoardForm />
@@ -83,11 +90,10 @@ export default async function BoardsPage() {
             </svg>
           </div>
           <p className="mt-5 font-display text-lg font-bold tracking-tight">
-            Todavía no tienes tableros
+            {t.emptyTitle}
           </p>
           <p className="mt-1.5 max-w-xs text-sm text-ink-muted">
-            Crea el primero con el campo de arriba y empieza a organizar tu
-            trabajo en listas y tarjetas.
+            {t.emptyText}
           </p>
         </div>
       ) : (
@@ -108,22 +114,26 @@ export default async function BoardsPage() {
                 </span>
                 <span className="relative mt-2 flex items-center justify-between gap-2 text-xs font-medium text-white/85">
                   <span>
-                    {board.cardCount === 1 ? "1 tarjeta" : `${board.cardCount} tarjetas`}
+                    {plural(intl, t.cardCount, board.cardCount)}
                   </span>
-                  {/* Solo si es compartido: en un tablero personal sobra tu propia cara. */}
+                  {/* Only when shared: on a personal board your own face is redundant. */}
                   {board.members.length > 1 && (
                     <span className="flex -space-x-1.5">
-                      {/* aria-label no vale en un span sin rol: el nombre va como texto oculto. */}
+                      {/* aria-label does not work on a span without a role: the name goes as hidden text. */}
                       <span className="sr-only">
-                        {`, compartido con ${board.members.length} personas: ${board.members.map((m) => m.name).join(", ")}`}
+                        {plural(intl, t.sharedWith, board.members.length, {
+                          names: new Intl.ListFormat(intl, {
+                            type: "conjunction",
+                          }).format(board.members.map((member) => member.name)),
+                        })}
                       </span>
-                      {board.members.slice(0, 4).map((m) => (
+                      {board.members.slice(0, 4).map((member) => (
                         <span
-                          key={m.id}
+                          key={member.id}
                           aria-hidden
                           className="grid size-6 place-items-center rounded-full bg-white/90 text-[10px] font-bold text-ink ring-2 ring-black/10"
                         >
-                          {initials(m.name)}
+                          {initials(member.name)}
                         </span>
                       ))}
                       {board.members.length > 4 && (
@@ -142,8 +152,8 @@ export default async function BoardsPage() {
                 <a
                   href={`/api/boards/${board.id}/export`}
                   className={CORNER_ACTION}
-                  aria-label={`Exportar tablero ${board.title}`}
-                  title="Exportar a JSON"
+                  aria-label={fmt(t.exportBoard, { title: board.title })}
+                  title={t.exportTitle}
                 >
                   <svg
                     className="size-4"
@@ -156,8 +166,8 @@ export default async function BoardsPage() {
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
                   </svg>
                 </a>
-                {/* Solo el dueño puede borrarlo (deleteBoard lo exige); a los
-                    miembros no se les enseña un botón que no hace nada. */}
+                {/* Only the owner can delete it (deleteBoard requires it); members
+                    are not shown a button that does nothing. */}
                 {board.ownerId === user.id && (
                   <DeleteBoardButton
                     boardId={board.id}

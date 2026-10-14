@@ -1,1 +1,31 @@
-{}
+{
+  "roles": {
+    "OWNER": "Propietario",
+    "EDITOR": "Editor",
+    "VIEWER": "Lector"
+  },
+  "someBoard": "un tablero",
+  "memberAdded": {
+    "title": "Te han añadido a «{board}»",
+    "body": "Como {role}."
+  },
+  "memberRoleChanged": {
+    "title": "Tu rol en «{board}» ha cambiado",
+    "body": "Ahora eres {role}."
+  },
+  "memberRemoved": {
+    "title": "Te han quitado de «{board}»"
+  },
+  "cardAssigned": {
+    "title": "Te han asignado «{card}»",
+    "body": "En el tablero «{board}»."
+  },
+  "commentAdded": {
+    "title": "Nuevo comentario en «{card}»"
+  },
+  "dueReminder": {
+    "soonTitle": "Vence pronto: «{card}»",
+    "overdueTitle": "Tarea vencida: «{card}»",
+    "body": "Vencimiento: {date}."
+  }
+}

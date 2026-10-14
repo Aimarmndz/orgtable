@@ -74,7 +74,7 @@ export async function addChecklistItem(formData: FormData): Promise<void> {
   revalidateBoard(boardId);
 }
 
-/** Marca/desmarca un ítem de checklist. */
+/** Checks/unchecks a checklist item. */
 export async function toggleChecklistItem(input: {
   itemId: string;
   done: boolean;

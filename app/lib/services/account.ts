@@ -4,18 +4,19 @@ import { hashPassword, verifyPassword } from "@/app/lib/auth";
 import { deleteBoardWithAttachments } from "@/app/lib/services/attachments";
 import { isUniqueViolation } from "@/app/lib/services/users";
 
-// Lo que cada persona hace con SU propia cuenta desde /settings: perfil, contraseña,
-// sesiones y los derechos del RGPD (acceso y portabilidad con la exportación, supresión con
-// el borrado). Sin contexto de request ni auditoría, como services/users.ts: la Server
-// Action resuelve quién es el usuario y registra el evento. Ver docs/privacy.md.
+// What each person does with THEIR OWN account from /settings: profile, password,
+// sessions and the GDPR rights (access and portability via the export, erasure via
+// deletion). No request context or auditing, like services/users.ts: the Server Action
+// resolves who the user is and records the event. See docs/privacy.md.
 
 export type UpdateProfileResult =
   | { ok: true; emailChanged: boolean }
   | { ok: false; error: "not_found" | "wrong_password" | "email_taken" };
 
 /**
- * Cambia el nombre y, si se pide, el email. Cambiar el email exige la contraseña actual:
- * con una sesión robada (un portátil abierto) se podría desviar la cuenta a otro correo.
+ * Changes the name and, if requested, the email. Changing the email requires the current
+ * password: with a stolen session (an unlocked laptop) the account could be diverted to
+ * another address.
  */
 export async function updateOwnProfile(
   userId: string,
@@ -50,10 +51,11 @@ export type ChangePasswordResult =
   | { ok: false; error: "not_found" | "wrong_password" };
 
 /**
- * Cambia la contraseña comprobando la actual y cierra las DEMÁS sesiones: si alguien más
- * tenía la contraseña, pierde el acceso al momento. La sesión desde la que se cambia sigue
- * abierta. Los tokens de API se conservan: los crea la propia persona y no dependen de la
- * contraseña (el reset del admin sí los borra, porque supone una cuenta comprometida).
+ * Changes the password after checking the current one and closes the OTHER sessions: if
+ * someone else had the password, they lose access immediately. The session making the
+ * change stays open. API tokens are kept: the person creates them and they do not depend
+ * on the password (the admin reset does delete them, since it implies a compromised
+ * account).
  */
 export async function changeOwnPassword(
   userId: string,
@@ -79,7 +81,7 @@ export async function changeOwnPassword(
   return { ok: true, revokedSessions: revoked.count };
 }
 
-/** Sesiones vigentes (sin revocar y sin caducar), la más reciente primero. */
+/** Active sessions (not revoked and not expired), most recent first. */
 export async function listActiveSessions(userId: string, now: Date) {
   return prisma.session.findMany({
     where: { userId, revokedAt: null, expiresAt: { gt: now } },
@@ -88,7 +90,7 @@ export async function listActiveSessions(userId: string, now: Date) {
   });
 }
 
-/** Cierra una sesión propia. Devuelve 0 si no existe o es de otra persona. */
+/** Closes one of the user's own sessions. Returns 0 if missing or someone else's. */
 export async function revokeOwnSession(
   userId: string,
   sessionId: string,
@@ -100,7 +102,7 @@ export async function revokeOwnSession(
   return count;
 }
 
-/** Cierra todas las sesiones propias menos la actual. */
+/** Closes all of the user's own sessions except the current one. */
 export async function revokeOtherSessions(
   userId: string,
   keepSessionId: string,
@@ -117,18 +119,18 @@ export type DeleteOwnAccountResult =
   | { ok: false; error: "not_found" | "wrong_password" | "last_admin" };
 
 /**
- * Borra la cuenta y todo lo que cuelga de ella (derecho de supresión, art. 17 RGPD):
+ * Deletes the account and everything hanging off it (right to erasure, GDPR art. 17):
  *
- * - Los tableros que creó, con sus listas, tarjetas y los FICHEROS de sus adjuntos
- *   (deleteBoardWithAttachments, que borra también el disco).
- * - Por cascada del esquema: sesiones, tokens, membresías, asignaciones, comentarios y
- *   notificaciones.
- * - En la auditoría, las filas quedan sin usuario (onDelete: SetNull) y se vacía el
- *   `detail` de las que le tenían como objetivo, que podía llevar su email.
+ * - The boards it created, with their lists, cards and the FILES of their attachments
+ *   (deleteBoardWithAttachments, which also cleans up the disk).
+ * - Via schema cascade: sessions, tokens, memberships, assignments, comments and
+ *   notifications.
+ * - In the audit log, rows are left without a user (onDelete: SetNull) and the `detail`
+ *   of rows targeting the user, which could contain their email, is cleared.
  *
- * La última cuenta ADMIN no puede borrarse: la instancia se quedaría sin nadie que la
- * administre. La comprobación bloquea las filas de los admins (FOR UPDATE) para que dos
- * admins que se borran a la vez no dejen la instancia sin ninguno.
+ * The last ADMIN account cannot be deleted: the instance would be left with nobody to
+ * administer it. The check locks the admin rows (FOR UPDATE) so that two admins deleting
+ * themselves at the same time cannot leave the instance with none.
  */
 export async function deleteOwnAccount(
   userId: string,
@@ -149,9 +151,9 @@ export async function deleteOwnAccount(
     if (otherAdmins === 0) return { ok: false, error: "last_admin" };
   }
 
-  // Tableros uno a uno: cada borrado bloquea su árbol y luego borra los ficheros (ver
-  // services/attachments.ts). Se repite por si se crea uno mientras tanto (otra pestaña o
-  // la API), para que el DELETE final con `boards: none` no falle por esa carrera.
+  // Boards one by one: each deletion locks its tree and then removes the files (see
+  // services/attachments.ts). Retried in case one is created meanwhile (another tab or
+  // the API), so the final DELETE with `boards: none` does not fail because of that race.
   let boardsDeleted = 0;
   for (let attempt = 0; attempt < 3; attempt++) {
     const owned = await prisma.board.findMany({
@@ -183,14 +185,14 @@ export async function deleteOwnAccount(
     if (result === "last_admin") return { ok: false, error: "last_admin" };
     if (result === "deleted") return { ok: true, boardsDeleted };
   }
-  throw new Error("No se pudo borrar la cuenta: siguen apareciendo tableros nuevos");
+  throw new Error("Could not delete the account: new boards keep appearing");
 }
 
 /**
- * Exportación de los datos personales (derechos de acceso y portabilidad, arts. 15 y 20
- * RGPD) en JSON legible por máquina. Incluye todo lo que la instancia guarda de la persona
- * o ha creado ella; de los tableros ajenos solo su pertenencia y lo que ella escribió.
- * Nunca incluye hashes (contraseña, tokens) ni los binarios de los adjuntos.
+ * Personal data export (rights of access and portability, GDPR arts. 15 and 20) as
+ * machine-readable JSON. Includes everything the instance stores about the person or that
+ * they created; for other people's boards, only their membership and what they wrote.
+ * Never includes hashes (password, tokens) or attachment binaries.
  */
 export async function exportUserData(userId: string) {
   const user = await prisma.user.findUnique({

@@ -1,17 +1,18 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { withI18n } from "./helpers/i18n";
 
-// Las acciones de servidor importan Prisma; para renderizar el panel basta con
-// sustituirlas (este test solo mira el HTML, no ejecuta ninguna acción).
+// The server actions import Prisma; replacing them is enough to render the panel (this
+// test only looks at the HTML, it does not run any action).
 vi.mock("@/app/lib/actions/members", () => ({
   addBoardMember: vi.fn(),
   updateBoardMemberRole: vi.fn(),
   removeBoardMember: vi.fn(),
 }));
 
-// En el render de servidor useActionState siempre devuelve el estado inicial. Para
-// mirar el HTML tras un error (o mientras se envía) se sustituye cuando el test lo pide.
+// In a server render useActionState always returns the initial state. To look at the
+// HTML after an error (or while submitting) it is replaced when the test asks for it.
 const actionState = vi.hoisted(() => ({
   override: null as unknown,
   pending: false,
@@ -35,46 +36,48 @@ const { MembersPanel } = await import("@/app/components/board/members-panel");
 
 function render(): string {
   return renderToStaticMarkup(
-    createElement(MembersPanel, {
-      boardId: "b1",
-      members: [],
-      canManage: true,
-      onClose: () => {},
-    }),
+    withI18n(
+      createElement(MembersPanel, {
+        boardId: "b1",
+        members: [],
+        canManage: true,
+        onClose: () => {},
+      }),
+    ),
   );
 }
 
-// Opción marcada del <select name="role"> del formulario de invitar.
+// Selected option of the <select name="role"> in the invite form.
 function selectedInviteRole(html: string): string | undefined {
   const select = html.match(/<select name="role"[^>]*>(.*?)<\/select>/);
   return select?.[1].match(/<option value="([A-Z]+)" selected="">/)?.[1];
 }
 
-describe("panel de miembros", () => {
-  // OJO: no es la regresión del rol perdido tras un error. El HTML inicial ya salía con
-  // VIEWER antes del arreglo; el fallo estaba en el cliente, donde React no aplica el
-  // nuevo defaultValue a un <select> ya montado. El remontaje por key queda sin test
-  // porque el proyecto no tiene jsdom. El caso siguiente (OWNER → Editor) sí falla con
-  // el código anterior.
-  it("con un error, el HTML inicial marca el rol devuelto en el selector de invitar", () => {
+describe("members panel", () => {
+  // NOTE: this is not the regression of the role lost after an error. The initial HTML
+  // already came out with VIEWER before the fix; the bug was on the client, where React
+  // does not apply the new defaultValue to an already mounted <select>. The remount by
+  // key is left untested because the project has no jsdom. The next case
+  // (OWNER → Editor) does fail with the previous code.
+  it("with an error, the initial HTML selects the returned role in the invite selector", () => {
     actionState.override = {
-      error: "No existe ninguna cuenta con ese email.",
-      values: { email: "x@ejemplo.com", role: "VIEWER" },
+      error: "There is no account with that email.",
+      values: { email: "x@example.com", role: "VIEWER" },
     };
     expect(selectedInviteRole(render())).toBe("VIEWER");
   });
 
-  it("si el rol devuelto no es asignable, el selector vuelve a Editor", () => {
+  it("if the returned role is not assignable, the selector goes back to Editor", () => {
     actionState.override = {
-      error: "Rol no válido.",
-      values: { email: "x@ejemplo.com", role: "OWNER" },
+      error: "Invalid role.",
+      values: { email: "x@example.com", role: "OWNER" },
     };
     expect(selectedInviteRole(render())).toBe("EDITOR");
   });
 
-  it("retira el aviso de error mientras se envía para que uno idéntico se reanuncie", () => {
-    const error = "Ana ya es miembro de este tablero.";
-    actionState.override = { error, values: { email: "ana@ejemplo.com", role: "EDITOR" } };
+  it("removes the error message while submitting so that an identical one is announced again", () => {
+    const error = "Ana is already a member of this board.";
+    actionState.override = { error, values: { email: "ana@example.com", role: "EDITOR" } };
     expect(render()).toContain(`role="alert"`);
 
     actionState.pending = true;
@@ -83,7 +86,7 @@ describe("panel de miembros", () => {
     expect(html).not.toContain(error);
   });
 
-  it("el fondo del diálogo solo se anima si no se pide movimiento reducido", () => {
+  it("the dialog backdrop is only animated if reduced motion is not requested", () => {
     const html = render();
     expect(html).toContain("backdrop:motion-safe:animate-");
     expect(html).not.toContain("backdrop:animate-");

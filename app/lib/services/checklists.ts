@@ -2,11 +2,11 @@ import "server-only";
 import { prisma } from "@/app/lib/prisma";
 import { positionAtEnd } from "@/app/lib/ordering";
 
-// Altas al final de checklists e ítems con la fila padre bloqueada (`FOR UPDATE`), para
-// que dos altas simultáneas no guarden la misma posición. Mismo razonamiento que
-// createCardAtEnd (app/lib/services/cards.ts).
+// Appends checklists and items with the parent row locked (`FOR UPDATE`), so two
+// concurrent creates do not store the same position. Same reasoning as createCardAtEnd
+// (app/lib/services/cards.ts).
 
-/** Crea un checklist al final de la tarjeta. */
+/** Creates a checklist at the end of the card. */
 export async function createChecklistAtEnd(data: {
   cardId: string;
   title: string;
@@ -29,7 +29,7 @@ export async function createChecklistAtEnd(data: {
   });
 }
 
-/** Crea un ítem al final del checklist. */
+/** Creates an item at the end of the checklist. */
 export async function createChecklistItemAtEnd(data: {
   checklistId: string;
   text: string;

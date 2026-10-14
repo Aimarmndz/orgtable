@@ -11,12 +11,12 @@ afterAll(async () => {
   await disconnect();
 });
 
-describe("creación de usuarios (integración)", () => {
-  it("crea una cuenta con la contraseña hasheada (nunca en claro) y email normalizado", async () => {
+describe("user creation (integration)", () => {
+  it("creates an account with the password hashed (never in plain text) and the email normalised", async () => {
     const r = await createUserAccount({
       name: "Ada Lovelace",
       email: "  Ada@Example.com  ",
-      password: "secreto-muy-largo",
+      password: "very-long-secret",
       role: "MEMBER",
     });
     expect(r.ok).toBe(true);
@@ -25,16 +25,16 @@ describe("creación de usuarios (integración)", () => {
       where: { email: "ada@example.com" },
     });
     expect(user).not.toBeNull();
-    expect(user!.email).toBe("ada@example.com"); // recortado + minúsculas
-    expect(user!.passwordHash).not.toBe("secreto-muy-largo"); // nunca en claro
+    expect(user!.email).toBe("ada@example.com"); // trimmed + lower case
+    expect(user!.passwordHash).not.toBe("very-long-secret"); // never in plain text
     expect(user!.passwordHash.startsWith("$2")).toBe(true); // bcrypt
-    expect(await verifyPassword("secreto-muy-largo", user!.passwordHash)).toBe(
+    expect(await verifyPassword("very-long-secret", user!.passwordHash)).toBe(
       true,
     );
-    expect(await verifyPassword("incorrecta", user!.passwordHash)).toBe(false);
+    expect(await verifyPassword("wrong", user!.passwordHash)).toBe(false);
   });
 
-  it("rechaza un email duplicado (insensible a mayúsculas)", async () => {
+  it("rejects a duplicate email (case-insensitive)", async () => {
     await createUserAccount({
       name: "A",
       email: "dup@test.local",
@@ -52,9 +52,9 @@ describe("creación de usuarios (integración)", () => {
     expect(await prisma.user.count()).toBe(1);
   });
 
-  it("respeta el rol global asignado", async () => {
+  it("honours the assigned global role", async () => {
     await createUserAccount({
-      name: "Jefa",
+      name: "Boss",
       email: "admin@test.local",
       password: "z".repeat(10),
       role: "ADMIN",

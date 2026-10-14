@@ -14,27 +14,29 @@ import {
 import { cardBelongsToBoard, createCardAtEnd } from "@/app/lib/services/cards";
 import { deleteCardWithAttachments } from "@/app/lib/services/attachments";
 import { isValidPositionKey } from "@/app/lib/ordering";
+import { getI18n } from "@/app/i18n/server";
+import { fmt } from "@/app/i18n/format";
 
 const setCardDueDateSchema = z.object({
   cardId: z.string().min(1),
   dueDate: dueDateSchema,
 });
 
-// La posición llega del cliente (drag & drop): se valida antes de cualquier consulta,
-// porque una clave inválida guardada haría fallar para siempre las altas en esa lista.
+// The position comes from the client (drag & drop): it is validated before any query,
+// because an invalid key once stored would make every new card in that list fail forever.
 const moveCardSchema = z.object({
   cardId: z.string().min(1),
   toListId: z.string().min(1),
   position: z.string().refine(isValidPositionKey),
 });
 
-/** "YYYY-MM-DD" → medianoche UTC (fecha de calendario); vacío o null → sin fecha. */
+/** "YYYY-MM-DD" → midnight UTC (calendar date); empty or null → no date. */
 function toDueDate(value: string | null): Date | null {
   return value ? new Date(value) : null;
 }
 
-// Helper: dado un listId, devuelve el boardId al que pertenece (para autorizar y
-// revalidar). Devuelve null si la lista no existe.
+// Given a listId, returns the boardId it belongs to (to authorise and revalidate). Returns
+// null if the list does not exist.
 async function boardIdForList(listId: string): Promise<string | null> {
   const list = await prisma.list.findUnique({
     where: { id: listId },
@@ -57,9 +59,9 @@ export async function createCard(formData: FormData): Promise<void> {
 }
 
 /**
- * Resultado de updateCard para useActionState. Si no se guarda, devuelve también lo que
- * envió el usuario: React resetea el formulario no controlado al acabar la acción y, sin
- * rehidratarlo con esto, el texto escrito se perdería.
+ * Result of updateCard for useActionState. When nothing is saved, it also returns what the
+ * user sent: React resets the uncontrolled form when the action ends and, without
+ * rehydrating it with this, the typed text would be lost.
  */
 export type CardDetailsState = {
   error?: string;
@@ -67,15 +69,16 @@ export type CardDetailsState = {
   dueDate?: string;
 };
 
-/** Actualiza la descripción y/o la fecha de vencimiento de una tarjeta (Hito 2). */
+/** Updates a card's description and/or due date. */
 export async function updateCard(
   _prev: CardDetailsState,
   formData: FormData,
 ): Promise<CardDetailsState> {
+  const { m } = await getI18n();
   const cardId = String(formData.get("cardId"));
-  // El navegador envía los saltos de línea del textarea como \r\n, pero su maxLength los
-  // cuenta como un carácter: sin normalizar, una descripción que en la UI mide 5000
-  // llegaría con más y se rechazaría.
+  // The browser sends the textarea's line breaks as \r\n, but its maxLength counts them as
+  // one character: without normalising, a description that measures 5000 in the UI would
+  // arrive longer and be rejected.
   const description = normalizeNewlines(String(formData.get("description") ?? ""));
   const dueDate = String(formData.get("dueDate") ?? "").trim();
   const submitted = { description, dueDate };
@@ -84,22 +87,22 @@ export async function updateCard(
     where: { id: cardId },
     select: { description: true, list: { select: { boardId: true } } },
   });
-  if (!card) return { error: "La tarjeta ya no existe.", ...submitted };
+  if (!card) return { error: m.errors.cards.notFound, ...submitted };
   const { role } = await requireBoardAccess(card.list.boardId);
   if (!canEditBoard(role)) {
-    return { error: "No tienes permiso para editar esta tarjeta.", ...submitted };
+    return { error: m.errors.cards.noPermission, ...submitted };
   }
 
-  // Si algo no valida no se guarda NADA (ni la descripción): guardar solo una parte
-  // perdería en silencio lo que el usuario escribió en la otra.
+  // If anything fails validation NOTHING is saved (not even the description): saving only
+  // one part would silently lose what the user wrote in the other.
   const parsedDue = dueDateSchema.safeParse(dueDate);
   if (!parsedDue.success) {
-    return { error: "La fecha de vencimiento no es válida.", ...submitted };
+    return { error: m.errors.cards.invalidDueDate, ...submitted };
   }
 
-  // Una descripción que no ha cambiado no se valida ni se reescribe: las anteriores al
-  // límite pueden pasar de CARD_DESCRIPTION_MAX y, si no, ya no se podría cambiar el
-  // vencimiento de esa tarjeta desde el modal (el formulario reenvía la descripción).
+  // An unchanged description is neither validated nor rewritten: those older than the limit
+  // may exceed CARD_DESCRIPTION_MAX and, otherwise, that card's due date could no longer be
+  // changed from the modal (the form resends the description).
   const unchanged =
     description.trim() === normalizeNewlines(card.description ?? "").trim();
   let newDescription: { description: string | null } | undefined;
@@ -107,7 +110,10 @@ export async function updateCard(
     const parsedDescription = cardDetailsSchema.shape.description.safeParse(description);
     if (!parsedDescription.success) {
       return {
-        error: `La descripción no puede superar ${CARD_DESCRIPTION_MAX} caracteres (tiene ${description.trim().length}).`,
+        error: fmt(m.errors.cards.descriptionTooLong, {
+          max: CARD_DESCRIPTION_MAX,
+          length: description.trim().length,
+        }),
         ...submitted,
       };
     }
@@ -127,8 +133,8 @@ function normalizeNewlines(text: string): string {
 }
 
 /**
- * Cambia SOLO la fecha de vencimiento (sin tocar la descripción). La usa el arrastre en
- * la vista de calendario (Hito 11). `dueDate` es "YYYY-MM-DD" o null para quitarla.
+ * Changes ONLY the due date (without touching the description). Used by dragging in the
+ * calendar view. `dueDate` is "YYYY-MM-DD", or null to clear it.
  */
 export async function setCardDueDate(input: {
   cardId: string;
@@ -184,9 +190,8 @@ export async function deleteCard(formData: FormData): Promise<void> {
 }
 
 /**
- * Persiste el movimiento de una tarjeta tras drag & drop: puede cambiar de lista y/o
- * de posición. El cliente calcula la nueva clave de posición (fractional indexing).
- * Un único UPDATE de la fila movida.
+ * Persists a card move after drag & drop: it may change list and/or position. The client
+ * computes the new position key (fractional indexing). A single UPDATE of the moved row.
  */
 export async function moveCard(input: {
   cardId: string;
@@ -201,10 +206,10 @@ export async function moveCard(input: {
   const { role } = await requireBoardAccess(boardId);
   if (!canEditBoard(role)) return { ok: false };
 
-  // Seguridad (IDOR): la tarjeta debe pertenecer YA al MISMO tablero de destino. Sin esta
-  // comprobación, un editor podría mover a su tablero una tarjeta de OTRO tablero al que no
-  // tiene acceso, conociendo solo su id. No se mueven tarjetas entre tableros (la UI tampoco
-  // lo permite: el arrastre es dentro de un único tablero).
+  // Security (IDOR): the card must ALREADY belong to the SAME destination board. Without
+  // this check, an editor could move into their board a card from ANOTHER board they have
+  // no access to, knowing only its id. Cards are not moved between boards (the UI does not
+  // allow it either: dragging happens within a single board).
   if (!(await cardBelongsToBoard(cardId, boardId))) return { ok: false };
 
   await prisma.card.update({

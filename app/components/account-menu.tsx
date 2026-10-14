@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { logout } from "@/app/lib/actions/auth";
 import { initials } from "@/app/lib/initials";
+import { fmt } from "@/app/i18n/format";
+import { getI18n } from "@/app/i18n/server";
 
-// Menú de la cuenta en la barra superior: quién eres, ajustes, privacidad, administración
-// (solo admins) y salir. Usa la API `popover` del navegador: abre y cierra sin JavaScript
-// propio, se cierra al pulsar fuera o con Escape y el botón expone su estado a los
-// lectores de pantalla. Sin "use client": es HTML puro.
+// Account menu in the top bar: who you are, settings, privacy, administration (admins
+// only) and sign out. Uses the browser's `popover` API: it opens and closes without our
+// own JavaScript, closes on outside click or Escape, and the button exposes its state to
+// screen readers. No "use client": it is plain HTML.
 
 const ITEM =
   "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm text-ink transition-colors hover:bg-surface-2 focus-visible:bg-surface-2 focus-visible:outline-none";
@@ -27,7 +29,7 @@ function Icon({ d }: { d: React.ReactNode }) {
   );
 }
 
-export function AccountMenu({
+export async function AccountMenu({
   name,
   email,
   isAdmin,
@@ -36,12 +38,13 @@ export function AccountMenu({
   email: string;
   isAdmin: boolean;
 }) {
+  const { m } = await getI18n();
   return (
     <>
       <button
         type="button"
         popoverTarget="account-menu"
-        aria-label={`Tu cuenta: ${name}`}
+        aria-label={fmt(m.nav.account.label, { name })}
         className="ml-1 grid size-9 place-items-center rounded-full bg-accent text-xs font-bold text-accent-ink transition hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent [anchor-name:--account-menu]"
       >
         {initials(name)}
@@ -56,29 +59,29 @@ export function AccountMenu({
           <p className="truncate text-xs text-ink-muted">{email}</p>
         </div>
         <div className="my-1 h-px bg-border" />
-        <Link href="/settings#perfil" className={ITEM}>
+        <Link href="/settings#profile" className={ITEM}>
           <Icon d={<><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></>} />
-          Perfil y ajustes
+          {m.nav.account.profile}
         </Link>
-        <Link href="/settings#seguridad" className={ITEM}>
+        <Link href="/settings#security" className={ITEM}>
           <Icon d={<><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></>} />
-          Contraseña y sesiones
+          {m.nav.account.security}
         </Link>
-        <Link href="/settings#datos" className={ITEM}>
+        <Link href="/settings#data" className={ITEM}>
           <Icon d={<path d="M12 3v12M7 10l5 5 5-5M5 21h14" />} />
-          Privacidad y datos
+          {m.nav.account.privacy}
         </Link>
         {isAdmin && (
           <Link href="/admin/users" className={ITEM}>
             <Icon d={<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />} />
-            Administración
+            {m.nav.account.admin}
           </Link>
         )}
         <div className="my-1 h-px bg-border" />
         <form action={logout}>
           <button type="submit" className={ITEM}>
             <Icon d={<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />} />
-            Cerrar sesión
+            {m.nav.account.signOut}
           </button>
         </form>
       </div>

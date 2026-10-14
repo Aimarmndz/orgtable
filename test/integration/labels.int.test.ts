@@ -25,23 +25,23 @@ async function seedTwoBoards() {
   const boardB = await seedBoard(owner.id, "B");
   const cardA = await seedCard((await seedList(boardA.id)).id);
   const labelA = await prisma.label.create({
-    data: { boardId: boardA.id, name: "Urgente", color: "red" },
+    data: { boardId: boardA.id, name: "Urgent", color: "red" },
   });
   const labelB = await prisma.label.create({
-    data: { boardId: boardB.id, name: "Secreto de B", color: "green" },
+    data: { boardId: boardB.id, name: "B's secret", color: "green" },
   });
   return { owner, boardA, boardB, cardA, labelA, labelB };
 }
 
-describe("etiquetas: pertenencia al tablero (IDOR de toggleCardLabel)", () => {
-  it("labelBelongsToBoard solo es true para el tablero real de la etiqueta", async () => {
+describe("labels: board membership (toggleCardLabel IDOR)", () => {
+  it("labelBelongsToBoard is only true for the label's actual board", async () => {
     const { boardA, boardB, labelB } = await seedTwoBoards();
     expect(await labelBelongsToBoard(labelB.id, boardB.id)).toBe(true);
     expect(await labelBelongsToBoard(labelB.id, boardA.id)).toBe(false);
-    expect(await labelBelongsToBoard("cminexistente000000000000", boardA.id)).toBe(false);
+    expect(await labelBelongsToBoard("cmmissing0000000000000000", boardA.id)).toBe(false);
   });
 
-  it("toggleCardLabel rechaza una etiqueta de otro tablero y no crea el vínculo", async () => {
+  it("toggleCardLabel rejects a label from another board and does not create the link", async () => {
     const { owner, cardA, labelB } = await seedTwoBoards();
     await loginAs(owner.id);
 
@@ -50,16 +50,16 @@ describe("etiquetas: pertenencia al tablero (IDOR de toggleCardLabel)", () => {
     expect(await prisma.cardLabel.count()).toBe(0);
   });
 
-  it("toggleCardLabel rechaza un id inexistente sin lanzar", async () => {
+  it("toggleCardLabel rejects a missing id without throwing", async () => {
     const { owner, cardA } = await seedTwoBoards();
     await loginAs(owner.id);
 
-    const res = await toggleCardLabel({ cardId: cardA.id, labelId: "no-existe" });
+    const res = await toggleCardLabel({ cardId: cardA.id, labelId: "does-not-exist" });
     expect(res).toEqual({ ok: false });
     expect(await prisma.cardLabel.count()).toBe(0);
   });
 
-  it("toggleCardLabel pone y quita una etiqueta del mismo tablero", async () => {
+  it("toggleCardLabel adds and removes a label from the same board", async () => {
     const { owner, cardA, labelA } = await seedTwoBoards();
     await loginAs(owner.id);
 
@@ -74,15 +74,15 @@ describe("etiquetas: pertenencia al tablero (IDOR de toggleCardLabel)", () => {
   });
 });
 
-describe("etiquetas: color validado contra la paleta", () => {
-  it("createLabel guarda 'blue' si el color es una clave del prototipo", async () => {
+describe("labels: color validated against the palette", () => {
+  it("createLabel stores 'blue' if the color is a prototype key", async () => {
     const owner = await seedUser();
     const board = await seedBoard(owner.id);
     await loginAs(owner.id);
 
     const fd = new FormData();
     fd.set("boardId", board.id);
-    fd.set("name", "Rara");
+    fd.set("name", "Odd");
     fd.set("color", "constructor");
     await createLabel(fd);
 
@@ -90,14 +90,14 @@ describe("etiquetas: color validado contra la paleta", () => {
     expect(label.color).toBe("blue");
   });
 
-  it("createLabel conserva un color válido de la paleta", async () => {
+  it("createLabel keeps a valid palette color", async () => {
     const owner = await seedUser();
     const board = await seedBoard(owner.id);
     await loginAs(owner.id);
 
     const fd = new FormData();
     fd.set("boardId", board.id);
-    fd.set("name", "Bien");
+    fd.set("name", "Fine");
     fd.set("color", "teal");
     await createLabel(fd);
 

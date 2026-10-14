@@ -2,11 +2,11 @@ import "server-only";
 import { timingSafeEqual } from "node:crypto";
 import { apiError } from "@/app/lib/api/respond";
 
-// Autorización de los endpoints de cron (/api/cron/*). Los dispara un programador
-// EXTERNO (cron del sistema, un sidecar, GitHub Actions…), no un timer en proceso
-// (ADR 0015), con el secreto compartido en `Authorization: Bearer <CRON_SECRET>`.
+// Authorization of the cron endpoints (/api/cron/*). They are triggered by an EXTERNAL
+// scheduler (system cron, a sidecar, GitHub Actions…), not an in-process timer (ADR 0015),
+// with the shared secret in `Authorization: Bearer <CRON_SECRET>`.
 
-// Comparación en tiempo constante para no filtrar el secreto por el tiempo de respuesta.
+// Constant-time comparison so the response time does not leak the secret.
 function secretMatches(provided: string, expected: string): boolean {
   const a = Buffer.from(provided);
   const b = Buffer.from(expected);
@@ -14,17 +14,17 @@ function secretMatches(provided: string, expected: string): boolean {
   return timingSafeEqual(a, b);
 }
 
-/** null si la petición trae el secreto correcto; si no, la respuesta de error que toca. */
+/** null if the request carries the right secret; otherwise, the matching error response. */
 export function rejectUnauthorizedCron(request: Request): Response | null {
   const expected = process.env.CRON_SECRET;
   if (!expected) {
-    // Mensaje genérico: no revelamos detalles de configuración al cliente.
-    return apiError(503, "Servicio no disponible.");
+    // Generic message: configuration details are not revealed to the client.
+    return apiError(503, "Service unavailable.");
   }
   const header = request.headers.get("authorization") ?? "";
   const provided = header.startsWith("Bearer ") ? header.slice(7) : "";
   if (!provided || !secretMatches(provided, expected)) {
-    return apiError(401, "Secreto de cron no válido.");
+    return apiError(401, "Invalid cron secret.");
   }
   return null;
 }
