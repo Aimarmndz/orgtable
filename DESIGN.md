@@ -92,14 +92,22 @@ pastillas/etiquetas completo.
 
 ## Layout
 
-- **App shell**: barra superior fina translúcida (logo display, nombre de instancia,
-  tema, usuario) + área de contenido.
-- **Login**: split asimétrico — panel de marca terracota (display grande) a un lado,
-  formulario al otro; colapsa a una columna por debajo de `lg`.
+- **App shell**: barra superior fina translúcida con la marca y el nombre de instancia; a
+  la derecha, búsqueda, notificaciones, tema y el **menú de la cuenta** (iniciales en un
+  círculo terracota) con perfil, sesiones, privacidad, administración y salir. Es un
+  `popover` nativo anclado bajo el botón.
+- **Acceso** (login, registro): split asimétrico con el panel de marca terracota
+  (`BrandPanel`, con una miniatura de tablero) a un lado y el formulario al otro; colapsa
+  a una columna por debajo de `lg`. Debajo, el pie público con los enlaces legales y la
+  atribución.
+- **Ajustes y páginas legales**: navegación lateral (columna desde `md`, fila desplazable
+  en móvil) y contenido en tarjetas `--surface` con radio 16px. El texto largo usa
+  `.legal-prose` (en `globals.css`) con medida máxima de ~68ch.
 - **Columnas**: flex horizontal, ancho fijo (~18rem), scroll-x; tarjetas en flex
   vertical con scroll-y interno.
 - **Tableros (índice)**: grid `repeat(auto-fill, minmax(15rem, 1fr))`, cada tablero con
-  su color apagado y un degradado sutil para legibilidad del título.
+  su color apagado, un degradado sutil para legibilidad del título, el número de tarjetas
+  y las iniciales de los miembros si es compartido.
 - **Z-index semántico**: textura(0) → contenido(10) → barra(20) → modal-backdrop(30) →
   modal(40) → toast(50).
 

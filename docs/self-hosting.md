@@ -137,6 +137,15 @@ Tres pasos:
   de la app usa `APP_PORT=127.0.0.1:3000` o reglas en la cadena `DOCKER-USER` de
   iptables.
 
+## Abrir la instancia al público
+
+Si quieres que cualquiera pueda registrarse, tú pasas a ser responsable del tratamiento de
+sus datos. Antes de abrir el registro en **Administración › Instancia**, sigue la lista de
+[privacy.md](./privacy.md#lista-para-abrir-una-instancia-pública): HTTPS,
+`TRUSTED_PROXY_HOPS`, los dos cron, copias de seguridad y tus datos legales. Si has
+modificado el código, configura `ORGTABLE_SOURCE_URL` para ofrecer tu versión, como exige la
+AGPL.
+
 ## Restablecer el asistente de configuración
 
 El estado "configurado" vive en la fila `InstanceConfig` de la base de datos. Si

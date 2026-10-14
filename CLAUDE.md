@@ -75,7 +75,7 @@ observabilidad, backups.
 - **Hito 3 (multiusuario)**: el esquema ya tenía `BoardMember`/`BoardRole`/`User.role`
   desde el Hito 0, así que no hizo falta migración. Se añadieron las guardas de rol en
   todas las acciones, el panel de miembros por tablero y `/admin/users` para la gestión
-  de cuentas. No hay registro abierto: el admin crea las cuentas.
+  de cuentas. (Desde el 2026-10-14 hay registro abierto opcional; ver abajo.)
 - **Hito 4 (tiempo real)**: SSE en `/api/boards/[id]/stream` + bus pub/sub
   (`app/lib/realtime/`). Toda mutación llama `revalidateBoard()` (revalida + publica).
   Sesiones respaldadas por la tabla `Session` (el JWT lleva `sid`); revocación inmediata.
@@ -142,3 +142,11 @@ observabilidad, backups.
   puerto 5433, contenedor `orgtable-dev-pg`), así que las nuevas migraciones se generan
   con `prisma migrate dev` en vez de a mano. Se siguen aplicando con `migrate deploy` en
   el arranque del contenedor.
+- **Código abierto, registro y RGPD (2026-10-14)**: AGPL-3.0-or-later con atribución 7(b)
+  («Created by Aimar», en `PublicFooter` y en «Acerca de» de `/settings`; datos en
+  `app/lib/site.ts`). Fuentes OFL. `InstanceConfig.registrationOpen` + datos legales del
+  operador (migración `..._registration_and_legal`), `/register`, `/admin/instance`,
+  páginas `/legal/*`. Cuenta propia en `services/account.ts` (perfil, contraseña, sesiones,
+  exportación `/api/account/export`, borrado). Limpieza en `POST /api/cron/maintenance`
+  (`services/maintenance.ts`). Menú de cuenta con popover nativo. Tests en
+  `test/integration/{registration,account,maintenance}.int.test.ts`. Ver `docs/privacy.md`.

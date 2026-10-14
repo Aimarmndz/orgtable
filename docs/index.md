@@ -1,7 +1,7 @@
 # Documentación de orgtable
 
-orgtable es una aplicación de tableros Kanban self-hosted (una
-alternativa a Trello), construida con Next.js 16, Prisma 7 y PostgreSQL.
+orgtable es una aplicación de tableros Kanban de código abierto (AGPL-3.0-or-later) y
+autoalojable, una alternativa a Trello, construida con Next.js 16, Prisma 7 y PostgreSQL.
 
 Esta documentación está orientada tanto a quien quiere **auto-hospedar** la app como a
 quien quiere **contribuir** al código.
@@ -11,6 +11,7 @@ quien quiere **contribuir** al código.
 - [**Instalación**](./installation.md) — el instalador de un comando y la instalación manual.
 - [**Asistente de configuración inicial**](./setup-wizard.md) — qué ocurre en el primer arranque.
 - [**Self-hosting**](./self-hosting.md) — operar en producción: backups, actualizaciones, reverse proxy/TLS.
+- [**Privacidad, registro abierto y RGPD**](./privacy.md) — datos legales de tu instancia, plazos de conservación, derechos y la lista para abrir una instancia pública.
 
 ## Para contribuir
 
@@ -18,7 +19,7 @@ quien quiere **contribuir** al código.
 - [**Base de datos**](./database.md) — el esquema, Prisma 7 y la estrategia de ordenación.
 - [**Autenticación**](./authentication.md) — sesiones JWT, el DAL y la protección de rutas.
 - [**Autorización y roles**](./authorization.md) — roles de tablero, permisos y dónde se aplican.
-- [**Administración de usuarios**](./admin.md) — altas, roles y contraseñas desde `/admin/users`.
+- [**Administración**](./admin.md) — usuarios, ajustes de la instancia (registro y datos legales) y auditoría.
 - [**Operación y seguridad**](./operations.md) — rate limiting, auditoría, backups y actualizaciones.
 - [**Seguridad (postura y auditoría)**](./security.md) — modelo de amenazas, hallazgos y controles.
 - [**Arrastrar y soltar**](./drag-and-drop.md) — `@dnd-kit` y fractional indexing.

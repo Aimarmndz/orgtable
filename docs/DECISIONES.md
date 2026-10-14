@@ -8,6 +8,37 @@ arquitectura anteriores a este registro (ADR 0001–0015) siguen en
 
 ---
 
+## 2026-10-14 — README visual con capturas y GIF reales
+
+**Contexto.** Para publicar el proyecto, el README tenía que enseñar la app, como el de
+vibe-gambling: GIF principal, galería, funciones, privacidad y créditos. Sin perder la
+estructura fija (qué es, requisitos, instalación, comandos, variables y despliegue).
+
+**Decisión.**
+- **Capturas y GIF de la app real**, grabados con Playwright (Brave sin interfaz) sobre
+  un build de producción y una base de datos aparte (`orgtable_demo`) con datos de ejemplo:
+  personas ficticias con emails `@example.com`, que es un dominio reservado. Los GIF se
+  montan con Pillow con una paleta común y sin tramado: 0,5 MB el principal y 0,1 MB el
+  de tiempo real.
+- Capturas en **WebP** a 1600 px (30–55 KB cada una) en `docs/screenshots/`.
+- `README.md` en español, como el resto de la documentación, y un `README.en.md` más
+  corto para quien llegue desde fuera.
+- El enlace a la instancia pública oficial queda como `TODO` en el README: su URL todavía
+  no existe.
+
+**Alternativas descartadas.**
+- **Maquetas en vez de capturas.** Se desactualizan y no demuestran que la app funcione.
+- **Vídeo MP4 en el README.** GitHub solo lo reproduce si se sube como adjunto de una
+  issue, no desde el repo.
+- **Grabar sobre la BD de desarrollo.** Mezclaría datos de prueba reales con la demo.
+
+**Consecuencias.** Si la interfaz cambia mucho, hay que regenerar las capturas con los
+scripts de `scripts/readme-media/`: siembra de la demo, Playwright y montaje de GIF y
+WebP. Sus instrucciones están en su README. `playwright-core` se instala aparte para no
+añadirlo a las dependencias del proyecto.
+
+---
+
 ## 2026-10-14 — Menú de cuenta en la barra y tableros con contexto
 
 **Contexto.** La barra superior acumulaba sueltos el enlace de Administración, el

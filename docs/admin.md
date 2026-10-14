@@ -1,11 +1,15 @@
 # Administración de usuarios
 
-orgtable no tiene registro abierto: las cuentas las crea el **administrador** de la
-instancia desde `/admin/users`. El primer administrador es quien completa el
-asistente de configuración inicial (ver [`docs/setup-wizard.md`](./setup-wizard.md)).
+Por defecto, las cuentas las crea el **administrador** de la instancia desde
+`/admin/users`. Si abre el **registro** en `/admin/instance`, cualquiera puede crearse una
+cuenta `MEMBER` en `/register` (ver [privacy.md](./privacy.md)). El primer administrador es
+quien completa el asistente de configuración inicial (ver
+[`docs/setup-wizard.md`](./setup-wizard.md)).
 
-Solo los usuarios con rol global `ADMIN` ven el enlace **Administración** en la
-cabecera y pueden entrar a `/admin/users`. La ruta está protegida por
+La administración tiene tres pestañas: **Usuarios** (`/admin/users`), **Instancia**
+(`/admin/instance`: nombre, registro abierto o cerrado y datos legales del operador) y
+**Auditoría** (`/admin/audit`). Solo los usuarios con rol global `ADMIN` ven el enlace
+**Administración** en el menú de la cuenta y pueden entrar. La ruta está protegida por
 `requireAdmin()` en el servidor (ver [`docs/authorization.md`](./authorization.md)).
 
 ## Qué puede hacer el administrador
@@ -25,9 +29,10 @@ cabecera y pueden entrar a `/admin/users`. La ruta está protegida por
 
 Para evitar dejar la instancia sin administración o perder datos por accidente:
 
-- **No puedes cambiar tu propio rol** ni **borrar tu propia cuenta**. Esto evita que
-  el único administrador se quede sin acceso. Para traspasar la administración,
-  promueve antes a otra persona a `ADMIN`.
+- **No puedes cambiar tu propio rol** ni **borrar tu propia cuenta desde esta página**.
+  Esto evita que el único administrador se quede sin acceso. Para traspasar la
+  administración, promueve antes a otra persona a `ADMIN`. Cada persona sí puede borrar
+  su propia cuenta desde *Ajustes › Privacidad y datos*, salvo la última cuenta `ADMIN`.
 - **No se puede borrar un usuario que es propietario de tableros**: borrarlo
   arrastraría sus tableros (y todo su contenido) en cascada. El administrador debe
   transferir o borrar esos tableros primero. La acción se bloquea con un aviso.

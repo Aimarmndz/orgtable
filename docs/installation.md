@@ -142,10 +142,12 @@ El contenedor de la app solo recibe las variables que lista `docker-compose.yml`
 | `DATABASE_URL` | Sí | Cadena de conexión que usa la aplicación. Debe ser coherente con las tres variables anteriores. El host es `postgres` (nombre del servicio en docker-compose). Formato: `postgresql://USUARIO:CONTRASEÑA@postgres:5432/BASE`. |
 | `SESSION_SECRET` | Sí | Secreto para firmar las sesiones JWT, mínimo 16 caracteres: sin él (o con uno más corto) la app no puede crear sesiones y el login y el asistente inicial fallan. El instalador lo genera con `openssl rand -hex 32`. |
 | `APP_PORT` | No | Puerto del host por el que se expone la aplicación. Por defecto `3000`. Admite `127.0.0.1:3000` para publicarla solo en local, detrás de un proxy inverso. Internamente, el contenedor escucha siempre en el `3000`. |
-| `CRON_SECRET` | No | Secreto del endpoint de [recordatorios de vencimiento](./reminders.md). Vacío = endpoint desactivado. El instalador lo genera con `openssl rand -hex 32`. |
+| `CRON_SECRET` | No | Secreto de los endpoints de cron: [recordatorios](./reminders.md) y limpieza de datos ([operations.md](./operations.md#tareas-programadas)). Vacío = endpoints desactivados. El instalador lo genera con `openssl rand -hex 32`. |
 | `TRUSTED_PROXY_HOPS` | No | Número de proxies de confianza delante de la app (por defecto `0`: se ignora `X-Forwarded-For`). Con un proxy inverso, `1`. Ver [operations.md](./operations.md#límite-de-intentos-de-login-rate-limiting). |
 | `ORGTABLE_TIMEZONE` | No | Zona horaria IANA de las fechas que formatea el servidor. Por defecto `Atlantic/Canary`. |
 | `ORGTABLE_UPLOAD_DIR` | No | Directorio de los adjuntos. En Docker, `/data/uploads` (volumen `uploads`). Ver [attachments.md](./attachments.md). |
+| `ORGTABLE_AUDIT_RETENTION_DAYS` | No | Días que se guarda el registro de auditoría (con IPs si `TRUSTED_PROXY_HOPS > 0`) antes de que lo borre `POST /api/cron/maintenance`. Entero ≥ 1; por defecto `90`. Ver [privacy.md](./privacy.md). |
+| `ORGTABLE_SOURCE_URL` | No | Enlace «Código fuente» de la app. La AGPL obliga a ofrecer el código a quien usa la app por red: si despliegas una versión **modificada**, pon aquí tu fork. Por defecto, el repositorio original. Debe empezar por `https://` o `http://`. |
 | `ORGTABLE_REALTIME_PG_NOTIFY` | No | `1` para propagar el tiempo real entre varias réplicas de la app con PostgreSQL `LISTEN/NOTIFY`. Por defecto `0`. Ver [realtime.md](./realtime.md). |
 
 ## Comandos útiles de operación

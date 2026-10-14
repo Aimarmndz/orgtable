@@ -463,6 +463,20 @@ Solo el **administrador global** (`requireAdmin`).
 
 ---
 
+## Registro, cuenta propia e instancia (2026-10-14)
+
+| Acción | Archivo | Quién | Qué hace |
+|---|---|---|---|
+| `register` | `actions/register.ts` | Anónimo, con el registro abierto | Crea una cuenta `MEMBER` con `termsAcceptedAt`, inicia sesión y redirige a `/boards`. |
+| `updateProfile` | `actions/account.ts` | La propia persona | Nombre y email; el email exige `currentPassword`. |
+| `changePassword` | `actions/account.ts` | La propia persona | Comprueba la actual y cierra las demás sesiones. |
+| `revokeSession` / `revokeOtherSessions` | `actions/account.ts` | La propia persona | Cierra una sesión propia o todas menos la actual. |
+| `deleteAccount` | `actions/account.ts` | La propia persona | Con contraseña: borra la cuenta, sus tableros (y ficheros) y redirige a `/login?cuenta=borrada`. No con la última cuenta `ADMIN`. |
+| `saveInstanceSettings` | `actions/instance.ts` | `ADMIN` | Nombre, registro abierto o cerrado y datos legales del operador. |
+
+Todas validan con zod (`registerSchema`, `profileSchema`, `changePasswordSchema`,
+`deleteAccountSchema` e `instanceSettingsSchema` en `validators.ts`) y auditan el evento.
+
 ## Véase también
 
 - [docs/authentication.md](../authentication.md) — sesiones, `requireUser`,

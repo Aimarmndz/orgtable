@@ -338,6 +338,30 @@ export async function logout(): Promise<void> {
 }
 ```
 
+## Registro abierto (`actions/register.ts`)
+
+Si la instancia lo permite (`isRegistrationOpen()`: registro abierto **y** responsable y
+contacto rellenados), `/register` crea una cuenta `MEMBER` con la fecha de aceptación de la
+política (`User.termsAcceptedAt`) e inicia sesión. Antes de crearla aplica:
+
+- un campo trampa;
+- 5 altas por hora y por IP, si hay IP fiable;
+- 30 altas por hora en toda la instancia.
+
+Detalle y motivos en [privacy.md](./privacy.md#registro-abierto).
+
+## La cuenta propia (`actions/account.ts`)
+
+Desde `/settings` cada persona:
+
+- cambia su nombre y su email (el email pide la contraseña actual);
+- cambia su contraseña, lo que **cierra sus demás sesiones** y conserva la actual;
+- cierra sesiones concretas o todas menos la actual;
+- descarga sus datos (`GET /api/account/export`) o borra su cuenta.
+
+La lógica vive en `app/lib/services/account.ts`, sin contexto de request. Para el id de
+la sesión actual se usa `verifySession().sessionId`.
+
 ## Almacén de sesiones y revocación inmediata (Hito 4)
 
 > **Actualización (Hito 4).** El MVP usaba JWT *stateless* sin tabla de sesiones, lo

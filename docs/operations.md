@@ -188,6 +188,25 @@ Implementación: [`app/api/boards/[id]/export/route.ts`](../app/api/boards/[id]/
 y la Server Action `importBoard` en
 [`app/lib/actions/boards.ts`](../app/lib/actions/boards.ts).
 
+## Tareas programadas
+
+Dos endpoints los tiene que llamar un cron **externo** (ADR 0015), con el secreto
+`CRON_SECRET` del `.env` como `Bearer`. Sin `CRON_SECRET` responden 503; con un secreto
+incorrecto, 401.
+
+| Endpoint | Frecuencia | Qué hace |
+|---|---|---|
+| `POST /api/cron/reminders` | Cada hora | Avisos de tarjetas que vencen pronto o están vencidas ([reminders.md](./reminders.md)). |
+| `POST /api/cron/maintenance` | Una vez al día | Borra la auditoría más vieja que `ORGTABLE_AUDIT_RETENTION_DAYS` (90 por defecto), las sesiones cerradas o caducadas hace más de 30 días y las notificaciones de más de 180. Son los plazos que promete la política de privacidad ([privacy.md](./privacy.md)). |
+
+```cron
+# crontab del host; carga CRON_SECRET desde el .env de la instalación
+0 * * * *  . /opt/orgtable/.env && curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" http://127.0.0.1:3000/api/cron/reminders
+15 4 * * * . /opt/orgtable/.env && curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" http://127.0.0.1:3000/api/cron/maintenance
+```
+
+Ajusta la ruta del `.env` y el puerto (`APP_PORT`) a tu instalación.
+
 ## Actualizaciones
 
 La imagen de la app se construye localmente, así que actualizar es traer los cambios y

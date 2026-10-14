@@ -172,6 +172,20 @@ El producto mínimo usable: instalar con un comando → configurar → usar como
 > Diferido al **backlog**: ampliar la superficie de la API (checklists, etiquetas, adjuntos,
 > miembros, mover/reordenar), **rate limiting** de la API y una **referencia OpenAPI**.
 
+## Código abierto, registro y RGPD ✅ (completado el 2026-10-14)
+
+- [x] Licencia AGPL-3.0-or-later con atribución (sección 7(b)) y fuentes OFL.
+- [x] Registro abierto opcional por instancia, con consentimiento y antiabuso.
+- [x] Datos legales del operador y páginas `/legal/*` generadas a partir de ellos.
+- [x] Ajustes rediseñados: perfil, contraseña, sesiones, exportar y borrar la cuenta.
+- [x] Limpieza programada (`/api/cron/maintenance`) con los plazos de la política.
+- [x] Menú de cuenta en la barra; README con capturas y GIFs.
+- [ ] Verificación de email y recuperación de contraseña (necesitan SMTP; ver backlog).
+
+Docs: [`privacy.md`](./privacy.md). Decisiones: [`DECISIONES.md`](./DECISIONES.md).
+
+---
+
 ## Hito 14 — PWA y experiencia móvil 🔜 (planificado)
 
 - [ ] **PWA instalable**: `manifest`, iconos, service worker con shell offline básico.
@@ -254,6 +268,10 @@ servicios externos.
 
 - **Email / Web Push** para notificaciones y recordatorios (otro consumidor de `notify()`,
   SMTP opcional por entorno) + **preferencias de notificación por usuario** (diferido del Hito 11).
+  Con SMTP llegan también la **verificación de email** del registro abierto y la
+  **recuperación de contraseña** sin pasar por el admin.
+- **Transferir la propiedad** de un tablero, para que borrar una cuenta no se lleve los
+  tableros compartidos.
 - Portadas/colores por tarjeta; descripción con **Markdown**.
 - Exportar el tablero también a **CSV** (hoy solo JSON).
 - Reacciones/emoji en comentarios (tras el Hito 10).
