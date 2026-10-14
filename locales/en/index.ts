@@ -11,6 +11,7 @@ import search from "./search.json";
 import boards from "./boards.json";
 import errors from "./errors.json";
 import notifications from "./notifications.json";
+import landing from "./landing.json";
 
 const messages = {
   common,
@@ -23,6 +24,7 @@ const messages = {
   boards,
   errors,
   notifications,
+  landing,
 };
 
 const languagePack = { language, messages };

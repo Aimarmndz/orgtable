@@ -218,6 +218,7 @@ describe("instance settings (saveInstanceSettings)", () => {
 });
 
 describe("robots.txt", () => {
+  // Open, the landing at the root ("/$": the root alone, not every path) is public too.
   it("closed, it allows indexing nothing; open, only the public pages", async () => {
     await seedInstance({ registrationOpen: false, ...LEGAL });
     expect((await robots()).rules).toEqual({ userAgent: "*", disallow: "/" });
@@ -225,7 +226,7 @@ describe("robots.txt", () => {
     await prisma.instanceConfig.update({ where: { id: "singleton" }, data: { registrationOpen: true } });
     expect((await robots()).rules).toEqual({
       userAgent: "*",
-      allow: ["/login", "/register", "/legal/"],
+      allow: ["/$", "/login", "/register", "/legal/"],
       disallow: "/",
     });
   });

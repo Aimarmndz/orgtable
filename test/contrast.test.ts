@@ -13,16 +13,22 @@ const css = readFileSync(
 
 type Rgb = [number, number, number]; // linear sRGB, 0..1
 
-/** `--name: oklch(L C H)` tokens of a block (`:root` or `.dark`). */
+/**
+ * `--name: oklch(L C H)` tokens of every block with that selector (`:root` or `.dark`),
+ * in order: the app's tokens and the landing's (a later block of its own).
+ */
 function tokens(selector: string): Record<string, Rgb> {
-  const start = css.indexOf(`${selector} {`);
-  if (start === -1) throw new Error(`Block not found: ${selector}`);
-  const block = css.slice(start, css.indexOf("}", start));
   const out: Record<string, Rgb> = {};
-  for (const m of block.matchAll(
-    /--([\w-]+):\s*oklch\(([\d.]+)\s+([\d.]+)\s+([\d.]+)\)/g,
-  )) {
-    out[m[1]] = oklchToLinearSrgb(Number(m[2]), Number(m[3]), Number(m[4]));
+  let start = css.indexOf(`${selector} {`);
+  if (start === -1) throw new Error(`Block not found: ${selector}`);
+  while (start !== -1) {
+    const block = css.slice(start, css.indexOf("}", start));
+    for (const m of block.matchAll(
+      /--([\w-]+):\s*oklch\(([\d.]+)\s+([\d.]+)\s+([\d.]+)\)/g,
+    )) {
+      out[m[1]] = oklchToLinearSrgb(Number(m[2]), Number(m[3]), Number(m[4]));
+    }
+    start = css.indexOf(`${selector} {`, start + 1);
   }
   return out;
 }
@@ -91,5 +97,23 @@ describe.each([
 
   it("--accent-ink over --accent (primary button)", () => {
     expect(contrast(t["accent-ink"], t.accent)).toBeGreaterThanOrEqual(AA);
+  });
+});
+
+// The landing's terminal (app/components/landing/) is dark in both themes, so its tokens
+// live only in :root. The command is the text people must read and copy: AAA (7:1).
+describe("contrast of the landing's terminal", () => {
+  const t = tokens(":root");
+
+  it("--phosphor (the command) over --terminal reaches 7:1", () => {
+    expect(contrast(t.phosphor, t.terminal)).toBeGreaterThanOrEqual(7);
+  });
+
+  it.each(["phosphor-dim", "phosphor-ok"])("--%s over --terminal", (fg) => {
+    expect(contrast(t[fg], t.terminal)).toBeGreaterThanOrEqual(AA);
+  });
+
+  it("--terminal (copy button text) over --phosphor", () => {
+    expect(contrast(t.terminal, t.phosphor)).toBeGreaterThanOrEqual(AA);
   });
 });

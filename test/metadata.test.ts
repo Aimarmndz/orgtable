@@ -24,6 +24,8 @@ vi.mock("next/font/google", () => ({
   Bricolage_Grotesque: () => ({ variable: "" }),
   Figtree: () => ({ variable: "" }),
   Geist_Mono: () => ({ variable: "" }),
+  Silkscreen: () => ({ variable: "" }),
+  VT323: () => ({ variable: "" }),
 }));
 
 // getI18n() reads the request's cookies and headers, which do not exist outside Next.

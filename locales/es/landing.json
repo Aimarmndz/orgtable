@@ -1,0 +1,118 @@
+{
+  "metaTitle": "Tableros Kanban en tu propio servidor",
+  "skipToContent": "Saltar al contenido",
+  "nav": {
+    "label": "Principal",
+    "features": "Funciones",
+    "paths": "Gratis o en tu servidor",
+    "install": "Instalar",
+    "source": "Código",
+    "signIn": "Iniciar sesión",
+    "useFree": "Úsalo gratis"
+  },
+  "hero": {
+    "badge": "KANBAN LIBRE · AGPL-3.0 · v{version}",
+    "titleLine1": "Tus tableros.",
+    "titleLine2": "Tu servidor.",
+    "intro": "Una alternativa a Trello de código abierto: tableros, listas y tarjetas que arrastras en tiempo real. Úsalo gratis aquí mismo, o instálalo en tu propio servidor con un solo comando.",
+    "ctaFree": "Crear cuenta gratis",
+    "ctaSignIn": "Iniciar sesión",
+    "ctaInstall": "Instalar en mi servidor",
+    "note": "Sin anuncios. Sin rastreo. Sin tarjeta de crédito.",
+    "closedNote": "El registro gratuito en esta instancia está en pausa ahora mismo. Puedes instalar la tuya igualmente."
+  },
+  "board": {
+    "label": "Tablero de ejemplo",
+    "windowTitle": "Lanzamiento.board",
+    "todo": "POR HACER",
+    "doing": "EN CURSO",
+    "done": "HECHO",
+    "card1": "Escribir el anuncio",
+    "card2": "Fotos del equipo",
+    "card3": "Revisar los precios",
+    "card4": "Página de inicio",
+    "card5": "Newsletter de octubre",
+    "card6": "Elegir dominio"
+  },
+  "ticker": "TUS DATOS ★ TU SERVIDOR ★ SIN ANUNCIOS ★ SIN RASTREO ★ CÓDIGO ABIERTO ★ EN TIEMPO REAL ★ ESPAÑOL E INGLÉS",
+  "features": {
+    "kicker": "01 / LO QUE TRAE",
+    "title": "Todo lo de un Kanban de verdad. Nada de lo que sobra.",
+    "intro": "Hecho para equipos pequeños y para quien prefiere tener sus herramientas en casa.",
+    "boards": {
+      "file": "TABLEROS.EXE",
+      "title": "Arrastra y suelta",
+      "text": "Tableros, listas y tarjetas con etiquetas, fechas, checklists, adjuntos y comentarios. Con el ratón o con el teclado."
+    },
+    "realtime": {
+      "file": "LIVE.SYS",
+      "title": "En tiempo real",
+      "text": "Lo que mueve una persona, el resto lo ve al instante. Sin recargar."
+    },
+    "teams": {
+      "file": "EQUIPO.DAT",
+      "title": "Para equipos",
+      "text": "Roles por tablero (propietario, editor y lector), asignaciones, notificaciones y avisos de vencimiento."
+    },
+    "calendar": {
+      "file": "CALENDAR.APP",
+      "title": "Búsqueda y calendario",
+      "text": "Filtra por etiqueta o persona, busca en todo y mueve fechas arrastrando tarjetas en un calendario."
+    },
+    "api": {
+      "file": "API.TXT",
+      "title": "API REST",
+      "text": "Tokens personales de solo lectura o de escritura, con caducidad opcional, para tus scripts e integraciones."
+    },
+    "privacy": {
+      "file": "PRIVACY.CFG",
+      "title": "Tus datos, tuyos",
+      "text": "Descárgalos o borra tu cuenta desde los ajustes. RGPD de serie, tema claro y oscuro."
+    }
+  },
+  "paths": {
+    "kicker": "02 / ELIGE TU CAMINO",
+    "title": "Gratis en la nube, o en tu propia máquina.",
+    "online": {
+      "tag": "CAMINO A · ONLINE",
+      "title": "Úsalo gratis aquí",
+      "text": "Crea una cuenta en esta instancia y empieza en un minuto. Gratis, sin anuncios y sin tarjeta. Cuando quieras irte, te llevas tus tableros en un archivo.",
+      "point1": "Sin instalar nada",
+      "point2": "Exporta tus datos cuando quieras",
+      "point3": "Las mismas funciones que una copia instalada",
+      "cta": "Crear cuenta gratis",
+      "closed": "El registro en esta instancia está en pausa ahora mismo."
+    },
+    "selfHost": {
+      "tag": "CAMINO B · TU SERVIDOR",
+      "title": "Instálalo tú",
+      "text": "Un comando en cualquier Linux con Docker. Tus datos no salen de tu servidor, y un asistente crea tu cuenta de administrador.",
+      "point1": "Código abierto (AGPL-3.0)",
+      "point2": "Copias de seguridad y actualizaciones con un script",
+      "point3": "Sin límites de usuarios ni de tableros",
+      "cta": "Ver cómo se instala"
+    }
+  },
+  "install": {
+    "kicker": "03 / INSTALAR",
+    "title": "Un comando. Tres pasos.",
+    "step1Title": "Pega el comando",
+    "step1Text": "Instala Docker si falta, descarga orgtable y genera secretos aleatorios.",
+    "step2Title": "Abre el asistente",
+    "step2Text": "Crea tu cuenta de administrador y ponle nombre a tu instancia.",
+    "step3Title": "Ponle tu dominio",
+    "step3Text": "Un proxy con HTTPS delante y listo. La guía explica Caddy y nginx paso a paso.",
+    "requirements": "Necesitas Linux, Docker Compose v2 y alrededor de 1 GB de RAM.",
+    "terminalTitle": "TERMINAL",
+    "commandLabel": "Comando de instalación",
+    "copy": "COPIAR",
+    "copied": "¡COPIADO!",
+    "copyFailed": "Selecciona el comando y cópialo a mano.",
+    "log1": "[orgtable] Cloning orgtable into ~/orgtable...",
+    "log2": "[orgtable] Generating .env with random secrets...",
+    "log3": "[orgtable] Building the image...",
+    "log4": "[orgtable] Done! Open http://tu-servidor:3000",
+    "readFirst": "¿Prefieres leerlo antes de ejecutarlo? Bien hecho: <link>install.sh</link> es corto.",
+    "guide": "Guía completa: <link>instalarlo en tu servidor</link>."
+  }
+}

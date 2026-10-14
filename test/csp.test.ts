@@ -67,7 +67,7 @@ describe("proxy (per-request CSP)", () => {
     expect(csp).toContain("frame-ancestors 'none'");
   });
 
-  it("/ with a session gets the CSP; without a session it redirects to /login", () => {
+  it("/ gets the CSP with or without a session (the page decides: landing or /login)", () => {
     const withSession = proxy(
       new NextRequest("http://localhost:3000/", { headers: { cookie: "session=x" } }),
     );
@@ -76,7 +76,15 @@ describe("proxy (per-request CSP)", () => {
     );
 
     const anonymous = proxy(new NextRequest("http://localhost:3000/"));
-    expect(anonymous.status).toBe(307);
-    expect(anonymous.headers.get("location")).toBe("http://localhost:3000/login");
+    expect(anonymous.status).toBe(200);
+    expect(anonymous.headers.get("Content-Security-Policy")).toContain("frame-ancestors 'none'");
+  });
+
+  it("only the root is public: private routes still redirect without a session", () => {
+    for (const path of ["/boards", "/board/abc", "/settings", "/admin/users", "/search"]) {
+      const res = proxy(new NextRequest(`http://localhost:3000${path}`));
+      expect(res.status, path).toBe(307);
+      expect(res.headers.get("location"), path).toBe("http://localhost:3000/login");
+    }
   });
 });

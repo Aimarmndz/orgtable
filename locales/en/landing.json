@@ -1,0 +1,118 @@
+{
+  "metaTitle": "Kanban boards on your own server",
+  "skipToContent": "Skip to content",
+  "nav": {
+    "label": "Main",
+    "features": "Features",
+    "paths": "Free or self-hosted",
+    "install": "Install",
+    "source": "Code",
+    "signIn": "Sign in",
+    "useFree": "Use it free"
+  },
+  "hero": {
+    "badge": "OPEN-SOURCE KANBAN · AGPL-3.0 · v{version}",
+    "titleLine1": "Your boards.",
+    "titleLine2": "Your server.",
+    "intro": "An open-source Trello alternative: boards, lists and cards you drag around in real time. Use it for free right here, or install it on your own server with a single command.",
+    "ctaFree": "Create a free account",
+    "ctaSignIn": "Sign in",
+    "ctaInstall": "Install on my server",
+    "note": "No ads. No tracking. No credit card.",
+    "closedNote": "Free sign-up on this instance is paused right now. You can still install your own."
+  },
+  "board": {
+    "label": "Example board",
+    "windowTitle": "Launch.board",
+    "todo": "TO DO",
+    "doing": "DOING",
+    "done": "DONE",
+    "card1": "Write the announcement",
+    "card2": "Team photos",
+    "card3": "Review the prices",
+    "card4": "Home page",
+    "card5": "October newsletter",
+    "card6": "Pick a domain"
+  },
+  "ticker": "YOUR DATA ★ YOUR SERVER ★ NO ADS ★ NO TRACKING ★ OPEN SOURCE ★ REAL TIME ★ ENGLISH AND SPANISH",
+  "features": {
+    "kicker": "01 / WHAT'S INSIDE",
+    "title": "Everything a real Kanban needs. Nothing it doesn't.",
+    "intro": "Made for small teams and for anyone who would rather keep their tools at home.",
+    "boards": {
+      "file": "BOARDS.EXE",
+      "title": "Drag and drop",
+      "text": "Boards, lists and cards with labels, due dates, checklists, attachments and comments. By mouse or by keyboard."
+    },
+    "realtime": {
+      "file": "LIVE.SYS",
+      "title": "Real time",
+      "text": "What one person moves, everyone else sees instantly. No reloading."
+    },
+    "teams": {
+      "file": "TEAM.DAT",
+      "title": "Built for teams",
+      "text": "Per-board roles (owner, editor and viewer), assignees, notifications and due-date reminders."
+    },
+    "calendar": {
+      "file": "CALENDAR.APP",
+      "title": "Search and calendar",
+      "text": "Filter by label or person, search everything and move due dates by dragging cards on a calendar."
+    },
+    "api": {
+      "file": "API.TXT",
+      "title": "REST API",
+      "text": "Personal tokens, read-only or read-write with optional expiry, for your scripts and integrations."
+    },
+    "privacy": {
+      "file": "PRIVACY.CFG",
+      "title": "Your data stays yours",
+      "text": "Download it or delete your account from the settings. GDPR built in, light and dark themes."
+    }
+  },
+  "paths": {
+    "kicker": "02 / PICK YOUR PATH",
+    "title": "Free in the cloud, or on your own machine.",
+    "online": {
+      "tag": "PATH A · ONLINE",
+      "title": "Use it free here",
+      "text": "Create an account on this instance and start in a minute. Free, with no ads and no card. When you want to leave, take your boards with you in a file.",
+      "point1": "Nothing to install",
+      "point2": "Export your data whenever you like",
+      "point3": "The same features as an installed copy",
+      "cta": "Create a free account",
+      "closed": "Sign-up is paused on this instance right now."
+    },
+    "selfHost": {
+      "tag": "PATH B · YOUR SERVER",
+      "title": "Host it yourself",
+      "text": "One command on any Linux machine with Docker. Your data never leaves your server, and a wizard creates your admin account.",
+      "point1": "Open source (AGPL-3.0)",
+      "point2": "Backups and updates with one script",
+      "point3": "No limits on users or boards",
+      "cta": "See how to install it"
+    }
+  },
+  "install": {
+    "kicker": "03 / INSTALL",
+    "title": "One command. Three steps.",
+    "step1Title": "Paste the command",
+    "step1Text": "It installs Docker if it is missing, downloads orgtable and generates random secrets.",
+    "step2Title": "Open the wizard",
+    "step2Text": "Create your admin account and name your instance.",
+    "step3Title": "Give it your domain",
+    "step3Text": "Put a reverse proxy with HTTPS in front and you are done. The guide covers Caddy and nginx step by step.",
+    "requirements": "You need Linux, Docker Compose v2 and about 1 GB of RAM.",
+    "terminalTitle": "TERMINAL",
+    "commandLabel": "Install command",
+    "copy": "COPY",
+    "copied": "COPIED!",
+    "copyFailed": "Select the command and copy it by hand.",
+    "log1": "[orgtable] Cloning orgtable into ~/orgtable...",
+    "log2": "[orgtable] Generating .env with random secrets...",
+    "log3": "[orgtable] Building the image...",
+    "log4": "[orgtable] Done! Open http://your-server:3000",
+    "readFirst": "Rather read it before running it? Good call: <link>install.sh</link> is short.",
+    "guide": "Full guide: <link>self-hosting</link>."
+  }
+}

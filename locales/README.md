@@ -18,7 +18,8 @@ locales/
 │   ├── search.json   # search page
 │   ├── legal.json    # privacy policy, terms, cookies, legal notice, footer
 │   ├── errors.json   # validation and error messages
-│   └── notifications.json # in-app notification texts
+│   ├── notifications.json # in-app notification texts
+│   └── landing.json  # the public landing page at /
 └── es/               # Spanish
 ```
 

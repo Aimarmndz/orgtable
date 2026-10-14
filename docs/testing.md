@@ -118,12 +118,14 @@ How they work:
    shellcheck scripts/*.sh install.sh docker-entrypoint.sh
    ```
 2. **Compose variables**: checks that `docker compose config` passes `CRON_SECRET`,
-   `TRUSTED_PROXY_HOPS`, `ORGTABLE_TIMEZONE`, `ORGTABLE_AUDIT_RETENTION_DAYS` and
-   `ORGTABLE_SOURCE_URL` to the `app` container. If one drops out of `environment:`, the
+   `TRUSTED_PROXY_HOPS`, `ORGTABLE_TIMEZONE`, `ORGTABLE_AUDIT_RETENTION_DAYS`,
+   `ORGTABLE_SOURCE_URL`, `ORGTABLE_LANDING` and `ORGTABLE_INSTALL_URL` to the `app`
+   container. If one drops out of `environment:`, the
    feature that depends on it stops working under Docker without any error. Locally:
    ```bash
    CRON_SECRET=probe TRUSTED_PROXY_HOPS=7 ORGTABLE_TIMEZONE=Europe/Madrid \
      ORGTABLE_AUDIT_RETENTION_DAYS=45 ORGTABLE_SOURCE_URL=https://example.org/fork \
+     ORGTABLE_LANDING=on ORGTABLE_INSTALL_URL=https://example.org/fork/install.sh \
      docker compose config | grep -E 'CRON_SECRET|TRUSTED_PROXY_HOPS|ORGTABLE_'
    ```
 3. **License**: checks that `package.json` declares `AGPL-3.0-or-later`, that `LICENSE` is

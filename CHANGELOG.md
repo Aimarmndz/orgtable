@@ -5,6 +5,21 @@ project uses [Semantic Versioning](https://semver.org/). While it is `0.x`, a mi
 version may include breaking changes; they are flagged under "Changed". The reasoning
 behind each decision is in [`docs/DECISIONES.md`](./docs/DECISIONES.md).
 
+## [Unreleased]
+
+### Added
+
+- **Public landing page** at `/` for visitors without a session, in a retro look: what
+  orgtable is, a free account on the instance (while sign-up is open) and the one-line
+  installer for your own server. `ORGTABLE_LANDING` (`auto` by default: only while
+  sign-up is open; `on`; `off`) and `ORGTABLE_INSTALL_URL` configure it. See
+  `docs/landing.md`.
+- CI builds the production Docker image.
+
+### Fixed
+
+- The Docker image builds from a clean clone again (`public/` is tracked).
+
 ## [0.2.0] — 2026-10-14
 
 ### Added

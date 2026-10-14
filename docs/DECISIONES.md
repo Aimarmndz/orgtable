@@ -7,6 +7,41 @@ living log from 2026-09-24 onwards.
 
 ---
 
+## 2026-10-14 — A public landing page at `/`, retro, off for private instances
+
+**Context.** orgtable could not be presented to anyone: `/` sent every visitor to the
+sign-in screen. The official instance wants to explain what the project is, offer a free
+account and show how to install your own copy.
+
+**Decision.**
+- `/` shows a landing page to visitors without a session. Whether it shows is
+  `ORGTABLE_LANDING`: `auto` (default) only while sign-up is open, `on`, `off`. A
+  self-hosted private instance (sign-up closed, the default) behaves exactly as before.
+- The "free account" offer is tied to the same switch as `/register`: with sign-up
+  closed the page never promises it, even with `on`.
+- The install command comes from `ORGTABLE_INSTALL_URL` (default: the original
+  `install.sh`). Only `https`, and only characters a shell does not interpret, because
+  visitors paste it into bash.
+- `proxy.ts` makes exactly `/` public (not a prefix), and `robots.txt` allows `/$` when
+  sign-up is open.
+- Retro look over the existing palette (DESIGN.md, "Landing"), with two more OFL fonts
+  (Silkscreen, VT323) loaded only by the landing. The design was laid out first in a
+  Claude Design canvas.
+
+**Alternatives considered.**
+- An instance setting in *Admin › Instance* instead of an environment variable: needs a
+  migration and a form for something an operator sets once; it can come later.
+- Always showing the landing: a private instance would advertise a free sign-up it does
+  not offer.
+- A separate static site: two deployments, and the "free account" button could not know
+  whether sign-up is open.
+
+**Consequences.** Two new optional variables (compose, `.env.example`, CI check). The
+copy button is the only client code of the page. The install command works only while
+the repository is public.
+
+---
+
 ## 2026-10-14 — English routes, anchors and parameters; repository fully in English
 
 **Context.** Translating the interface left some Spanish behind in places users see:

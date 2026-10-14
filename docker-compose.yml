@@ -52,6 +52,11 @@ services:
       # The app's "Source code" link (AGPL section 13). Empty = the original repository;
       # if you deploy a modified version, put your fork here.
       ORGTABLE_SOURCE_URL: ${ORGTABLE_SOURCE_URL:-}
+      # Public landing at / (auto = only while sign-up is open; on; off) and the install
+      # script it tells visitors to run. Empty = auto and the original installer. See
+      # docs/landing.md.
+      ORGTABLE_LANDING: ${ORGTABLE_LANDING:-}
+      ORGTABLE_INSTALL_URL: ${ORGTABLE_INSTALL_URL:-}
     volumes:
       - uploads:/data/uploads
     ports:

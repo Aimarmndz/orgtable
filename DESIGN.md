@@ -126,3 +126,33 @@ orchestrated loading sequences.
 Subtle global paper grain: a fixed `body::before` layer, `pointer-events: none`,
 `multiply` (light) / `screen` (dark) blending at low opacity. Only on a fixed
 pseudo-element — never on scrolling containers, so the GPU does not repaint on scroll.
+
+## Landing (retro)
+
+The public page at `/` (`app/components/landing/`, see `docs/landing.md`) has its own
+look on purpose: it sells the product, the app stays out of the way. It is **retro**:
+the same warm palette (sand, paper, espresso, terracotta) drawn like an old desktop.
+
+- **Windows**: `.retro-window`, a 2px outline in `--retro-edge`, 4px radius and a hard
+  6px offset shadow in `--retro-shadow` (no blur). Title bar `.retro-titlebar`: pinstripes,
+  a square close box and the title on a plain plate in pixel type. Used for the example
+  board, each feature (named like old files: `BOARDS.EXE`, `LIVE.SYS`…) and the terminal.
+- **Buttons**: `.retro-btn`, chunky with a 4px hard shadow that shrinks as the button is
+  pressed (`:active` moves it 3px into its shadow). 48px tall, focus ring in the accent.
+- **Terminal**: dark in both themes, like a real one: `--terminal` with amber
+  `--phosphor` text and a soft glow (`.crt-text`), a blinking caret (`.crt-caret`). Amber
+  on espresso stays well above 7:1.
+- **Type**: Bricolage Grotesque for headlines (as in the app), Figtree for body, and two
+  more OFL faces loaded only by the landing (`app/components/landing/fonts.ts`):
+  **Silkscreen** (`font-pixel`) for micro-labels, window titles and kickers, and
+  **VT323** (`font-terminal`) for the terminal.
+- **Texture**: a dot grid (`.landing-dots`) instead of the paper grain, and a terracotta
+  ticker that scrolls (still with reduced motion; screen readers get it once as text).
+- **Dark theme**: the same tokens; outlines lighten (`--retro-edge`) and the hard shadows
+  go almost black so they read as depth, not as glow.
+- The example board uses the real board and label colours (`app/lib/colors.ts`); icons
+  are inline SVG in the palette, never emoji.
+
+These classes live in the "Landing" section of `app/globals.css` and are used nowhere
+else.
+

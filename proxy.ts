@@ -14,14 +14,15 @@ import { buildContentSecurityPolicy, generateNonce } from "@/app/lib/csp";
 
 // /register checks by itself whether sign-up is open; /legal is readable without a
 // session (the privacy policy must be readable BEFORE creating an account). Search
-// engines read /robots.txt without a cookie.
+// engines read /robots.txt without a cookie. `/` (exactly, not its subpaths) decides by
+// itself too: the public landing or a redirect to /login (app/page.tsx).
 const PUBLIC_PATHS = ["/login", "/setup", "/register", "/legal", "/robots.txt"];
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const isPublic = PUBLIC_PATHS.some(
-    (p) => pathname === p || pathname.startsWith(`${p}/`),
-  );
+  const isPublic =
+    pathname === "/" ||
+    PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
   const hasSession = request.cookies.has("session");
 
   if (!isPublic && !hasSession) {
