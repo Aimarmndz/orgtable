@@ -65,7 +65,8 @@ export function renderRetroEmail(e: RetroEmail): RenderedEmail {
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Figtree:wght@400;700&family=Silkscreen&family=VT323&display=swap" rel="stylesheet">
 </head>
 <body style="margin:0;padding:0;background:${C.page}">
-<div style="display:none;max-height:0;overflow:hidden;opacity:0">${escapeHtml(e.preheader)}</div>
+<!-- Inbox preview text; the invisible padding keeps clients from appending the body. -->
+<div style="display:none;max-height:0;overflow:hidden;opacity:0">${escapeHtml(e.preheader)}${"&#847;&zwnj;&nbsp;".repeat(60)}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${C.page}">
 <tr><td align="center" style="padding:32px 16px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:576px">

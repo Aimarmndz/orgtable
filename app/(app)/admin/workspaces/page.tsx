@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { requireAdmin } from "@/app/lib/dal";
-import { AdminNav } from "../admin-nav";
 import { getInstanceStats, getWorkspacesForAdmin } from "@/app/lib/queries";
 import {
   deleteWorkspaceAsAdmin,
@@ -59,7 +58,6 @@ export default async function AdminWorkspacesPage({
         <h1 className="font-display text-3xl font-bold tracking-tight">
           {t.title}
         </h1>
-        <AdminNav current="/admin/workspaces" />
       </div>
       <p className="mt-1.5 max-w-2xl text-sm text-ink-muted">{t.intro}</p>
 
@@ -97,13 +95,16 @@ export default async function AdminWorkspacesPage({
       </dl>
 
       <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
-        <nav className="flex gap-1 text-sm" aria-label={t.columns.workspace}>
+        <nav
+          aria-label={t.columns.workspace}
+          className="flex gap-1 rounded-xl bg-surface-2 p-1 text-sm"
+        >
           {(["ORGANIZATION", "PERSONAL"] as const).map((k) =>
             k === kind ? (
               <span
                 key={k}
                 aria-current="page"
-                className="rounded-lg bg-surface-2 px-2.5 py-1 font-medium"
+                className="rounded-lg bg-surface px-3 py-1.5 font-semibold shadow-sm"
               >
                 {t.tabs[k]}
               </span>
@@ -111,7 +112,7 @@ export default async function AdminWorkspacesPage({
               <Link
                 key={k}
                 href={`/admin/workspaces?kind=${k}`}
-                className="rounded-lg px-2.5 py-1 text-ink-muted hover:bg-surface-2 hover:text-ink"
+                className="rounded-lg px-3 py-1.5 font-medium text-ink-muted hover:text-ink"
               >
                 {t.tabs[k]}
               </Link>
@@ -127,7 +128,7 @@ export default async function AdminWorkspacesPage({
             placeholder={t.search}
             className="w-64"
           />
-          <Button type="submit" variant="subtle">
+          <Button type="submit" variant="outline">
             {t.searchSubmit}
           </Button>
         </form>
@@ -136,141 +137,87 @@ export default async function AdminWorkspacesPage({
       {workspaces.length === 0 ? (
         <p className="mt-6 text-sm text-ink-muted">{t.empty}</p>
       ) : (
-        <div className="mt-4 overflow-x-auto rounded-xl border border-border bg-surface">
-          <table className="w-full min-w-[56rem] text-left text-sm">
+        <div className="mt-4 overflow-x-auto rounded-2xl border border-border bg-surface">
+          <table className="w-full min-w-[60rem] text-left text-sm">
             <thead className="bg-surface-2 text-xs uppercase tracking-wide text-ink-muted">
               <tr>
-                <th className="px-4 py-2.5 font-semibold">
-                  {t.columns.workspace}
-                </th>
-                <th className="px-4 py-2.5 font-semibold">
-                  {t.columns.owners}
-                </th>
-                <th className="px-4 py-2.5 text-right font-semibold">
-                  {t.columns.members}
-                </th>
-                <th className="px-4 py-2.5 text-right font-semibold">
-                  {t.columns.boards}
-                </th>
-                <th className="px-4 py-2.5 font-semibold">
-                  {t.columns.created}
-                </th>
-                <th className="px-4 py-2.5 font-semibold">
-                  {t.columns.status}
-                </th>
+                <th className="px-4 py-2.5 font-semibold">{t.columns.workspace}</th>
+                <th className="px-4 py-2.5 font-semibold">{t.columns.owners}</th>
+                <th className="px-4 py-2.5 text-right font-semibold">{t.columns.members}</th>
+                <th className="px-4 py-2.5 text-right font-semibold">{t.columns.boards}</th>
+                <th className="px-4 py-2.5 font-semibold">{t.columns.created}</th>
+                <th className="px-4 py-2.5 font-semibold">{t.columns.status}</th>
+                <th className="px-4 py-2.5 text-right font-semibold">{t.columns.actions}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {workspaces.map((w) => (
-                <tr key={w.id} className="align-top">
-                  <td className="px-4 py-3">
-                    <p className="font-medium">{w.name}</p>
-                    <p className="font-mono text-xs text-ink-muted">
-                      /{w.slug}
-                    </p>
+                <tr key={w.id} className={`align-middle ${w.suspendedAt ? "bg-danger/[0.04]" : ""}`}>
+                  <td className="px-4 py-3.5">
+                    <p className="font-semibold">{w.name}</p>
+                    <p className="font-mono text-xs text-ink-muted">/{w.slug}</p>
                   </td>
-                  <td className="px-4 py-3 text-xs">
+                  <td className="px-4 py-3.5 text-xs">
                     {w.members.map((o) => (
                       <p key={o.user.email}>
-                        {o.user.name}{" "}
-                        <span className="text-ink-muted">· {o.user.email}</span>
+                        {o.user.name} <span className="text-ink-muted">· {o.user.email}</span>
                       </p>
                     ))}
                   </td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums">
-                    {w._count.members}
+                  <td className="px-4 py-3.5 text-right font-mono tabular-nums">{w._count.members}</td>
+                  <td className="px-4 py-3.5 text-right font-mono tabular-nums">{w._count.boards}</td>
+                  <td className="px-4 py-3.5 text-xs text-ink-muted">{formatDate(w.createdAt, intl)}</td>
+                  <td className="px-4 py-3.5">
+                    <span
+                      className={`inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-xs font-semibold ${
+                        w.suspendedAt ? "bg-danger/12 text-danger" : "bg-success/12 text-success"
+                      }`}
+                    >
+                      <span aria-hidden className="size-1.5 rounded-full bg-current" />
+                      {w.suspendedAt ? t.suspendedLabel : t.active}
+                    </span>
+                    {w.suspendedReason && (
+                      <p className="mt-1 max-w-56 text-xs text-ink-muted">{w.suspendedReason}</p>
+                    )}
                   </td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums">
-                    {w._count.boards}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-ink-muted">
-                    {formatDate(w.createdAt, intl)}
-                  </td>
-                  <td className="px-4 py-3">
-                    {w.suspendedAt ? (
-                      <>
-                        <span className="rounded-full bg-danger/10 px-2 py-0.5 text-xs font-semibold text-danger">
-                          {t.suspendedLabel}
-                        </span>
-                        {w.suspendedReason && (
-                          <p className="mt-1 max-w-56 text-xs text-ink-muted">
-                            {w.suspendedReason}
-                          </p>
-                        )}
-                        <form action={unsuspendWorkspace} className="mt-2">
-                          <input
-                            type="hidden"
-                            name="workspaceId"
-                            value={w.id}
-                          />
-                          <Button
-                            type="submit"
-                            variant="subtle"
-                            className="h-8 px-2.5 text-xs"
-                          >
+                  <td className="px-4 py-3.5">
+                    <div className="flex flex-wrap items-start justify-end gap-2">
+                      {w.suspendedAt ? (
+                        <form action={unsuspendWorkspace}>
+                          <input type="hidden" name="workspaceId" value={w.id} />
+                          <Button type="submit" variant="outline" className="h-9 px-3">
                             {t.unsuspend}
                           </Button>
                         </form>
-                      </>
-                    ) : (
-                      <details>
-                        <summary className="cursor-pointer text-xs font-semibold text-success">
-                          {t.active}
-                        </summary>
-                        <form
-                          action={suspendWorkspace}
-                          className="mt-2 flex flex-col gap-1.5"
-                        >
-                          <input
-                            type="hidden"
-                            name="workspaceId"
-                            value={w.id}
-                          />
-                          <label className="text-xs text-ink-muted">
-                            {t.reasonLabel}
-                            <Input
-                              name="reason"
-                              maxLength={300}
-                              className="mt-1"
-                            />
-                          </label>
-                          <Button
-                            type="submit"
-                            variant="danger"
-                            className="h-8 self-start px-2.5 text-xs"
-                          >
-                            {t.suspend}
-                          </Button>
-                        </form>
-                        {w.kind === "ORGANIZATION" && (
-                          <form
-                            action={deleteWorkspaceAsAdmin}
-                            className="mt-3 flex flex-col gap-1.5"
-                          >
-                            <input
-                              type="hidden"
-                              name="workspaceId"
-                              value={w.id}
-                            />
-                            <label className="text-xs text-ink-muted">
-                              {fmt(t.deleteConfirm, { slug: w.slug })}
-                              <Input
-                                name="confirm"
-                                autoComplete="off"
-                                className="mt-1 font-mono"
-                              />
+                      ) : (
+                        <ActionPopover label={t.suspend} tone="outline">
+                          <form action={suspendWorkspace} className="flex flex-col gap-2">
+                            <input type="hidden" name="workspaceId" value={w.id} />
+                            <label className="text-xs font-semibold text-ink-muted">
+                              {t.reasonLabel}
+                              <Input name="reason" maxLength={300} className="mt-1" />
                             </label>
-                            <Button
-                              type="submit"
-                              variant="danger"
-                              className="h-8 self-start px-2.5 text-xs"
-                            >
+                            <Button type="submit" variant="dangerSolid" className="h-9">
+                              {t.suspend}
+                            </Button>
+                          </form>
+                        </ActionPopover>
+                      )}
+                      {w.kind === "ORGANIZATION" && (
+                        <ActionPopover label={`${t.delete}…`} tone="danger">
+                          <form action={deleteWorkspaceAsAdmin} className="flex flex-col gap-2">
+                            <input type="hidden" name="workspaceId" value={w.id} />
+                            <label className="text-xs font-semibold text-ink-muted">
+                              {fmt(t.deleteConfirm, { slug: w.slug })}
+                              <Input name="confirm" autoComplete="off" className="mt-1 font-mono" />
+                            </label>
+                            <Button type="submit" variant="dangerSolid" className="h-9">
                               {t.delete}
                             </Button>
                           </form>
-                        )}
-                      </details>
-                    )}
+                        </ActionPopover>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -279,5 +226,33 @@ export default async function AdminWorkspacesPage({
         </div>
       )}
     </div>
+  );
+}
+
+/** A button that opens a small panel with the confirmation form (no JavaScript needed). */
+function ActionPopover({
+  label,
+  tone,
+  children,
+}: {
+  label: string;
+  tone: "outline" | "danger";
+  children: React.ReactNode;
+}) {
+  return (
+    <details className="relative">
+      <summary
+        className={`inline-flex h-9 cursor-pointer list-none items-center rounded-lg border px-3 text-sm font-semibold shadow-sm transition [&::-webkit-details-marker]:hidden ${
+          tone === "danger"
+            ? "border-danger/40 bg-surface text-danger hover:bg-danger/5"
+            : "border-ink/20 bg-surface text-ink hover:bg-surface-2"
+        }`}
+      >
+        {label}
+      </summary>
+      <div className="absolute right-0 z-20 mt-2 w-72 rounded-xl border border-border bg-surface p-4 text-left shadow-[0_16px_40px_-16px_oklch(0.27_0.022_52/0.45)]">
+        {children}
+      </div>
+    </details>
   );
 }

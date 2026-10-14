@@ -200,7 +200,7 @@ export function PasswordForm() {
       </div>
       <FormFeedback state={state} pending={pending} id={feedbackId} />
       <div className="flex justify-end">
-        <Button type="submit" variant="subtle" disabled={pending}>
+        <Button type="submit" variant="outline" disabled={pending}>
           {pending ? t.submitting : t.submit}
         </Button>
       </div>

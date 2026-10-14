@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { requireAdmin } from "@/app/lib/dal";
 import { getLegalInfo } from "@/app/lib/services/instance";
-import { AdminNav } from "../admin-nav";
 import { InstanceSettingsForm } from "./instance-settings-form";
 import { getI18n } from "@/app/i18n/server";
 
@@ -22,7 +21,6 @@ export default async function AdminInstancePage() {
       <div className="mx-auto w-full max-w-3xl p-6 sm:p-8">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <h1 className="font-display text-3xl font-bold tracking-tight">{t.title}</h1>
-          <AdminNav current="/admin/instance" />
         </div>
         <p className="mt-1 text-sm text-ink-muted">
           {t.intro}

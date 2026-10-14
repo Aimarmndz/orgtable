@@ -67,7 +67,22 @@
     "invited": "Cuenta creada. Hemos enviado a {email} un enlace para elegir su contraseña (vale 7 días).",
     "inviteFailed": "La cuenta se ha creado, pero no se ha podido enviar el correo de invitación. Ponle una contraseña inicial abajo y dásela.",
     "createTextInvite": "Le enviamos a la persona un enlace para que elija su propia contraseña: nadie más la conoce. La cuenta es de la persona; esta organización puede restablecer su contraseña o expulsarla.",
-    "createInvite": "Crear y enviar invitación"
+    "createInvite": "Crear y enviar invitación",
+    "subtitle": "Las personas de {name} y lo que puede hacer cada una.",
+    "createButton": "Crear cuenta de empleado",
+    "summary": {
+      "OWNER": "Propietarios",
+      "ADMIN": "Administradores",
+      "MEMBER": "Miembros"
+    },
+    "columns": {
+      "person": "Persona",
+      "role": "Rol",
+      "actions": "Acciones"
+    },
+    "createdHere": "creada aquí",
+    "joined": "se registró por su cuenta",
+    "newPassword": "Nueva contraseña"
   },
   "settings": {
     "metaTitle": "Ajustes de {name}",
@@ -87,5 +102,28 @@
     "WORKSPACE": "Toda la organización",
     "PRIVATE": "Solo sus miembros y la administración de la organización",
     "save": "Guardar"
+  },
+  "nav": {
+    "label": "Ajustes de la organización",
+    "organization": "Organización",
+    "boards": "Tableros",
+    "members": "Miembros",
+    "general": "General",
+    "account": "Tu cuenta",
+    "profile": "Perfil y seguridad",
+    "personalBoards": "Tableros personales"
+  },
+  "general": {
+    "title": "General",
+    "subtitle": "El nombre y la dirección de la organización. Solo los propietarios pueden cambiarlos.",
+    "identity": "Identidad",
+    "addressHint": "Si cambias la dirección, los enlaces antiguos a sus tableros dejan de funcionar (los enlaces con el id del tablero siguen funcionando).",
+    "leaveTitle": "Salir de la organización",
+    "leaveButton": "Salir de {name}",
+    "dangerTitle": "Zona de peligro",
+    "deleteBoards": {
+      "one": "Se borra su {count} tablero con sus listas, tarjetas y adjuntos. Las cuentas de los empleados se quedan, sin la organización. No se puede deshacer.",
+      "other": "Se borran sus {count} tableros con sus listas, tarjetas y adjuntos. Las cuentas de los empleados se quedan, sin la organización. No se puede deshacer."
+    }
   }
 }

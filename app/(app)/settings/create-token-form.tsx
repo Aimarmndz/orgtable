@@ -77,7 +77,7 @@ export function CreateTokenForm() {
             </code>
             <Button
               type="button"
-              variant="subtle"
+              variant="outline"
               onClick={copyToken}
               className="shrink-0"
             >

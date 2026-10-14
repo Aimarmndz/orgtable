@@ -12,7 +12,7 @@ import {
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { useI18n } from "@/app/i18n/client";
-import { fmt } from "@/app/i18n/format";
+import { fmt, plural } from "@/app/i18n/format";
 import type { WorkspaceRole } from "@/app/lib/roles";
 
 // Forms of organizations and their members. Each one shows the action's answer inline
@@ -123,9 +123,12 @@ export function CreateOrganizationForm() {
 export function CreateEmployeeForm({
   workspaceId,
   roles,
+  invite,
 }: {
   workspaceId: string;
   roles: WorkspaceRole[];
+  // Email is on: the person chooses their own password from an invitation (docs/email.md).
+  invite: boolean;
 }) {
   const ref = useRef<HTMLFormElement>(null);
   const [state, action, pending] = useActionState<WorkspaceFormState, FormData>(
@@ -141,41 +144,44 @@ export function CreateEmployeeForm({
     <form
       ref={ref}
       action={action}
-      className="rounded-xl border border-border bg-surface p-5"
+      className="rounded-2xl border border-ink/15 bg-surface p-6 shadow-[0_12px_32px_-18px_oklch(0.27_0.022_52/0.35)]"
     >
-      <h2 className="text-sm font-semibold">{t.createTitle}</h2>
-      <p className="mt-1 text-sm text-ink-muted">{t.createText}</p>
+      <div className="flex items-start gap-3.5">
+        <span
+          aria-hidden
+          className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent/12 text-accent"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="size-5">
+            <circle cx="10" cy="8" r="4" />
+            <path d="M3 21c.7-4 3.5-6 7-6 1.3 0 2.5.3 3.5.8M18 14v6M15 17h6" />
+          </svg>
+        </span>
+        <div>
+          <h2 className="font-display text-lg font-bold tracking-tight">{t.createTitle}</h2>
+          <p className="mt-1 text-sm text-ink-muted">{invite ? t.createTextInvite : t.createText}</p>
+        </div>
+      </div>
       <input type="hidden" name="workspaceId" value={workspaceId} />
       <Feedback state={state} pending={pending} />
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      <div className={`mt-5 grid gap-4 ${invite ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
         <Field label={t.name}>
-          <Input
-            name="name"
-            required
-            maxLength={60}
-            defaultValue={state.values?.name}
-            className="mt-1.5"
-          />
+          <Input name="name" required maxLength={60} defaultValue={state.values?.name} className="mt-1.5" />
         </Field>
         <Field label={t.email}>
-          <Input
-            name="email"
-            type="email"
-            required
-            defaultValue={state.values?.email}
-            className="mt-1.5"
-          />
+          <Input name="email" type="email" required defaultValue={state.values?.email} className="mt-1.5" />
         </Field>
-        <Field label={t.password}>
-          <Input
-            name="password"
-            type="password"
-            required
-            minLength={8}
-            autoComplete="new-password"
-            className="mt-1.5"
-          />
-        </Field>
+        {!invite && (
+          <Field label={t.password}>
+            <Input
+              name="password"
+              type="password"
+              required
+              minLength={8}
+              autoComplete="new-password"
+              className="mt-1.5"
+            />
+          </Field>
+        )}
         <Field label={t.role}>
           <select
             key={state.values?.role ?? "MEMBER"}
@@ -191,9 +197,11 @@ export function CreateEmployeeForm({
           </select>
         </Field>
       </div>
-      <Button type="submit" disabled={pending} className="mt-4">
-        {t.create}
-      </Button>
+      <div className="mt-5 flex justify-end border-t border-border pt-4">
+        <Button type="submit" disabled={pending}>
+          {invite ? t.createInvite : t.create}
+        </Button>
+      </div>
     </form>
   );
 }
@@ -219,24 +227,22 @@ export function ResetEmployeePasswordForm({
     if (state.message) ref.current?.reset();
   }, [state.message]);
   return (
-    <form ref={ref} action={action} className="mt-2">
+    <form ref={ref} action={action}>
       <input type="hidden" name="workspaceId" value={workspaceId} />
       <input type="hidden" name="userId" value={userId} />
-      <div className="flex flex-wrap items-end gap-2">
-        <Field label={fmt(t.resetTitle, { name })}>
-          <Input
-            name="password"
-            type="password"
-            required
-            minLength={8}
-            autoComplete="new-password"
-            className="mt-1.5 w-56"
-          />
-        </Field>
-        <Button type="submit" variant="subtle" disabled={pending}>
-          {t.resetSubmit}
-        </Button>
-      </div>
+      <Field label={fmt(t.resetTitle, { name })}>
+        <Input
+          name="password"
+          type="password"
+          required
+          minLength={8}
+          autoComplete="new-password"
+          className="mt-1.5"
+        />
+      </Field>
+      <Button type="submit" variant="outline" disabled={pending} className="mt-3 w-full">
+        {t.resetSubmit}
+      </Button>
       <Feedback state={state} pending={pending} />
     </form>
   );
@@ -247,10 +253,13 @@ export function OrganizationSettingsForm({
   workspaceId,
   name,
   slug,
+  host,
 }: {
   workspaceId: string;
   name: string;
   slug: string;
+  // The address in front of the slug, so the person sees the whole URL they are editing.
+  host: string;
 }) {
   const [state, action, pending] = useActionState<WorkspaceFormState, FormData>(
     updateWorkspaceAction,
@@ -258,15 +267,13 @@ export function OrganizationSettingsForm({
   );
   const { m } = useI18n();
   const t = m.workspaces.settings;
+  const g = m.workspaces.general;
   return (
-    <form
-      action={action}
-      className="rounded-xl border border-border bg-surface p-5"
-    >
-      <h2 className="text-sm font-semibold">{t.title}</h2>
+    <form action={action} className="rounded-2xl border border-border bg-surface p-6">
+      <h2 className="font-display text-lg font-bold tracking-tight">{g.identity}</h2>
       <input type="hidden" name="workspaceId" value={workspaceId} />
       <Feedback state={state} pending={pending} />
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <Field label={t.name}>
           <Input
             name="name"
@@ -276,27 +283,31 @@ export function OrganizationSettingsForm({
             className="mt-1.5"
           />
         </Field>
-        <Field
-          label={t.slug}
-          hint={fmt(m.workspaces.createOrg.slugHint, {
-            slug: state.values?.slug || slug,
-          })}
-        >
-          <Input
-            name="slug"
-            required
-            minLength={3}
-            maxLength={39}
-            autoCapitalize="none"
-            spellCheck={false}
-            defaultValue={state.values?.slug ?? slug}
-            className="mt-1.5 font-mono"
-          />
-        </Field>
+        <label className="text-sm">
+          <span className={LABEL}>{t.slug}</span>
+          <span className="mt-1.5 flex h-[38px] overflow-hidden rounded-lg border border-border bg-surface focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/25">
+            <span className="flex items-center border-r border-border bg-surface-2 px-2.5 font-mono text-xs text-ink-muted">
+              {host}/
+            </span>
+            <input
+              name="slug"
+              required
+              minLength={3}
+              maxLength={39}
+              autoCapitalize="none"
+              spellCheck={false}
+              defaultValue={state.values?.slug ?? slug}
+              className="min-w-0 flex-1 bg-transparent px-2.5 font-mono text-sm text-ink outline-none"
+            />
+          </span>
+        </label>
       </div>
-      <Button type="submit" disabled={pending} className="mt-4">
-        {t.save}
-      </Button>
+      <p className="mt-3 text-sm text-ink-muted">{g.addressHint}</p>
+      <div className="mt-5 flex justify-end border-t border-border pt-4">
+        <Button type="submit" disabled={pending}>
+          {t.save}
+        </Button>
+      </div>
     </form>
   );
 }
@@ -305,39 +316,42 @@ export function OrganizationSettingsForm({
 export function DeleteOrganizationForm({
   workspaceId,
   slug,
+  boards,
 }: {
   workspaceId: string;
   slug: string;
+  boards: number;
 }) {
   const [state, action, pending] = useActionState<WorkspaceFormState, FormData>(
     deleteOrganizationAction,
     {},
   );
-  const { m } = useI18n();
+  const { m, intl } = useI18n();
   const t = m.workspaces.settings;
   return (
-    <form
-      action={action}
-      className="rounded-xl border border-danger/30 bg-surface p-5"
-    >
-      <h2 className="text-sm font-semibold text-danger">{t.deleteTitle}</h2>
-      <p className="mt-1 text-sm text-ink-muted">{t.deleteText}</p>
+    <form action={action} className="flex flex-wrap items-end gap-4">
       <input type="hidden" name="workspaceId" value={workspaceId} />
-      <Feedback state={state} pending={pending} />
-      <div className="mt-4 flex flex-wrap items-end gap-2">
-        <Field label={fmt(t.deleteConfirm, { slug })}>
+      <div className="min-w-0 flex-[1_1_18rem]">
+        <p className="font-semibold">{t.deleteTitle}</p>
+        <p className="mt-1 text-sm text-ink-muted">
+          {plural(intl, m.workspaces.general.deleteBoards, boards)}
+        </p>
+        <Feedback state={state} pending={pending} />
+        <label className="mt-3 block text-sm">
+          <span className="font-semibold">{fmt(t.deleteConfirm, { slug })}</span>
           <Input
             name="confirm"
             required
             autoComplete="off"
             spellCheck={false}
-            className="mt-1.5 w-64 font-mono"
+            placeholder={slug}
+            className="mt-1.5 max-w-80 font-mono"
           />
-        </Field>
-        <Button type="submit" variant="danger" disabled={pending}>
-          {t.deleteSubmit}
-        </Button>
+        </label>
       </div>
+      <Button type="submit" variant="dangerSolid" disabled={pending} className="min-h-10">
+        {t.deleteSubmit}
+      </Button>
     </form>
   );
 }

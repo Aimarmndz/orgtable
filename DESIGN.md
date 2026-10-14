@@ -156,3 +156,26 @@ the same warm palette (sand, paper, espresso, terracotta) drawn like an old desk
 These classes live in the "Landing" section of `app/globals.css` and are used nowhere
 else.
 
+
+## Settings and administration
+
+The areas where people manage things (an organization's settings, the instance administration,
+account settings) follow one SaaS-panel pattern, designed first in Claude Design:
+
+- **Side menu** (`app/components/settings/side-nav.tsx`): sections grouped under small
+  uppercase labels, the current one as a raised paper pill (`aria-current="page"`). It becomes a
+  scrollable row above the content on small screens. The organization's settings use it on the
+  app's sand; the instance administration on a **dark espresso** column with an "ADMIN" badge,
+  so it is always clear that one is acting on the whole service.
+- **Page header**: the address in mono (`/acme`), a large display title, one sentence of what
+  the page is for, and the page's main action as a primary button on the right.
+- **Summary cards** before lists (how many owners, admins, members; service figures), numbers in
+  Geist Mono.
+- **Lists as tables**: avatar initials in the board palette, name and email, a status or role
+  chip, and the row's actions aligned right.
+- **Buttons that look like buttons.** Primary (terracotta) for the main action; `outline`
+  (ink border, paper) for secondary actions; `dangerOutline` for removing someone; `dangerSolid`
+  only inside the danger zone or a confirmation. Never plain text for an action.
+- **Confirmations**: a small panel opened from the button (`<details>`, no JavaScript) with the
+  form inside; deleting needs the address typed.
+- **Danger zone**: its own card with a red border and a warning icon, at the end of the page.

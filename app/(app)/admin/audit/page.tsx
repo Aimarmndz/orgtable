@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { requireAdmin } from "@/app/lib/dal";
-import { AdminNav } from "../admin-nav";
 import { getRecentAuditLogs } from "@/app/lib/queries";
 import type { AuditAction } from "@/app/lib/audit";
 import { getI18n } from "@/app/i18n/server";
@@ -40,7 +39,6 @@ export default async function AdminAuditPage() {
         <h1 className="font-display text-3xl font-bold tracking-tight">
           {t.title}
         </h1>
-        <AdminNav current="/admin/audit" />
       </div>
       <p className="mt-1 text-sm text-ink-muted">
         {plural(intl, t.intro, logs.length)}

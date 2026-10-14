@@ -74,7 +74,7 @@ export function UserRowActions({
             autoComplete="new-password"
             className="h-8 w-40 text-xs"
           />
-          <Button type="submit" variant="subtle" className="h-8 px-2.5 text-xs">
+          <Button type="submit" variant="outline" className="h-8 px-2.5 text-xs">
             {m.common.actions.save}
           </Button>
           <button
@@ -89,7 +89,7 @@ export function UserRowActions({
         <button
           type="button"
           onClick={() => setResetting(true)}
-          className="rounded-lg px-2 py-1 text-xs text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
+          className="inline-flex h-8 items-center rounded-lg border border-ink/20 bg-surface px-2.5 text-xs font-semibold text-ink shadow-sm transition hover:bg-surface-2"
         >
           {t.resetPassword}
         </button>
@@ -99,7 +99,7 @@ export function UserRowActions({
         <input type="hidden" name="userId" value={userId} />
         <button
           type="submit"
-          className="rounded-lg px-2 py-1 text-xs text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
+          className="inline-flex h-8 items-center rounded-lg border border-ink/20 bg-surface px-2.5 text-xs font-semibold text-ink shadow-sm transition hover:bg-surface-2"
           title={t.revokeSessionsTitle}
         >
           {t.revokeSessions}
@@ -115,10 +115,13 @@ export function UserRowActions({
       >
         <input type="hidden" name="userId" value={userId} />
         <button
-          className="grid size-8 place-items-center rounded-lg text-ink-muted transition-colors hover:bg-danger/10 hover:text-danger"
+          className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-danger/40 bg-surface px-2.5 text-xs font-semibold text-danger shadow-sm transition hover:bg-danger/5"
           aria-label={t.deleteLabel}
         >
-          ✕
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="size-3.5" aria-hidden>
+            <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />
+          </svg>
+          {m.common.actions.delete}
         </button>
       </form>
     </div>

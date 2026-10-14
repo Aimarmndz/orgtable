@@ -67,7 +67,22 @@
     "invited": "Account created. We emailed {email} a link to choose their password (valid for 7 days).",
     "inviteFailed": "The account was created, but the invitation email could not be sent. Set an initial password for them below and hand it over.",
     "createTextInvite": "We email the person a link to choose their own password: nobody else ever knows it. The account belongs to the person; this organization can reset its password or remove it.",
-    "createInvite": "Create and send invitation"
+    "createInvite": "Create and send invitation",
+    "subtitle": "The people of {name} and what each one can do.",
+    "createButton": "Create employee account",
+    "summary": {
+      "OWNER": "Owners",
+      "ADMIN": "Admins",
+      "MEMBER": "Members"
+    },
+    "columns": {
+      "person": "Person",
+      "role": "Role",
+      "actions": "Actions"
+    },
+    "createdHere": "created here",
+    "joined": "signed up on their own",
+    "newPassword": "New password"
   },
   "settings": {
     "metaTitle": "Settings of {name}",
@@ -87,5 +102,28 @@
     "WORKSPACE": "Everyone in the organization",
     "PRIVATE": "Only its members and the organization's admins",
     "save": "Save"
+  },
+  "nav": {
+    "label": "Organization settings",
+    "organization": "Organization",
+    "boards": "Boards",
+    "members": "Members",
+    "general": "General",
+    "account": "Your account",
+    "profile": "Profile and security",
+    "personalBoards": "Personal boards"
+  },
+  "general": {
+    "title": "General",
+    "subtitle": "The organization's name and address. Only owners can change them.",
+    "identity": "Identity",
+    "addressHint": "If you change the address, old links to its boards stop working (links with a board's id keep working).",
+    "leaveTitle": "Leave the organization",
+    "leaveButton": "Leave {name}",
+    "dangerTitle": "Danger zone",
+    "deleteBoards": {
+      "one": "Deletes its {count} board with its lists, cards and attachments. Employee accounts stay, without the organization. This cannot be undone.",
+      "other": "Deletes its {count} boards with their lists, cards and attachments. Employee accounts stay, without the organization. This cannot be undone."
+    }
   }
 }

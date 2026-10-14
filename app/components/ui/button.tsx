@@ -8,6 +8,12 @@ const VARIANTS = {
   ghost: "text-ink-muted hover:bg-surface-2 hover:text-ink",
   danger: "text-danger hover:bg-danger/10",
   subtle: "bg-surface-2 text-ink hover:bg-border",
+  // Settings and administration: actions that must be seen at a glance, with an outline
+  // so they read as buttons and not as text (DESIGN.md, "Settings and administration").
+  outline: "border border-ink/20 bg-surface text-ink shadow-sm hover:border-ink/35 hover:bg-surface-2",
+  dangerOutline:
+    "border border-danger/40 bg-surface text-danger shadow-sm hover:border-danger/70 hover:bg-danger/5",
+  dangerSolid: "bg-danger text-white shadow-sm hover:bg-danger/90 dark:text-bg",
 } as const;
 
 type Props = ComponentProps<"button"> & {

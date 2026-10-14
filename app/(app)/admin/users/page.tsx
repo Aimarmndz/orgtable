@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { requireAdmin } from "@/app/lib/dal";
-import { AdminNav } from "../admin-nav";
 import { getAllUsers } from "@/app/lib/queries";
 import { getI18n } from "@/app/i18n/server";
 import { formatDate } from "@/app/lib/format-date";
@@ -41,7 +40,6 @@ export default async function AdminUsersPage({
         <h1 className="font-display text-3xl font-bold tracking-tight">
           {t.title}
         </h1>
-        <AdminNav current="/admin/users" />
       </div>
       <p className="mt-1 text-sm text-ink-muted">
         {t.intro}

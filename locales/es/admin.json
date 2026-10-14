@@ -4,7 +4,8 @@
     "users": "Usuarios",
     "instance": "Instancia",
     "audit": "Auditoría",
-    "workspaces": "Resumen"
+    "workspaces": "Resumen",
+    "back": "Volver a mis tableros"
   },
   "roles": {
     "MEMBER": "Miembro",
@@ -184,7 +185,8 @@
       "members": "Miembros",
       "boards": "Tableros",
       "created": "Creado",
-      "status": "Estado"
+      "status": "Estado",
+      "actions": "Acciones"
     },
     "active": "Activo",
     "suspendedLabel": "Suspendido",

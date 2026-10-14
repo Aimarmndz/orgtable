@@ -4,7 +4,8 @@
     "users": "Users",
     "instance": "Instance",
     "audit": "Audit log",
-    "workspaces": "Overview"
+    "workspaces": "Overview",
+    "back": "Back to my boards"
   },
   "roles": {
     "MEMBER": "Member",
@@ -184,7 +185,8 @@
       "members": "Members",
       "boards": "Boards",
       "created": "Created",
-      "status": "Status"
+      "status": "Status",
+      "actions": "Actions"
     },
     "active": "Active",
     "suspendedLabel": "Suspended",

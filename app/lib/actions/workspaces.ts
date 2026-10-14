@@ -160,7 +160,7 @@ export async function updateWorkspaceAction(
     detail: result.slug,
   });
   revalidatePath("/boards");
-  redirect(`/${result.slug}/settings`);
+  redirect(`/${result.slug}/settings/general`);
 }
 
 /** An owner or admin creates an employee's account in the organization. */
