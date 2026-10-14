@@ -8,6 +8,49 @@ arquitectura anteriores a este registro (ADR 0001–0015) siguen en
 
 ---
 
+## 2026-10-14 — Ajustes rediseñados y cuenta en manos de cada persona
+
+**Contexto.** Con el registro abierto, cada persona tiene que poder gestionar su cuenta sin
+pedírselo al admin. `/settings` solo tenía los tokens de API: no se podía cambiar el nombre,
+el email ni la contraseña, ni ver las sesiones, ni ejercer los derechos del RGPD.
+
+**Decisión.** `/settings` pasa a tener una navegación lateral (fila desplazable en móvil),
+diseñada antes en un lienzo de diseño, con estas secciones:
+
+- **Perfil.** Cambiar el email exige la contraseña actual, para que una sesión robada no
+  pueda desviar la cuenta.
+- **Contraseña y sesiones.** Cambiar la contraseña cierra las demás sesiones y conserva la
+  actual. Los tokens se mantienen: los crea la propia persona. Las sesiones abiertas se
+  listan con un nombre legible del navegador (`app/lib/user-agent.ts`) y se pueden cerrar
+  una a una o todas a la vez.
+- **Tokens de API** (sin cambios) y **Apariencia**: claro, oscuro o del sistema, con la
+  misma clave de `localStorage` que el script anti-parpadeo.
+- **Privacidad y datos.**
+  - Exportación JSON (`/api/account/export`, solo con sesión de navegador) con todo lo
+    propio y lo que se escribió en tableros ajenos, sin hashes.
+  - Borrado de la cuenta con contraseña: borra los tableros propios con los ficheros de
+    sus adjuntos, el resto cae por cascada y se vacía el `detail` de la auditoría que la
+    nombraba.
+  - La última cuenta ADMIN no se puede borrar. La comprobación bloquea las filas de los
+    admins con `FOR UPDATE`, con un test de concurrencia.
+- **Acerca de**: versión, código fuente, licencia y la atribución de la licencia.
+
+La lógica está en `services/account.ts`, sin contexto de request, como el resto de servicios.
+
+**Alternativas descartadas.**
+- **Transferir los tableros compartidos en vez de borrarlos.** Es más amable con el
+  equipo, pero exige elegir a quién, y no hay transferencia de propiedad en la app. Por
+  ahora el aviso dice cuántos tableros se borran. Queda como mejora.
+- **Exportar también por API con token.** Un token filtrado sacaría el volcado completo de
+  la cuenta. La exportación queda solo para la sesión de navegador.
+
+**Consecuencias.** Tests en `test/integration/account.int.test.ts`: perfil, contraseña,
+sesiones, exportación, borrado con adjuntos, último admin y dos admins a la vez. Las
+notificaciones de otras personas pueden conservar el nombre de quien se borra hasta que
+caducan (180 días). Lo dice la política de privacidad.
+
+---
+
 ## 2026-10-14 — Registro abierto, páginas legales y limpieza de datos (RGPD)
 
 **Contexto.** El propietario va a alojar una instancia pública con registro gratuito y
