@@ -1,4 +1,5 @@
 import { formatDate } from "@/app/lib/format-date";
+import { getI18n } from "@/app/i18n/server";
 import type { LegalInfo } from "@/app/lib/services/instance";
 
 // Piezas comunes de las páginas legales. Lo que el operador no ha rellenado se dice tal
@@ -8,13 +9,14 @@ export function NotProvided() {
   return <span className="text-ink-muted italic">sin indicar por el operador</span>;
 }
 
-export function LegalHeading({
+export async function LegalHeading({
   title,
   info,
 }: {
   title: string;
   info: LegalInfo | null;
 }) {
+  const { intl } = await getI18n();
   return (
     <header className="mb-8">
       <h1 className="font-display text-4xl font-extrabold leading-[1.05] tracking-tight text-balance sm:text-5xl">
@@ -24,7 +26,7 @@ export function LegalHeading({
         Se aplica a esta instancia de orgtable
         {info ? <> ({info.instanceName})</> : null}.
         {info?.legalUpdatedAt ? (
-          <> Última actualización: {formatDate(info.legalUpdatedAt)}.</>
+          <> Última actualización: {formatDate(info.legalUpdatedAt, intl)}.</>
         ) : null}
       </p>
     </header>

@@ -9,7 +9,6 @@ import "server-only";
 // NO usar para vencimientos (dueDate): son fechas de calendario guardadas a medianoche
 // UTC y se formatean con timeZone "UTC".
 
-const LOCALE = "es-ES";
 const DEFAULT_TIME_ZONE = "Atlantic/Canary";
 
 /** Zona horaria de la instancia. Lanza si ORGTABLE_TIMEZONE no es una zona IANA válida. */
@@ -18,7 +17,7 @@ export function instanceTimeZone(): string {
   const timeZone = configured || DEFAULT_TIME_ZONE;
   try {
     // Intl lanza RangeError con una zona desconocida: es la validación más fiable.
-    new Intl.DateTimeFormat(LOCALE, { timeZone });
+    new Intl.DateTimeFormat("en", { timeZone });
   } catch (err) {
     // Sin valor por defecto silencioso: una zona mal escrita mostraría horas falsas.
     throw new Error(
@@ -31,8 +30,9 @@ export function instanceTimeZone(): string {
 }
 
 /** Fecha y hora con segundos y la abreviatura de la zona (p. ej. «15/07/2026, 10:15:00 WEST»). */
-export function formatDateTime(d: Date): string {
-  return new Intl.DateTimeFormat(LOCALE, {
+/** `intl` is the BCP 47 tag of the reader's language (getI18n().intl). */
+export function formatDateTime(d: Date, intl: string): string {
+  return new Intl.DateTimeFormat(intl, {
     // dateStyle/timeStyle no admiten timeZoneName, por eso se listan los campos.
     day: "2-digit",
     month: "2-digit",
@@ -46,8 +46,8 @@ export function formatDateTime(d: Date): string {
 }
 
 /** Solo la fecha, en la zona de la instancia (p. ej. «16 jul 2026»). */
-export function formatDate(d: Date): string {
-  return new Intl.DateTimeFormat(LOCALE, {
+export function formatDate(d: Date, intl: string): string {
+  return new Intl.DateTimeFormat(intl, {
     dateStyle: "medium",
     timeZone: instanceTimeZone(),
   }).format(d);

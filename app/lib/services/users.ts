@@ -15,6 +15,8 @@ export type NewUserInput = {
   role: GlobalRole;
   // Solo en el registro abierto (/register): cuándo aceptó la política y las condiciones.
   termsAcceptedAt?: Date;
+  // Interface language at sign-up (open registration), for their notifications.
+  locale?: string;
 };
 
 export type CreateUserResult =
@@ -46,6 +48,7 @@ export async function createUserAccount(
         passwordHash,
         role: input.role,
         termsAcceptedAt: input.termsAcceptedAt ?? null,
+        locale: input.locale ?? null,
       },
       select: { id: true, email: true },
     });

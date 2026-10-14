@@ -3,6 +3,7 @@ import { requireAdmin } from "@/app/lib/dal";
 import { AdminNav } from "../admin-nav";
 import { getRecentAuditLogs } from "@/app/lib/queries";
 import type { AuditAction } from "@/app/lib/audit";
+import { getI18n } from "@/app/i18n/server";
 import { formatDateTime } from "@/app/lib/format-date";
 
 export const metadata: Metadata = {
@@ -55,6 +56,7 @@ function actionLabel(action: string): string {
 
 export default async function AdminAuditPage() {
   await requireAdmin();
+  const { intl } = await getI18n();
   const logs = await getRecentAuditLogs();
 
   return (
@@ -87,7 +89,7 @@ export default async function AdminAuditPage() {
               {logs.map((log) => (
                 <tr key={log.id} className="bg-surface align-top">
                   <td className="whitespace-nowrap px-4 py-2.5 text-xs text-ink-muted tabular-nums">
-                    {formatDateTime(log.createdAt)}
+                    {formatDateTime(log.createdAt, intl)}
                   </td>
                   <td className="px-4 py-2.5">
                     <span

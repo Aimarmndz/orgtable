@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { getI18n } from "@/app/i18n/server";
+import { I18nProvider } from "@/app/i18n/client";
 import { headers } from "next/headers";
 import { Bricolage_Grotesque, Figtree, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -28,20 +30,23 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// Cada página exporta su propio `title` y la plantilla le añade el nombre de la app, para
-// que cada ruta tenga un título distinto (WCAG 2.4.2).
-export const metadata: Metadata = {
-  title: { template: "%s · orgtable", default: "orgtable" },
-  description: "Tableros Kanban self-hosted, una alternativa a Trello",
-  applicationName: "orgtable",
-  openGraph: {
-    type: "website",
-    siteName: "orgtable",
-    title: "orgtable",
-    description: "Tableros Kanban de código abierto: tus listas y tarjetas, en tiempo real.",
-    locale: "es_ES",
-  },
-};
+// Each page exports its own `title` and the template appends the app name, so every route
+// has a distinct title (WCAG 2.4.2). The description follows the visitor's language.
+export async function generateMetadata(): Promise<Metadata> {
+  const { m, intl } = await getI18n();
+  return {
+    title: { template: "%s · orgtable", default: "orgtable" },
+    description: m.common.tagline,
+    applicationName: "orgtable",
+    openGraph: {
+      type: "website",
+      siteName: "orgtable",
+      title: "orgtable",
+      description: m.common.tagline,
+      locale: intl.replace("-", "_"),
+    },
+  };
+}
 
 // Se ejecuta antes del primer paint para aplicar el tema guardado (o la preferencia
 // del sistema) sin parpadeo. Debe ir inline en <head>.
@@ -55,16 +60,21 @@ export default async function RootLayout({
   // Nonce de la CSP (lo genera proxy.ts). El script del tema es inline y sin él la CSP
   // lo bloquearía: la página parpadearía en claro antes de pasar a oscuro.
   const nonce = (await headers()).get("x-nonce") ?? undefined;
+  const { locale, intl, m } = await getI18n();
   return (
     <html
-      lang="es"
+      lang={locale}
       suppressHydrationWarning
       className={`${figtree.variable} ${bricolage.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body className="flex min-h-full flex-col bg-bg text-ink">{children}</body>
+      <body className="flex min-h-full flex-col bg-bg text-ink">
+        <I18nProvider locale={locale} intl={intl} messages={m}>
+          {children}
+        </I18nProvider>
+      </body>
     </html>
   );
 }

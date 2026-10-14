@@ -1,6 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import { LOCALE_COOKIE, isLocale } from "@/app/i18n/config";
 import { prisma } from "@/app/lib/prisma";
 import { verifyPasswordOrDummy } from "@/app/lib/auth";
 import { createSession, deleteSession } from "@/app/lib/session";
@@ -103,6 +105,14 @@ export async function login(
 
   resetRateLimit(emailKey);
   await createSession(user.id);
+  // The account's language wins over the browser's on any device it signs in from.
+  if (isLocale(user.locale)) {
+    (await cookies()).set(LOCALE_COOKIE, user.locale, {
+      path: "/",
+      maxAge: 365 * 24 * 60 * 60,
+      sameSite: "lax",
+    });
+  }
   await recordAudit({ action: "auth.login", userId: user.id, ip });
   redirect("/boards");
 }

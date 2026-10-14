@@ -6,6 +6,7 @@ import { getApiTokensForUser } from "@/app/lib/queries";
 import { revokeApiToken } from "@/app/lib/actions/tokens";
 import { revokeOtherSessions, revokeSession } from "@/app/lib/actions/account";
 import { listActiveSessions } from "@/app/lib/services/account";
+import { getI18n } from "@/app/i18n/server";
 import { formatDate } from "@/app/lib/format-date";
 import { describeUserAgent } from "@/app/lib/user-agent";
 import {
@@ -104,6 +105,7 @@ function Section({
 
 export default async function SettingsPage() {
   const user = await requireUser();
+  const { intl } = await getI18n();
   const session = await verifySession();
   const [tokens, sessions, ownedBoards] = await Promise.all([
     getApiTokensForUser(user.id),
@@ -191,7 +193,7 @@ export default async function SettingsPage() {
                         )}
                       </p>
                       <p className="mt-0.5 font-mono text-xs text-ink-muted">
-                        iniciada {formatDate(s.createdAt)} · caduca {formatDate(s.expiresAt)}
+                        iniciada {formatDate(s.createdAt, intl)} · caduca {formatDate(s.expiresAt, intl)}
                       </p>
                     </div>
                     {!current && (
@@ -254,9 +256,9 @@ export default async function SettingsPage() {
                         )}
                       </p>
                       <p className="mt-0.5 font-mono text-xs text-ink-muted">
-                        {t.prefix}… · creado {formatDate(t.createdAt)} ·{" "}
-                        {t.expiresAt ? `caduca ${formatDate(t.expiresAt)}` : "no caduca"} ·{" "}
-                        {t.lastUsedAt ? `usado ${formatDate(t.lastUsedAt)}` : "sin usar"}
+                        {t.prefix}… · creado {formatDate(t.createdAt, intl)} ·{" "}
+                        {t.expiresAt ? `caduca ${formatDate(t.expiresAt, intl)}` : "no caduca"} ·{" "}
+                        {t.lastUsedAt ? `usado ${formatDate(t.lastUsedAt, intl)}` : "sin usar"}
                       </p>
                     </div>
                     <form action={revokeApiToken}>

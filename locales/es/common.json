@@ -1,0 +1,22 @@
+{
+  "appName": "orgtable",
+  "tagline": "Tableros Kanban self-hosted, una alternativa a Trello",
+  "actions": {
+    "save": "Guardar",
+    "saving": "Guardando…",
+    "cancel": "Cancelar",
+    "close": "Cerrar",
+    "delete": "Borrar",
+    "confirm": "Confirmar",
+    "create": "Crear",
+    "edit": "Editar",
+    "back": "Volver"
+  },
+  "language": {
+    "label": "Idioma",
+    "description": "El idioma de la interfaz. Se guarda en este navegador y en tu cuenta.",
+    "switchTo": "Cambiar de idioma",
+    "saved": "Idioma cambiado."
+  },
+  "genericError": "Algo ha fallado. Inténtalo de nuevo."
+}

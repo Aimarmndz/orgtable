@@ -60,6 +60,10 @@ model User {
   // Cuándo aceptó la política de privacidad y las condiciones al registrarse (/register).
   // Null en las cuentas que crea el admin o el asistente inicial.
   termsAcceptedAt DateTime?
+  // Interface language chosen by the person ("en", "es"…; see locales/index.ts). Null
+  // until they pick one: then the browser decides. Notifications for them are written in
+  // this language.
+  locale       String?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   boards        Board[]

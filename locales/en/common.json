@@ -1,0 +1,22 @@
+{
+  "appName": "orgtable",
+  "tagline": "Self-hosted Kanban boards, a Trello alternative",
+  "actions": {
+    "save": "Save",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "close": "Close",
+    "delete": "Delete",
+    "confirm": "Confirm",
+    "create": "Create",
+    "edit": "Edit",
+    "back": "Back"
+  },
+  "language": {
+    "label": "Language",
+    "description": "The language of the interface. It is saved in this browser and in your account.",
+    "switchTo": "Change language",
+    "saved": "Language changed."
+  },
+  "genericError": "Something went wrong. Please try again."
+}

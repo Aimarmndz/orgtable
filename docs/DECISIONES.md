@@ -8,6 +8,57 @@ arquitectura anteriores a este registro (ADR 0001–0015) siguen en
 
 ---
 
+## 2026-10-14 — Bilingual interface (English and Spanish), easy to translate
+
+**Context.** The owner is preparing the public release. A Spanish-only interface, with
+internal milestone wording, is not professional for a public project. The app has to
+support several languages, and anyone should be able to contribute a translation without
+knowing the code.
+
+**Decision.**
+- **Messages in JSON, one folder per language** (`locales/<code>/<area>.json`), which
+  translators and tools such as Weblate or Crowdin already know.
+  - English (`en`) is the reference and the fallback: a missing message shows in English,
+    so a partial translation never breaks the app.
+  - Adding a language means copying `en/`, translating it and adding one line to
+    `locales/index.ts`. The guide is in `locales/README.md`.
+- **Values are plain data.** Strings carry `{placeholders}`, plurals are objects
+  (`{ one, other, … }`, chosen with `Intl.PluralRules`), and markup uses simple tags
+  (`<link>…</link>`) rendered by `rich()`. With no functions inside, the dictionary of the
+  current language travels from the root layout to Client Components as props
+  (`I18nProvider`), and the client bundle never imports the dictionaries.
+- **Language of a request**: the `locale` cookie set by the picker, else
+  `Accept-Language`, else English. `User.locale` (migration `..._user_locale`) stores the
+  account's choice: it restores the cookie on sign-in and decides the language of the
+  notifications written for that person.
+- **zod schemas carry message keys** (`"errors.validation.titleRequired"`), resolved with
+  `issueMessage(m, issue)`, so they stay language-independent.
+- **The public REST API answers in English only.** It is for programs.
+- **CI check** (`test/i18n.test.ts`). Every registered language must have the same keys
+  as English, the same placeholders and tags, and the plural forms its grammar needs.
+- **Language picker** with one submit button per language, which works without
+  JavaScript. It sits in the footer of the public pages and in Settings › Appearance.
+- **No dependency.** About 150 lines of our own code.
+
+**Alternatives considered.**
+- **next-intl.** Mature (ICU, middleware), but it is a dependency for what native `Intl`
+  plus a few helpers already cover. Its locale-prefixed routes (`/en/...`) would also break
+  every existing link and the deep-links of notifications.
+- **Messages as TypeScript objects.** Type-safe for developers, but harder for
+  translators, and invisible to translation tools.
+- **Language in the URL.** Better for SEO, but almost everything is behind sign-in. The
+  few public pages work with the cookie and Accept-Language.
+
+**Consequences.**
+- Every visible text in the app moves to `locales/`. The work is split by area: auth and
+  legal; shell, settings and admin; boards; server messages and notifications.
+- Notifications already stored stay in the language they were written in.
+- Following the owner's decision, everything in this repository is in English from now on:
+  code comments, tests, documentation and commits. This deliberately departs from the
+  owner's global rule of Spanish documentation, for this repository only.
+
+---
+
 ## 2026-10-14 — Next 16.3.8 and patched sharp and source-map-js
 
 **Context.** Running the CI locally before pushing, `pnpm audit --prod --audit-level high`

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { requireAdmin } from "@/app/lib/dal";
 import { AdminNav } from "../admin-nav";
 import { getAllUsers } from "@/app/lib/queries";
+import { getI18n } from "@/app/i18n/server";
 import { formatDate } from "@/app/lib/format-date";
 import { CreateUserForm } from "./create-user-form";
 import { UserRowActions } from "./user-row-actions";
@@ -35,6 +36,7 @@ export default async function AdminUsersPage({
   searchParams: Promise<{ ok?: string; error?: string }>;
 }) {
   const admin = await requireAdmin();
+  const { intl } = await getI18n();
   const [{ ok, error }, users] = await Promise.all([
     searchParams,
     getAllUsers(),
@@ -107,7 +109,7 @@ export default async function AdminUsersPage({
                   </span>
                 </td>
                 <td className="px-4 py-3 text-ink-muted">
-                  {formatDate(u.createdAt)}
+                  {formatDate(u.createdAt, intl)}
                 </td>
                 <td className="px-4 py-3">
                   <UserRowActions

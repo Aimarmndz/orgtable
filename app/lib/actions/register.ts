@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createUserAccount } from "@/app/lib/services/users";
 import { isRegistrationOpen } from "@/app/lib/services/instance";
 import { createSession } from "@/app/lib/session";
+import { getLocale } from "@/app/i18n/server";
 import { registerSchema } from "@/app/lib/validators";
 import { rateLimit } from "@/app/lib/rate-limit";
 import { recordAudit, clientIp } from "@/app/lib/audit";
@@ -95,6 +96,7 @@ export async function register(
     password: parsed.data.password,
     role: "MEMBER",
     termsAcceptedAt: new Date(),
+    locale: await getLocale(),
   });
   if (!result.ok) {
     // Revela que el email ya tiene cuenta. Sin verificación por email no hay forma de
