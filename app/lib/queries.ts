@@ -15,6 +15,36 @@ export async function getBoardsForUser(userId: string) {
   });
 }
 
+/**
+ * Tableros del usuario con lo que enseña su tarjeta en /boards: cuántas tarjetas tiene y
+ * quién más está dentro. Consulta aparte de getBoardsForUser para no cambiar la forma
+ * que devuelve la API pública.
+ */
+export async function getBoardSummariesForUser(userId: string) {
+  const boards = await prisma.board.findMany({
+    where: {
+      OR: [{ ownerId: userId }, { members: { some: { userId } } }],
+    },
+    orderBy: { updatedAt: "desc" },
+    select: {
+      id: true,
+      title: true,
+      background: true,
+      ownerId: true,
+      lists: { select: { _count: { select: { cards: true } } } },
+      members: {
+        orderBy: { addedAt: "asc" },
+        select: { user: { select: { id: true, name: true } } },
+      },
+    },
+  });
+  return boards.map(({ lists, members, ...b }) => ({
+    ...b,
+    cardCount: lists.reduce((n, l) => n + l._count.cards, 0),
+    members: members.map((m) => m.user),
+  }));
+}
+
 // --- Hito 3: multiusuario ---
 
 /** Todos los usuarios de la instancia, para el panel de administración. */

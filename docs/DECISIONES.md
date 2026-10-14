@@ -8,6 +8,35 @@ arquitectura anteriores a este registro (ADR 0001–0015) siguen en
 
 ---
 
+## 2026-10-14 — Menú de cuenta en la barra y tableros con contexto
+
+**Contexto.** La barra superior acumulaba sueltos el enlace de Administración, el
+engranaje de ajustes, el email y «Salir». En móvil no cabían y el nombre de la instancia
+se cortaba. En el índice, las tarjetas de tablero solo decían el título, y la importación
+desde JSON competía en importancia con «Crear tablero».
+
+**Decisión.**
+- La barra queda con búsqueda, notificaciones, tema y un **botón con las iniciales** que
+  abre un menú con nombre y email, enlaces a perfil, contraseña y sesiones, privacidad y
+  datos, administración (solo admins) y «Cerrar sesión». Usa la API `popover` del
+  navegador: sin JavaScript propio, con cierre al pulsar fuera o con Escape. Se ancla con
+  anchor positioning, y donde no hay soporte cae arriba a la derecha.
+- Las tarjetas de `/boards` muestran el número de tarjetas y, si el tablero es
+  compartido, las iniciales de hasta 4 miembros. Los nombres van como texto oculto para
+  lectores de pantalla. Usa una consulta nueva, `getBoardSummariesForUser`, para no cambiar
+  lo que devuelve `GET /api/v1/boards`.
+- La importación pasa a un `<details>` plegado.
+
+**Alternativas descartadas.**
+- **Menú con un componente de cliente y gestión de foco propia.** Más código para lo que
+  el popover nativo ya resuelve.
+- **Mantener el email visible en la barra.** Ocupa sitio en todas las pantallas y ya está
+  en el menú.
+
+**Consecuencias.** `app/lib/initials.ts` con su test. Revisado en 375 y 1280 px.
+
+---
+
 ## 2026-10-14 — Ajustes rediseñados y cuenta en manos de cada persona
 
 **Contexto.** Con el registro abierto, cada persona tiene que poder gestionar su cuenta sin

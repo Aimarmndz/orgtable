@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { requireUser } from "@/app/lib/dal";
-import { getBoardsForUser } from "@/app/lib/queries";
+import { getBoardSummariesForUser } from "@/app/lib/queries";
+import { initials } from "@/app/lib/initials";
 import { createBoard } from "@/app/lib/actions/boards";
 import { boardBackgroundFor } from "@/app/lib/colors";
 import { Button } from "@/app/components/ui/button";
@@ -19,7 +20,7 @@ const CORNER_ACTION =
 
 export default async function BoardsPage() {
   const user = await requireUser();
-  const boards = await getBoardsForUser(user.id);
+  const boards = await getBoardSummariesForUser(user.id);
 
   return (
     <div className="relative z-10 mx-auto w-full max-w-6xl overflow-y-auto p-6 sm:p-8">
@@ -30,21 +31,39 @@ export default async function BoardsPage() {
         Organiza tu trabajo en listas y tarjetas.
       </p>
 
-      <form action={createBoard} className="mt-7 flex gap-2">
+      <form action={createBoard} className="mt-7 flex flex-wrap gap-2">
         <Input
           name="title"
           required
           maxLength={120}
           aria-label="Nombre del nuevo tablero"
           placeholder="Nombre del nuevo tablero"
-          className="max-w-xs"
+          className="min-w-0 flex-1 sm:max-w-xs sm:flex-none"
         />
         <Button type="submit">Crear tablero</Button>
       </form>
 
-      <div className="mt-3">
-        <ImportBoardForm />
-      </div>
+      {/* Importar es poco frecuente: plegado para que no compita con «Crear tablero». */}
+      <details className="group/import mt-3 text-sm">
+        <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-lg px-1 py-1 text-ink-muted transition-colors hover:text-ink [&::-webkit-details-marker]:hidden">
+          <svg
+            className="size-3.5 transition-transform group-open/import:rotate-90"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M9 6l6 6-6 6" />
+          </svg>
+          Importar un tablero desde JSON
+        </summary>
+        <div className="mt-2 rounded-xl border border-border bg-surface p-3">
+          <ImportBoardForm />
+        </div>
+      </details>
 
       {boards.length === 0 ? (
         <div className="mt-20 flex flex-col items-center text-center">
@@ -78,7 +97,7 @@ export default async function BoardsPage() {
               <Link
                 href={`/board/${board.id}`}
                 style={{ background: boardBackgroundFor(board) }}
-                className="relative flex h-32 flex-col justify-end overflow-hidden rounded-2xl p-4 text-white shadow-[0_4px_16px_-8px_oklch(0.27_0.022_52/0.3)] ring-1 ring-inset ring-black/10 transition-transform duration-150 ease-out hover:-translate-y-0.5"
+                className="relative flex h-36 flex-col justify-end overflow-hidden rounded-2xl p-4 text-white shadow-[0_4px_16px_-8px_oklch(0.27_0.022_52/0.3)] ring-1 ring-inset ring-black/10 transition-transform duration-150 ease-out hover:-translate-y-0.5"
               >
                 <span
                   aria-hidden
@@ -86,6 +105,37 @@ export default async function BoardsPage() {
                 />
                 <span className="relative font-display text-lg font-bold leading-tight tracking-tight drop-shadow-sm">
                   {board.title}
+                </span>
+                <span className="relative mt-2 flex items-center justify-between gap-2 text-xs font-medium text-white/85">
+                  <span>
+                    {board.cardCount === 1 ? "1 tarjeta" : `${board.cardCount} tarjetas`}
+                  </span>
+                  {/* Solo si es compartido: en un tablero personal sobra tu propia cara. */}
+                  {board.members.length > 1 && (
+                    <span className="flex -space-x-1.5">
+                      {/* aria-label no vale en un span sin rol: el nombre va como texto oculto. */}
+                      <span className="sr-only">
+                        {`, compartido con ${board.members.length} personas: ${board.members.map((m) => m.name).join(", ")}`}
+                      </span>
+                      {board.members.slice(0, 4).map((m) => (
+                        <span
+                          key={m.id}
+                          aria-hidden
+                          className="grid size-6 place-items-center rounded-full bg-white/90 text-[10px] font-bold text-ink ring-2 ring-black/10"
+                        >
+                          {initials(m.name)}
+                        </span>
+                      ))}
+                      {board.members.length > 4 && (
+                        <span
+                          aria-hidden
+                          className="grid size-6 place-items-center rounded-full bg-black/30 text-[10px] font-bold text-white ring-2 ring-black/10"
+                        >
+                          +{board.members.length - 4}
+                        </span>
+                      )}
+                    </span>
+                  )}
                 </span>
               </Link>
               <div className="absolute right-2 top-2 flex gap-1">

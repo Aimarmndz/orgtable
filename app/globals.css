@@ -192,3 +192,23 @@ body::before {
 .legal-prose :where(tr + tr td, tbody tr td) {
   border-top: 1px solid var(--border);
 }
+
+/* Menú de la cuenta (popover nativo, app/components/account-menu.tsx). Se ancla bajo el
+   botón con anchor positioning; en los navegadores que aún no lo soportan, cae arriba a
+   la derecha, que es donde está el botón. */
+.account-menu {
+  position: fixed;
+  inset: auto;
+  top: 3.75rem;
+  right: 0.75rem;
+}
+@supports (position-anchor: --account-menu) {
+  .account-menu {
+    position-anchor: --account-menu;
+    top: calc(anchor(bottom) + 0.4rem);
+    right: anchor(right);
+  }
+}
+.account-menu:popover-open {
+  animation: dialog-in 160ms ease-out;
+}
