@@ -12,9 +12,9 @@ import {
   loginAs,
 } from "./helpers";
 
-// moveCard ejecutado de verdad (Server Action con sesión): regresión del IDOR de la
-// auditoría de seguridad. Si se quita la comprobación cardBelongsToBoard de
-// app/lib/actions/cards.ts, el primer test falla.
+// moveCard run for real (Server Action with a session): regression test for the IDOR
+// found in the security audit. If the cardBelongsToBoard check is removed from
+// app/lib/actions/cards.ts, the first test fails.
 
 beforeEach(async () => {
   await resetDb();
@@ -39,7 +39,7 @@ async function scenario() {
 }
 
 describe("moveCard (Server Action)", () => {
-  it("un EDITOR de B no puede traerse una tarjeta del tablero A, al que no tiene acceso", async () => {
+  it("an EDITOR of B cannot pull in a card from board A, which they cannot access", async () => {
     const { editor, listA, listB1, cardA } = await scenario();
     await loginAs(editor.id);
 
@@ -50,7 +50,7 @@ describe("moveCard (Server Action)", () => {
     expect(card.listId).toBe(listA.id);
   });
 
-  it("un EDITOR mueve tarjetas entre listas de su tablero", async () => {
+  it("an EDITOR moves cards between lists of their board", async () => {
     const { editor, listB2, cardB } = await scenario();
     await loginAs(editor.id);
 
@@ -61,7 +61,7 @@ describe("moveCard (Server Action)", () => {
     expect(card.listId).toBe(listB2.id);
   });
 
-  it("un VIEWER no puede mover", async () => {
+  it("a VIEWER cannot move", async () => {
     const { boardB, listB1, listB2, cardB } = await scenario();
     const viewer = await seedUser();
     await addMember(boardB.id, viewer.id, "VIEWER");
@@ -74,7 +74,7 @@ describe("moveCard (Server Action)", () => {
     expect(card.listId).toBe(listB1.id);
   });
 
-  it("quien no es miembro es redirigido a /boards", async () => {
+  it("a non-member is redirected to /boards", async () => {
     const { listB2, cardB, listB1 } = await scenario();
     const stranger = await seedUser();
     await loginAs(stranger.id);
@@ -86,7 +86,7 @@ describe("moveCard (Server Action)", () => {
     expect(card.listId).toBe(listB1.id);
   });
 
-  it("sin sesión es redirigido a /login", async () => {
+  it("without a session they are redirected to /login", async () => {
     const { listB2, cardB } = await scenario();
     await expect(
       moveCard({ cardId: cardB.id, toListId: listB2.id, position: "a5" }),

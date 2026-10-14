@@ -8,13 +8,13 @@ import {
 } from "@/app/lib/board-filters";
 import type { CardDTO } from "@/app/lib/types";
 
-// Hoy fijo (UTC) para los tests de vencimiento.
+// Fixed "today" (UTC) for the due date tests.
 const NOW = Date.UTC(2026, 5, 15, 12, 0, 0); // 2026-06-15
 
 function card(over: Partial<CardDTO>): CardDTO {
   return {
     id: "c1",
-    title: "Tarjeta",
+    title: "Card",
     position: "a0",
     description: null,
     dueDate: null,
@@ -33,25 +33,25 @@ const f = (over: Partial<BoardFilters>): BoardFilters => ({
 });
 
 describe("board-filters", () => {
-  it("sin filtros activos todo pasa", () => {
+  it("with no active filters everything passes", () => {
     expect(filtersActive(EMPTY_FILTERS)).toBe(false);
     expect(cardMatchesFilters(card({}), EMPTY_FILTERS, NOW)).toBe(true);
   });
 
-  it("filtra por etiqueta (OR dentro de la dimensión)", () => {
+  it("filters by label (OR within the dimension)", () => {
     const c = card({ labels: [{ id: "L1", name: "a", color: "blue" }] });
     expect(cardMatchesFilters(c, f({ labelIds: ["L1"] }), NOW)).toBe(true);
     expect(cardMatchesFilters(c, f({ labelIds: ["L2"] }), NOW)).toBe(false);
     expect(cardMatchesFilters(c, f({ labelIds: ["L2", "L1"] }), NOW)).toBe(true);
   });
 
-  it("filtra por asignado", () => {
+  it("filters by assignee", () => {
     const c = card({ assignees: [{ id: "U1", name: "Ana" }] });
     expect(cardMatchesFilters(c, f({ assigneeIds: ["U1"] }), NOW)).toBe(true);
     expect(cardMatchesFilters(c, f({ assigneeIds: ["U2"] }), NOW)).toBe(false);
   });
 
-  it("combina dimensiones con AND", () => {
+  it("combines dimensions with AND", () => {
     const c = card({
       labels: [{ id: "L1", name: "a", color: "blue" }],
       assignees: [{ id: "U1", name: "Ana" }],
@@ -64,7 +64,7 @@ describe("board-filters", () => {
     ).toBe(false);
   });
 
-  it("filtra por estado de vencimiento", () => {
+  it("filters by due status", () => {
     const overdue = card({ dueDate: "2026-06-10T00:00:00.000Z" });
     const future = card({ dueDate: "2026-06-20T00:00:00.000Z" });
     const undated = card({ dueDate: null });
@@ -82,18 +82,18 @@ describe("board-filters", () => {
 });
 
 describe("isOverdue", () => {
-  // `now` construido con fecha LOCAL (la del navegador), como en la app.
-  const now = new Date(2026, 8, 24, 10, 0, 0).getTime(); // 24/09/2026 10:00 local
+  // `now` built from a LOCAL date (the browser's), as in the app.
+  const now = new Date(2026, 8, 24, 10, 0, 0).getTime(); // 2026-09-24 10:00 local
 
-  it("la tarjeta que vence hoy no está vencida", () => {
+  it("a card due today is not overdue", () => {
     expect(isOverdue("2026-09-24T00:00:00.000Z", now)).toBe(false);
   });
 
-  it("la que venció ayer sí", () => {
+  it("one due yesterday is", () => {
     expect(isOverdue("2026-09-23T00:00:00.000Z", now)).toBe(true);
   });
 
-  it("coincide con el filtro «Vencidas»", () => {
+  it("matches the \"Overdue\" filter", () => {
     const today = card({ dueDate: "2026-09-24T00:00:00.000Z" });
     const yesterday = card({ dueDate: "2026-09-23T00:00:00.000Z" });
     expect(cardMatchesFilters(today, f({ due: "overdue" }), now)).toBe(false);
@@ -102,24 +102,25 @@ describe("isOverdue", () => {
 });
 
 describe("formatDueDay", () => {
-  // vi.unstubAllEnvs deja TZ como estaba; si no existía, la borra. Reasignar el valor
-  // original a mano guardaba el texto "undefined", que Node trata como UTC para el
-  // resto del archivo.
+  // vi.unstubAllEnvs leaves TZ as it was; if it did not exist, it deletes it. Reassigning
+  // the original value by hand stored the text "undefined", which Node treats as UTC for
+  // the rest of the file.
   afterEach(() => {
     vi.unstubAllEnvs();
   });
 
-  it("muestra el día guardado aunque la zona local vaya por detrás de UTC", async () => {
-    // Antes se formateaba en la zona local: en Nueva York (UTC-4) salía «23 sept».
+  it("shows the stored day even if the local zone is behind UTC", async () => {
+    // It used to be formatted in the local zone: in New York (UTC-4) it showed "Sep 23".
     vi.stubEnv("TZ", "America/New_York");
-    // El formateador es de módulo y fija la zona al importarse: hay que cargar el módulo
-    // DESPUÉS de cambiar TZ. Con el import estático de la cabecera se quedaba con la zona
-    // de la máquina (UTC en CI) y el test pasaba aunque se quitara `timeZone: "UTC"`.
+    // The formatters are cached at module level and may fix the zone when created: the
+    // module has to be loaded AFTER changing TZ. With the static import at the top it kept
+    // the machine's zone (UTC in CI) and the test passed even without `timeZone: "UTC"`.
     vi.resetModules();
     const { formatDueDay } = await import("@/app/lib/board-filters");
-    expect(new Date("2026-09-24T00:00:00.000Z").getDate()).toBe(23); // la trampa
-    const label = formatDueDay("2026-09-24T00:00:00.000Z");
-    expect(label).toContain("24");
-    expect(label).toContain("sept");
+    expect(new Date("2026-09-24T00:00:00.000Z").getDate()).toBe(23); // the trap
+    expect(formatDueDay("2026-09-24T00:00:00.000Z", "en")).toBe("Sep 24");
+    const es = formatDueDay("2026-09-24T00:00:00.000Z", "es-ES");
+    expect(es).toContain("24");
+    expect(es).toContain("sept");
   });
 });

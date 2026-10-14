@@ -1,60 +1,67 @@
-# Notificaciones
+# Notifications
 
-Las notificaciones in-app (Hito 8) avisan a una persona de eventos que le afectan. Se
-ven en la **campana de la barra superior**, con un contador de no leídas. La decisión
-técnica está en [ADR 0012](./decisions/0012-notifications.md).
+In-app notifications tell a person about events that affect them. They appear in the
+**bell in the top bar**, with an unread count. The technical decision is in
+[ADR 0012](./decisions/0012-notifications.md).
 
-## Qué se notifica
+## What is notified
 
-Eventos de pertenencia a tableros (definidos en `NotificationType`,
-`app/lib/notifications.ts`):
+Types defined in `NotificationType` (`app/lib/notifications.ts`):
 
-| Tipo | Cuándo | Enlace |
-|------|--------|--------|
-| `member.added` | Te añaden a un tablero | Al tablero |
-| `member.role_changed` | Cambian tu rol en un tablero | Al tablero |
-| `member.removed` | Te quitan de un tablero | Sin enlace (ya no tienes acceso) |
+| Type | When | Link |
+|------|------|------|
+| `member.added` | You are added to a board | To the board |
+| `member.role_changed` | Your role on a board changes | To the board |
+| `member.removed` | You are removed from a board | No link (you no longer have access) |
+| `card.assigned` | Someone assigns you to a card | To the card |
+| `comment.added` | Someone comments on a card you are assigned to | To the card |
+| `due.reminder` | A card you are assigned to is due soon or overdue | To the card |
 
-El texto se calcula en español al crear la notificación (la app es monolingüe), así que
-no hay plantillas ni i18n en el render.
+Card collaboration events are described in
+[docs/card-collaboration.md](./card-collaboration.md) and due-date reminders in
+[docs/reminders.md](./reminders.md).
 
-## Cómo funciona
+The text is rendered when the notification is created, in the **recipient's language**
+(`User.locale`; English if the account has not chosen one), so rendering needs no
+templates. Notifications already stored keep the language they were written in.
 
-1. La acción que provoca el evento (p. ej. `addBoardMember` en
-   `app/lib/actions/members.ts`) llama a **`notify({ userId, type, title, body?, boardId? })`**.
-2. `notify()` escribe una fila en `Notification` y **publica un evento en el bus** por el
-   canal del usuario (`user:<id>`). Es best-effort: si algo falla, la mutación principal
-   no se rompe. Devuelve `true` si la fila se guardó (aunque falle el aviso en vivo) y
-   `false` si no; el fallo se registra con `console.error` (tipo, ids y código de error,
-   nunca el título ni el cuerpo). El cron de recordatorios usa ese resultado para no contar
-   avisos que no existen.
-3. El navegador del destinatario tiene abierto un **EventSource** a
-   `/api/notifications/stream`. Al recibir el "ping" hace `router.refresh()`.
-4. El layout (`app/(app)/layout.tsx`) vuelve a consultar las notificaciones y el
-   contador, y la **campana** (`app/components/notifications-bell.tsx`) se repinta.
+## How it works
 
-El "ping" no transporta el contenido: solo avisa de que hay algo nuevo. Cada pestaña
-solo lee **sus** notificaciones (el `WHERE` lleva el `userId` de la sesión), así que no
-hay forma de que una notificación se filtre a otra persona.
+1. The action that triggers the event (e.g. `addBoardMember` in
+   `app/lib/actions/members.ts`) calls **`notify({ userId, type, title, body?, boardId? })`**.
+2. `notify()` writes a row in `Notification` and **publishes an event on the bus** on the
+   user's channel (`user:<id>`). It is best-effort: if something fails, the main mutation
+   is not broken. It returns `true` if the row was saved (even if the live notice fails)
+   and `false` otherwise; the failure is logged with `console.error` (type, ids and error
+   code, never the title or body). The reminders cron uses that result so it does not
+   count notices that do not exist.
+3. The recipient's browser keeps an **EventSource** open to `/api/notifications/stream`.
+   When it receives the "ping", it calls `router.refresh()`.
+4. The layout (`app/(app)/layout.tsx`) queries the notifications and the count again, and
+   the **bell** (`app/components/notifications-bell.tsx`) re-renders.
 
-## Interacción
+The "ping" carries no content: it only signals that there is something new. Each tab
+only reads **its own** notifications (the `WHERE` includes the session's `userId`), so a
+notification cannot leak to another person.
 
-- **Abrir una notificación**: la marca como leída y, si tiene tablero, navega a él.
-- **Marcar todas**: pone a leídas todas las del usuario.
-- Acciones en `app/lib/actions/notifications.ts` (`markNotificationRead`,
-  `markAllNotificationsRead`); el `WHERE` siempre incluye el `userId` de la sesión.
+## Interaction
 
-## Entrega en vivo y multi-instancia
+- **Opening a notification** marks it as read and, if it has a board or card, navigates
+  to it.
+- **Mark all as read** marks every notification of the user as read.
+- Actions in `app/lib/actions/notifications.ts` (`markNotificationRead`,
+  `markAllNotificationsRead`); the `WHERE` always includes the session's `userId`.
 
-Reutiliza el bus de tiempo real del Hito 4 ([docs/realtime.md](./realtime.md)). En el
-despliegue estándar (una sola instancia) el canal por usuario es un `EventEmitter` en
-proceso. En multi-instancia, el puente opcional de PostgreSQL `LISTEN/NOTIFY`
-(`ORGTABLE_REALTIME_PG_NOTIFY=1`) reemite también los eventos de usuario, no solo los de
-tablero.
+## Live delivery and multiple instances
 
-## Límites y evolución
+It reuses the real-time bus ([docs/realtime.md](./realtime.md)). In the standard
+deployment (a single instance), the per-user channel is an in-process `EventEmitter`.
+With several instances, the optional PostgreSQL `LISTEN/NOTIFY` bridge
+(`ORGTABLE_REALTIME_PG_NOTIFY=1`) also relays user events, not only board events.
 
-- Solo in-app: si no tienes una pestaña abierta, verás las notificaciones la próxima vez
-  que entres. Email o Web Push encajarían como otro consumidor de `notify()`.
-- El catálogo de eventos es pequeño a propósito; añadir uno nuevo es llamar a `notify()`
-  desde la acción que lo origina.
+## Limits and possible improvements
+
+- In-app only: if you have no tab open, you will see the notifications the next time you
+  sign in. Email or Web Push would fit as another consumer of `notify()`.
+- The event catalog is deliberately small; adding a new one means calling `notify()`
+  from the action that triggers it.

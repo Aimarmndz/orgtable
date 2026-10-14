@@ -1,31 +1,29 @@
-# Política de seguridad
+# Security policy
 
-## Versiones con soporte
+## Supported versions
 
-orgtable se desarrolla en la rama `main` y no publica versiones numeradas: las
-correcciones de seguridad llegan a `main`. Mantén tu instalación al día con
-`scripts/update.sh`, que hace una copia de seguridad y actualiza a lo último de `main`
-(ver [`docs/operations.md`](./docs/operations.md#actualizaciones)).
+orgtable is developed on the `main` branch, and security fixes land on `main`. Keep your
+installation up to date with `scripts/update.sh`, which takes a backup and updates to the
+latest `main` (see [`docs/operations.md`](./docs/operations.md#updates)).
 
-## Informar de una vulnerabilidad
+## Reporting a vulnerability
 
-**No** abras un issue público para un problema de seguridad.
+**Do not** open a public issue for a security problem.
 
-<!-- TODO: falta el canal privado de reporte: un email de seguridad y el plazo de
-respuesta. El reporte privado de GitHub solo existe en repositorios públicos, así que
-no sirve si el repositorio es privado. Lo desbloquea el propietario (MARA-KASSA SL)
-decidiendo el email y el plazo. -->
+Use GitHub private vulnerability reporting: the repository's **Security** tab →
+**Report a vulnerability**
+([direct link](https://github.com/Aimarmndz/orgtable/security/advisories/new)). It only
+works while the repository is public; while it is private, contact the author through
+their profile, [github.com/Aimarmndz](https://github.com/Aimarmndz).
 
-Mientras no haya un canal publicado, contacta directamente con el propietario del
-repositorio.
+<!-- TODO: committed response time. Aimar decides it; until then, none is promised. -->
 
-Incluye, si puedes: la versión o el commit afectado, una descripción, los pasos para
-reproducirlo y el impacto.
+If you can, include the affected version or commit, a description, the steps to reproduce
+it and the impact.
 
-## Postura y endurecimiento
+## Security posture and hardening
 
-La postura de seguridad del proyecto, el resultado de la última auditoría y las
-recomendaciones de endurecimiento están en [`docs/security.md`](./docs/security.md).
-La guía de operación (TLS/proxy inverso, copias de seguridad, secretos) está en
-[`docs/self-hosting.md`](./docs/self-hosting.md) y
-[`docs/operations.md`](./docs/operations.md).
+The project's security posture, the result of the latest audit and the hardening
+recommendations are in [`docs/security.md`](./docs/security.md). The operations guide
+(TLS/reverse proxy, backups, secrets) is in [`docs/self-hosting.md`](./docs/self-hosting.md)
+and [`docs/operations.md`](./docs/operations.md).

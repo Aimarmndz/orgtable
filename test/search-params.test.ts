@@ -2,15 +2,15 @@ import { describe, it, expect } from "vitest";
 import { firstParam } from "@/app/lib/search-params";
 
 describe("firstParam", () => {
-  it("devuelve el string tal cual", () => {
-    expect(firstParam("hola")).toBe("hola");
+  it("returns the string as is", () => {
+    expect(firstParam("hello")).toBe("hello");
   });
 
-  it("con la clave repetida (?q=a&q=b) devuelve el primer valor", () => {
+  it("with a repeated key (?q=a&q=b) it returns the first value", () => {
     expect(firstParam(["a", "b"])).toBe("a");
   });
 
-  it("con un array vacío o sin parámetro devuelve undefined", () => {
+  it("with an empty array or no parameter it returns undefined", () => {
     expect(firstParam([])).toBeUndefined();
     expect(firstParam(undefined)).toBeUndefined();
   });

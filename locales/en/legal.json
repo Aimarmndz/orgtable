@@ -1,0 +1,233 @@
+{
+  "footer": {
+    "navLabel": "Legal information",
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "cookies": "Cookies",
+    "legalNotice": "Legal notice",
+    "sourceCode": "Source code",
+    "createdBy": "Created by <link>{author}</link>"
+  },
+  "layout": {
+    "goToBoards": "Go to your boards",
+    "signIn": "Sign in"
+  },
+  "nav": {
+    "label": "Legal pages",
+    "heading": "Legal",
+    "privacy": "Privacy",
+    "terms": "Terms of use",
+    "cookies": "Cookies",
+    "legalNotice": "Legal notice"
+  },
+  "shared": {
+    "notProvided": "not provided by the operator",
+    "appliesTo": "Applies to this orgtable instance.",
+    "appliesToNamed": "Applies to this orgtable instance ({instance}).",
+    "lastUpdated": "Last updated: {date}.",
+    "missingInfo": "The administrator of this instance has not yet stated who the controller is or how to contact them. Until those details are provided, open sign-up is disabled.",
+    "operator": {
+      "controller": "Controller",
+      "contact": "Contact",
+      "taxId": "Tax ID (NIF)",
+      "address": "Address",
+      "hosting": "Where the data is hosted"
+    }
+  },
+  "privacy": {
+    "title": "Privacy policy",
+    "metaDescription": "What data this orgtable instance stores, what for and for how long.",
+    "summary": {
+      "heading": "In short",
+      "body": "This instance stores what it needs for you to have an account and for your boards to work. There are no ads, no analytics and no tracking cookies: only technical cookies, for your session and your language. You can download or delete your data yourself from <link>Settings › Privacy and data</link>."
+    },
+    "controller": {
+      "heading": "Data controller",
+      "body": "The controller is whoever operates this instance, not the author of the software. orgtable is open source and anyone can host their own: each instance has its own controller."
+    },
+    "data": {
+      "heading": "What data is stored and why",
+      "colData": "Data",
+      "colPurpose": "Purpose",
+      "colBasis": "Legal basis",
+      "account": {
+        "data": "Name, email, the password hashed with bcrypt (never in plain text) and the interface language",
+        "purpose": "Your account: signing in, being recognised on shared boards and seeing the app in your language",
+        "basis": "Performance of the service you request (Art. 6(1)(b) GDPR)"
+      },
+      "acceptance": {
+        "data": "The date on which you accepted this policy and the terms",
+        "purpose": "Being able to prove that you accepted them when you signed up",
+        "basis": "Legitimate interest in being able to prove that you accepted them (Art. 6(1)(f))"
+      },
+      "content": {
+        "data": "Your boards, lists, cards, labels, checklists, comments, assignments and attachments",
+        "purpose": "The service itself",
+        "basis": "Performance of the service (Art. 6(1)(b))"
+      },
+      "notifications": {
+        "data": "In-app notifications",
+        "purpose": "Letting you know about changes to your boards and about due dates",
+        "basis": "Performance of the service (Art. 6(1)(b))"
+      },
+      "sessions": {
+        "data": "Sessions: browser (user agent), start date and expiry date",
+        "purpose": "Keeping you signed in and letting you end sessions remotely",
+        "basis": "Performance of the service (Art. 6(1)(b))"
+      },
+      "tokens": {
+        "data": "API tokens: name, visible prefix and their hash (never the token itself)",
+        "purpose": "Letting you use the API with your own scripts",
+        "basis": "Performance of the service (Art. 6(1)(b))"
+      },
+      "audit": {
+        "dataWithIp": "Security log: sign-ins and sign-outs, failed attempts and changes to accounts and permissions, with the IP address",
+        "dataWithoutIp": "Security log: sign-ins and sign-outs, failed attempts and changes to accounts and permissions (this instance does not store the IP address)",
+        "purpose": "Detecting unauthorised access and abuse",
+        "basis": "Legitimate interest in keeping the service secure (Art. 6(1)(f))"
+      },
+      "noProfiling": "Your data is not used for advertising, no profiles are built and no automated decisions are made about you, and it is not sold or passed on to anyone."
+    },
+    "retention": {
+      "heading": "How long it is kept",
+      "account": "Your account and your content: until you delete them or delete your account.",
+      "sessionLength": {
+        "one": "A session lasts {count} day.",
+        "other": "A session lasts {count} days."
+      },
+      "endedSessions": {
+        "one": "Ended or expired sessions are deleted after {count} day.",
+        "other": "Ended or expired sessions are deleted after {count} days."
+      },
+      "notifications": {
+        "one": "Notifications are deleted after {count} day.",
+        "other": "Notifications are deleted after {count} days."
+      },
+      "audit": {
+        "one": "The security log is deleted after {count} day.",
+        "other": "The security log is deleted after {count} days."
+      },
+      "backupsDays": {
+        "one": "Backups: they are kept for {count} day. Whatever you delete disappears from the backups when they expire.",
+        "other": "Backups: they are kept for {count} days. Whatever you delete disappears from the backups when they expire."
+      },
+      "backupsNone": "Backups: this instance does not make backups.",
+      "backupsUnknown": "Backups: {notProvided}"
+    },
+    "recipients": {
+      "heading": "Who else can see your data",
+      "boardMembers": "<b>The people you share a board with</b> see your name and email, and what you write on that board.",
+      "admin": "<b>Whoever administers the instance</b> sees the list of accounts (name, email, role) and the security log. They cannot see your password.",
+      "hosting": "<b>The hosting provider</b> stores the data on behalf of the controller, as a processor: {hosting}.",
+      "outsideEea": "If the data is hosted outside the European Economic Area, the controller must state so above and apply the safeguards of Chapter V of the GDPR."
+    },
+    "cookies": {
+      "heading": "Cookies and browser storage",
+      "body": "Two technical cookies: <code>session</code>, essential to keep you signed in, and <code>locale</code>, which remembers the language you choose. Your theme preference (light or dark) is stored in your browser's local storage and never leaves it. Details in the <link>cookie policy</link>."
+    },
+    "rights": {
+      "heading": "Your rights",
+      "intro": "You can exercise them yourself, without asking anyone for permission:",
+      "access": "<b>Access and portability</b>: download all your data as JSON from <link>Settings › Privacy and data</link>.",
+      "rectification": "<b>Rectification</b>: change your name and your email in <link>Settings › Profile</link>.",
+      "erasure": "<b>Erasure</b>: delete your account from <link>Settings › Privacy and data</link>. This deletes your account, the boards you created (with their cards and attachments), your comments and your notifications. Other people's boards remain, without you.",
+      "objection": "<b>Objection and restriction</b>: write to the controller's contact.",
+      "complaint": "If you believe your rights have not been respected, you can lodge a complaint with the data protection authority. In Spain, that is the <link>Spanish Data Protection Agency (AEPD)</link>."
+    },
+    "security": {
+      "heading": "Security",
+      "body": "Passwords are stored with bcrypt, sessions can be revoked instantly and API tokens are stored as a hash. Sign-in attempts are rate-limited to slow down brute-force attacks."
+    },
+    "changes": {
+      "heading": "Changes to this policy",
+      "body": "If the controller's details change, the “last updated” date above changes with them. Changes to what the software stores are published in its <link>source code</link>."
+    }
+  },
+  "terms": {
+    "title": "Terms of use",
+    "metaDescription": "Terms for using this orgtable instance.",
+    "provider": {
+      "heading": "Who provides the service",
+      "body": "This orgtable instance is operated by {operator}. orgtable is open-source software ({license}); its author does not provide this service and is not liable for it, unless they are also the one operating the instance."
+    },
+    "service": {
+      "heading": "The service",
+      "body": "Kanban boards to organise work, on your own or as a team. Creating an account and using it is free. By signing up you accept these terms and declare that you have read the <link>privacy policy</link>."
+    },
+    "account": {
+      "heading": "Your account",
+      "age": "You must be at least 14 years old to sign up.",
+      "responsibility": "You are responsible for what is done with your account. Use a password you do not use anywhere else, and end any sessions you do not recognise from the settings.",
+      "deletion": "You can delete your account whenever you want from the settings."
+    },
+    "content": {
+      "heading": "Your content",
+      "ownership": "What you write and upload remains yours. We only store it and show it to the people you share each board with, so that the service works.",
+      "prohibitedIntro": "You may not use the service to:",
+      "illegal": "Publish illegal content or content that infringes the rights of others.",
+      "malware": "Upload malware, or files in order to distribute them outside the service.",
+      "spam": "Send spam or harass other people.",
+      "abuse": "Try to access other people's accounts or boards, or deliberately overload the service.",
+      "enforcement": "If these rules are broken, the controller may remove the content or suspend the account. Where possible, they will warn you first and explain why."
+    },
+    "availability": {
+      "heading": "Availability and warranties",
+      "body": "The service is offered free of charge and “as is”, with no guarantee of continuous availability or of being error-free. Keep copies of what matters: you can export each board and all your data from the app. Nothing above limits the rights the law grants you as a user."
+    },
+    "changes": {
+      "heading": "Changes and end of the service",
+      "body": "If the terms change significantly, or if the service is going to close, you will be notified reasonably in advance so that you can export your data."
+    },
+    "software": {
+      "heading": "The software",
+      "body": "orgtable is distributed under the {license} licence. You can view, download and modify the code of this instance in its <link>repository</link>, and host your own instance."
+    },
+    "contact": {
+      "heading": "Contact",
+      "body": "For any questions about these terms: {contact}."
+    }
+  },
+  "cookies": {
+    "title": "Cookie policy",
+    "metaDescription": "What this orgtable instance stores in your browser.",
+    "intro": "orgtable does not use advertising, analytics or third-party cookies. It only stores in your browser what it strictly needs to work, which does not require your consent (Article 22.2 of the Spanish LSSI). That is why you will not see a cookie banner.",
+    "colName": "Name",
+    "colType": "Type",
+    "colPurpose": "Purpose",
+    "colDuration": "Duration",
+    "session": {
+      "type": "First-party cookie, HttpOnly",
+      "purpose": "Keeping you signed in",
+      "duration": {
+        "one": "{count} day, or until you sign out",
+        "other": "{count} days, or until you sign out"
+      }
+    },
+    "locale": {
+      "type": "First-party cookie",
+      "purpose": "Remembering the language you choose",
+      "duration": "One year"
+    },
+    "theme": {
+      "type": "Browser local storage",
+      "purpose": "Remembering whether you prefer the light or dark theme",
+      "duration": "Until you delete it from your browser"
+    },
+    "outro": "You can delete them all from your browser settings. Without the session cookie you will not be able to use the app with your account."
+  },
+  "notice": {
+    "title": "Legal notice",
+    "metaDescription": "Details of who operates this orgtable instance.",
+    "owner": {
+      "heading": "Site owner"
+    },
+    "purpose": {
+      "heading": "Purpose",
+      "body": "This site offers an instance of orgtable, a Kanban board application. The terms for using it are in the <terms>terms of use</terms>, and the processing of data in the <privacy>privacy policy</privacy>."
+    },
+    "ip": {
+      "heading": "Intellectual property",
+      "body": "The orgtable software is open source and is distributed under its own licence, linked in the footer of this page. The content of the boards belongs to whoever creates it."
+    }
+  }
+}

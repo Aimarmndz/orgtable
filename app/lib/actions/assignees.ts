@@ -6,11 +6,12 @@ import { requireBoardAccess } from "@/app/lib/dal";
 import { canEditBoard } from "@/app/lib/roles";
 import { cardContext } from "@/app/lib/services/cards";
 import { assignMemberToCard } from "@/app/lib/services/assignees";
-import { notify } from "@/app/lib/notifications";
+import { notify, recipientI18n } from "@/app/lib/notifications";
+import { fmt } from "@/app/i18n/format";
 
-// Asignar/quitar miembros de una tarjeta (Hito 10). Requiere permiso de edición. Solo se
-// puede asignar a personas que YA son miembros del tablero (el servidor lo verifica). Ver
-// docs/card-collaboration.md y docs/authorization.md.
+// Assign/unassign members on a card. Requires edit permission. Only people who ALREADY are
+// board members can be assigned (the server checks it). See docs/card-collaboration.md and
+// docs/authorization.md.
 
 export async function assignMember(formData: FormData): Promise<void> {
   const cardId = String(formData.get("cardId"));
@@ -20,17 +21,18 @@ export async function assignMember(formData: FormData): Promise<void> {
   const { user, role } = await requireBoardAccess(ctx.boardId);
   if (!canEditBoard(role)) return;
 
-  // La invariante (debe ser miembro) + idempotencia viven en el servicio testeable.
+  // The invariant (must be a member) + idempotency live in the testable service.
   const result = await assignMemberToCard(ctx.boardId, cardId, userId);
   if (!result.assigned) return;
 
-  // Notifica al asignado, salvo que se asigne a sí mismo.
+  // Notify the assignee, in their language, unless they assigned themselves.
   if (userId !== user.id) {
+    const { m } = await recipientI18n(userId);
     await notify({
       userId,
       type: "card.assigned",
-      title: `Te han asignado «${ctx.cardTitle}»`,
-      body: `En el tablero «${ctx.boardTitle}».`,
+      title: fmt(m.notifications.cardAssigned.title, { card: ctx.cardTitle }),
+      body: fmt(m.notifications.cardAssigned.body, { board: ctx.boardTitle }),
       boardId: ctx.boardId,
       cardId,
     });

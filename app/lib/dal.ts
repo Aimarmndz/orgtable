@@ -5,11 +5,11 @@ import { redirect } from "next/navigation";
 import { decrypt } from "@/app/lib/session";
 import { prisma } from "@/app/lib/prisma";
 
-// Data Access Layer: única fuente de verdad SEGURA para "quién es el usuario" y
-// "está la instancia configurada". Cada función se memoiza por request con cache()
-// de React, así que llamarlas varias veces en el mismo render no repite la consulta.
-// El proxy.ts hace un chequeo OPTIMISTA (solo mira si existe la cookie); la
-// validación criptográfica real ocurre aquí. Ver docs/authentication.md.
+// Data Access Layer: the single SECURE source of truth for "who is the user" and "is the
+// instance set up". Each function is memoised per request with React's cache(), so
+// calling them several times in one render does not repeat the query. proxy.ts does an
+// OPTIMISTIC check (it only looks for the cookie); the real cryptographic validation
+// happens here. See docs/authentication.md.
 
 const INSTANCE_ID = "singleton";
 
@@ -18,9 +18,9 @@ export const verifySession = cache(async () => {
   const payload = await decrypt(token);
   if (!payload?.userId || !payload.sid) return null;
 
-  // Validación contra el almacén de sesiones: aunque el JWT sea válido, la sesión
-  // puede haber sido revocada (logout, reset de contraseña, cierre forzado) o haber
-  // expirado. Una sola consulta, memoizada por request con cache().
+  // Check against the session store: even with a valid JWT, the session may have been
+  // revoked (sign-out, password reset, forced sign-out) or have expired. A single query,
+  // memoised per request with cache().
   const session = await prisma.session.findUnique({
     where: { id: payload.sid },
     select: { userId: true, revokedAt: true, expiresAt: true },
@@ -39,7 +39,7 @@ export const getCurrentUser = cache(async () => {
   return prisma.user.findUnique({ where: { id: session.userId } });
 });
 
-/** Exige sesión válida; redirige a /login si no la hay. Para usar en layouts/páginas. */
+/** Requires a valid session; redirects to /login otherwise. For layouts and pages. */
 export const requireUser = cache(async () => {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
@@ -50,19 +50,19 @@ export const getInstanceConfig = cache(async () => {
   return prisma.instanceConfig.findUnique({ where: { id: INSTANCE_ID } });
 });
 
-/** true si el setup wizard ya se completó. */
+/** true once the setup wizard has been completed. */
 export const isSetupComplete = cache(async () => {
   const config = await getInstanceConfig();
   return Boolean(config?.setupCompletedAt);
 });
 
 /**
- * Exige que el usuario actual sea miembro del tablero. Redirige a /boards si no
- * tiene acceso. Toda mutación sobre un tablero (listas, tarjetas...) pasa por aquí.
+ * Requires the current user to be a member of the board. Redirects to /boards without
+ * access. Every board mutation (lists, cards…) goes through here.
  *
- * Devuelve también el ROL del usuario en el tablero (OWNER/EDITOR/VIEWER): la
- * comprobación de "qué puede hacer" con ese rol se hace en cada Server Action con los
- * ayudantes de @/app/lib/roles (canEditBoard, canManageBoard). Ver docs/authorization.md.
+ * Also returns the user's ROLE on the board (OWNER/EDITOR/VIEWER): "what can they do"
+ * with that role is checked in each Server Action with the helpers in @/app/lib/roles
+ * (canEditBoard, canManageBoard). See docs/authorization.md.
  */
 export const requireBoardAccess = cache(async (boardId: string) => {
   const user = await requireUser();
@@ -74,9 +74,9 @@ export const requireBoardAccess = cache(async (boardId: string) => {
 });
 
 /**
- * Exige que el usuario actual sea administrador GLOBAL de la instancia (User.role =
- * ADMIN). Para el panel de administración (/admin). Redirige a /boards si no lo es;
- * a /login si no hay sesión (vía requireUser).
+ * Requires the current user to be a GLOBAL administrator of the instance (User.role =
+ * ADMIN). For the administration panel (/admin). Redirects to /boards if not, and to
+ * /login without a session (via requireUser).
  */
 export const requireAdmin = cache(async () => {
   const user = await requireUser();

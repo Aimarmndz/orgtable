@@ -1,25 +1,24 @@
-// Resincronización al reconectar un EventSource (tablero y campana de notificaciones).
+// Resync when an EventSource reconnects (board and notification bell).
 //
-// El servidor no reenvía los eventos perdidos (no hay Last-Event-ID ni historial): lo
-// que cambió mientras la conexión estaba caída (suspensión del portátil, reinicio del
-// servidor, corte de red) no llega nunca. Por eso, cada vez que el EventSource vuelve a
-// abrirse DESPUÉS de la primera vez, se pide un refresh para traer el estado actual.
-// En la primera apertura no hace falta: la página acaba de renderizarse con datos frescos.
+// The server does not resend missed events (no Last-Event-ID or history): whatever changed
+// while the connection was down (laptop sleep, server restart, network cut) never arrives.
+// So every time the EventSource opens again AFTER the first time, a refresh is requested
+// to fetch the current state. Not needed on the first open: the page was just rendered
+// with fresh data.
 
-// Un solo refresco por pestaña. router.refresh() vuelve a renderizar todo el árbol de
-// la ruta, layout incluido: en /board/[id] la campana (layout) y BoardRealtime (página)
-// tienen cada uno su EventSource, que el servidor corta a la vez (vida máxima de 15 min,
-// reinicio, suspensión del portátil). Con un debounce por componente cada reconexión
-// costaba dos renders completos del tablero; con este temporizador de módulo las
-// peticiones de ambos dentro de la ventana se agrupan en uno.
+// A single refresh per tab. router.refresh() re-renders the whole route tree, layout
+// included: on /board/[id] the bell (layout) and BoardRealtime (page) each have their own
+// EventSource, which the server cuts at the same time (15 min maximum lifetime, restart,
+// laptop sleep). With a per-component debounce each reconnect cost two full board renders;
+// with this module-level timer, requests from both within the window are merged.
 export const REFRESH_DEBOUNCE_MS = 200;
 let pendingRefresh: ReturnType<typeof setTimeout> | null = null;
 
 /**
- * Programa un refresh agrupado con los que pida cualquier componente en los próximos
- * REFRESH_DEBOUNCE_MS. No se cancela al desmontar: el temporizador es compartido y
- * cancelarlo anularía el refresh que pidió el otro componente; un router.refresh()
- * tras desmontar solo refresca la ruta actual, sin efectos dañinos.
+ * Schedules a refresh merged with those requested by any component in the next
+ * REFRESH_DEBOUNCE_MS. Not cancelled on unmount: the timer is shared and cancelling it
+ * would drop the refresh the other component asked for; a router.refresh() after unmount
+ * only refreshes the current route, with no harmful effects.
  */
 export function scheduleRefresh(refresh: () => void): void {
   if (pendingRefresh) clearTimeout(pendingRefresh);
@@ -29,7 +28,7 @@ export function scheduleRefresh(refresh: () => void): void {
   }, REFRESH_DEBOUNCE_MS);
 }
 
-/** Devuelve el manejador de "open": ignora la primera apertura y avisa en las siguientes. */
+/** Returns the "open" handler: ignores the first open and signals the following ones. */
 export function createReconnectRefresher(onReconnect: () => void): () => void {
   let opened = false;
   return () => {
@@ -38,37 +37,37 @@ export function createReconnectRefresher(onReconnect: () => void): () => void {
   };
 }
 
-// Reintento cuando el navegador se rinde. EventSource reconecta por su cuenta si la
-// respuesta fue 200 o la conexión se cortó; ante cualquier otro estado (p. ej. el 502
-// de un proxy TLS mientras scripts/update.sh reinicia la app, o un 401/403) queda en
-// CLOSED para siempre y el tiempo real se perdía sin aviso hasta recargar la pestaña.
-// Por eso se crea un EventSource nuevo con backoff exponencial de 3 s a 30 s.
+// Retry when the browser gives up. EventSource reconnects on its own if the response was
+// 200 or the connection was cut; on any other status (e.g. a TLS proxy's 502 while
+// scripts/update.sh restarts the app, or a 401/403) it stays CLOSED forever and live
+// updates were silently lost until the tab was reloaded. Hence a new EventSource is
+// created with exponential backoff from 3 s to 30 s.
 //
-// EventSource no expone el estado HTTP, así que al quedar CLOSED se pregunta al mismo
-// endpoint (probeStatus) y solo se avisa de acceso denegado ante 401/403. No se puede
-// hacer router.refresh() a ciegas: en Next 16, si la petición RSC del refresh recibe
-// una respuesta no OK o falla por red, el router hace una navegación completa (ver
-// fetch-server-response.js, doMpaNavigation) y la pestaña acababa en la página
-// «502 Bad Gateway» del proxy, perdiendo lo que no se hubiera guardado.
+// EventSource does not expose the HTTP status, so once CLOSED the same endpoint is asked
+// (probeStatus) and access denied is only reported on 401/403. A blind router.refresh()
+// is not possible: in Next 16, if the refresh's RSC request gets a non-OK response or a
+// network error, the router does a full navigation (see fetch-server-response.js,
+// doMpaNavigation) and the tab ended up on the proxy's "502 Bad Gateway" page, losing
+// anything unsaved.
 export const RETRY_BASE_MS = 3_000;
 export const RETRY_MAX_MS = 30_000;
 
-// Plazo máximo de la comprobación. fetch no tiene timeout en el navegador: si el proxy
-// retiene la conexión mientras la app arranca, o verifySession espera una conexión del
-// pool durante el mismo fallo de BD que dio el 500, la comprobación no respondería
-// nunca y, como el reintento se programa al terminarla, no se recrearía la fuente.
+// Maximum time for the check. fetch has no timeout in the browser: if the proxy holds the
+// connection while the app starts, or verifySession waits for a pool connection during the
+// same database failure that caused the 500, the check would never answer and, since the
+// retry is scheduled when it ends, the source would never be recreated.
 export const PROBE_TIMEOUT_MS = 10_000;
 
-// Valor de EventSource.CLOSED. Se usa el literal porque en Node (tests) no existe el
-// global EventSource.
+// Value of EventSource.CLOSED. The literal is used because the EventSource global does
+// not exist in Node (tests).
 const CLOSED = 2;
 
-/** Espera antes del reintento número `attempt` (0, 1, 2…): 3 s, 6 s, 12 s, 24 s, 30 s… */
+/** Wait before retry number `attempt` (0, 1, 2…): 3 s, 6 s, 12 s, 24 s, 30 s… */
 export function retryDelay(attempt: number): number {
   return Math.min(RETRY_BASE_MS * 2 ** attempt, RETRY_MAX_MS);
 }
 
-/** Lo que el helper usa de un EventSource (permite probarlo sin navegador). */
+/** What the helper uses from an EventSource (lets it be tested without a browser). */
 export type EventSourceLike = {
   readonly readyState: number;
   addEventListener(type: string, listener: () => void): void;
@@ -77,15 +76,15 @@ export type EventSourceLike = {
 };
 
 /**
- * Estado HTTP del endpoint SSE, o null si no hubo respuesta (error de red, servidor
- * caído, o `signal` abortada por el plazo o el desmontaje). Es un GET normal que se
- * aborta en cuanto llegan las cabeceras: con un 200 el stream se abre y se cierra al
- * momento (el servidor limpia la suscripción por el abort). No se usa HEAD porque en
- * App Router se deriva del GET y abriría igualmente el stream.
+ * HTTP status of the SSE endpoint, or null without a response (network error, server
+ * down, or `signal` aborted by the timeout or unmount). It is a plain GET aborted as soon
+ * as the headers arrive: with a 200 the stream opens and closes at once (the server
+ * cleans up the subscription on abort). HEAD is not used because in the App Router it is
+ * derived from GET and would open the stream anyway.
  */
 export async function probeStatus(url: string, signal?: AbortSignal): Promise<number | null> {
   const controller = new AbortController();
-  // Se encadena a mano en vez de con AbortSignal.any, que Safari solo tiene desde 17.4.
+  // Chained by hand instead of AbortSignal.any, which Safari only has since 17.4.
   const forwardAbort = () => controller.abort();
   if (signal?.aborted) return null;
   signal?.addEventListener("abort", forwardAbort, { once: true });
@@ -97,9 +96,9 @@ export async function probeStatus(url: string, signal?: AbortSignal): Promise<nu
     });
     return res.status;
   } catch (err) {
-    // Sin respuesta no hay estado que interpretar: el llamador reintenta con backoff.
-    // Solo se toleran el fallo de red (TypeError de fetch) y el abort pedido desde
-    // fuera; cualquier otro error es un bug.
+    // No response, no status to interpret: the caller retries with backoff. Only a
+    // network failure (fetch's TypeError) and an abort requested from outside are
+    // tolerated; any other error is a bug.
     if (err instanceof TypeError || controller.signal.aborted) return null;
     throw err;
   } finally {
@@ -109,19 +108,19 @@ export async function probeStatus(url: string, signal?: AbortSignal): Promise<nu
 }
 
 /**
- * Mantiene un EventSource abierto mientras el componente esté montado y devuelve la
- * función de limpieza para el efecto.
- * - `events`: manejadores por nombre de evento SSE.
- * - `onReconnect`: se llama en cada apertura salvo la primera (también en las fuentes
- *   recreadas), para traer lo perdido durante el corte.
- * - `probe`: cuando el navegador deja la fuente en CLOSED, averigua el estado HTTP del
- *   endpoint (probeStatus en la app; inyectable para probarlo sin navegador). Recibe
- *   una señal que se aborta al pasar PROBE_TIMEOUT_MS o al desmontar; aunque `probe` la
- *   ignore, pasado el plazo se reintenta como ante un error de red.
- * - `onAccessDenied`: solo si `probe` da 401/403 (sesión o acceso revocados); con un
- *   `router.refresh()` la página redirige y el desmontaje cancela el reintento. Ante un
- *   5xx o un error de red no se llama: solo se reintenta, y al reabrirse `onReconnect`
- *   ya resincroniza con el servidor sano.
+ * Keeps an EventSource open while the component is mounted and returns the cleanup
+ * function for the effect.
+ * - `events`: handlers by SSE event name.
+ * - `onReconnect`: called on every open except the first (recreated sources included),
+ *   to fetch what was missed during the outage.
+ * - `probe`: when the browser leaves the source CLOSED, finds out the endpoint's HTTP
+ *   status (probeStatus in the app; injectable to test without a browser). It gets a
+ *   signal aborted after PROBE_TIMEOUT_MS or on unmount; even if `probe` ignores it, the
+ *   retry happens after the timeout as on a network error.
+ * - `onAccessDenied`: only when `probe` gives 401/403 (session or access revoked); with a
+ *   `router.refresh()` the page redirects and unmounting cancels the retry. Not called on
+ *   a 5xx or a network error: it just retries, and on reopening `onReconnect` resyncs with
+ *   the healthy server.
  */
 export function keepEventSourceOpen(options: {
   create: () => EventSourceLike;
@@ -131,8 +130,8 @@ export function keepEventSourceOpen(options: {
   onAccessDenied: () => void;
 }): () => void {
   const { create, events, onReconnect, probe, onAccessDenied } = options;
-  // Una sola instancia para todas las fuentes: la primera apertura de una fuente
-  // recreada sí es una reconexión.
+  // A single instance for all sources: the first open of a recreated source is a
+  // reconnect.
   const refreshOnReopen = createReconnectRefresher(onReconnect);
   let source: EventSourceLike | null = null;
   let retryTimer: ReturnType<typeof setTimeout> | null = null;
@@ -163,8 +162,8 @@ export function keepEventSourceOpen(options: {
     attempt += 1;
     const controller = new AbortController();
     probeController = controller;
-    // El plazo compite con la comprobación en vez de fiarse de que `probe` respete la
-    // señal: el reintento tiene que programarse pase lo que pase.
+    // The timeout races the check instead of trusting `probe` to honour the signal: the
+    // retry must be scheduled no matter what.
     const timedOut = new Promise<null>((resolve) => {
       probeTimer = setTimeout(() => {
         controller.abort();
@@ -172,18 +171,18 @@ export function keepEventSourceOpen(options: {
       }, PROBE_TIMEOUT_MS);
     });
     const checked = probe(controller.signal).catch((err: unknown) => {
-      // Abortada por el plazo o el desmontaje: ya se sabe por qué, no es un fallo.
+      // Aborted by the timeout or unmount: the reason is known, it is not a failure.
       if (controller.signal.aborted) return null;
-      // Si no se sabe por qué se cerró, no se refresca (podría navegar a una página
-      // de error): se reintenta igual que ante un 5xx.
-      console.error("[realtime] no se pudo comprobar por qué se cerró el stream", err);
+      // If it is unknown why it closed, do not refresh (it could navigate to an error
+      // page): retry as on a 5xx.
+      console.error("[realtime] could not check why the stream closed", err);
       return null;
     });
     void Promise.race([checked, timedOut]).then((status) => {
       if (probeTimer) clearTimeout(probeTimer);
       probeTimer = null;
       probeController = null;
-      // El componente pudo desmontarse mientras se comprobaba.
+      // The component may have unmounted during the check.
       if (stopped) return;
       if (status === 401 || status === 403) onAccessDenied();
       retryTimer = setTimeout(connect, delay);
@@ -208,7 +207,7 @@ export function keepEventSourceOpen(options: {
     stopped = true;
     if (retryTimer) clearTimeout(retryTimer);
     retryTimer = null;
-    // Corta la comprobación en curso para no dejar la petición colgada tras desmontar.
+    // Aborts the ongoing check so the request is not left hanging after unmount.
     if (probeTimer) clearTimeout(probeTimer);
     probeTimer = null;
     probeController?.abort();

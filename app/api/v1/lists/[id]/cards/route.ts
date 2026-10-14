@@ -4,15 +4,15 @@ import { canEditBoard } from "@/app/lib/roles";
 import { apiCardCreateSchema } from "@/app/lib/validators";
 import { createCardAtEnd } from "@/app/lib/services/cards";
 import { authenticateApiToken, apiBoardRole, isReadOnly } from "@/app/lib/api/auth";
-import { apiError, apiOk } from "@/app/lib/api/respond";
+import { apiError, apiOk, apiValidationError } from "@/app/lib/api/respond";
 import { serializeCard } from "@/app/lib/api/serialize";
 
-// API pública v1 — tarjetas de una lista (Hito 9). Ver docs/api/public-api.md.
+// Public API v1: cards of a list. See docs/api/public-api.md.
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-// Relaciones que componen una tarjeta completa en la respuesta.
+// Relations that make up a full card in the response.
 const cardInclude = {
   labels: { include: { label: true } },
   checklists: {
@@ -27,22 +27,22 @@ const cardInclude = {
   },
 };
 
-/** GET /api/v1/lists/:id/cards — las tarjetas de la lista, en orden. */
+/** GET /api/v1/lists/:id/cards: the list's cards, in order. */
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const auth = await authenticateApiToken(request);
-  if (!auth) return apiError(401, "Token de API no válido o ausente.");
+  if (!auth) return apiError(401, "Missing or invalid API token.");
   const { id: listId } = await params;
 
   const list = await prisma.list.findUnique({
     where: { id: listId },
     select: { boardId: true },
   });
-  if (!list) return apiError(404, "Lista no encontrada.");
+  if (!list) return apiError(404, "List not found.");
   const role = await apiBoardRole(auth.userId, list.boardId);
-  if (!role) return apiError(404, "Lista no encontrada.");
+  if (!role) return apiError(404, "List not found.");
 
   const cards = await prisma.card.findMany({
     where: { listId },
@@ -52,34 +52,34 @@ export async function GET(
   return apiOk({ cards: cards.map(serializeCard) });
 }
 
-/** POST /api/v1/lists/:id/cards — crea una tarjeta al final (requiere editor). */
+/** POST /api/v1/lists/:id/cards: creates a card at the end (requires editor). */
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const auth = await authenticateApiToken(request);
-  if (!auth) return apiError(401, "Token de API no válido o ausente.");
-  if (isReadOnly(auth)) return apiError(403, "Token de solo lectura.");
+  if (!auth) return apiError(401, "Missing or invalid API token.");
+  if (isReadOnly(auth)) return apiError(403, "Read-only token.");
   const { id: listId } = await params;
 
   const list = await prisma.list.findUnique({
     where: { id: listId },
     select: { boardId: true },
   });
-  if (!list) return apiError(404, "Lista no encontrada.");
+  if (!list) return apiError(404, "List not found.");
   const role = await apiBoardRole(auth.userId, list.boardId);
-  if (!role) return apiError(404, "Lista no encontrada.");
+  if (!role) return apiError(404, "List not found.");
   if (!canEditBoard(role)) {
-    return apiError(403, "Necesitas permiso de edición en el tablero.");
+    return apiError(403, "You need edit permission on this board.");
   }
 
   const body = await request.json().catch(() => null);
   const parsed = apiCardCreateSchema.safeParse(body);
   if (!parsed.success) {
-    return apiError(422, parsed.error.issues[0]?.message ?? "Datos no válidos.");
+    return apiValidationError(parsed.error.issues[0]);
   }
 
-  // apiDueDateSchema ya garantiza una fecha ISO válida (o null/ausente).
+  // apiDueDateSchema already guarantees a valid ISO date (or null/absent).
   const { id } = await createCardAtEnd({
     listId,
     title: parsed.data.title,

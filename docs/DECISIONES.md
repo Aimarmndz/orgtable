@@ -1,1991 +1,2384 @@
-# Registro de decisiones
+# Decision log
 
-Decisiones técnicas del proyecto, las más recientes arriba. Cada entrada lleva fecha,
-contexto, decisión, alternativas descartadas y consecuencias. Las decisiones de
-arquitectura anteriores a este registro (ADR 0001–0015) siguen en
-[`docs/decisions/`](./decisions/); este archivo es el registro vivo a partir de
-2026-09-24.
-
----
-
-## 2026-09-24 — Flechas izquierda/derecha de una tarjeta con el teclado
-
-**Contexto.** Probando en el navegador el build final, una tarjeta cogida con Espacio no
-se movía con la flecha izquierda. `sortableKeyboardCoordinates` filtra los destinos «a la
-izquierda» comparando con el borde de la tarjeta, y el borde de su propia columna está
-8 px antes: la columna propia salía como destino más cercano y la tarjeta volvía a su
-sitio. Hacia la derecha funcionaba porque la columna propia nunca queda a la derecha.
-
-**Decisión.** `boardKeyboardCoordinates` resuelve también izquierda/derecha para las
-tarjetas: toma como referencia el borde de la columna que contiene el centro de la
-tarjeta, salta a la columna vecina y, dentro de ella, a la tarjeta más cercana en
-vertical, o a la columna si está vacía. Arriba/abajo siguen con `@dnd-kit/sortable`.
-
-**Alternativas descartadas.** Envolver `droppableContainers` para quitar la columna
-propia antes de llamar a `sortableKeyboardCoordinates`: depende de la forma interna de
-`DroppableContainersMap` y seguiría eligiendo destinos por esquinas en vez de por
-columna.
-
-**Consecuencias.** Tests con rectángulos sintéticos en `test/board-collision.test.ts`
-(fallan con el código anterior). Verificado con Playwright: la tarjeta pasa a una
-columna vacía a la izquierda y vuelve a la derecha, y el cambio queda en la base de
-datos.
+Technical decisions of the project, most recent first. Each entry has a date, context,
+decision, alternatives considered and consequences. Architecture decisions made before
+this log (ADR 0001–0015) remain in [`docs/decisions/`](./decisions/); this file is the
+living log from 2026-09-24 onwards.
 
 ---
 
-## 2026-09-24 — Restaurar adjuntos sin borrar antes de comprobar el archivo
+## 2026-10-14 — English routes, anchors and parameters; repository fully in English
 
-**Contexto.** El procedimiento de `docs/operations.md` para restaurar los adjuntos era
-`rm -rf /data/uploads/* && tar xzf - -C /data`: borraba todos los adjuntos antes de leer
-el archivo, sin comprobarlo y sin copia previa, justo lo que `scripts/restore.sh` evita
-con la base de datos. Con un `.tar.gz` truncado se perdían los adjuntos actuales y solo
-quedaba lo que `tar` llegara a extraer. Además, `/*` no incluye los ficheros ocultos.
+**Context.** Translating the interface left some Spanish behind in places users see:
 
-**Decisión.** Solo se cambia la documentación, con tres pasos: `gzip -t` y `tar tzf`
-del archivo en el host, `scripts/backup.sh` como copia previa, y extracción a
-`/data/uploads/.restore` dentro del propio volumen. Los adjuntos actuales solo se
-sustituyen si `tar` termina bien (`set -e`), y con `find` se incluyen los ocultos. El
-temporal va dentro del volumen porque `/data/uploads` es el punto de montaje y no se
-puede borrar ni renombrar.
+- the legal routes `/legal/privacidad`, `/legal/condiciones` and `/legal/aviso-legal`;
+- the settings anchors `#perfil`, `#seguridad`, `#apariencia`, `#datos` and `#acerca`;
+- the `/login?cuenta=borrada` parameter after an account is deleted.
 
-**Alternativas descartadas.**
-- Una opción en `scripts/restore.sh` o un `scripts/restore-uploads.sh` con
-  confirmación, copia previa y parada o arranque de la app con `trap`. Es lo más
-  coherente con la base de datos, pero toca los scripts de operación y sus tests, que
-  quedan fuera de este lote. Queda como mejora.
-- Mantener el comando con solo un aviso delante: seguía borrando antes de comprobar.
-- Extraer fuera del volumen (p. ej. `/tmp`) y copiar después: la copia puede fallar a
-  medias con los adjuntos ya borrados, y dentro del mismo volumen `mv` es un
-  renombrado.
+The `locale` cookie was also written in two places with different flags: the language
+picker set `secure` on HTTPS, sign-in did not.
 
-**Consecuencias.** Se probó contra la imagen de la app, en un volumen temporal: con un
-archivo truncado `tar` falla, los adjuntos anteriores (ocultos incluidos) siguen
-intactos y solo queda `.restore`, que el siguiente intento borra; con un archivo bueno
-se sustituyen todos. El procedimiento sigue siendo manual: nada obliga a hacer los pasos
-1 y 2.
-## 2026-09-24 — Espacio sobre una pastilla del calendario no abre la tarjeta
+**Decision.**
+- Use English paths and anchors in every language:
+  - `/legal/privacy`, `/legal/terms`, `/legal/cookies` and `/legal/notice`;
+  - `#profile`, `#security`, `#api`, `#appearance`, `#data` and `#about`;
+  - `/login?account=deleted`.
 
-**Contexto.** La pastilla del calendario es un `<button>` con `onClick` que abre la
-tarjeta y el `KeyboardSensor` de dnd-kit, que coge y suelta con Espacio. dnd-kit solo
-cancela el keydown, pero un botón nativo se activa en el keyup de Espacio (Firefox lo
-hace aunque el keydown esté cancelado): coger o soltar la pastilla podía abrir además el
-modal. La tarjeta del tablero no lo sufre porque es un `div role="button"` que gestiona
-el teclado a mano.
+  URLs are identifiers, not interface text. These routes had never been released, so
+  no redirects are needed.
+- One helper, `setLocaleCookie()` in `app/i18n/cookie.ts`, writes the cookie for both
+  callers: one year, `SameSite=Lax`, and `Secure` when the request came over HTTPS, like
+  the session cookie.
+- "Created by" in Settings › About uses the same message as the public footer, so the
+  attribution reads the same in both places. LICENSE 7(b) allows translating these two
+  words.
+- The rest of the repository was translated as well:
+  - code comments and tests, with English expectations in tests by default and new tests
+    for each language;
+  - scripts and their operator messages, configuration and CI comments;
+  - the demo data used for the README media;
+  - documentation, this log and the ADRs.
 
-**Decisión.** Si la pastilla se puede arrastrar (`canEdit`), su `onKeyUp` cancela Espacio
-(`preventSpaceActivation` en `app/components/board/calendar-view.tsx`). Sin permiso de
-edición no se toca: Espacio sigue abriendo la tarjeta. Intro no cambia: el botón se
-activa en el keydown, que dnd-kit ya cancela al soltar.
+  The README is English, with a Spanish `README.es.md`, and the roadmap no longer uses
+  internal milestone numbering.
 
-**Alternativas descartadas.** Convertir la pastilla en un `div role="button"` con la
-misma lógica de teclado que `CardItem`: es más coherente con el tablero, pero es un
-cambio mayor (foco, activación y atributos a mano) para el mismo efecto.
+**Alternatives considered.**
+- **Localized URLs** (`/legal/privacidad` for Spanish, `/legal/privacy` for English).
+  Same pages under two names, links that change with the language, and nothing gained,
+  because the language does not come from the URL.
+- **Keeping the old routes with redirects.** Nothing was ever published under them.
 
-**Consecuencias.** Test unitario en `test/calendar-view.test.ts` (Espacio se cancela,
-Intro y las flechas no). El comportamiento en Firefox solo se comprueba a mano.
+**Consequences.**
+- The README screenshots and GIFs were retaken in English (`scripts/readme-media/`).
+- Notifications stored before this change keep their Spanish text.
+- Integration tests now cover the request language, the cookie, the account preference
+  and per-recipient notifications (`test/integration/locale.int.test.ts` and others).
 
 ---
 
-## 2026-09-24 — Copia flotante del calendario en un portal a `document.body`
+## 2026-10-14 — Bilingual interface (English and Spanish), easy to translate
 
-**Contexto.** El `DragOverlay` del calendario se pintaba dentro del panel, que lleva
-`backdrop-blur-sm`. `backdrop-filter` convierte ese panel en el bloque contenedor de sus
-descendientes `position: fixed`, y dnd-kit coloca la copia con `fixed` y coordenadas de la
-ventana. La copia salía desplazada (lo que miden las cabeceras de la app y del tablero),
-la animación de soltar volvía a un punto equivocado y el `overflow-y-auto` la recortaba.
+**Context.** The owner is preparing the public release. A Spanish-only interface, with
+internal milestone wording, is not professional for a public project. The app has to
+support several languages, and anyone should be able to contribute a translation without
+knowing the code.
 
-**Decisión.** En `app/components/board/calendar-view.tsx`, el `DragOverlay` se pinta con
-`createPortal(…, document.body)`. Se monta solo en el navegador (`useSyncExternalStore`
-con instantánea de servidor `false`, el mismo patrón que `CardItem`) y siempre, no solo
-con una tarjeta activa, para que termine la animación de soltar. El portal conserva el
-contexto de React, así que sigue dentro del `DndContext`.
+**Decision.**
+- **Messages in JSON, one folder per language** (`locales/<code>/<area>.json`), which
+  translators and tools such as Weblate or Crowdin already know.
+  - English (`en`) is the reference and the fallback: a missing message shows in English,
+    so a partial translation never breaks the app.
+  - Adding a language means copying `en/`, translating it and adding one line to
+    `locales/index.ts`. The guide is in `locales/README.md`.
+- **Values are plain data.** Strings carry `{placeholders}`, plurals are objects
+  (`{ one, other, … }`, chosen with `Intl.PluralRules`), and markup uses simple tags
+  (`<link>…</link>`) rendered by `rich()`. With no functions inside, the dictionary of the
+  current language travels from the root layout to Client Components as props
+  (`I18nProvider`), and the client bundle never imports the dictionaries.
+- **Language of a request**: the `locale` cookie set by the picker, else
+  `Accept-Language`, else English. `User.locale` (migration `..._user_locale`) stores the
+  account's choice: it restores the cookie on sign-in and decides the language of the
+  notifications written for that person.
+- **zod schemas carry message keys** (`"errors.validation.titleRequired"`), resolved with
+  `issueMessage(m, issue)`, so they stay language-independent.
+- **The public REST API answers in English only.** It is for programs.
+- **CI check** (`test/i18n.test.ts`). Every registered language must have the same keys
+  as English, the same placeholders and tags, and the plural forms its grammar needs.
+- **Language picker** with one submit button per language, which works without
+  JavaScript. It sits in the footer of the public pages and in Settings › Appearance.
+- **No dependency.** About 150 lines of our own code.
 
-**Alternativas descartadas.**
-- Quitar `backdrop-blur-sm` del panel: cambia el diseño (decisión del usuario) y
-  cualquier `transform`, `filter` o `will-change` futuro en un ancestro lo volvería a
-  romper.
-- Sacar el `DragOverlay` del panel pero dentro del contenedor con scroll: no protege
-  frente a otros ancestros con esas propiedades.
+**Alternatives considered.**
+- **next-intl.** Mature (ICU, middleware), but it is a dependency for what native `Intl`
+  plus a few helpers already cover. Its locale-prefixed routes (`/en/...`) would also break
+  every existing link and the deep-links of notifications.
+- **Messages as TypeScript objects.** Type-safe for developers, but harder for
+  translators, and invisible to translation tools.
+- **Language in the URL.** Better for SEO, but almost everything is behind sign-in. The
+  few public pages work with the cookie and Accept-Language.
 
-**Consecuencias.** La copia sigue al puntero sin recortes. Test
-`test/calendar-view.test.ts`: el render de servidor no toca `document` (falla si el
-portal se monta sin la guarda). El posicionamiento real solo se comprueba a mano en el
-navegador.
-## 2026-09-24 — Aviso de error retirado al enviar en usuario, token e importar
-
-**Contexto.** `create-user-form.tsx`, `create-token-form.tsx` e `import-board-form.tsx`
-dejaban el aviso `role="alert"` montado entre envíos. Un segundo error idéntico (crear dos
-veces un usuario con un email existente, importar dos veces el mismo JSON inválido) no
-cambiaba el DOM y el lector de pantalla no lo anunciaba.
-
-**Decisión.** El mismo patrón que `login-form.tsx` y el panel de miembros:
-`state.error && !pending`. En crear usuario, `aria-describedby` del email solo apunta al
-aviso mientras está visible, para no referenciar un id inexistente durante el envío.
-
-**Alternativas descartadas.** Añadir un contador o una key al aviso para forzar que se
-reinserte: más estado para lo mismo que ya hace `pending`.
-
-**Consecuencias.** Mientras se envía no se ve el error anterior (el botón ya dice
-«Creando…»/«Importando…»). `test/form-error-reannounce.test.ts` lo comprueba en el HTML
-de los tres formularios.
+**Consequences.**
+- Every visible text in the app moves to `locales/`. The work is split by area: auth and
+  legal; shell, settings and admin; boards; server messages and notifications.
+- Notifications already stored stay in the language they were written in.
+- Following the owner's decision, everything in this repository is in English from now on:
+  code comments, tests, documentation and commits. This deliberately departs from the
+  owner's global rule of Spanish documentation, for this repository only.
 
 ---
 
-## 2026-09-24 — Panel de miembros: rol al invitar tras un error, error repetido y fondo
+## 2026-10-14 — Next 16.3.8 and patched sharp and source-map-js
 
-**Contexto.** Tres fallos del formulario de invitar y del `<dialog>` de miembros
+**Context.** Running the CI locally before pushing, `pnpm audit --prod --audit-level high`
+failed on three new advisories published after the last review:
+
+- GHSA-cjq9-62q9-8jv4: SSRF in Next's image optimization (`next` < 16.3.8);
+- GHSA-wq5f-xc86-pv6w: `sharp` < 0.35.5, through `next`;
+- GHSA-68fv-2mgg-jv7q: `source-map-js` < 1.2.2, through `postcss`.
+
+The same step would also fail on `main`.
+
+**Decision.**
+- Bump `next` and `eslint-config-next` to 16.3.8. These are patch releases.
+- Add two `overrides` in `pnpm-workspace.yaml`: `sharp@<0.35.5` and
+  `source-map-js@<1.2.2`. Even with next 16.3.8, the lockfile kept the old transitive
+  versions although the ranges allow the patched ones.
+
+**Alternatives considered.**
+- **next 16.4.x.** A minor release with more changes than a security fix needs. It goes in
+  its own commit after reading its changelog.
+- **Ignoring the advisories.** The Next.js one affects any deployment that serves images.
+
+**Consequences.** `pnpm audit --prod --audit-level high` passes again; only the
+previously documented ignored advisory remains. Remove the two overrides once next ships
+the patched versions itself.
+
+---
+
+## 2026-10-14 — Own icon, instance-aware robots.txt and Open Graph
+
+**Context.** The favicon was the default triangle from the Next template, and `public/`
+held the template's SVGs (Next and Vercel logos), unused. A public repo should not carry
+other companies' brands. There was no `robots.txt` either: a private instance could end
+up indexed starting from its login page.
+
+**Decision.**
+- `app/icon.svg` with the brand's "o" on terracotta. `app/favicon.ico` and the template
+  SVGs are deleted.
+- Dynamic `app/robots.ts`. With registration closed it asks for `Disallow: /`. With
+  registration open it allows only `/login`, `/register` and `/legal/`. `/robots.txt` is
+  public in `proxy.ts`.
+- Basic Open Graph metadata in the root layout: name, description and language.
+
+**Alternatives considered.**
+- **Static `robots.txt`.** It would have to serve a private instance and a public one
+  equally.
+- **Sitemap.** It needs the instance's absolute public URL, which the app does not know.
+  One more variable (`ORGTABLE_PUBLIC_URL`) for three public pages is not worth it for now.
+- **Open Graph image.** Left for when the official instance and its domain exist.
+
+**Consequences.** Test of `robots()` in `registration.int.test.ts`.
+
+---
+
+## 2026-10-14 — Visual README with real screenshots and GIF
+
+**Context.** To publish the project, the README had to show the app, like vibe-gambling's
+does: main GIF, gallery, features, privacy and credits. Without losing the fixed structure
+(what it is, requirements, installation, commands, variables and deployment).
+
+**Decision.**
+- **Screenshots and GIF of the real app**, recorded with Playwright (headless Brave) on a
+  production build and a separate database (`orgtable_demo`) with sample data: fictional
+  people with `@example.com` emails, which is a reserved domain. The GIFs are assembled
+  with Pillow using a shared palette and no dithering: 0.5 MB for the main one and 0.1 MB
+  for the realtime one.
+- Screenshots in **WebP** at 1600 px (30–55 KB each) in `docs/screenshots/`.
+- `README.md` in Spanish, like the rest of the documentation, and a shorter `README.en.md`
+  for people arriving from outside.
+- The link to the official public instance stays as a `TODO` in the README: its URL does
+  not exist yet.
+
+**Alternatives considered.**
+- **Mockups instead of screenshots.** They go stale and do not prove the app works.
+- **MP4 video in the README.** GitHub only plays it if it is uploaded as an issue
+  attachment, not from the repo.
+- **Recording on the development DB.** It would mix real test data with the demo.
+
+**Consequences.** If the interface changes a lot, the screenshots have to be regenerated
+with the scripts in `scripts/readme-media/`: demo seeding, Playwright, and GIF and WebP
+assembly. Their instructions are in their README. `playwright-core` is installed
+separately so it is not added to the project's dependencies.
+
+---
+
+## 2026-10-14 — Account menu in the navbar and boards with context
+
+**Context.** The top bar piled up, loose, the Administration link, the settings gear, the
+email and "Sign out" ("Salir"). On mobile they did not fit and the instance name got cut
+off. On the index, board cards only showed the title, and importing from JSON competed in
+prominence with "Create board".
+
+**Decision.**
+- The bar keeps search, notifications, theme and a **button with the initials** that
+  opens a menu with name and email, links to profile, password and sessions, privacy and
+  data, administration (admins only) and "Sign out" ("Cerrar sesión"). It uses the
+  browser's `popover` API: no custom JavaScript, closing on outside click or Escape. It is
+  anchored with anchor positioning, and where that is not supported it falls back to the
+  top right.
+- The cards on `/boards` show the number of cards and, if the board is shared, the
+  initials of up to 4 members. The names are included as hidden text for screen readers.
+  It uses a new query, `getBoardSummariesForUser`, so as not to change what
+  `GET /api/v1/boards` returns.
+- Import moves into a collapsed `<details>`.
+
+**Alternatives considered.**
+- **Menu as a client component with its own focus management.** More code for what the
+  native popover already solves.
+- **Keeping the email visible in the bar.** It takes space on every screen and is
+  already in the menu.
+
+**Consequences.** `app/lib/initials.ts` with its test. Checked at 375 and 1280 px.
+
+---
+
+## 2026-10-14 — Redesigned settings and accounts in each person's hands
+
+**Context.** With registration open, every person has to be able to manage their account
+without asking the admin. `/settings` only had API tokens: you could not change your name,
+email or password, see your sessions, or exercise your GDPR rights.
+
+**Decision.** `/settings` gets a side navigation (a scrollable row on mobile), designed
+first on a design canvas, with these sections:
+
+- **Profile.** Changing the email requires the current password, so that a stolen session
+  cannot hijack the account.
+- **Password and sessions.** Changing the password signs out the other sessions and keeps
+  the current one. Tokens are kept: the person creates them themselves. Open sessions are
+  listed with a readable browser name (`app/lib/user-agent.ts`) and can be closed one by
+  one or all at once.
+- **API tokens** (unchanged) and **Appearance**: light, dark or system, with the same
+  `localStorage` key as the anti-flicker script.
+- **Privacy and data.**
+  - JSON export (`/api/account/export`, browser session only) with everything the person
+    owns and everything they wrote on other people's boards, without hashes.
+  - Account deletion with password: it deletes the person's own boards along with their
+    attachment files, the rest goes by cascade, and the audit `detail` that named the
+    person is emptied.
+  - The last ADMIN account cannot be deleted. The check locks the admin rows with
+    `FOR UPDATE`, with a concurrency test.
+- **About**: version, source code, license and the license attribution.
+
+The logic lives in `services/account.ts`, without request context, like the rest of the
+services.
+
+**Alternatives considered.**
+- **Transferring shared boards instead of deleting them.** It is kinder to the team, but
+  requires choosing to whom, and the app has no ownership transfer. For now the warning
+  says how many boards are deleted. Left as an improvement.
+- **Also exporting through the API with a token.** A leaked token would pull the full
+  account dump. Export stays limited to the browser session.
+
+**Consequences.** Tests in `test/integration/account.int.test.ts`: profile, password,
+sessions, export, deletion with attachments, last admin and two admins at once. Other
+people's notifications may keep the deleted person's name until they expire (180 days).
+The privacy policy says so.
+
+---
+
+## 2026-10-14 — Open registration, legal pages and data cleanup (GDPR)
+
+**Context.** The owner is going to host a public instance with free registration and wants
+anyone to be able to run their own. Until now only the admin created accounts, and there
+was no privacy policy, terms or retention periods.
+
+**Decision.**
+- **Optional registration per instance.** `InstanceConfig.registrationOpen`, closed by
+  default. It is opened in `/admin/instance` and only if the controller and the contact
+  email are set, which art. 13 GDPR requires. `isRegistrationOpen()` checks it again on
+  every sign-up. New accounts are MEMBER.
+- **Consent.** Mandatory checkbox, unchecked by default, with links to the policy and the
+  terms. `User.termsAcceptedAt` is stored. Next to the form there is a first information
+  layer: controller, purpose and rights.
+- **Anti-abuse without external services.**
+  - Trap field (honeypot).
+  - 5 sign-ups per hour per IP, if there is a trusted proxy.
+  - 30 per hour across the whole instance, counted after validation so that a typo does
+    not use up quota.
+  - A concurrent sign-up with the same email (P2002) responds like a normal duplicate,
+    not with a 500.
+- **Operator legal details** (`InstanceConfig.operator*`, hosting, backup days) editable
+  by the admin. The pages `/legal/{privacidad,condiciones,cookies,aviso-legal}` describe
+  what this code does, with the periods taken from the same constants as the cleanup.
+  Anything missing is shown as "not specified", never made up. That way they work for the
+  official instance and for any self-hosted instance.
+- **Cleanup** via `POST /api/cron/maintenance` (same `CRON_SECRET` as the reminders,
+  shared authorization in `app/lib/api/cron.ts`):
+  - audit log after `ORGTABLE_AUDIT_RETENTION_DAYS` days (90 by default);
+  - closed or expired sessions after 30 days;
+  - notifications after 180 days.
+- **Public footer** with legal links, source code (`ORGTABLE_SOURCE_URL`, validated) and
+  the license attribution, on login, registration, setup and legal pages.
+- **Minimum age of 14** in the terms: it is the age of digital consent in Spain (art. 7
+  LOPDGDD).
+
+**Alternatives considered.**
+- **Email verification.** It needs SMTP, which is still in the backlog. Without it,
+  registration reveals whether an email already has an account. The sign-up limit slows
+  down mass enumeration.
+- **External CAPTCHA (Turnstile, hCaptcha).** It adds a third party that sees every
+  visitor and forces expanding the policy and the CSP. It stays as an option if real spam
+  shows up.
+- **Fixed legal texts in Markdown.** They would be false as soon as someone else hosted
+  their instance or changed a period.
+- **Cookie banner.** There is only strictly necessary technical storage (art. 22.2 LSSI).
+  A banner is unnecessary as long as there is no analytics.
+
+**Consequences.**
+- Migration `20261014171630_registration_and_legal`, new columns only.
+- For the cleanup to run, the maintenance cron has to be scheduled, like the reminders
+  one (`docs/operations.md`).
+- Tests in `test/integration/registration.int.test.ts` and `maintenance.int.test.ts`.
+- The legal texts were drafted by Claude, not a lawyer: a professional should review them
+  before opening the public instance.
+- The official instance's operator details are filled in by the owner in
+  `/admin/instance`. They are not in the repo.
+
+---
+
+## 2026-10-14 — OFL fonts instead of the Fontshare ones
+
+**Context.** The interface used Satoshi and Cabinet Grotesk, from Fontshare, with the
+`.woff2` files inside the repo (`app/fonts`). Their license, the ITF Free Font License 2.0
+(read from the `FFL.txt` included in the official download), forbids distributing the
+files "through another [...] repository [...] publicly accessible servers" and giving them
+to third parties. Publishing the repo under the AGPL, and having others run their own
+instance, is exactly that.
+
+**Decision.** They are replaced by **Bricolage Grotesque** (headings) and **Figtree**
+(interface), both under the SIL OFL 1.1, loaded with `next/font/google` as was already done
+with Geist Mono. Next downloads them at build time and serves them from the app itself: at
+runtime there are no requests to Google and the CSP does not change. `app/fonts` is
+deleted. I chose them for their closeness to the previous character: a display grotesque
+with editorial personality and a warm geometric sans for body text. They were tried out
+first on the design canvas.
+
+**Alternatives considered.**
+- **Keeping Fontshare, loading the fonts from its API.** The license also forbids making
+  them available to third parties from a service, and it would add an external CDN to an
+  app meant to be hosted without dependencies.
+- **Copying the OFL `.woff2` files into the repo.** It works just as well, but
+  `next/font/google` was already in use and avoids maintaining binary files.
+
+**Consequences.**
+- The Docker build needs internet access to download the fonts. It already needed it for
+  Geist Mono, so nothing changes.
+- Earlier commits still contain the Fontshare `.woff2` files. If the repository is made
+  public with its full history, those files remain accessible. Removing them requires
+  rewriting history (`git filter-repo`) and force-pushing. That is destructive and is the
+  owner's call.
+
+---
+
+## 2026-10-14 — AGPL-3.0-or-later license with attribution
+
+**Context.** The owner wants to publish orgtable as open source: anyone can use, modify
+and host it, as long as they keep it open and give credit. Until now the proprietary
+license of MARA-KASSA SL (ADR 0016) applied. The repository was transferred the same day
+to the personal account `Aimarmndz`.
+
+**Decision.** `LICENSE` becomes the official GNU AGPL-3.0 text (downloaded from gnu.org,
+unchanged) followed by additional terms under section 7(b), the same ones used by
+vibe-gambling, another project by the author:
+
+- Copyright holder: "Aimar (https://github.com/Aimarmndz)", with the "or any later
+  version" option.
+- Anyone who distributes the app or offers a modified version over a network must keep
+  "Created by Aimar (github.com/Aimarmndz)" in the footer of the public pages (login,
+  registration, legal pages) and in "About" in the settings.
+- `package.json` declares `AGPL-3.0-or-later`. The CI step that prevented mentioning the
+  AGPL now checks the opposite: that `LICENSE` and `package.json` match, that the
+  attribution term is still there and that no remnants of the proprietary license are left.
+- Contributions are *inbound = outbound* with DCO (`git commit -s`), without assignment of
+  rights. The assignment clause goes away, which was of doubtful validity anyway.
+
+**Alternatives considered.**
+- **MIT or Apache-2.0.** They give credit, but do not require keeping the code open: a
+  third party could offer orgtable as closed SaaS. That is what the owner wants to avoid.
+- **GPL-3.0.** It does not cover network use: hosting a modified version without
+  distributing it would not require publishing the code. The AGPL (section 13) does.
+- **AGPL without 7(b) terms.** The copyright notice is already kept in the code, but
+  nothing would require the credit to be visible in the interface of someone else's
+  instance.
+
+**Consequences.**
+- The AGPL requires every instance to offer its source code to its network users. The app
+  links to the code from the footer and from the settings; whoever modifies the app must
+  point that link to their own code (`ORGTABLE_SOURCE_URL` variable).
+- Copies distributed while the proprietary license applied do not change license. From
+  now on the AGPL applies to all history that is published.
+- Ownership: the previous license was in the name of MARA-KASSA SL and the new one in the
+  name of Aimar, as the owner asked ("giving me credit"). If the rights belong to the
+  company, the assignment to Aimar should be put in writing, or the company should be
+  listed as the holder alongside the attribution. That is the owner's call.
+
+---
+
+## 2026-09-24 — Moving a card left/right with the keyboard arrows
+
+**Context.** While testing the final build in the browser, a card picked up with Space did
+not move with the left arrow. `sortableKeyboardCoordinates` filters the "to the left"
+targets by comparing against the card's edge, and the edge of its own column is 8 px
+earlier: the card's own column came out as the closest target and the card went back to
+its place. Moving right worked because the card's own column is never to the right.
+
+**Decision.** `boardKeyboardCoordinates` also resolves left/right for cards: it takes as
+reference the edge of the column containing the card's center, jumps to the neighboring
+column and, within it, to the vertically closest card, or to the column if it is empty.
+Up/down still use `@dnd-kit/sortable`.
+
+**Alternatives considered.** Wrapping `droppableContainers` to remove the card's own
+column before calling `sortableKeyboardCoordinates`: it depends on the internal shape of
+`DroppableContainersMap` and would still pick targets by corners instead of by column.
+
+**Consequences.** Tests with synthetic rectangles in `test/board-collision.test.ts` (they
+fail with the previous code). Verified with Playwright: the card moves to an empty column
+on the left and back to the right, and the change is persisted in the database.
+
+---
+
+## 2026-09-24 — Restoring attachments without deleting before checking the archive
+
+**Context.** The procedure in `docs/operations.md` for restoring attachments was
+`rm -rf /data/uploads/* && tar xzf - -C /data`: it deleted all attachments before reading
+the archive, without checking it and without a prior backup, exactly what
+`scripts/restore.sh` avoids for the database. With a truncated `.tar.gz`, the current
+attachments were lost and only whatever `tar` managed to extract remained. Also, `/*` does
+not include hidden files.
+
+**Decision.** Only the documentation changes, with three steps: `gzip -t` and `tar tzf`
+on the archive on the host, `scripts/backup.sh` as a prior backup, and extraction to
+`/data/uploads/.restore` inside the volume itself. The current attachments are only
+replaced if `tar` finishes successfully (`set -e`), and `find` is used so hidden files are
+included. The temporary directory lives inside the volume because `/data/uploads` is the
+mount point and cannot be deleted or renamed.
+
+**Alternatives considered.**
+- An option in `scripts/restore.sh` or a `scripts/restore-uploads.sh` with confirmation,
+  prior backup and stopping/starting the app with `trap`. It is the most consistent with
+  the database, but it touches the operations scripts and their tests, which are outside
+  this batch. Left as an improvement.
+- Keeping the command with just a warning in front of it: it still deleted before
+  checking.
+- Extracting outside the volume (e.g. `/tmp`) and copying afterwards: the copy can fail
+  halfway with the attachments already deleted, whereas inside the same volume `mv` is a
+  rename.
+
+**Consequences.** Tested against the app image, on a temporary volume: with a truncated
+archive `tar` fails, the previous attachments (hidden ones included) stay intact and only
+`.restore` is left, which the next attempt deletes; with a good archive they are all
+replaced. The procedure is still manual: nothing forces steps 1 and 2.
+## 2026-09-24 — Space on a calendar chip does not open the card
+
+**Context.** The calendar chip is a `<button>` with an `onClick` that opens the card, plus
+dnd-kit's `KeyboardSensor`, which picks up and drops with Space. dnd-kit only cancels the
+keydown, but a native button activates on the Space keyup (Firefox does so even when the
+keydown was cancelled): picking up or dropping the chip could also open the modal. The
+board card does not suffer from this because it is a `div role="button"` that handles the
+keyboard by hand.
+
+**Decision.** If the chip is draggable (`canEdit`), its `onKeyUp` cancels Space
+(`preventSpaceActivation` in `app/components/board/calendar-view.tsx`). Without edit
+permission it is left alone: Space still opens the card. Enter does not change: the button
+activates on keydown, which dnd-kit already cancels on drop.
+
+**Alternatives considered.** Turning the chip into a `div role="button"` with the same
+keyboard logic as `CardItem`: it is more consistent with the board, but it is a bigger
+change (focus, activation and attributes by hand) for the same effect.
+
+**Consequences.** Unit test in `test/calendar-view.test.ts` (Space is cancelled, Enter and
+the arrows are not). The Firefox behavior is only checked by hand.
+
+---
+
+## 2026-09-24 — Calendar drag overlay in a portal to `document.body`
+
+**Context.** The calendar's `DragOverlay` was rendered inside the panel, which has
+`backdrop-blur-sm`. `backdrop-filter` makes that panel the containing block of its
+`position: fixed` descendants, and dnd-kit positions the overlay with `fixed` and viewport
+coordinates. The overlay came out offset (by the height of the app and board headers), the
+drop animation returned to the wrong point and `overflow-y-auto` clipped it.
+
+**Decision.** In `app/components/board/calendar-view.tsx`, the `DragOverlay` is rendered
+with `createPortal(…, document.body)`. It is mounted only in the browser
+(`useSyncExternalStore` with a server snapshot of `false`, the same pattern as `CardItem`)
+and always, not only while a card is active, so that the drop animation finishes. The
+portal keeps the React context, so it stays inside the `DndContext`.
+
+**Alternatives considered.**
+- Removing `backdrop-blur-sm` from the panel: it changes the design (the user's decision),
+  and any future `transform`, `filter` or `will-change` on an ancestor would break it
+  again.
+- Moving the `DragOverlay` out of the panel but inside the scroll container: it does not
+  protect against other ancestors with those properties.
+
+**Consequences.** The overlay follows the pointer without clipping. Test
+`test/calendar-view.test.ts`: the server render does not touch `document` (it fails if the
+portal is mounted without the guard). The actual positioning is only checked by hand in
+the browser.
+## 2026-09-24 — Error notice removed on submit in user, token and import forms
+
+**Context.** `create-user-form.tsx`, `create-token-form.tsx` and `import-board-form.tsx`
+left the `role="alert"` notice mounted between submissions. A second identical error
+(creating a user with an existing email twice, importing the same invalid JSON twice) did
+not change the DOM and the screen reader did not announce it.
+
+**Decision.** The same pattern as `login-form.tsx` and the members panel:
+`state.error && !pending`. In create user, the email's `aria-describedby` only points to
+the notice while it is visible, so it does not reference a non-existent id during
+submission.
+
+**Alternatives considered.** Adding a counter or a key to the notice to force it to be
+reinserted: more state for what `pending` already does.
+
+**Consequences.** While submitting, the previous error is not shown (the button already
+says "Creating…"/"Importing…"). `test/form-error-reannounce.test.ts` checks it in the HTML
+of the three forms.
+
+---
+
+## 2026-09-24 — Members panel: invite role after an error, repeated error and backdrop
+
+**Context.** Three bugs in the invite form and the members `<dialog>`
 (`app/components/board/members-panel.tsx`):
-- Tras un error («no existe ninguna cuenta…») el rol volvía a Editor sin avisar: React
-  restablece el formulario tras la acción, pero no aplica el nuevo `defaultValue` a un
-  `<select>` ya montado. Al corregir el email, la persona entraba con escritura aunque se
-  hubiera elegido Lector.
-- El aviso `role="alert"` seguía montado entre envíos: un segundo error con el mismo
-  texto no cambiaba el DOM y el lector de pantalla no lo anunciaba.
-- El fundido del `::backdrop` se veía con movimiento reducido: la regla
-  `prefers-reduced-motion` de `globals.css` no cubre `::backdrop`.
+- After an error ("no account exists…") the role silently reverted to Editor: React
+  resets the form after the action, but does not apply the new `defaultValue` to an
+  already mounted `<select>`. After correcting the email, the person joined with write
+  access even if Viewer had been chosen.
+- The `role="alert"` notice stayed mounted between submissions: a second error with the
+  same text did not change the DOM and the screen reader did not announce it.
+- The `::backdrop` fade was visible with reduced motion: the `prefers-reduced-motion` rule
+  in `globals.css` does not cover `::backdrop`.
 
-**Decisión.**
-- `<select name="role" key={inviteRole}>`: la key remonta el select con el rol devuelto.
-  `inviteRole` solo reutiliza `values.role` si está en `ASSIGNABLE_BOARD_ROLES`; si no
-  (p. ej. OWNER), vuelve a Editor. Es el mismo patrón que `create-token-form.tsx`.
-- El aviso se pinta con `state.error && !pending`, como `login-form.tsx` y
-  `setup-form.tsx`: se retira mientras se envía y un error idéntico se vuelve a insertar.
-- `backdrop:motion-safe:animate-[overlay-in_150ms_ease-out]`, igual que `card-modal.tsx`.
+**Decision.**
+- `<select name="role" key={inviteRole}>`: the key remounts the select with the returned
+  role. `inviteRole` only reuses `values.role` if it is in `ASSIGNABLE_BOARD_ROLES`;
+  otherwise (e.g. OWNER), it falls back to Editor. It is the same pattern as
+  `create-token-form.tsx`.
+- The notice is rendered with `state.error && !pending`, like `login-form.tsx` and
+  `setup-form.tsx`: it is removed while submitting and an identical error is inserted
+  again.
+- `backdrop:motion-safe:animate-[overlay-in_150ms_ease-out]`, same as `card-modal.tsx`.
 
-**Alternativas descartadas.**
-- `<select>` controlado con `useState`: habría que sincronizarlo con `state.values` en un
-  efecto y resetearlo al invitar con éxito; la key lo resuelve sin estado nuevo.
-- Añadir `*::backdrop` a la regla de `prefers-reduced-motion` de `globals.css`: toca un
-  archivo compartido cuando `motion-safe:` basta.
+**Alternatives considered.**
+- A controlled `<select>` with `useState`: it would have to be synced with `state.values`
+  in an effect and reset after a successful invite; the key solves it without new state.
+- Adding `*::backdrop` to the `prefers-reduced-motion` rule in `globals.css`: it touches a
+  shared file when `motion-safe:` is enough.
 
-**Consecuencias.** El remontaje por key no tiene test automático: sin jsdom,
-`renderToStaticMarkup` ya marcaba el rol correcto antes del arreglo.
-`test/members-panel.test.ts` cubre la vuelta a Editor con un rol no asignable, la
-retirada del aviso mientras se envía y la clase del fondo.
-## 2026-09-24 — Confirmar el borrado de una lista sin anunciar cuántas tarjetas tiene
+**Consequences.** The key-based remount has no automated test: without jsdom,
+`renderToStaticMarkup` already marked the correct role before the fix.
+`test/members-panel.test.ts` covers the fallback to Editor with a non-assignable role, the
+removal of the notice while submitting and the backdrop class.
+## 2026-09-24 — Confirming a list deletion without announcing how many cards it has
 
-**Contexto.** El botón «Sí» de la confirmación de borrar lista
-(`app/components/board/list-column.tsx`) anunciaba «Sí, borrar la lista X y sus N
-tarjetas» con `list.cards.length`. Con filtros activos, `BoardView` pasa a `ListColumn`
-solo las tarjetas visibles, así que una lista con 12 tarjetas y una visible anunciaba «y
-sus 1 tarjetas», y al confirmar se borraban las 12 en cascada.
+**Context.** The "Yes" button of the delete-list confirmation
+(`app/components/board/list-column.tsx`) announced "Yes, delete list X and its N cards"
+using `list.cards.length`. With active filters, `BoardView` passes `ListColumn` only the
+visible cards, so a list with 12 cards and one visible announced "and its 1 cards", and on
+confirming all 12 were deleted by cascade.
 
-**Decisión.** El `aria-label` dice «Sí, borrar la lista X y todas sus tarjetas», sin
-cifra. El contador visible de la cabecera sigue mostrando las tarjetas filtradas.
+**Decision.** The `aria-label` says "Yes, delete list X and all its cards", with no number.
+The visible counter in the header still shows the filtered cards.
 
-**Alternativas descartadas.** Pasar a `ListColumn` una prop `totalCards` desde las listas
-sin filtrar de `board-view.tsx` y concordar singular/plural: da la cifra exacta, pero
-obliga a tocar `BoardView` y su construcción de listas filtradas para un texto que solo
-oye el lector de pantalla; «todas» ya deja claro el alcance del borrado.
+**Alternatives considered.** Passing `ListColumn` a `totalCards` prop from the unfiltered
+lists in `board-view.tsx` and handling singular/plural agreement: it gives the exact
+number, but forces touching `BoardView` and how it builds the filtered lists for a text
+only the screen reader hears; "all" ("todas") already makes the scope of the deletion
+clear.
 
-**Consecuencias.** El lector de pantalla no dice cuántas tarjetas se borran; quien quiera
-saberlo tiene el contador (sin filtros). Test en `test/list-column-delete.test.ts`.
-## 2026-09-24 — Tiempo real: plazo máximo para la comprobación del stream CLOSED
+**Consequences.** The screen reader does not say how many cards are deleted; anyone who
+wants to know has the counter (without filters). Test in `test/list-column-delete.test.ts`.
+## 2026-09-24 — Realtime: maximum time for the CLOSED stream check
 
-**Contexto.** `keepEventSourceOpen` programaba el reintento al terminar `probe()`, y
-`probeStatus` hacía un `fetch` sin timeout (el del navegador no tiene). Si la
-comprobación no respondía (un proxy que retiene la conexión mientras la app arranca, o
-`verifySession` esperando una conexión del pool durante el mismo fallo de BD que dio el
-500), no se recreaba nunca la fuente y el tiempo real se perdía hasta recargar. El
-desmontaje tampoco abortaba la comprobación en curso.
+**Context.** `keepEventSourceOpen` scheduled the retry when `probe()` finished, and
+`probeStatus` did a `fetch` with no timeout (the browser's has none). If the check never
+answered (a proxy holding the connection while the app starts up, or `verifySession`
+waiting for a pool connection during the same DB failure that caused the 500), the source
+was never recreated and realtime was lost until a reload. Unmounting did not abort the
+in-flight check either.
 
-**Decisión.** `PROBE_TIMEOUT_MS` (10 s) en `app/lib/realtime/reconnect.ts`. `probe`
-recibe una `AbortSignal` y un temporizador compite con ella (`Promise.race`): al vencer
-aborta la señal y se trata como «sin estado» (reintento con backoff, sin
-`onAccessDenied`). El desmontaje aborta la señal. `probeStatus(url, signal)` devuelve
-`null` si la señal se aborta.
+**Decision.** `PROBE_TIMEOUT_MS` (10 s) in `app/lib/realtime/reconnect.ts`. `probe`
+receives an `AbortSignal` and a timer races it (`Promise.race`): when it fires it aborts
+the signal and the result is treated as "no status" (retry with backoff, no
+`onAccessDenied`). Unmounting aborts the signal. `probeStatus(url, signal)` returns
+`null` if the signal is aborted.
 
-**Alternativas descartadas.**
-- Solo `AbortSignal.timeout` dentro de `probeStatus`: el reintento seguiría dependiendo
-  de que el `probe` inyectado respete la señal.
-- `AbortSignal.any` para encadenar señales: Safari no lo tiene hasta la 17.4; se
-  encadena con un listener.
+**Alternatives considered.**
+- Only `AbortSignal.timeout` inside `probeStatus`: the retry would still depend on the
+  injected `probe` honouring the signal.
+- `AbortSignal.any` to chain signals: Safari lacks it until 17.4; they are chained with a
+  listener instead.
 
-**Consecuencias.** Con un servidor colgado, cada reintento tarda hasta 10 s más que el
-backoff. Tests en `test/realtime-reconnect.test.ts`: `probe` que no resuelve nunca,
-aborto al desmontar y `probeStatus` con la señal abortada contra un servidor HTTP real.
-
----
-
-## 2026-09-24 — Tiempo real: un solo refresh por pestaña para el tablero y la campana
-
-**Contexto.** En `/board/[id]` la campana (layout) y `BoardRealtime` (página) tienen
-cada uno su `EventSource` y su debounce. `router.refresh()` repinta todo el árbol,
-layout incluido, y los dos streams caen y vuelven a la vez (vida máxima de 15 min,
-reinicio, suspensión): cada reconexión hacía dos renders completos del tablero. La
-consecuencia «un `router.refresh()` por reconexión» de la entrada «Resincronizar el
-tablero y la campana al reconectar el EventSource» no se cumplía en esa página.
-
-**Decisión.** `scheduleRefresh` en `app/lib/realtime/reconnect.ts`: un temporizador de
-módulo (200 ms) compartido por los dos componentes para eventos, reconexiones y acceso
-denegado, en lugar del temporizador local de cada uno. No se cancela al desmontar:
-anularía el refresh que pidió el otro componente, y un `router.refresh()` tras
-desmontar solo refresca la ruta actual.
-
-**Alternativas descartadas.** Que la campana no refresque si hay un `BoardRealtime`
-montado: el layout no sabe qué página tiene debajo, y fuera del tablero sí hace falta.
-
-**Consecuencias.** Un solo `router.refresh()` por reconexión y pestaña, también cada
-15 min. La redirección tras una revocación llega unos 200 ms más tarde. Test de
-agrupación en `test/realtime-reconnect.test.ts`.
+**Consequences.** With a hung server, each retry takes up to 10 s longer than the
+backoff. Tests in `test/realtime-reconnect.test.ts`: a `probe` that never resolves, abort
+on unmount, and `probeStatus` with the signal aborted against a real HTTP server.
 
 ---
 
-## 2026-09-24 — Tiempo real: no refrescar a ciegas cuando el stream queda CLOSED
+## 2026-09-24 — Realtime: a single refresh per tab for the board and the notification bell
 
-**Contexto.** Al quedar `CLOSED`, `BoardRealtime` y `NotificationsBell` hacían
-`router.refresh()`. La premisa de la entrada «Recrear el EventSource cuando el
-navegador deja de reintentar» («la página no redirigía») era falsa: en Next 16, si la
-petición RSC de un refresh recibe una respuesta no OK o falla por red, el router hace
-una navegación completa (`fetch-server-response.js`, `doMpaNavigation`). Con el 502
-del proxy durante `scripts/update.sh`, o un 500 por un fallo pasajero de la BD, cada
-pestaña abierta acababa en la página de error y se perdía lo que no se hubiera guardado.
+**Context.** On `/board/[id]` the notification bell (layout) and `BoardRealtime` (page)
+each have their own `EventSource` and debounce. `router.refresh()` repaints the whole
+tree, layout included, and both streams drop and come back at the same time (15 min
+maximum lifetime, restart, sleep): every reconnection caused two full renders of the
+board. The consequence "one `router.refresh()` per reconnection" from the entry "Resync
+the board and the bell when the EventSource reconnects" did not hold on
+that page.
 
-**Decisión.** `keepEventSourceOpen` recibe `probe` y `onAccessDenied` en lugar de
-`onClosed`. Al quedar `CLOSED`, `probeStatus(url)` hace un GET al mismo endpoint que se
-aborta en cuanto llegan las cabeceras; solo con 401/403 se llama a `onAccessDenied`
-(refresh para redirigir a `/login` o `/boards`). Ante un 5xx, un error de red o un fallo
-de la propia comprobación solo se reintenta con backoff; al reabrirse, `onReconnect`
-resincroniza con el servidor ya sano.
+**Decision.** `scheduleRefresh` in `app/lib/realtime/reconnect.ts`: a module-level timer
+(200 ms) shared by both components for events, reconnections and access denied, instead
+of each one's local timer. It is not cancelled on unmount: that would cancel the refresh
+requested by the other component, and a `router.refresh()` after unmounting only
+refreshes the current route.
 
-**Alternativas descartadas.**
-- `HEAD` para la comprobación: en App Router se deriva del GET y abriría el stream igual.
-- Que las rutas SSE respondan 200 con un `event: revoked` antes de cerrar: más limpio,
-  pero toca `sse.ts` y las dos rutas, y no cubre el 401 de una reconexión.
+**Alternatives considered.** Have the bell skip the refresh when a `BoardRealtime` is
+mounted: the layout does not know which page is below it, and outside the board the
+refresh is needed.
 
-**Consecuencias.** Cada `CLOSED` cuesta una petición extra al endpoint (con 200, el
-stream se abre y se cierra al momento). Tests en `test/realtime-reconnect.test.ts`
-(5xx/red no avisan, 401/403 sí, desmontaje durante la comprobación y `probeStatus`
-contra un servidor HTTP real). Descrito en `docs/realtime.md`.
-## 2026-09-24 — `CARD_DESCRIPTION_MAX` en un módulo sin dependencias (`limits.ts`)
-
-**Contexto.** El modal de tarjeta importaba `CARD_DESCRIPTION_MAX` de
-`app/lib/validators.ts` para el `maxLength` del textarea. Era el único componente
-`"use client"` que importaba `validators.ts`, así que zod entraba en el bundle del
-cliente del tablero solo por un número. Además, `validators.ts` usa `Buffer` en
-`passwordSchema`, que no existe en el navegador.
-
-**Decisión.** La constante vive en `app/lib/limits.ts`, sin importaciones. El modal la
-importa de ahí y `validators.ts` la importa y la reexporta, así que los esquemas, las
-acciones y los tests siguen usando `validators.ts` sin cambios. Un test unitario
-(`test/client-imports.test.ts`) falla si un componente `"use client"` importa zod o
-`validators.ts`, o si `limits.ts` gana importaciones.
-
-**Alternativas descartadas.** Duplicar el `5000` en el modal: dos fuentes de verdad que
-se pueden desincronizar. Dividir `validators.ts` en esquemas de cliente y de servidor:
-más cambio del necesario para una constante. Comprobar solo con `pnpm build`: no deja
-nada que impida que vuelva a pasar.
-
-**Consecuencias.** Los límites que necesite la UI se añaden a `limits.ts`. El test solo
-mira las importaciones directas: una cadena indirecta hacia zod no la detecta.
+**Consequences.** A single `router.refresh()` per reconnection and tab, also every 15 min.
+The redirect after a revocation arrives about 200 ms later. Grouping test in
+`test/realtime-reconnect.test.ts`.
 
 ---
 
-## 2026-09-24 — `updateCard` devuelve el error y no revalida descripciones sin cambios
+## 2026-09-24 — Realtime: do not refresh blindly when the stream ends up CLOSED
 
-**Contexto.** `cardDetailsSchema` limita la descripción a `CARD_DESCRIPTION_MAX` (5000),
-pero `updateCard` hacía `return;` sin avisar si no validaba, y el textarea del modal no
-tenía `maxLength`. Pegar 6000 caracteres no guardaba nada y, al resetear React el
-formulario, el texto desaparecía. Además, las tarjetas con descripciones anteriores al
-límite (más de 5000) ya no podían cambiar el vencimiento desde el modal, porque el
-formulario reenvía la descripción y fallaba todo.
+**Context.** When the stream ended up `CLOSED`, `BoardRealtime` and `NotificationsBell`
+called `router.refresh()`. The premise of the entry "Recreate the EventSource when the
+browser stops retrying" ("the page did not redirect") was false: in Next 16, if the RSC
+request of a refresh gets a non-OK response or fails at the network level, the router
+does a full navigation (`fetch-server-response.js`, `doMpaNavigation`). With the proxy's
+502 during `scripts/update.sh`, or a 500 from a transient DB failure, every open tab
+ended up on the error page and any unsaved work was lost.
 
-**Decisión.**
-- `updateCard(prev, formData)` devuelve `CardDetailsState` para `useActionState`: `{}`
-  si guarda, o `{ error, description, dueDate }` con lo enviado para rehidratar el
-  formulario. El modal muestra el error (`role="alert"`) y desactiva el botón mientras
-  guarda.
-- El textarea lleva `maxLength={CARD_DESCRIPTION_MAX}` (hoy importado de `limits.ts`, ver
-  la entrada superior).
-- El servidor normaliza `\r\n` a `\n` antes de validar: el navegador envía así los
-  saltos de línea, pero `maxLength` los cuenta como un carácter.
-- Si la descripción recibida es igual a la guardada (tras normalizar y recortar), no se
-  valida su longitud ni se reescribe; solo se actualiza la fecha. Se mantiene «si algo no
-  valida no se guarda nada».
+**Decision.** `keepEventSourceOpen` receives `probe` and `onAccessDenied` instead of
+`onClosed`. When the stream is `CLOSED`, `probeStatus(url)` sends a GET to the same
+endpoint, aborted as soon as the headers arrive; only on 401/403 is `onAccessDenied`
+called (refresh to redirect to `/login` or `/boards`). On a 5xx, a network error or a
+failure of the check itself it only retries with backoff; when the stream reopens,
+`onReconnect` resyncs with the now-healthy server.
 
-**Alternativas descartadas.** Validar y guardar descripción y fecha por separado:
-guardaría una parte y perdería la otra en silencio. Un textarea controlado: obliga a
-sincronizar a mano con los cambios que llegan por tiempo real. Mover la constante a un
-módulo sin zod: toca archivos fuera de este cambio (ver consecuencias).
+**Alternatives considered.**
+- `HEAD` for the check: in the App Router it is derived from the GET and would open the
+  stream anyway.
+- Have the SSE routes answer 200 with an `event: revoked` before closing: cleaner, but it
+  touches `sse.ts` and both routes, and does not cover the 401 of a reconnection.
 
-**Consecuencias.** La firma de `updateCard`, los mensajes de error y la regla de la
-descripción sin cambios están en `docs/card-detail.md`. El problema de importar
-`validators.ts` desde el modal se resolvió después (entrada superior).
+**Consequences.** Each `CLOSED` costs one extra request to the endpoint (with a 200, the
+stream opens and closes immediately). Tests in `test/realtime-reconnect.test.ts`
+(5xx/network do not notify, 401/403 do, unmount during the check, and `probeStatus`
+against a real HTTP server). Described in `docs/realtime.md`.
+## 2026-09-24 — `CARD_DESCRIPTION_MAX` in a dependency-free module (`limits.ts`)
 
----
+**Context.** The card modal imported `CARD_DESCRIPTION_MAX` from `app/lib/validators.ts`
+for the textarea's `maxLength`. It was the only `"use client"` component importing
+`validators.ts`, so zod ended up in the board's client bundle just for a number. Also,
+`validators.ts` uses `Buffer` in `passwordSchema`, which does not exist in the browser.
 
-## 2026-09-24 — IP del cliente con puerto y aviso de proxy mal configurado
+**Decision.** The constant lives in `app/lib/limits.ts`, with no imports. The modal
+imports it from there and `validators.ts` imports and re-exports it, so the schemas,
+actions and tests keep using `validators.ts` unchanged. A unit test
+(`test/client-imports.test.ts`) fails if a `"use client"` component imports zod or
+`validators.ts`, or if `limits.ts` gains imports.
 
-**Contexto.** Con `TRUSTED_PROXY_HOPS > 0`, `pickClientIp` devolvía null si el valor de
-X-Forwarded-For no pasaba `isIP` o si la cabecera traía menos valores que proxies
-declarados. Un `ip` null desactiva el límite por IP del login y deja `AuditLog.ip`
-vacío, sin ningún log. Algunos proxies (Azure Application Gateway, IIS ARR) escriben la
-IP con el puerto de origen (`1.2.3.4:5678`, `[2001:db8::1]:443`), así que el operador
-creía tener el límite activo y no lo tenía.
+**Alternatives considered.** Duplicating the `5000` in the modal: two sources of truth
+that can drift apart. Splitting `validators.ts` into client and server schemas: more
+change than needed for one constant. Checking only with `pnpm build`: leaves nothing in
+place to stop it from happening again.
 
-**Decisión.**
-- `resolveClientIp` (pura) devuelve la IP o el motivo por el que no la hay
-  (`missing-header`, `too-few-values`, `not-an-ip`); con hops = 0 no hay motivo.
-- Antes de `isIP` se quita el puerto de `a.b.c.d:puerto` y de `[v6]:puerto` con
-  expresiones estrictas, y el resultado se vuelve a validar. No se corta por el último
-  `:`, que partiría una IPv6 sin corchetes.
-- `pickClientIp` (misma firma, la usa `clientIp()` de `audit.ts`) emite un
-  `console.warn` una vez por motivo y proceso, con `hops` y el número de valores, sin la
-  cabecera ni ninguna IP.
-
-**Alternativas descartadas.** Poner el aviso en `clientIp()` de `app/lib/audit.ts`
-(fuera del alcance de este cambio; el efecto queda igual en `pickClientIp`). Limitar el
-aviso por minuto: más estado para lo mismo, basta con verlo una vez en el log. Aceptar
-el valor con puerto tal cual: daría una clave de rate limit distinta por conexión.
-
-**Consecuencias.** Los proxies que añaden el puerto funcionan sin tocar la
-configuración. Un proxy mal configurado deja un aviso en el log al primer login,
-documentado en la tabla de `TRUSTED_PROXY_HOPS` de `docs/operations.md`.
+**Consequences.** Limits the UI needs are added to `limits.ts`. The test only looks at
+direct imports: an indirect chain to zod is not detected.
 
 ---
 
-## 2026-09-24 — Un solo mecanismo de sesión en los tests de integración
+## 2026-09-24 — `updateCard` returns the error and does not revalidate unchanged descriptions
 
-**Contexto.** Al integrar los lotes de la revisión convivían dos formas de simular la
-sesión: el stub compartido `test/stubs/next-headers.ts` con `loginAs()` (lote de
-autenticación) y un `vi.mock("next/headers")` propio en siete archivos, con el helper
-`test/integration/action-session.ts`. Con los dos juntos fallaban 61 tests, porque
-`resetDb()` llama a `__clearCookies()` del stub y los mocks locales no lo exportaban.
+**Context.** `cardDetailsSchema` caps the description at `CARD_DESCRIPTION_MAX` (5000),
+but `updateCard` did `return;` silently when validation failed, and the modal's textarea
+had no `maxLength`. Pasting 6000 characters saved nothing and, when React reset the
+form, the text disappeared. Also, cards with descriptions predating the limit (over
+5000) could no longer change their due date from the modal, because the form resends
+the description and the whole thing failed.
 
-**Decisión.** Todos los tests de integración usan el stub compartido y `loginAs()` de
-`helpers.ts`. Se borran `action-session.ts` y los tarros de cookies locales;
-`realtime.int.test.ts` conserva un envoltorio que devuelve el id de sesión, que necesita
-para revocarla. Ninguno sustituye el DAL: los seis que aún lo hacían (`board-metadata`,
-`members`, `collaboration`, `tokens`, `admin-users`, `position-collation`) pasan a
-`loginAs()`, así que la guarda real de `requireBoardAccess`/`requireAdmin` se ejecuta.
-`admin-users` solo sustituye `redirect()` de `next/navigation`, para leer la URL.
-`members.int.test.ts` añade un test de que un EDITOR o un VIEWER no puede gestionar
-miembros, que con el DAL sustituido no se podía escribir. El unitario
-`test/metadata.test.ts` sí sustituye el DAL, porque no tiene BD.
+**Decision.**
+- `updateCard(prev, formData)` returns `CardDetailsState` for `useActionState`: `{}` if
+  it saves, or `{ error, description, dueDate }` with what was sent, to rehydrate the
+  form. The modal shows the error (`role="alert"`) and disables the button while saving.
+- The textarea has `maxLength={CARD_DESCRIPTION_MAX}` (now imported from `limits.ts`,
+  see the entry above).
+- The server normalises `\r\n` to `\n` before validating: the browser sends line breaks
+  that way, but `maxLength` counts them as one character.
+- If the received description equals the stored one (after normalising and trimming),
+  its length is not validated and it is not rewritten; only the date is updated. The rule
+  "if anything fails validation, nothing is saved" still holds.
 
-**Alternativas descartadas.** Que cada mock local reexporte el stub con
-`importOriginal`: arregla los fallos, pero deja dos formas de iniciar sesión y dos
-secretos de test distintos. Conservar el `vi.mock("@/app/lib/dal")` de los seis archivos
-corrigiendo solo sus comentarios: la guarda de las acciones de miembros seguiría sin
-probarse.
+**Alternatives considered.** Validating and saving description and date separately: it
+would save one part and silently lose the other. A controlled textarea: forces manual
+syncing with changes arriving via realtime. Moving the constant to a module without zod:
+touches files outside this change (see consequences).
 
-**Consecuencias.** 32 archivos y 210 tests de integración en verde. Un test nuevo con
-sesión solo necesita `await loginAs(user.id)`; si hace falta otro rol, se siembra el
-usuario con ese rol en vez de sustituir el DAL.
+**Consequences.** The `updateCard` signature, the error messages and the
+unchanged-description rule are in `docs/card-detail.md`. The problem of importing
+`validators.ts` from the modal was solved later (entry above).
+
+---
+
+## 2026-09-24 — Client IP with a port, and a warning for a misconfigured proxy
+
+**Context.** With `TRUSTED_PROXY_HOPS > 0`, `pickClientIp` returned null if the
+X-Forwarded-For value did not pass `isIP` or if the header had fewer values than
+declared proxies. A null `ip` disables the per-IP login limit and leaves `AuditLog.ip`
+empty, without any log. Some proxies (Azure Application Gateway, IIS ARR) write the IP
+with the source port (`1.2.3.4:5678`, `[2001:db8::1]:443`), so the operator believed the
+limit was active when it was not.
+
+**Decision.**
+- `resolveClientIp` (pure) returns the IP or the reason there is none
+  (`missing-header`, `too-few-values`, `not-an-ip`); with hops = 0 there is no reason.
+- Before `isIP`, the port is stripped from `a.b.c.d:port` and from `[v6]:port` with
+  strict regular expressions, and the result is validated again. It does not split on the
+  last `:`, which would break an IPv6 address without brackets.
+- `pickClientIp` (same signature, used by `clientIp()` in `audit.ts`) emits a
+  `console.warn` once per reason and process, with `hops` and the number of values,
+  without the header or any IP.
+
+**Alternatives considered.** Putting the warning in `clientIp()` in `app/lib/audit.ts`
+(out of scope for this change; the effect is the same in `pickClientIp`). Rate-limiting
+the warning per minute: more state for the same result; seeing it once in the log is
+enough. Accepting the value with the port as is: it would give a different rate-limit key
+per connection.
+
+**Consequences.** Proxies that append the port work without changing the configuration.
+A misconfigured proxy leaves a warning in the log on the first login, documented in the
+`TRUSTED_PROXY_HOPS` table in `docs/operations.md`.
 
 ---
 
-## 2026-09-24 — Collation "C" en las columnas de posición
+## 2026-09-24 — A single session mechanism in the integration tests
 
-**Contexto.** Las claves de fractional indexing (base62 `0-9A-Za-z`) solo se ordenan
-bien byte a byte. `ORDER BY position` usaba la collation de la BD: en postgres alpine
-(musl, la BD de desarrollo) es byte a byte, pero en glibc (imagen Debian del CI, Ubuntu,
-servicios gestionados) `en_US.utf8` deja `Zz` después de `a0l`. Resultado: la tarjeta
-arrastrada al principio reaparece al final al refrescar, y `createCard`/`createList`/
-`addChecklist`/`addChecklistItem` (que buscan el último con `ORDER BY position DESC`)
-generan claves repetidas. Pasa también solo con altas al final: tras `aZ` viene `aa`, que
-esa collation ordena antes de `aB`…`aZ`, así que desde el elemento 38 se repite `aa`.
+**Context.** When merging the review batches, two ways of faking the session coexisted:
+the shared stub `test/stubs/next-headers.ts` with `loginAs()` (authentication batch) and
+a separate `vi.mock("next/headers")` in seven files, with the helper
+`test/integration/action-session.ts`. With both together, 61 tests failed, because
+`resetDb()` calls the stub's `__clearCookies()` and the local mocks did not export it.
 
-**Decisión.**
-- Migración `20260924000000_position_collate_c` (creada con `migrate dev --create-only`
-  y escrita a mano): `ALTER COLUMN "position" TYPE TEXT COLLATE "C"` en `List`, `Card`,
-  `Checklist` y `ChecklistItem`. Reconstruye `Card_listId_position_idx`.
-- Comentario en la migración y en `schema.prisma` (`List.position`), porque Prisma no
-  modela la collation; `prisma migrate diff` no muestra deriva.
-- ADR 0002 ampliado en «Consecuencias» (fuente única del porqué y de cómo detectar
-  claves ya repetidas).
-- Test `test/integration/position-collation.int.test.ts`: comprueba la collation de las
-  cuatro columnas (falla sin el arreglo en cualquier servidor) y el orden/no repetición
-  de tarjetas y listas con `a0`, `a0V`, `a0l`, `Zz`, y el de checklists e ítems con 37
-  altas al final (`a0`…`aa`) (fallan sin el arreglo en BD glibc/ICU; verificado con una
-  BD temporal ICU y con `ORDER BY ... COLLATE "en-US-x-icu"`).
+**Decision.** All integration tests use the shared stub and `loginAs()` from
+`helpers.ts`. `action-session.ts` and the local cookie jars are deleted;
+`realtime.int.test.ts` keeps a wrapper that returns the session id, which it needs to
+revoke the session. None of them replaces the DAL: the six that still did
+(`board-metadata`, `members`, `collaboration`, `tokens`, `admin-users`,
+`position-collation`) switch to `loginAs()`, so the real `requireBoardAccess`/
+`requireAdmin` guard runs. `admin-users` only replaces `redirect()` from
+`next/navigation`, to read the URL. `members.int.test.ts` adds a test that an EDITOR or
+a VIEWER cannot manage members, which could not be written with the DAL replaced. The
+unit test `test/metadata.test.ts` does replace the DAL, because it has no DB.
 
-**Alternativas descartadas.**
-- Ordenar en JS o con `localeCompare`: dispersa la regla por todas las consultas y no
-  arregla el `findFirst ... DESC` de las altas.
-- Crear la BD con `LC_COLLATE=C`: no sirve para instalaciones existentes ni para BD
-  gestionadas donde no se controla la creación.
-- Reasignar en la migración las claves ya repetidas: toca datos de producción; queda
-  como decisión del propietario, con copia previa (consulta de detección de las cuatro
-  tablas en el ADR 0002).
+**Alternatives considered.** Having each local mock re-export the stub with
+`importOriginal`: fixes the failures, but leaves two ways to log in and two different
+test secrets. Keeping the `vi.mock("@/app/lib/dal")` in the six files and only fixing
+their comments: the guard on the member actions would remain untested.
 
-**Consecuencias.** Toda columna de posición nueva debe crearse con `COLLATE "C"` a mano
-en su migración. Las instalaciones glibc que ya tengan claves repetidas las conservan
-hasta que se reasignen; el orden entre dos claves iguales sigue sin estar definido.
+**Consequences.** 32 files and 210 integration tests green. A new test with a session
+only needs `await loginAs(user.id)`; if another role is needed, the user is seeded with
+that role instead of replacing the DAL.
 
 ---
-## 2026-09-24 — CSP fija para los .svg
 
-**Contexto.** El matcher de `proxy.ts` excluye `.*\.svg$`, así que los SVG no reciben
-la CSP con nonce, y `next.config.ts` solo ponía CSP a `/api/**`. Los SVG de `public/`
-se servían sin `Content-Security-Policy`: abierto directamente, un SVG es un documento
-que puede ejecutar scripts en el origen de la app.
+## 2026-09-24 — Collation "C" on the position columns
 
-**Decisión.** Regla `/:file(.*\\.svg)` en `headers()` de `next.config.ts` con
-`default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'` (sus estilos en
-línea funcionan; scripts, recursos externos y el embebido en marcos no).
-`test/next-config.test.ts` resuelve las reglas con `buildCustomRoute` del router de Next
-(el mismo compilador que usa en runtime) en vez de comparar prefijos, para entender los
-parámetros con regex, y comprueba `/file.svg` e `/icons/logo.svg`.
+**Context.** Fractional indexing keys (base62 `0-9A-Za-z`) only sort correctly byte by
+byte. `ORDER BY position` used the DB collation: on postgres alpine (musl, the
+development DB) it is byte by byte, but on glibc (the CI's Debian image, Ubuntu, managed
+services) `en_US.utf8` puts `Zz` after `a0l`. Result: a card dragged to the top reappears
+at the bottom on refresh, and `createCard`/`createList`/`addChecklist`/`addChecklistItem`
+(which look up the last one with `ORDER BY position DESC`) generate duplicate keys. It
+also happens with appends alone: after `aZ` comes `aa`, which that collation sorts before
+`aB`...`aZ`, so from the 38th element on `aa` is repeated.
 
-**Alternativas descartadas.**
-- Quitar la exclusión de `.svg` del matcher de `proxy.ts`: el proxy añadiría a cada SVG
-  la CSP de página (con nonce) y el coste de ejecutarse en cada petición de imagen.
-- Borrar los SVG de `public/` (`file.svg`, `globe.svg`, `next.svg`, `vercel.svg`,
-  `window.svg`): son restos de la plantilla de Next y nada de `app/` los usa, pero
-  borrarlos lo decide el propietario. La regla cubre también cualquier SVG futuro.
+**Decision.**
+- Migration `20260924000000_position_collate_c` (created with `migrate dev --create-only`
+  and written by hand): `ALTER COLUMN "position" TYPE TEXT COLLATE "C"` on `List`, `Card`,
+  `Checklist` and `ChecklistItem`. Rebuilds `Card_listId_position_idx`.
+- A comment in the migration and in `schema.prisma` (`List.position`), because Prisma does
+  not model collation; `prisma migrate diff` shows no drift.
+- ADR 0002 extended under "Consequences" (the single source for the why and for how to
+  detect keys that are already duplicated).
+- Test `test/integration/position-collation.int.test.ts`: checks the collation of the four
+  columns (fails without the fix on any server) and the order/no duplication of cards and
+  lists with `a0`, `a0V`, `a0l`, `Zz`, and of checklists and items with 37 appends
+  (`a0`...`aa`) (these fail without the fix on a glibc/ICU DB; verified with a temporary
+  ICU DB and with `ORDER BY ... COLLATE "en-US-x-icu"`).
 
-**Consecuencias.** Un SVG servido desde la app no puede cargar fuentes ni imágenes
-externas ni ejecutar scripts cuando se abre directamente. Cargado con `<img>` un SVG
-nunca ejecuta scripts y su CSP no interviene, así que no afecta a su uso normal.
+**Alternatives considered.**
+- Sorting in JS or with `localeCompare`: scatters the rule across every query and does not
+  fix the `findFirst ... DESC` used for appends.
+- Creating the DB with `LC_COLLATE=C`: does not help existing installations or managed
+  DBs where creation is not under our control.
+- Reassigning already duplicated keys in the migration: touches production data; left as
+  the owner's decision, with a prior backup (detection query for the four tables in
+  ADR 0002).
 
-## 2026-09-24 — Timeout del pool de pg y singleton de Prisma también en producción
+**Consequences.** Every new position column must be created with `COLLATE "C"` by hand in
+its migration. glibc installations that already have duplicate keys keep them until they
+are reassigned; the order between two equal keys remains undefined.
 
-**Contexto.** `PrismaPg` creaba el `pg.Pool` con los valores por defecto:
-`connectionTimeoutMillis: 0`, así que con el pool agotado (10 conexiones) la petición
-siguiente esperaba para siempre; Prisma 7 ya no aplica el `connect_timeout` de 5 s de
-Prisma 6. Además, el cliente solo se guardaba en `globalThis` fuera de producción, y
-Turbopack evalúa el módulo una vez por capa (route handlers y RSC/SSR): dos pools.
+---
+## 2026-09-24 — Fixed CSP for .svg files
 
-**Decisión.**
-- `buildPoolConfig()` exportada en `app/lib/prisma.ts`: `connectionTimeoutMillis`
-  5 s e `idleTimeoutMillis` 10 s (el valor por defecto de pg-pool, explícito para que
-  no cambie sin querer). `onPoolError` registra solo el mensaje del error (nunca la
-  cadena de conexión). El adapter ya escuchaba el evento `error` del pool, así que el
-  proceso no se caía: el manejador sirve para que el fallo de una conexión inactiva
-  quede en el log y no solo en el de depuración del adapter.
-- `globalForPrisma.prisma = prisma` siempre, como `bus.ts` y `rate-limit.ts`.
-- `test/integration/prisma-pool.int.test.ts`: el cliente exportado se crea con
-  `buildPoolConfig()` y `onPoolError` (se envuelve `PrismaPg` con `vi.doMock`); con
-  `max: 1` y 200 ms, una consulta mientras una transacción ocupa la conexión falla por
-  timeout; en producción dos evaluaciones del módulo devuelven el mismo cliente.
+**Context.** The `proxy.ts` matcher excludes `.*\.svg$`, so SVGs do not get the nonce
+CSP, and `next.config.ts` only set a CSP on `/api/**`. The SVGs in `public/` were served
+without `Content-Security-Policy`: opened directly, an SVG is a document that can run
+scripts on the app's origin.
 
-**Alternativas descartadas.**
-- `max` configurable por variable de entorno: no hace falta todavía.
-- `statement_timeout`: cortaría exportaciones o importaciones grandes sin un valor
-  medido.
-- `idleTimeoutMillis` de 30 s: no hay medida que justifique mantener abiertas las
-  conexiones inactivas más tiempo que el valor de pg.
-- Probar el timeout con los 5 s reales: cada ejecución de la suite tardaría 5 s más; el
-  cableado ya lo comprueba el test del cliente exportado.
+**Decision.** A `/:file(.*\\.svg)` rule in `headers()` in `next.config.ts` with
+`default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'` (its inline styles
+work; scripts, external resources and framing do not). `test/next-config.test.ts`
+resolves the rules with `buildCustomRoute` from the Next router (the same compiler it
+uses at runtime) instead of comparing prefixes, so that regex parameters are understood,
+and checks `/file.svg` and `/icons/logo.svg`.
 
-**Consecuencias.** Con el pool saturado, una petición falla a los 5 s con un error de
-timeout en vez de colgarse. Un solo pool por proceso.
+**Alternatives considered.**
+- Removing the `.svg` exclusion from the `proxy.ts` matcher: the proxy would add the page
+  CSP (with nonce) to every SVG, plus the cost of running on every image request.
+- Deleting the SVGs in `public/` (`file.svg`, `globe.svg`, `next.svg`, `vercel.svg`,
+  `window.svg`): they are leftovers from the Next template and nothing in `app/` uses
+  them, but deleting them is the owner's call. The rule also covers any future SVG.
 
-## 2026-09-24 — Títulos por página y login sin mención a la licencia
+**Consequences.** An SVG served by the app cannot load external fonts or images or run
+scripts when opened directly. Loaded with `<img>`, an SVG never runs scripts and its CSP
+plays no part, so normal use is unaffected.
 
-**Contexto.** Todas las rutas tenían el mismo `<title>` «orgtable» (WCAG 2.4.2). Además,
-la pantalla de login («Open source · AGPL-3.0», «open-source y self-hosted») y la meta
-description decían que la app es open source con AGPL, pero la licencia vigente es la
-propietaria de `LICENSE` (decisión del propietario, commit 27c1ba9).
+## 2026-09-24 — pg pool timeout and Prisma singleton in production too
 
-**Decisión.**
+**Context.** `PrismaPg` created the `pg.Pool` with the defaults:
+`connectionTimeoutMillis: 0`, so with the pool exhausted (10 connections) the next
+request waited forever; Prisma 7 no longer applies Prisma 6's 5 s `connect_timeout`.
+Also, the client was only stored on `globalThis` outside production, and Turbopack
+evaluates the module once per layer (route handlers and RSC/SSR): two pools.
+
+**Decision.**
+- `buildPoolConfig()` exported from `app/lib/prisma.ts`: `connectionTimeoutMillis` 5 s
+  and `idleTimeoutMillis` 10 s (pg-pool's default, made explicit so it does not change by
+  accident). `onPoolError` logs only the error message (never the connection string). The
+  adapter already listened to the pool's `error` event, so the process did not crash: the
+  handler makes an idle connection's failure show up in the log and not only in the
+  adapter's debug output.
+- `globalForPrisma.prisma = prisma` always, like `bus.ts` and `rate-limit.ts`.
+- `test/integration/prisma-pool.int.test.ts`: the exported client is created with
+  `buildPoolConfig()` and `onPoolError` (`PrismaPg` is wrapped with `vi.doMock`); with
+  `max: 1` and 200 ms, a query while a transaction holds the connection fails with a
+  timeout; in production two evaluations of the module return the same client.
+
+**Alternatives considered.**
+- `max` configurable via environment variable: not needed yet.
+- `statement_timeout`: would cut off large exports or imports without a measured value.
+- A 30 s `idleTimeoutMillis`: no measurement justifies keeping idle connections open
+  longer than pg's default.
+- Testing the timeout with the real 5 s: every suite run would take 5 s longer; the wiring
+  is already checked by the exported-client test.
+
+**Consequences.** With the pool saturated, a request fails after 5 s with a timeout error
+instead of hanging. A single pool per process.
+
+## 2026-09-24 — Per-page titles and a login page without mentioning the license
+
+**Context.** Every route had the same `<title>` "orgtable" (WCAG 2.4.2). Also, the login
+screen ("Open source · AGPL-3.0", "open-source and self-hosted") and the meta description
+said the app is open source under AGPL, but the license in force is the proprietary one
+in `LICENSE` (owner's decision, commit 27c1ba9).
+
+**Decision.**
 - `app/layout.tsx`: `title: { template: "%s · orgtable", default: "orgtable" }`.
-  `/login` exporta «Iniciar sesión» y `/setup` «Configuración inicial»; el resto de
-  páginas las cubren otros lotes.
-- Meta description: «Tableros Kanban self-hosted, una alternativa a Trello».
-- Login: el párrafo dice «Tableros Kanban self-hosted…» y el pie pasa a «Kanban ·
-  Self-hosted», sin mencionar licencia.
-- `test/metadata.test.ts` comprueba los títulos resueltos, la description y que el HTML
-  del login no diga open source ni AGPL.
+  `/login` exports "Sign in" and `/setup` "Initial setup"; the remaining pages are covered
+  by other batches.
+- Meta description: "Self-hosted Kanban boards, a Trello alternative".
+- Login: the paragraph says "Self-hosted Kanban boards..." and the footer becomes "Kanban ·
+  Self-hosted", with no mention of a license.
+- `test/metadata.test.ts` checks the resolved titles, the description, and that the login
+  HTML does not say open source or AGPL.
 
-**Alternativas descartadas.**
-- Quitar el pie del panel de marca: cambiaba la composición (`justify-between` con tres
-  bloques).
-- Poner un aviso de copyright en el pie: el texto legal lo aporta el propietario.
+**Alternatives considered.**
+- Removing the footer from the brand panel: it changed the composition (`justify-between`
+  with three blocks).
+- Putting a copyright notice in the footer: the legal text is for the owner to provide.
 
-**Consecuencias.** Cada página nueva debe exportar su `title`; sin él hereda «orgtable».
+**Consequences.** Every new page must export its `title`; without it, it inherits
+"orgtable".
 
-## 2026-09-24 — Límite de 11 MB para el cuerpo de las Server Actions
+## 2026-09-24 — 11 MB body limit for Server Actions
 
-**Contexto.** Next 16 corta el cuerpo de una Server Action en 1 MB antes de ejecutarla.
-`uploadAttachment` admite 10 MB (`MAX_ATTACHMENT_BYTES`) e `importBoard` 5 MB, así que
-cualquier adjunto o importación de más de 1 MB fallaba con un error genérico. Además,
-`proxy.ts` pasa por las rutas de página y Next solo guarda 10 MB de su cuerpo: lo que
-exceda llega truncado a la acción, sin error.
+**Context.** Next 16 cuts a Server Action's body at 1 MB before running it.
+`uploadAttachment` accepts 10 MB (`MAX_ATTACHMENT_BYTES`) and `importBoard` 5 MB, so any
+attachment or import over 1 MB failed with a generic error. Also, `proxy.ts` runs on page
+routes and Next only buffers 10 MB of their body: anything beyond that reaches the action
+truncated, with no error.
 
-**Decisión.** `experimental.serverActions.bodySizeLimit` y
-`experimental.proxyClientMaxBodySize` a 11 MB (en bytes) en `next.config.ts`. El
-megabyte extra cubre la sobrecarga de multipart y deja que un archivo algo mayor de
-10 MB llegue a la acción y reciba su mensaje propio en vez de un 413.
-`test/next-config.test.ts` comprueba que el límite supera `MAX_ATTACHMENT_BYTES` más la
-sobrecarga y que el del proxy coincide.
+**Decision.** `experimental.serverActions.bodySizeLimit` and
+`experimental.proxyClientMaxBodySize` set to 11 MB (in bytes) in `next.config.ts`. The
+extra megabyte covers multipart overhead and lets a file slightly over 10 MB reach the
+action and get its own message instead of a 413. `test/next-config.test.ts` checks that
+the limit exceeds `MAX_ATTACHMENT_BYTES` plus the overhead and that the proxy's matches.
 
-**Alternativas descartadas.**
-- Subir los adjuntos por un route handler en `/api` que autentique antes de leer el
-  cuerpo: es la solución de fondo, pero cambia la arquitectura de la subida; la decide
-  el propietario (anotada en el backlog de `docs/security.md`).
-- Importar `MAX_ATTACHMENT_BYTES` en `next.config.ts`: `storage.ts` es `server-only` y
-  arrastra `node:fs`; se deja el número con comentario y lo vigila el test.
+**Alternatives considered.**
+- Uploading attachments through a route handler under `/api` that authenticates before
+  reading the body: this is the real fix, but it changes the upload architecture; the
+  owner decides (noted in the backlog in `docs/security.md`).
+- Importing `MAX_ATTACHMENT_BYTES` in `next.config.ts`: `storage.ts` is `server-only` and
+  pulls in `node:fs`; the number is left with a comment and guarded by the test.
 
-**Consecuencias.** El límite es global y se aplica antes de autenticar: cualquiera puede
-mandar 11 MB a una acción. Si cambia el máximo de adjuntos hay que subir este número (el
-test falla si se queda corto).
-## 2026-09-24 — Devolver el foco al ✕ al cancelar el borrado de un tablero
+**Consequences.** The limit is global and applies before authentication: anyone can send
+11 MB to an action. If the attachment maximum changes, this number must be raised (the
+test fails if it falls short).
+## 2026-09-24 — Return focus to the ✕ when canceling a board deletion
 
-**Contexto.** Al cancelar «¿Borrar? Sí / No» (con «No» o con Escape) el formulario se
-desmontaba con el foco dentro y el ✕ se volvía a pintar sin él: el foco caía al
-`<body>` y quien usa teclado o lector de pantalla perdía su sitio en la rejilla de
-`/boards`. Además el ✕ quedaba invisible (`opacity-0`), porque ya no había foco dentro
-de la tarjeta.
+**Context.** When canceling "Delete? Yes / No" ("¿Borrar? Sí / No") (with "No" or with
+Escape) the form unmounted with focus inside it and the ✕ was re-rendered without it:
+focus fell to `<body>` and keyboard or screen reader users lost their place in the
+`/boards` grid. The ✕ also stayed invisible (`opacity-0`), because there was no longer
+focus inside the card.
 
-**Decisión.** `DeleteBoardButton` guarda una ref al ✕ y un indicador `restoreFocus`
-que solo pone a `true` la cancelación; un `useEffect` sobre `confirming` lo consume y
-llama a `focus()`. El segundo clic («Sí» envía) no cambia.
+**Decision.** `DeleteBoardButton` keeps a ref to the ✕ and a `restoreFocus` flag that
+only cancellation sets to `true`; a `useEffect` on `confirming` consumes it and calls
+`focus()`. The second click ("Yes" submits) is unchanged.
 
-**Alternativas descartadas.**
-- `autoFocus` en el ✕: todos los tableros de la rejilla lo llevarían y el último
-  robaría el foco al cargar la página.
-- Dejar el ✕ montado y ocultar la confirmación con CSS: cambia la maquetación de la
-  esquina y seguiría haciendo falta mover el foco a mano.
+**Alternatives considered.**
+- `autoFocus` on the ✕: every board in the grid would have it and the last one would
+  steal focus on page load.
+- Keeping the ✕ mounted and hiding the confirmation with CSS: changes the corner's layout
+  and focus would still have to be moved by hand.
 
-**Consecuencias.** Tras cancelar, el foco vuelve al ✕ y `group-focus-within` lo
-mantiene visible. `test/delete-board-button-focus.test.ts` lo cubre con un arnés local
-de hooks (sin jsdom): falla con la versión anterior y comprueba que el montaje inicial
-no roba el foco. No se ha probado en navegador ni con lector de pantalla.
+**Consequences.** After canceling, focus returns to the ✕ and `group-focus-within` keeps
+it visible. `test/delete-board-button-focus.test.ts` covers it with a local hooks harness
+(no jsdom): it fails with the previous version and checks that the initial mount does not
+steal focus. Not tested in a browser or with a screen reader.
 
-## 2026-09-24 — Título por página en /boards, /board/[id] y /search
+## 2026-09-24 — Per-page title on /boards, /board/[id] and /search
 
-**Contexto.** Todas las rutas compartían el `<title>` «orgtable», así que las pestañas
-y el historial no se distinguían. La plantilla raíz (`%s · …`) es del lote de la
-maquetación raíz; aquí solo van los títulos de estas páginas.
+**Context.** All routes shared the `<title>` "orgtable", so tabs and history entries were
+indistinguishable. The root template (`%s · ...`) belongs to the root layout batch; only
+these pages' titles go here.
 
-**Decisión.**
-- `export const metadata` con «Tus tableros» en `/boards` y «Búsqueda» en `/search`.
-  La consulta de búsqueda no va en el título: acabaría en el historial y en las
-  pestañas.
-- `/board/[id]` usa `generateMetadata`, que lee el nombre con `getBoardTitleForUser`
-  (`app/lib/queries.ts`, envuelta en `React.cache`). Comparte con `getBoardWithLists`
-  el filtro `boardAccessWhere` (dueño o miembro), la misma guarda que la página. Sin
-  acceso o si el tablero no existe, título genérico «Tablero».
+**Decision.**
+- `export const metadata` with "Your boards" on `/boards` and "Search" on `/search`. The
+  search query does not go in the title: it would end up in history and in tabs.
+- `/board/[id]` uses `generateMetadata`, which reads the name with `getBoardTitleForUser`
+  (`app/lib/queries.ts`, wrapped in `React.cache`). It shares the `boardAccessWhere`
+  filter (owner or member) with `getBoardWithLists`, the same guard as the page. Without
+  access or if the board does not exist, the generic title "Board".
 
-**Alternativas descartadas.**
-- Leer el título con `prisma.board.findUnique` sin filtro: el `<title>` se resuelve
-  aparte de la página y filtraría el nombre de un tablero ajeno aunque la página dé 404.
-- Reutilizar `getBoardWithLists` en `generateMetadata`: carga el tablero completo solo
-  para leer el título.
+**Alternatives considered.**
+- Reading the title with `prisma.board.findUnique` without a filter: the `<title>` is
+  resolved separately from the page and would leak another user's board name even though
+  the page returns 404.
+- Reusing `getBoardWithLists` in `generateMetadata`: loads the full board just to read
+  the title.
 
-**Consecuencias.** Una consulta ligera más por visita al tablero.
-`test/integration/board-metadata.int.test.ts` fija que el dueño y los miembros ven el
-nombre, y que un no miembro o un id inexistente reciben «Tablero».
+**Consequences.** One more lightweight query per board visit.
+`test/integration/board-metadata.int.test.ts` pins that the owner and members see the
+name, and that a non-member or a nonexistent id get "Board".
 
-## 2026-09-24 — Contraste AA de --danger/--success y campos etiquetados en /boards
+## 2026-09-24 — AA contrast for --danger/--success and labeled fields on /boards
 
-**Contexto.** `--success` (oklch 0.57 0.1 145) daba 3,86:1 sobre `--bg` y 3,72:1 en
-los avisos `bg-success/10 text-success`. `--danger` rozaba el límite en sus avisos
-(4,48:1) y en la insignia de vencida `bg-danger/15` (4,15:1 claro, 4,45:1 oscuro). El
-placeholder de `Input`/`Textarea` (`text-ink-muted/70`) quedaba en ~3,2:1. En `/boards`,
-el campo de nuevo tablero y el de importar JSON no tenían etiqueta accesible, y el
-error de importación no se anunciaba.
+**Context.** `--success` (oklch 0.57 0.1 145) gave 3.86:1 on `--bg` and 3.72:1 in the
+`bg-success/10 text-success` notices. `--danger` was borderline in its notices (4.48:1)
+and in the overdue badge `bg-danger/15` (4.15:1 light, 4.45:1 dark). The
+`Input`/`Textarea` placeholder (`text-ink-muted/70`) was at ~3.2:1. On `/boards`, the
+new-board field and the JSON import field had no accessible label, and the import error
+was not announced.
 
-**Decisión.**
-- Tokens, lo mínimo para 4,5:1 con margen: claro `--danger` 0.55→0.52 y `--success`
-  0.57→0.48 (la propuesta del hallazgo); oscuro `--danger` 0.70→0.71. `--success`
-  oscuro no cambia. `DESIGN.md` actualizado.
-- `test/contrast.test.ts` lee los tokens de `app/globals.css`, convierte OKLCH a sRGB y
-  exige 4,5:1 para ink, ink-muted, accent, danger y success sobre bg, surface,
-  surface-2 y column, para los avisos al 10 % y la insignia al 15 %, y para
-  accent-ink sobre accent, en los dos temas.
-- Placeholder de `app/components/ui/input.tsx` a `text-ink-muted` (6,2:1).
-- `aria-label` en los dos campos de `/boards` y `role="alert"` en el error de
-  importar.
-- `title` con el nombre completo de la instancia en la barra superior, que se trunca
-  en móvil. El resto del ajuste responsive de la barra ya estaba en main.
+**Decision.**
+- Tokens, the minimum for 4.5:1 with margin: light `--danger` 0.55→0.52 and `--success`
+  0.57→0.48 (the finding's proposal); dark `--danger` 0.70→0.71. Dark `--success` is
+  unchanged. `DESIGN.md` updated.
+- `test/contrast.test.ts` reads the tokens from `app/globals.css`, converts OKLCH to sRGB
+  and requires 4.5:1 for ink, ink-muted, accent, danger and success on bg, surface,
+  surface-2 and column, for the notices at 10 % and the badge at 15 %, and for accent-ink
+  on accent, in both themes.
+- Placeholder in `app/components/ui/input.tsx` set to `text-ink-muted` (6.2:1).
+- `aria-label` on the two fields on `/boards` and `role="alert"` on the import error.
+- `title` with the full instance name in the top bar, which is truncated on mobile. The
+  rest of the bar's responsive adjustment was already on main.
 
-**Alternativas descartadas.**
-- Cambiar solo `--success` y dejar `--danger` justo por debajo de 4,5:1 en sus avisos.
-- Etiquetas `<label>` visibles: cambian la maquetación de la cabecera de `/boards`; el
-  placeholder ya describe el campo a la vista.
+**Alternatives considered.**
+- Changing only `--success` and leaving `--danger` just under 4.5:1 in its notices.
+- Visible `<label>` elements: they change the layout of the `/boards` header; the
+  placeholder already describes the field visually.
 
-**Consecuencias.** Verde y rojo algo más oscuros en tema claro, también en los rellenos
-`bg-success`/`bg-danger` de otros componentes (barra de checklist, casillas). El test
-avisa si un cambio de tono rompe el contraste. Otros placeholders con
-`text-ink-muted/70` (search-box, card-modal) quedan fuera de este lote.
+**Consequences.** Green and red slightly darker in the light theme, also in the
+`bg-success`/`bg-danger` fills of other components (checklist bar, checkboxes). The test
+warns if a hue change breaks contrast. Other placeholders with `text-ink-muted/70`
+(search-box, card-modal) are out of scope for this batch.
 
-## 2026-09-24 — Borrado de tableros con segundo clic y solo para el dueño
+## 2026-09-24 — Board deletion needs a second click and is owner-only
 
-**Contexto.** En `/boards`, el ✕ de cada tablero era un `<form action={deleteBoard}>`
-de un solo clic que borraba en cascada listas, tarjetas y adjuntos. Tenía `opacity-0`
-y solo aparecía al pasar el ratón, así que en táctil era invisible pero un toque en la
-esquina lo disparaba. Además se pintaba en tableros donde el usuario era solo miembro,
-y ahí `deleteBoard` no hacía nada ni avisaba.
+**Context.** On `/boards`, each board's ✕ was a single-click `<form action={deleteBoard}>`
+that cascade-deleted lists, cards and attachments. It had `opacity-0` and only appeared
+on hover, so on touch screens it was invisible but a tap on the corner triggered it. It
+was also rendered on boards where the user was only a member, and there `deleteBoard` did
+nothing and gave no feedback.
 
-**Decisión.**
-- Componente cliente `app/(app)/boards/delete-board-button.tsx`: el ✕ es un
-  `type="button"` que cambia a «¿Borrar? Sí / No» en línea; solo «Sí» envía el
-  formulario. El foco va a «No» y Escape cancela.
-- Se pinta solo si `board.ownerId === user.id`, la misma regla que aplica
-  `deleteBoard` en el servidor.
-- Exportar y borrar se ven siempre en pantallas sin hover
-  (`[@media(hover:none)]:opacity-100`) y al llegar con el teclado
+**Decision.**
+- Client component `app/(app)/boards/delete-board-button.tsx`: the ✕ is a
+  `type="button"` that turns into an inline "Delete? Yes / No"; only "Yes" submits the
+  form. Focus moves to "No" and Escape cancels.
+- It is rendered only if `board.ownerId === user.id`, the same rule `deleteBoard` applies
+  on the server.
+- Export and delete are always visible on screens without hover
+  (`[@media(hover:none)]:opacity-100`) and when reached with the keyboard
   (`group-focus-within`).
 
-**Alternativas descartadas.**
-- `window.confirm` (el patrón de `user-row-actions.tsx`): no se puede estilar ni
-  traducir el botón, y la norma del proyecto pide confirmación en línea.
-- Mostrar el ✕ a los miembros con un aviso de error: ofrecería una acción imposible.
+**Alternatives considered.**
+- `window.confirm` (the pattern in `user-row-actions.tsx`): the button cannot be styled
+  or translated, and the project rule asks for inline confirmation.
+- Showing the ✕ to members with an error message: it would offer an impossible action.
 
-**Consecuencias.** Un tablero ya no se puede perder con un toque. Las acciones de
-esquina ocupan sitio fijo en móvil. El comportamiento del segundo clic no tiene test de
-interacción (no hay jsdom ni e2e); `test/delete-board-button.test.ts` comprueba que el
-estado inicial no puede enviar nada.
-## 2026-09-24 — Modal de tarjeta: `<dialog>` nativo, fechas y confirmación de borrado
+**Consequences.** A board can no longer be lost with a single tap. The corner actions take
+fixed space on mobile. The second-click behavior has no interaction test (no jsdom or
+e2e); `test/delete-board-button.test.ts` checks that the initial state cannot submit
+anything.
+## 2026-09-24 — Card modal: native `<dialog>`, dates and delete confirmation
 
-**Contexto.** El modal de tarjeta (`app/components/card/card-modal.tsx`) no gestionaba
-el foco (Tab recorría el tablero de fondo, sin nombre accesible), la hora de los
-comentarios provocaba un error de hidratación al abrir por `?card=` (servidor en UTC,
-navegador en su zona), el vencimiento de solo lectura salía como ISO crudo, los toggles
-de etiqueta e ítem ignoraban fallos y «Borrar tarjeta» borraba al primer clic.
+**Context.** The card modal (`app/components/card/card-modal.tsx`) did not manage focus
+(Tab walked through the board behind it, no accessible name), the comment time caused a
+hydration error when opened via `?card=` (server in UTC, browser in its own zone), the
+read-only due date was shown as raw ISO, the label and item toggles ignored failures, and
+"Delete card" deleted on the first click.
 
-**Decisión.**
-- `<dialog>` nativo con `showModal()` en un layout effect y `close()` en su limpieza
-  (antes de que React retire el nodo, para que el navegador devuelva el foco a la
-  tarjeta). Escape por `onCancel`; el clic fuera se detecta con
-  `e.target === dialog`, porque el `<dialog>` ocupa la ventana y hace de scroll.
-- Hora de comentarios: solo tras hidratar (`useSyncExternalStore`), en la zona del
-  navegador y `es-ES`; antes, `<time dateTime>` sin texto.
-- Vencimiento: `Intl` `es-ES` con `timeZone: "UTC"` (es medianoche UTC).
-- Toggles: `runToggle` devuelve un mensaje para un `role="alert"` que sale junto a lo
-  que falló (bajo las etiquetas, o bajo los ítems de cada checklist), no arriba del
-  modal, que tiene scroll; relanza los errores internos de Next con `unstable_rethrow`
-  (API pública, no `isRedirectError` interno).
-- Borrado: confirmación en línea con un segundo clic («¿Borrar la tarjeta?» Sí,
-  borrar / No), con el foco movido al control nuevo en cada paso.
-- Etiquetas no seleccionadas: solo se quita `opacity-55` (texto a ~2,2:1) y se mantiene
-  el relleno de color; el estado se distingue por el ✓, el anillo y `aria-pressed`.
-  `aria-pressed` también en los colores; colores nombrados en español.
-- El fundido del fondo va en `::backdrop` con `motion-safe:`: la regla global de
-  movimiento reducido de `globals.css` no cubre `::backdrop`.
-- Lógica pura en `app/components/card/card-modal-helpers.ts` para probarla en node.
+**Decision.**
+- Native `<dialog>` with `showModal()` in a layout effect and `close()` in its cleanup
+  (before React removes the node, so the browser returns focus to the card). Escape via
+  `onCancel`; a click outside is detected with `e.target === dialog`, because the
+  `<dialog>` fills the viewport and acts as the scroll container.
+- Comment time: only after hydration (`useSyncExternalStore`), in the browser's zone and
+  `es-ES`; before that, a `<time dateTime>` with no text.
+- Due date: `Intl` `es-ES` with `timeZone: "UTC"` (it is midnight UTC).
+- Toggles: `runToggle` returns a message for a `role="alert"` shown next to what failed
+  (under the labels, or under the items of each checklist), not at the top of the modal,
+  which scrolls; it rethrows Next's internal errors with `unstable_rethrow` (public API,
+  not the internal `isRedirectError`).
+- Deletion: inline confirmation with a second click ("Delete the card?" Yes, delete / No),
+  with focus moved to the new control at each step.
+- Unselected labels: only `opacity-55` is removed (text at ~2.2:1) and the color fill is
+  kept; the state is told apart by the ✓, the ring and `aria-pressed`. `aria-pressed` on
+  the colors too; color names in Spanish.
+- The backdrop fade lives in `::backdrop` with `motion-safe:`: the global reduced-motion
+  rule in `globals.css` does not cover `::backdrop`.
+- Pure logic in `app/components/card/card-modal-helpers.ts` so it can be tested in node.
 
-**Alternativas descartadas.**
-- Atrapar el foco a mano o con una librería: `showModal()` ya vuelve inerte el fondo.
-- `suppressHydrationWarning` en la hora: calla el aviso pero deja el texto incorrecto.
-- Fijar `Atlantic/Canary` en el cliente: es self-hosted y cada usuario tiene su zona.
-- `window.confirm`: bloquea y no sigue el estilo de la app.
-- Etiqueta no seleccionada en contorno con un punto de color: es un cambio de diseño
-  que no se pidió; basta con quitar la opacidad.
-- Añadir `*::backdrop` a la regla de `globals.css`: `motion-safe:` lo resuelve sin
-  tocar un archivo compartido.
+**Alternatives considered.**
+- Trapping focus by hand or with a library: `showModal()` already makes the background
+  inert.
+- `suppressHydrationWarning` on the time: it silences the warning but leaves the wrong
+  text.
+- Hard-coding `Atlantic/Canary` on the client: it is self-hosted and each user has their
+  own zone.
+- `window.confirm`: it blocks and does not follow the app's style.
+- Unselected label as an outline with a color dot: a design change nobody asked for;
+  removing the opacity is enough.
+- Adding `*::backdrop` to the rule in `globals.css`: `motion-safe:` solves it without
+  touching a shared file.
 
-**Consecuencias.** Con `?card=` el `<dialog>` llega cerrado en el HTML del servidor y
-se abre al hidratar (un instante sin modal). El comportamiento del diálogo (foco, Tab,
-Escape, clic fuera) no tiene test automático: no hay jsdom ni e2e en el proyecto;
-queda pendiente de verificación manual. El selector de etiquetas de `filter-bar.tsx`
-debe usar el mismo estilo que este (relleno sin opacidad).
-## 2026-09-24 — Panel de miembros con `<dialog>` nativo
+**Consequences.** With `?card=` the `<dialog>` arrives closed in the server HTML and opens
+on hydration (a moment without the modal). The dialog behavior (focus, Tab, Escape,
+click outside) has no automated test: the project has no jsdom or e2e; it is pending
+manual verification. The label picker in `filter-bar.tsx` should use the same style as
+this one (fill without opacity).
+## 2026-09-24 — Members panel with native `<dialog>`
 
-**Contexto.** El panel de miembros era un `div role="dialog"` sin foco inicial, sin foco
-atrapado, sin devolver el foco al cerrar y sin nombre accesible. Los errores y
-confirmaciones de la invitación no se anunciaban y el email se vaciaba al fallar.
+**Context.** The members panel was a `div role="dialog"` with no initial focus, no focus
+trap, no focus return on close and no accessible name. Invitation errors and confirmations
+were not announced, and the email field was cleared on failure.
 
-**Decisión.**
-- `<dialog>` abierto con `showModal()`: el navegador pone el foco dentro y deja inerte el
-  resto. Escape (`cancel`) y el clic en el fondo llaman a `onClose`; el cierre real lo hace
-  el padre al desmontarlo. Al desmontar se cierra y se devuelve el foco a quien lo tenía,
-  a mano, porque el navegador no lo restaura si el `<dialog>` sale del DOM.
-- `aria-labelledby`/`aria-describedby` con `useId`.
-- Error con `role="alert"`, retirado mientras se envía (ver «Panel de miembros: rol al
-  invitar tras un error…», más arriba); éxito en una región `role="status"` siempre montada.
-- El email usa `defaultValue` con los `values` que devuelve la acción al fallar. El rol,
-  además, remonta el `<select>` con una key (ver la misma entrada).
+**Decision.**
+- `<dialog>` opened with `showModal()`: the browser puts focus inside and makes the rest
+  inert. Escape (`cancel`) and a click on the backdrop call `onClose`; the actual close is
+  done by the parent when it unmounts it. On unmount it is closed and focus is returned to
+  whoever had it, by hand, because the browser does not restore it if the `<dialog>`
+  leaves the DOM.
+- `aria-labeledby`/`aria-describedby` with `useId`.
+- Error with `role="alert"`, removed while submitting (see "Members panel: invite role
+  after an error...", above); success in an always-mounted `role="status"` region.
+- The email uses `defaultValue` with the `values` the action returns on failure. The role,
+  in addition, remounts the `<select>` with a key (see the same entry).
 
-**Alternativas descartadas.**
-- Trampa de foco en JavaScript o una librería de diálogos: el `<dialog>` modal ya lo da
-  sin dependencias.
-- Escuchar el evento `close` del `<dialog>`: en desarrollo, el doble montaje de Strict
-  Mode lo dispara al limpiar el efecto y cerraría el panel recién abierto.
+**Alternatives considered.**
+- A JavaScript focus trap or a dialog library: the modal `<dialog>` already provides it
+  with no dependencies.
+- Listening to the `<dialog>`'s `close` event: in development, Strict Mode's double mount
+  fires it when the effect is cleaned up and would close the freshly opened panel.
 
-**Consecuencias.** Sin textos visibles nuevos. Falta verificarlo a mano con teclado y
-lector de pantalla (no hay infraestructura e2e). El modal de tarjeta sigue con el patrón
-antiguo (otro lote).
-
----
-
-## 2026-09-24 — Recordatorios: día UTC, ventana de 7 días y un único aviso de vencida
-
-**Contexto.** Las tarjetas vencidas se avisaban cada día para siempre y la pasada
-crecía sin tope. El inicio del día se calculaba con la zona del servidor aunque `dueDate`
-es medianoche UTC: con una zona negativa, una tarjeta que vence hoy salía como «Tarea
-vencida» y el texto mostraba el día anterior. El formato usaba el locale `es`.
-
-**Decisión.**
-- El día se cuenta en UTC y la fecha se formatea con `es-ES` y `timeZone: 'UTC'` (es una
-  fecha de calendario).
-- «Vence pronto»: como mucho un aviso al día. «Tarea vencida»: un solo aviso, a partir del
-  día UTC siguiente al vencimiento, y solo para tarjetas vencidas en los últimos 7 días.
-- Solo se avisa a asignados que siguen siendo miembros del tablero.
-- `created` solo cuenta las notificaciones que `notify()` guardó de verdad.
-- Se añaden tests del endpoint cron (503/401/200) sin modificar `route.ts`.
-
-**Alternativas descartadas.**
-- Usar `ORGTABLE_TIMEZONE` para el día de vencimiento: `dueDate` no tiene hora ni zona;
-  cualquier otra zona desplazaría la fecha elegida.
-- Avisar de vencidas sin límite de antigüedad: avisos diarios infinitos.
-- Fake timers en los tests: no afectan al `createdAt` que pone la BD.
-
-**Consecuencias.** Las tarjetas vencidas hace más de 7 días dejan de generar avisos. Una
-tarjeta vencida produce un único aviso de vencida. Tests en
-`test/integration/reminders.int.test.ts` y `cron-reminders.int.test.ts`.
+**Consequences.** No new visible text. Still needs manual verification with keyboard and
+screen reader (there is no e2e infrastructure). The card modal still uses the old pattern
+(another batch).
 
 ---
 
-## 2026-09-24 — Expulsar a un miembro borra sus asignaciones; sin avisos a no miembros
+## 2026-09-24 — Reminders: UTC day, 7-day window and a single overdue notice
 
-**Contexto.** `removeBoardMember` solo borraba la fila `BoardMember`. Las asignaciones
-(`CardAssignee`) se quedaban, y `addComment` y los recordatorios avisaban a todos los
-asignados: el expulsado seguía recibiendo el título de las tarjetas y hasta 140
-caracteres de cada comentario. Además, `updateBoardMemberRole` y `removeBoardMember` no
-miraban cuántas filas cambiaban: con un `userId` ajeno se auditaba y notificaba un cambio
-inexistente (revelando el título del tablero). Tampoco publicaban en el bus de tiempo
-real.
+**Context.** Overdue cards were notified every day forever and the run grew without
+bound. The start of the day was computed in the server's zone even though `dueDate` is
+midnight UTC: with a negative zone, a card due today showed up as "Task overdue" and the
+text showed the previous day. The formatting used the `es` locale.
 
-**Decisión.**
-- `removeMemberFromBoard` (`app/lib/services/members.ts`) borra membresía y asignaciones
-  del tablero en una transacción y devuelve cuántas membresías borró.
-- Las acciones de rol y expulsión no auditan ni notifican si no cambió nada (0 filas; en
-  el rol, tampoco si ya tenía ese rol).
-- Defensa en profundidad: `addComment` solo avisa a asignados que siguen siendo miembros,
-  lo que cubre las asignaciones huérfanas ya existentes (los recordatorios, en su propia
-  entrada).
-- Las tres acciones de miembros usan `revalidateBoard` (revalida y publica en el bus).
-- `addBoardMember` devuelve `values` con lo enviado cuando hay error, para que el
-  formulario no se vacíe.
-- Los tests de acciones sustituyen `requireBoardAccess` con `vi.mock` solo en su archivo,
-  sin tocar el stub global de `next/headers`.
+**Decision.**
+- The day is counted in UTC and the date is formatted with `es-ES` and `timeZone: 'UTC'`
+  (it is a calendar date).
+- "Due soon": at most one notice per day. "Task overdue": a single notice, from the UTC
+  day after the due date, and only for cards that became overdue in the last 7 days.
+- Only assignees who are still board members are notified.
+- `created` only counts the notifications that `notify()` actually saved.
+- Tests for the cron endpoint (503/401/200) are added without modifying `route.ts`.
 
-**Alternativas descartadas.**
-- Limpiar ya las asignaciones huérfanas en producción: es una operación sobre datos
-  reales que decide el propietario (con copia y prueba en seco). El filtro por membresía
-  las neutraliza mientras tanto.
-- Borrarlas con un trigger o un `onDelete` en BD: no hay relación directa entre
-  `CardAssignee` y `BoardMember`; exigiría una migración para algo que resuelve una
-  transacción.
+**Alternatives considered.**
+- Using `ORGTABLE_TIMEZONE` for the due day: `dueDate` has no time or zone; any other zone
+  would shift the chosen date.
+- Notifying overdue cards with no age limit: endless daily notices.
+- Fake timers in the tests: they do not affect the `createdAt` set by the database.
 
-**Consecuencias.** Las filas huérfanas previas siguen en la BD (sin efecto en avisos,
-pero aún visibles como avatares en la tarjeta) hasta que se limpien. Tests en
-`test/integration/members.int.test.ts` y `collaboration.int.test.ts`.
+**Consequences.** Cards overdue for more than 7 days stop generating notices. An overdue
+card produces a single overdue notice. Tests in `test/integration/reminders.int.test.ts`
+and `cron-reminders.int.test.ts`.
 
 ---
 
-## 2026-09-24 — `notify` informa de si guardó la notificación
+## 2026-09-24 — Removing a member deletes their assignments; no notices to non-members
 
-**Contexto.** `notify()` tenía un `catch` vacío: si la inserción fallaba no quedaba
-rastro, y el cron de recordatorios contaba el aviso como creado igualmente, así que
-`POST /api/cron/reminders` devolvía un `created` falso.
+**Context.** `removeBoardMember` only deleted the `BoardMember` row. The assignments
+(`CardAssignee`) stayed, and `addComment` and the reminders notified every assignee: the
+removed person kept receiving card titles and up to 140 characters of each comment. In
+addition, `updateBoardMemberRole` and `removeBoardMember` did not check how many rows
+changed: with someone else's `userId`, a non-existent change was audited and notified
+(revealing the board title). They did not publish on the realtime bus either.
 
-**Decisión.** `notify()` sigue siendo best-effort (nunca lanza), pero devuelve
-`Promise<boolean>`: `true` en cuanto la fila se guarda (aunque después falle la
-publicación en el bus, que va en su propio `try`) y `false` si no. El fallo se registra
-con `console.error` con tipo, ids y código de error, sin título ni cuerpo (llevan texto
-del usuario).
+**Decision.**
+- `removeMemberFromBoard` (`app/lib/services/members.ts`) deletes the membership and the
+  board's assignments in one transaction and returns how many memberships it deleted.
+- The role and removal actions do not audit or notify if nothing changed (0 rows; for the
+  role, also not if the user already had that role).
+- Defense in depth: `addComment` only notifies assignees who are still members, which
+  covers the orphaned assignments that already exist (the reminders, in their own entry).
+- The three member actions use `revalidateBoard` (revalidates and publishes on the bus).
+- `addBoardMember` returns `values` with what was submitted when there is an error, so the
+  form is not cleared.
+- The action tests replace `requireBoardAccess` with `vi.mock` only in their own file,
+  without touching the global `next/headers` stub.
 
-**Alternativas descartadas.**
-- Relanzar el error: rompería la mutación que origina el aviso (comentar, invitar…).
-- Registrar el mensaje completo del error: puede incluir valores de la consulta.
+**Alternatives considered.**
+- Cleaning up the orphaned assignments in production right away: it is an operation on
+  real data that the owner decides (with a backup and a dry run). The membership filter
+  neutralizes them in the meantime.
+- Deleting them with a trigger or an `onDelete` in the database: there is no direct
+  relation between `CardAssignee` and `BoardMember`; it would require a migration for
+  something a transaction solves.
 
-**Consecuencias.** Los llamadores que no miran el resultado no cambian. El cron solo
-suma los avisos guardados. Test en `test/integration/notifications.int.test.ts`.
-
----
-## 2026-09-24 — Recrear el EventSource cuando el navegador deja de reintentar
-
-**Contexto.** Detrás de un proxy TLS (nginx, Caddy), un reinicio con
-`scripts/update.sh` hace que el proxy responda 502 al stream SSE. Ante una respuesta
-que no es 200, el navegador deja el `EventSource` en `CLOSED` y no reintenta. El
-cliente solo hacía `router.refresh()`: como la sesión seguía siendo válida la página no
-redirigía y el tablero y la campana se quedaban sin tiempo real hasta recargar.
-
-**Decisión.** `keepEventSourceOpen` (`app/lib/realtime/reconnect.ts`) gestiona el
-ciclo de vida del `EventSource` en `BoardRealtime` y `NotificationsBell`: registra los
-manejadores, refresca en cada apertura salvo la primera (también en fuentes recreadas)
-y, si la fuente queda `CLOSED`, hace `router.refresh()`, la cierra y crea otra tras un
-backoff exponencial de 3 s a 30 s que se reinicia al abrir. La limpieza del efecto
-cierra la fuente y cancela el reintento pendiente. Si el acceso se revocó, el refresh
-redirige y el desmontaje corta los reintentos. Se prueba con un doble de
-`EventSource` en `test/realtime-reconnect.test.ts` (no hay jsdom).
-
-**Alternativas descartadas.**
-- Recrear la fuente dentro de cada componente: duplica la lógica del temporizador en
-  dos sitios y no se puede probar sin navegador.
-- Reintentar sin backoff o con intervalo fijo corto: martillea al servidor mientras
-  arranca.
-- Solo documentar el límite: el reinicio con `update.sh` es la operación habitual.
-
-**Consecuencias.** Si el servidor rechaza con 401/403 y por lo que sea la página no
-redirige, se reintenta cada 30 s como máximo (petición barata que el servidor vuelve a
-rechazar). Cada reapertura tras `CLOSED` provoca dos refresh (el de `CLOSED` y el de
-la reapertura); se acepta por simplicidad.
-
-## 2026-09-24 — Hora de las notificaciones solo tras montar
-
-**Contexto.** El tiempo relativo de la campana depende de la hora y la zona del
-navegador. Hoy la lista solo se pinta al abrir el desplegable (ya en cliente), pero
-nada impedía que un cambio futuro la renderizara en el SSR con otro texto.
-
-**Decisión.** Mismo patrón que los comentarios: `useSyncExternalStore` (servidor
-`false`, cliente `true`) y el texto relativo solo con el componente montado, dentro de
-un `<time dateTime>`. La fecha absoluta usa `Intl.DateTimeFormat("es-ES")` en la zona
-del navegador.
-
-**Alternativas descartadas.** `suppressHydrationWarning`: oculta el aviso pero deja el
-texto del servidor.
-
-**Consecuencias.** Durante la hidratación la hora aparece vacía un instante.
-
-## 2026-09-24 — Refrescar el contador de notificaciones desde la Server Action
-
-**Contexto.** Al abrir una notificación con tablero no se llamaba a `router.refresh()`
-y `markNotificationRead` no revalidaba nada: el layout compartido no se volvía a
-renderizar y el contador de no leídas se quedaba igual.
-
-**Decisión.** `markNotificationRead` y `markAllNotificationsRead` llaman a
-`refresh()` de `next/cache` (Next 16, solo en Server Actions) tras el `updateMany`, y
-se quitan los `router.refresh()` del cliente. `test/stubs/next-cache.ts` exporta
-`refresh` como no-op.
-
-**Alternativas descartadas.**
-- `router.refresh()` también cuando hay tablero: compite con el `router.push` y
-  depende de que el cliente se acuerde en cada llamada.
-- `revalidatePath("/", "layout")`: invalida más de lo necesario.
-
-**Consecuencias.** El refresco lo decide el servidor. El badge solo se puede comprobar
-en el navegador; el test de integración (`notifications-read.int.test.ts`) comprueba
-el dato y que se pide `refresh()`.
-
-## 2026-09-24 — Resincronizar el tablero y la campana al reconectar el EventSource
-
-**Contexto.** El servidor no reenvía los eventos perdidos (no hay `Last-Event-ID`), y
-el cliente no hacía nada al reconectar: tras suspender el portátil o reiniciar el
-servidor, el tablero y el contador de notificaciones mostraban datos viejos.
-
-**Decisión.** `createReconnectRefresher` (`app/lib/realtime/reconnect.ts`): en cada
-`open` del EventSource salvo el primero se lanza el mismo refresh con debounce que
-un evento. Si el EventSource queda en `CLOSED` (el servidor respondió 401/403), se
-hace `router.refresh()` para que la página redirija.
-
-**Alternativas descartadas.**
-- `Last-Event-ID` con historial de eventos en el servidor: exige guardar eventos por
-  canal (memoria o tabla) para un beneficio que un refresh ya cubre.
-- Refrescar en cada `open`, incluido el primero: un render extra al cargar la página.
-
-**Consecuencias.** Un `router.refresh()` por reconexión (también cada 15 min por la
-vida máxima del stream). El caso `CLOSED` por un 5xx del proxy se resuelve en la
-entrada «Recrear el EventSource cuando el navegador deja de reintentar».
-
-## 2026-09-24 — Puente LISTEN/NOTIFY: cierre, reconexión y validación del payload
-
-**Contexto.** Si `LISTEN` fallaba o la conexión daba `error`, el cliente `pg` no se
-cerraba y cada suscripción SSE abría otra conexión, sin registrar nada. Mientras el
-puente estaba arrancando, los eventos publicados se perdían. El payload de `NOTIFY` se
-parseaba con un cast: uno sin `id` se reemitía en `board:undefined`. Los `.catch` de
-publicación estaban vacíos.
-
-**Decisión.**
-- La conexión fallida o caída se cierra siempre (`end()`) y se registra con
-  `console.error` (sin `DATABASE_URL`). El estado global solo se limpia si el cliente
-  que falla es el activo.
-- La promesa de arranque se guarda en `globalThis` y `publishCrossInstance` la espera.
-- Reconexión con backoff exponencial de 1 s a 30 s, un único temporizador en
-  `globalThis` y solo mientras quedan suscriptores.
-- `parseBridgePayload` valida con zod (`kind` board/user, `id` y `origin` no vacíos);
-  lo inválido se descarta con `console.warn` indicando solo la longitud.
-
-**Alternativas descartadas.**
-- Reintentar en cada suscripción (lo de antes): sin backoff, una caída de la BD
-  multiplicaba las conexiones.
-- Volcar el payload inválido al log: puede venir de cualquiera con acceso a la BD.
-
-**Consecuencias.** Solo afecta con `ORGTABLE_REALTIME_PG_NOTIFY=1`. Tests unitarios en
-`test/realtime-bus.test.ts` con un `pg` simulado. No se ha probado con una caída real
-de Postgres (`pg_terminate_backend`).
-
-## 2026-09-24 — Ciclo de vida y revalidación del acceso en los streams SSE
-
-**Contexto.** Los dos streams SSE (`/api/boards/[id]/stream` y
-`/api/notifications/stream`) dejaban la suscripción al bus y el latido colgados si la
-petición se abortaba durante la autorización o si `enqueue` fallaba (el flag `closed`
-hacía que `close()` saliera sin limpiar), y no tenían `cancel()`. Además la
-autorización solo se comprobaba al conectar: una sesión revocada o una persona
-expulsada seguían recibiendo eventos, en contra del ADR 0008.
-
-**Decisión.**
-- Helper común `app/lib/realtime/sse.ts` (`createSseResponse`) con una limpieza
-  idempotente llamada desde el abort (`{ once: true }`), `cancel()`, un `enqueue`
-  fallido, la revalidación y la vida máxima. Si la petición llega ya abortada se
-  responde 204 sin suscribirse.
-- En cada latido (25 s) se revalida con la BD: sesión no revocada ni caducada
-  (`isSessionActive`) y, en el tablero, que siga siendo miembro. Un flag evita
-  consultas solapadas; si la consulta falla, se registra y se cierra.
-- Vida máxima de 15 min: al cerrar, EventSource reconecta y la ruta reautoriza desde
-  la cookie.
-
-**Alternativas descartadas.**
-- `verifySession` en el latido: depende de `cookies()`, que solo existe dentro de la
-  petición inicial.
-- Evento de control para cortar al instante al revocar: más invasivo (publicar desde
-  cada acción de revocación o expulsión); 25 s de margen es aceptable.
-- Mantener una copia de la lógica en cada ruta: las dos copias tenían el mismo fallo.
-
-**Consecuencias.** Una consulta ligera por conexión cada 25 s. Cada 15 min el cliente
-reconecta. Tests en `test/integration/realtime.int.test.ts` (401/403, abort, cancel,
-revocación, expulsión, vida máxima; sin listeners ni temporizadores tras cerrar).
-## 2026-09-24 — El token de API queda fuera de la región viva
-
-**Contexto.** En `/settings`, el `role="status"` siempre montado envolvía todo el panel
-del token recién creado: el texto, el `<code>` con el token en claro y el botón Copiar,
-y dentro había además el `role="alert"` del fallo de copia. El lector de pantalla podía
-leer el token entero cada vez que la región cambiaba (también al pasar a «Copiado») y
-anunciar dos veces el aviso de fallo.
-
-**Decisión.** El `role="status"` solo contiene «Token «nombre» creado» y «Cópialo ahora:
-por seguridad no se volverá a mostrar.». El `<code>`, el botón y el `role="alert"` son
-hermanos de la región, no hijos. El recuadro verde pasa a ser el contenedor siempre
-montado (sin estilo hasta que hay token), así el aspecto no cambia.
-
-**Alternativas descartadas.** `aria-live="off"` en el `<code>` dentro de la región: el
-cambio de texto del botón seguiría disparando el anuncio de la región completa en
-algunos lectores.
-
-**Consecuencias.** Test en `test/admin-forms-a11y.test.ts`: con un token creado, la
-región no contiene el token ni el botón (se sustituye `useActionState` en el propio test
-porque el render de servidor siempre da el estado inicial). La lectura real con un
-lector de pantalla queda pendiente de verificación manual.
-
-## 2026-09-24 — Restablecer contraseña valida el userId; alcance del test del borrado
-
-**Contexto.** `resetUserPassword` validaba `userId` dentro de `resetPasswordSchema`: sin
-`userId` redirigía a `?error=password` («La contraseña debe tener al menos 8
-caracteres.»), que no era el problema. Además, el test del propietario de tableros
-pasaba también con el código anterior (comprobación previa + DELETE), así que no
-demostraba la condición atómica del servicio.
-
-**Decisión.**
-- `resetUserPassword` llama a `readUserId` antes de validar la contraseña, como el resto
-  de acciones por fila: sin `userId` responde `?error=invalid`.
-- Test directo de `deleteUserAccount` (sin pasar por la acción): un propietario de
-  tableros devuelve `owns_boards` y su tablero y su adjunto siguen en BD; un id
-  inexistente devuelve `not_found`.
-
-**Alternativas descartadas.** Distinguir por `issues[0].path` del esquema: reparte la
-validación del id entre dos sitios. Reproducir la carrera intercalando dos transacciones
-(bloqueo de la fila `User` por el INSERT del tablero): depende del orden de bloqueos de
-Postgres y sería un test frágil.
-
-**Consecuencias.** La carrera en sí (un tablero creado entre una comprobación y el
-DELETE) NO está probada; los tests fijan el contrato del servicio (la salvaguarda está
-en el propio DELETE, la acción no comprueba nada antes). Tests en
-`test/integration/admin-users.int.test.ts`.
+**Consequences.** The pre-existing orphaned rows remain in the database (no effect on
+notices, but still visible as avatars on the card) until they are cleaned up. Tests in
+`test/integration/members.int.test.ts` and `collaboration.int.test.ts`.
 
 ---
 
-## 2026-09-24 — Administración y ajustes: avisos anunciados, móvil y copia del token
+## 2026-09-24 — `notify` reports whether it saved the notification
 
-**Contexto.** Los errores y avisos de `/admin/users` y `/settings` no se anunciaban al
-lector de pantalla; el campo de nueva contraseña no tenía etiqueta; las tablas de
-usuarios y auditoría se recortaban a 375 px (`overflow-hidden`) y dejaban la columna
-Acciones fuera de alcance; si fallaba copiar el token (por `http://IP`, contexto no
-seguro) no se avisaba, y el token solo se muestra una vez.
+**Context.** `notify()` had an empty `catch`: if the insert failed there was no trace, and
+the reminders cron counted the notice as created anyway, so `POST /api/cron/reminders`
+returned a false `created`.
 
-**Decisión.**
-- Errores con `role="alert"`; éxitos dentro de un `role="status"` siempre montado. El
-  email duplicado marca el campo con `aria-invalid` + `aria-describedby`.
-- `aria-label="Nueva contraseña para <nombre>"` en el campo de restablecer.
-- `overflow-x-auto` en las tablas (mantiene el recorte de las esquinas).
-- Copiar el token guarda el resultado ligado al token (`copied`/`error`); si falla,
-  muestra «No se pudo copiar automáticamente: selecciona el token y cópialo a mano.» y
-  deja el token seleccionado (`select-all` + `selectAllChildren`).
+**Decision.** `notify()` is still best-effort (it never throws), but it returns
+`Promise<boolean>`: `true` as soon as the row is saved (even if publishing on the bus,
+which has its own `try`, fails afterwards) and `false` otherwise. The failure is logged
+with `console.error` with the type, ids and error code, without title or body (they carry
+user text).
 
-**Alternativas descartadas.** Pasar las tablas a tarjetas en móvil: cambio de diseño que
-decide el propietario. `document.execCommand("copy")` como respaldo: API obsoleta.
+**Alternatives considered.**
+- Rethrowing the error: it would break the mutation that triggers the notice (commenting,
+  inviting...).
+- Logging the full error message: it may include query values.
 
-**Consecuencias.** Test unitario `test/admin-forms-a11y.test.ts` (render en servidor:
-las regiones `role="status"` existen desde el primer render). El resto (lector de
-pantalla, 375 px, copia por http) queda pendiente de verificación manual.
+**Consequences.** Callers that ignore the result do not change. The cron only counts saved
+notices. Test in `test/integration/notifications.int.test.ts`.
+
+---
+## 2026-09-24 — Recreate the EventSource when the browser stops retrying
+
+**Context.** Behind a TLS proxy (nginx, Caddy), a restart with `scripts/update.sh` makes
+the proxy answer 502 to the SSE stream. On a non-200 response, the browser leaves the
+`EventSource` in `CLOSED` and does not retry. The client only did `router.refresh()`:
+since the session was still valid the page did not redirect, and the board and the
+notification bell were left without realtime until a reload.
+
+**Decision.** `keepEventSourceOpen` (`app/lib/realtime/reconnect.ts`) manages the
+`EventSource` lifecycle in `BoardRealtime` and `NotificationsBell`: it registers the
+handlers, refreshes on every open except the first (also on recreated sources) and, if
+the source ends up `CLOSED`, does `router.refresh()`, closes it and creates another after
+an exponential backoff from 3 s to 30 s that resets on open. The effect cleanup closes the
+source and cancels the pending retry. If access was revoked, the refresh redirects and the
+unmount stops the retries. It is tested with an `EventSource` test double in
+`test/realtime-reconnect.test.ts` (there is no jsdom).
+
+**Alternatives considered.**
+- Recreating the source inside each component: duplicates the timer logic in two places
+  and cannot be tested without a browser.
+- Retrying without backoff or with a short fixed interval: hammers the server while it
+  starts up.
+- Only documenting the limitation: restarting with `update.sh` is the usual operation.
+
+**Consequences.** If the server rejects with 401/403 and for some reason the page does not
+redirect, it retries every 30 s at most (a cheap request the server rejects again). Each
+reopen after `CLOSED` causes two refreshes (the one on `CLOSED` and the one on reopen);
+accepted for simplicity.
+
+## 2026-09-24 — Notification times only after mount
+
+**Context.** The bell's relative time depends on the browser's time and zone. Today the
+list is only rendered when the dropdown opens (already on the client), but nothing
+prevented a future change from rendering it in SSR with different text.
+
+**Decision.** Same pattern as the comments: `useSyncExternalStore` (server `false`, client
+`true`) and the relative text only once the component is mounted, inside a
+`<time dateTime>`. The absolute date uses `Intl.DateTimeFormat("es-ES")` in the browser's
+zone.
+
+**Alternatives considered.** `suppressHydrationWarning`: hides the warning but leaves the
+server text.
+
+**Consequences.** During hydration the time is empty for a moment.
+
+## 2026-09-24 — Refresh the notification counter from the Server Action
+
+**Context.** Opening a notification that has a board did not call `router.refresh()`, and
+`markNotificationRead` revalidated nothing: the shared layout was not re-rendered and the
+unread counter stayed the same.
+
+**Decision.** `markNotificationRead` and `markAllNotificationsRead` call `refresh()` from
+`next/cache` (Next 16, Server Actions only) after the `updateMany`, and the client-side
+`router.refresh()` calls are removed. `test/stubs/next-cache.ts` exports `refresh` as a
+no-op.
+
+**Alternatives considered.**
+- `router.refresh()` also when there is a board: it competes with the `router.push` and
+  depends on the client remembering it on every call.
+- `revalidatePath("/", "layout")`: invalidates more than needed.
+
+**Consequences.** The server decides the refresh. The badge can only be checked in the
+browser; the integration test (`notifications-read.int.test.ts`) checks the data and that
+`refresh()` is requested.
+
+## 2026-09-24 — Resync the board and the bell when the EventSource reconnects
+
+**Context.** The server does not resend missed events (there is no `Last-Event-ID`), and
+the client did nothing on reconnect: after the laptop was suspended or the server
+restarted, the board and the notification counter showed stale data.
+
+**Decision.** `createReconnectRefresher` (`app/lib/realtime/reconnect.ts`): on every
+EventSource `open` except the first, the same debounced refresh as an event is triggered.
+If the EventSource ends up `CLOSED` (the server answered 401/403), `router.refresh()` is
+called so the page redirects.
+
+**Alternatives considered.**
+- `Last-Event-ID` with an event history on the server: requires storing events per
+  channel (memory or table) for a benefit a refresh already covers.
+- Refreshing on every `open`, including the first: an extra render on page load.
+
+**Consequences.** One `router.refresh()` per reconnection (also every 15 min because of
+the stream's maximum lifetime). The `CLOSED` case caused by a proxy 5xx is handled in the
+entry "Recreate the EventSource when the browser stops retrying".
+
+## 2026-09-24 — LISTEN/NOTIFY bridge: closing, reconnection and payload validation
+
+**Context.** If `LISTEN` failed or the connection emitted `error`, the `pg` client was not
+closed and every SSE subscription opened another connection, without logging anything.
+While the bridge was starting, published events were lost. The `NOTIFY` payload was
+parsed with a cast: one without `id` was re-emitted on `board:undefined`. The publish
+`.catch` handlers were empty.
+
+**Decision.**
+- A failed or dropped connection is always closed (`end()`) and logged with
+  `console.error` (without `DATABASE_URL`). The global state is only cleared if the
+  failing client is the active one.
+- The startup promise is stored in `globalThis` and `publishCrossInstance` waits for it.
+- Reconnection with exponential backoff from 1 s to 30 s, a single timer in `globalThis`,
+  and only while there are subscribers left.
+- `parseBridgePayload` validates with zod (`kind` board/user, non-empty `id` and
+  `origin`); invalid payloads are discarded with a `console.warn` giving only the length.
+
+**Alternatives considered.**
+- Retrying on every subscription (the previous behavior): with no backoff, a database
+  outage multiplied the connections.
+- Dumping the invalid payload to the log: it can come from anyone with database access.
+
+**Consequences.** Only applies with `ORGTABLE_REALTIME_PG_NOTIFY=1`. Unit tests in
+`test/realtime-bus.test.ts` with a mocked `pg`. Not tested against a real Postgres outage
+(`pg_terminate_backend`).
+
+## 2026-09-24 — Lifecycle and access revalidation in the SSE streams
+
+**Context.** The two SSE streams (`/api/boards/[id]/stream` and
+`/api/notifications/stream`) left the bus subscription and the heartbeat dangling if the
+request was aborted during authorization or if `enqueue` failed (the `closed` flag made
+`close()` return without cleaning up), and they had no `cancel()`. In addition,
+authorization was only checked on connect: a revoked session or a removed person kept
+receiving events, contrary to ADR 0008.
+
+**Decision.**
+- Shared helper `app/lib/realtime/sse.ts` (`createSseResponse`) with an idempotent cleanup
+  called from the abort (`{ once: true }`), `cancel()`, a failed `enqueue`, the
+  revalidation and the maximum lifetime. If the request arrives already aborted, it
+  answers 204 without subscribing.
+- On every heartbeat (25 s) access is revalidated against the database: session not
+  revoked or expired (`isSessionActive`) and, for the board, still a member. A flag
+  prevents overlapping queries; if the query fails, it is logged and the stream closes.
+- Maximum lifetime of 15 min: on close, EventSource reconnects and the route
+  re-authorizes from the cookie.
+
+**Alternatives considered.**
+- `verifySession` in the heartbeat: it depends on `cookies()`, which only exists inside
+  the initial request.
+- A control event to cut off instantly on revocation: more invasive (publishing from
+  every revocation or removal action); a 25 s margin is acceptable.
+- Keeping a copy of the logic in each route: both copies had the same bug.
+
+**Consequences.** One lightweight query per connection every 25 s. The client reconnects
+every 15 min. Tests in `test/integration/realtime.int.test.ts` (401/403, abort, cancel,
+revocation, removal, maximum lifetime; no listeners or timers left after closing).
+## 2026-09-24 — The API token stays out of the live region
+
+**Context.** On `/settings`, the always-mounted `role="status"` wrapped the whole panel of
+the newly created token: the text, the `<code>` with the plaintext token and the Copy
+button, and it also contained the `role="alert"` for a copy failure. The screen reader
+could read the whole token every time the region changed (also when switching to
+"Copied") and announce the failure message twice.
+
+**Decision.** The `role="status"` only contains "Token "name" created" and "Copy it now:
+for security it will not be shown again.". The `<code>`, the button and the
+`role="alert"` are siblings of the region, not children. The green box becomes the
+always-mounted container (unstyled until there is a token), so the look does not change.
+
+**Alternatives considered.** `aria-live="off"` on the `<code>` inside the region: the
+button's text change would still trigger an announcement of the whole region in some
+screen readers.
+
+**Consequences.** Test in `test/admin-forms-a11y.test.ts`: with a created token, the
+region contains neither the token nor the button (`useActionState` is replaced in the
+test itself because server rendering always yields the initial state). Actual reading
+with a screen reader is pending manual verification.
+
+## 2026-09-24 — Password reset validates the userId; scope of the deletion test
+
+**Context.** `resetUserPassword` validated `userId` inside `resetPasswordSchema`: without
+a `userId` it redirected to `?error=password` ("Password must be at least 8
+characters."), which was not the problem. In addition, the board-owner test also passed
+with the previous code (prior check + DELETE), so it did not prove the service's atomic
+condition.
+
+**Decision.**
+- `resetUserPassword` calls `readUserId` before validating the password, like the other
+  per-row actions: without a `userId` it answers `?error=invalid`.
+- Direct test of `deleteUserAccount` (without going through the action): a board owner
+  returns `owns_boards` and their board and attachment remain in the database; a
+  non-existent id returns `not_found`.
+
+**Alternatives considered.** Distinguishing by the schema's `issues[0].path`: splits the
+id validation across two places. Reproducing the race by interleaving two transactions
+(locking the `User` row via the board INSERT): depends on Postgres lock ordering and would
+be a fragile test.
+
+**Consequences.** The race itself (a board created between a check and the DELETE) is NOT
+tested; the tests pin down the service contract (the safeguard is in the DELETE itself,
+the action checks nothing beforehand). Tests in `test/integration/admin-users.int.test.ts`.
 
 ---
 
-## 2026-09-24 — Crear usuario y crear token conservan lo escrito tras un error
+## 2026-09-24 — Admin and settings: announced messages, mobile and token copy
 
-**Contexto.** Con `action={fn}` React restablece el formulario al terminar la acción,
-así que un email duplicado o un dato no válido borraban todo lo tecleado.
+**Context.** Errors and messages in `/admin/users` and `/settings` were not announced to
+the screen reader; the new-password field had no label; the users and audit tables were
+clipped at 375 px (`overflow-hidden`) and left the Actions column out of reach; if copying
+the token failed (because of `http://IP`, a non-secure context) there was no warning, and
+the token is only shown once.
 
-**Decisión.** `createUser` y `createApiToken` devuelven `values` en cada error (nunca la
-contraseña) y los campos usan `defaultValue`. Los `<select>` llevan además `key` con el
-valor devuelto: React no actualiza el `defaultValue` de un `<select>` ya montado y el
-reset lo devolvería al valor inicial (p. ej. «Administrador» → «Miembro»).
-`createUser` indica `field: "email"` para marcar el campo del email duplicado.
+**Decision.**
+- Errors with `role="alert"`; successes inside an always-mounted `role="status"`. A
+  duplicate email marks the field with `aria-invalid` + `aria-describedby`.
+- `aria-label="Nueva contraseña para <nombre>"` on the reset field.
+- `overflow-x-auto` on the tables (keeps the corner clipping).
+- Copying the token stores the result tied to the token (`copied`/`error`); if it fails,
+  it shows "Could not copy automatically: select the token and copy it by hand." and
+  leaves the token selected (`select-all` + `selectAllChildren`).
 
-**Alternativas descartadas.** Campos controlados con `useState`: más código por campo
-para el mismo resultado. Enviar con `onSubmit` + `startTransition` para evitar el reset:
-cambia el flujo de envío de los dos formularios.
+**Alternatives considered.** Turning the tables into cards on mobile: a design change for
+the owner to decide. `document.execCommand("copy")` as a fallback: obsolete API.
 
-**Consecuencias.** Tests en `admin-users.int.test.ts` y `tokens.int.test.ts` (los
-valores vuelven y la contraseña no).
-
----
-
-## 2026-09-24 — Fechas del servidor en la zona de la instancia (ORGTABLE_TIMEZONE)
-
-**Contexto.** `/admin/audit`, `/admin/users` y `/settings` son Server Components que
-formateaban con `Intl.DateTimeFormat("es")` sin `timeZone`: salían en la zona del
-proceso (UTC en el contenedor). Un login fallido a las 10:15 en Canarias aparecía a las
-9:15, y las fechas cercanas a medianoche cambiaban de día.
-
-**Decisión.**
-- Helper único `app/lib/format-date.ts` (`formatDateTime`, `formatDate`) con locale
-  `es-ES` y la zona de la variable `ORGTABLE_TIMEZONE` (IANA; por defecto
-  `Atlantic/Canary`). Se valida con `Intl`: una zona desconocida lanza un error claro
-  en vez de caer a un valor por defecto.
-- La auditoría muestra la abreviatura de la zona (`timeZoneName: "short"`).
-- Los vencimientos (`dueDate`, fechas de calendario a medianoche UTC) NO usan este
-  helper: se formatean con `timeZone: "UTC"`.
-
-**Alternativas descartadas.**
-- Formatear en el cliente con la zona del navegador: obliga a convertir tres páginas de
-  servidor en componentes cliente y da horas distintas a cada administrador.
-- Fijar `Atlantic/Canary` en el código: es una app self-hosted, cada instancia tiene la
-  suya.
-
-**Consecuencias.** Variable de entorno nueva `ORGTABLE_TIMEZONE` (su documentación en
-`.env.example` y README la hace el lote de despliegue). Test unitario
-`test/format-date.test.ts` con `TZ=UTC`.
+**Consequences.** Unit test `test/admin-forms-a11y.test.ts` (server render: the
+`role="status"` regions exist from the first render). The rest (screen reader, 375 px,
+copy over http) is pending manual verification.
 
 ---
 
-## 2026-09-24 — Acciones de administración: usuario inexistente y borrado atómico
+## 2026-09-24 — Create user and create token keep the input after an error
 
-**Contexto.** `updateUserRole`, `resetUserPassword`, `revokeUserSessions` y `deleteUser`
-no miraban si el usuario existía: auditaban y mostraban éxito con un id inexistente.
-`deleteUser` comprobaba los tableros propios en una consulta previa; si el usuario
-creaba un tablero entre medias, la cascada por `ownerId` borraba sus filas `Attachment`
-y dejaba los ficheros huérfanos en el volumen de adjuntos.
+**Context.** With `action={fn}` React resets the form when the action finishes, so a
+duplicate email or invalid data wiped everything typed.
 
-**Decisión.**
-- El id se valida como cadena no vacía (`String(null)` daba `"null"`).
-- Se usa el `count` de `updateMany`/`deleteMany` (y un `findUnique` en «Cerrar
-  sesiones», donde 0 sesiones es válido) y se redirige a `?error=not-found` antes de
-  auditar. Mensaje: «Ese usuario ya no existe.».
-- `deleteUserAccount` (servicio) borra con `where: { id, boards: { none: {} } }`: la
-  condición va en el mismo DELETE, así que la cascada nunca alcanza adjuntos.
+**Decision.** `createUser` and `createApiToken` return `values` on every error (never the
+password) and the fields use `defaultValue`. The `<select>` elements also get a `key`
+with the returned value: React does not update the `defaultValue` of an already mounted
+`<select>` and the reset would send it back to the initial value (e.g. "Administrator" →
+"Member"). `createUser` returns `field: "email"` to mark the field of the duplicate email.
 
-**Alternativas descartadas.** Leer los `storedName` y borrar los ficheros tras el
-DELETE: con la condición atómica no hay adjuntos que borrar, y no tendría forma de
-probarse sin saltarse la salvaguarda de tableros propios.
+**Alternatives considered.** Controlled fields with `useState`: more code per field for the
+same result. Submitting with `onSubmit` + `startTransition` to avoid the reset: changes the
+submit flow of both forms.
 
-**Consecuencias.** Tests en `test/integration/admin-users.int.test.ts` (sin auditoría
-con id inexistente; un propietario de tableros no se borra y su adjunto sigue en BD).
-Esos tests no reproducen la carrera: ver la entrada «Restablecer contraseña valida el
-userId; alcance del test del borrado».
+**Consequences.** Tests in `admin-users.int.test.ts` and `tokens.int.test.ts` (the values
+come back and the password does not).
 
 ---
 
-## 2026-09-24 — Crear un token de API valida permisos y caducidad
+## 2026-09-24 — Server dates in the instance time zone (ORGTABLE_TIMEZONE)
 
-**Contexto.** `createApiToken` convertía un `scope` o `expiry` no reconocidos en
-«escritura» y «no caduca», el valor más permisivo, con un comentario que hablaba de
-«valores por defecto seguros».
+**Context.** `/admin/audit`, `/admin/users` and `/settings` are Server Components that
+formatted with `Intl.DateTimeFormat("es")` without `timeZone`: dates came out in the
+process time zone (UTC in the container). A failed login at 10:15 in the Canary Islands
+showed up as 9:15, and dates close to midnight jumped to another day.
 
-**Decisión.** Nombre, permisos y caducidad se validan con un único `z.object` que
-reutiliza los esquemas de `validators.ts`; si algo falla, se devuelve `{ error }` sin
-crear nada («Permisos no válidos.» / «Caducidad no válida.»). Los valores por defecto
-del formulario (escritura, nunca caduca) no cambian: los decide el propietario.
+**Decision.**
+- A single helper `app/lib/format-date.ts` (`formatDateTime`, `formatDate`) with locale
+  `es-ES` and the time zone from the `ORGTABLE_TIMEZONE` variable (IANA; default
+  `Atlantic/Canary`). It is validated with `Intl`: an unknown zone throws a clear error
+  instead of falling back to a default value.
+- The audit log shows the zone abbreviation (`timeZoneName: "short"`).
+- Due dates (`dueDate`, calendar dates at UTC midnight) do NOT use this helper: they are
+  formatted with `timeZone: "UTC"`.
 
-**Alternativas descartadas.** Caer a «solo lectura» y caducidad finita: seguiría
-siendo un valor por defecto silencioso que tapa un formulario manipulado o roto.
+**Alternatives considered.**
+- Formatting on the client with the browser time zone: forces three server pages to
+  become client components and gives each admin different times.
+- Hard-coding `Atlantic/Canary`: this is a self-hosted app, and each instance has its
+  own zone.
 
-**Consecuencias.** Test en `test/integration/tokens.int.test.ts`.
-
----
-
-## 2026-09-24 — Restablecer la contraseña también revoca los tokens de API
-
-**Contexto.** `resetUserPassword` solo revocaba sesiones. `authenticateApiToken` no mira
-la tabla `Session`, así que quien hubiera creado un token `full` sin caducidad con una
-cuenta comprometida seguía entrando por `/api/v1` después del reset. El comentario de la
-acción prometía lo contrario.
-
-**Decisión.**
-- Nuevo servicio `resetPasswordAndRevokeAccess` en `app/lib/services/users.ts`: en una
-  sola `$transaction` cambia el hash, revoca las sesiones y **borra** los tokens del
-  usuario (borrar es la revocación del ADR 0013). Comprueba que el usuario existe antes
-  de hashear.
-- La auditoría `user.password_reset` guarda cuántos tokens se revocaron.
-- «Cerrar sesiones» no cambia de semántica (solo sesiones) y no se añade un botón nuevo
-  de revocar tokens; queda documentado que no toca los tokens.
-
-**Alternativas descartadas.**
-- Invalidar tokens por fecha (`tokensValidAfter` en `User`): exige migración y deja
-  filas muertas en `/settings`.
-- Revocar tokens también en «Cerrar sesiones»: cambia una acción que se usa para cerrar
-  el navegador de alguien sin romper sus scripts.
-
-**Consecuencias.** Tras un reset el usuario tiene que crear tokens nuevos. Test en
-`test/integration/admin-revocation.int.test.ts` (el mismo Bearer pasa de 200 a 401; los
-tokens de otros usuarios no se tocan).
-## 2026-09-24 — Stub de next/headers: vaciar cookies y cabeceras por separado
-
-**Contexto.** `loginAs` llamaba a `__clearCookies`, que vaciaba también las cabeceras
-inyectadas. Un test que hiciera `__setHeaders({ "x-forwarded-proto": "https" })` y luego
-`loginAs` perdía la cabecera sin aviso: la cookie salía sin `Secure` y el rate limit no
-veía la IP. Además, el test de `resetDb` también pasaba con la lista fija de tablas
-anterior (CardAssignee y Comment caen por el CASCADE), así que no demostraba que las
-tablas se leyeran del catálogo.
-
-**Decisión.**
-- `__clearCookies` vacía solo las cookies y `__clearHeaders` solo las cabeceras.
-  `loginAs` llama a la primera; `resetDb`, a las dos. Orden documentado en
-  `docs/testing.md`: las cabeceras se ponen después de `resetDb`, antes o después de
-  `loginAs`.
-- `helpers.int.test.ts` crea una tabla temporal sin FK, le mete una fila y exige que
-  `resetDb` la vacíe (con la lista fija falla); y comprueba que `loginAs` conserva
-  `X-Forwarded-Proto`/`X-Forwarded-For`.
-- `audit.int.test.ts` exige que el log del fallo por FK no lleve el `userId`. Pasa con el
-  `describeError` actual (el mensaje de Prisma P2003 nombra la restricción, no el
-  valor), así que no se toca `app/lib/audit.ts`.
-
-**Alternativas descartadas.**
-- Mantener un único `__clearCookies` con un parámetro para conservar cabeceras:
-  parámetro booleano que cambia el comportamiento.
-- Comparar `pg_tables` con los modelos de Prisma: depende de `@@map` y no prueba que
-  `resetDb` use el catálogo, solo que el esquema coincide.
-- Registrar solo nombre y código de todo `PrismaClientKnownRequestError`: el test no
-  muestra fuga y se perdería la restricción que falla, útil para diagnosticar.
-
-**Consecuencias.** Los tests de cookie `Secure` y de IP pueden usar `loginAs` sin
-reinyectar cabeceras. La tabla temporal `zz_reset_probe` se borra en un `finally` y,
-por si quedara de una ejecución interrumpida, también antes de crearla.
-
-## 2026-09-24 — Login y setup: conservar lo tecleado y anunciar los errores
-
-**Contexto.** React 19 resetea los formularios no controlados después de una acción:
-tras «Credenciales incorrectas» se borraba el email, y tras un error de validación del
-setup, los cuatro campos. Además el mensaje de error era un `<p>` sin `role="alert"`
-que el lector de pantalla no anunciaba.
-
-**Decisión.**
-- `AuthState.values` y `SetupState.values` devuelven lo enviado en cada error (email;
-  nombre de instancia, nombre y email), nunca la contraseña. El cliente lo pinta con
-  `defaultValue`. En el éxito no se devuelven.
-- El `<p>` de error lleva `role="alert"` y se retira mientras `pending`, para que un
-  segundo error idéntico se vuelva a insertar y se anuncie otra vez.
-
-**Alternativas descartadas.**
-- Campos controlados con `useState`: más código en dos formularios para el mismo efecto.
-- `key` con un contador de intentos: obliga a añadir estado solo para eso.
-
-**Consecuencias.** La verificación con VoiceOver es manual: no hay infraestructura de
-tests de componentes. Los tests de integración comprueban que `values` llega sin la
-contraseña.
+**Consequences.** New environment variable `ORGTABLE_TIMEZONE` (its documentation in
+`.env.example` and the README is done by the deployment batch). Unit test
+`test/format-date.test.ts` with `TZ=UTC`.
 
 ---
 
-## 2026-09-24 — Setup: advisory lock, corte temprano y causa en el log
+## 2026-09-24 — Admin actions: non-existent user and atomic deletion
 
-**Contexto.** `completeSetup` comprobaba `setupCompletedAt` dentro de la transacción y
-el comentario lo daba por atómico, pero con READ COMMITTED dos envíos simultáneos leían
-«sin configurar» a la vez y creaban dos administradores (reproducido con un test: sin
-bloqueo salen dos ADMIN). Además, con el setup ya hecho la acción seguía validando y
-gastando bcrypt antes de descubrirlo, y cualquier fallo acababa en «Inténtalo de nuevo»
-sin dejar la causa.
+**Context.** `updateUserRole`, `resetUserPassword`, `revokeUserSessions` and `deleteUser`
+did not check whether the user existed: they wrote an audit entry and reported success
+with a non-existent id. `deleteUser` checked the user's own boards in a prior query; if
+the user created a board in between, the cascade via `ownerId` deleted its `Attachment`
+rows and left the files orphaned in the attachments volume.
 
-**Decisión.**
-- Lógica en `app/lib/services/setup.ts` (`completeInstanceSetup`), cuya primera
-  sentencia es `pg_advisory_xact_lock(hashtext('orgtable:setup'))`.
-- La acción corta con `redirect("/login")` si `isSetupComplete()` antes de validar y de
-  hacer el hash; la comprobación dentro de la transacción se mantiene.
-- En error, `console.error` con nombre, código y campos de Prisma y mensaje, sin
-  FormData ni email. El texto visible no cambia.
+**Decision.**
+- The id is validated as a non-empty string (`String(null)` gave `"null"`).
+- The `count` from `updateMany`/`deleteMany` is used (plus a `findUnique` in "End
+  sessions", where 0 sessions is valid), and the action redirects to `?error=not-found`
+  before auditing. Message: "That user no longer exists.".
+- `deleteUserAccount` (service) deletes with `where: { id, boards: { none: {} } }`: the
+  condition lives in the same DELETE, so the cascade never reaches attachments.
 
-**Alternativas descartadas.**
-- `SELECT … FOR UPDATE` o `updateMany` condicional: la fila de `InstanceConfig` no existe
-  antes del primer setup y no hay nada que bloquear.
-- Crear primero `InstanceConfig` y tratar el P2002 de su PK como «ya configurado»:
-  obliga a distinguirlo del P2002 del email duplicado.
-- Nivel SERIALIZABLE: exigiría reintentos ante fallos de serialización.
-- Mensaje específico para email duplicado: era opcional y añadía un texto visible nuevo.
+**Alternatives considered.** Reading the `storedName` values and deleting the files after
+the DELETE: with the atomic condition there are no attachments to delete, and it could
+not be tested without bypassing the owned-boards safeguard.
 
-**Consecuencias.** El segundo envío espera al primero y recibe `ALREADY_SETUP`
-(redirección a `/login`). Test de 20 iteraciones con dos llamadas simultáneas en
+**Consequences.** Tests in `test/integration/admin-users.int.test.ts` (no audit entry
+with a non-existent id; a board owner is not deleted and their attachment stays in the
+DB). Those tests do not reproduce the race: see the entry "Password reset validates the
+userId; scope of the deletion test".
+
+---
+
+## 2026-09-24 — Creating an API token validates permissions and expiry
+
+**Context.** `createApiToken` turned an unrecognized `scope` or `expiry` into "write"
+and "never expires", the most permissive value, with a comment that talked about "safe
+default values".
+
+**Decision.** Name, permissions and expiry are validated with a single `z.object` that
+reuses the schemas in `validators.ts`; if anything fails, it returns `{ error }` without
+creating anything ("Invalid permissions." / "Invalid expiry."). The form defaults
+(write, never expires) do not change: the owner decides them.
+
+**Alternatives considered.** Falling back to "read only" and a finite expiry: it would
+still be a silent default that hides a tampered or broken form.
+
+**Consequences.** Test in `test/integration/tokens.int.test.ts`.
+
+---
+
+## 2026-09-24 — Resetting the password also revokes API tokens
+
+**Context.** `resetUserPassword` only revoked sessions. `authenticateApiToken` does not
+look at the `Session` table, so anyone who had created a `full` token with no expiry
+from a compromised account could still get in through `/api/v1` after the reset. The
+action's comment promised the opposite.
+
+**Decision.**
+- New service `resetPasswordAndRevokeAccess` in `app/lib/services/users.ts`: in a single
+  `$transaction` it changes the hash, revokes the sessions and **deletes** the user's
+  tokens (deleting is the revocation defined in ADR 0013). It checks that the user exists
+  before hashing.
+- The `user.password_reset` audit entry records how many tokens were revoked.
+- "End sessions" keeps its semantics (sessions only) and no new revoke-tokens button is
+  added; it is documented that it does not touch tokens.
+
+**Alternatives considered.**
+- Invalidating tokens by date (`tokensValidAfter` on `User`): requires a migration and
+  leaves dead rows in `/settings`.
+- Also revoking tokens in "End sessions": changes an action used to sign someone out of
+  their browser without breaking their scripts.
+
+**Consequences.** After a reset the user has to create new tokens. Test in
+`test/integration/admin-revocation.int.test.ts` (the same Bearer goes from 200 to 401;
+other users' tokens are not touched).
+## 2026-09-24 — next/headers stub: clear cookies and headers separately
+
+**Context.** `loginAs` called `__clearCookies`, which also cleared the injected headers.
+A test that did `__setHeaders({ "x-forwarded-proto": "https" })` and then `loginAs`
+silently lost the header: the cookie went out without `Secure` and the rate limit did
+not see the IP. Also, the `resetDb` test passed with the previous fixed table list too
+(CardAssignee and Comment go via the CASCADE), so it did not prove that the tables were
+read from the catalog.
+
+**Decision.**
+- `__clearCookies` clears only cookies and `__clearHeaders` only headers. `loginAs`
+  calls the first; `resetDb` calls both. Order documented in `docs/testing.md`: headers
+  are set after `resetDb`, before or after `loginAs`.
+- `helpers.int.test.ts` creates a temporary table with no FK, inserts a row and requires
+  `resetDb` to empty it (with the fixed list it fails); and it checks that `loginAs`
+  keeps `X-Forwarded-Proto`/`X-Forwarded-For`.
+- `audit.int.test.ts` requires the log of the FK failure not to include the `userId`. It
+  passes with the current `describeError` (the Prisma P2003 message names the
+  constraint, not the value), so `app/lib/audit.ts` is not touched.
+
+**Alternatives considered.**
+- Keeping a single `__clearCookies` with a parameter to keep headers: a boolean
+  parameter that changes behavior.
+- Comparing `pg_tables` with the Prisma models: depends on `@@map` and does not prove
+  that `resetDb` uses the catalog, only that the schema matches.
+- Logging only the name and code of every `PrismaClientKnownRequestError`: the test
+  shows no leak, and the failing constraint, useful for diagnosis, would be lost.
+
+**Consequences.** The `Secure` cookie and IP tests can use `loginAs` without re-injecting
+headers. The temporary table `zz_reset_probe` is dropped in a `finally` and, in case it
+is left over from an interrupted run, also before creating it.
+
+## 2026-09-24 — Login and setup: keep what was typed and announce errors
+
+**Context.** React 19 resets uncontrolled forms after an action: after "Incorrect
+credentials" the email was cleared, and after a setup validation error, all four fields.
+Also, the error message was a `<p>` without `role="alert"` that the screen reader did
+not announce.
+
+**Decision.**
+- `AuthState.values` and `SetupState.values` return what was submitted on every error
+  (email; instance name, name and email), never the password. The client renders it with
+  `defaultValue`. They are not returned on success.
+- The error `<p>` has `role="alert"` and is removed while `pending`, so that a second
+  identical error is inserted again and announced again.
+
+**Alternatives considered.**
+- Controlled fields with `useState`: more code in two forms for the same effect.
+- A `key` with an attempt counter: requires adding state just for that.
+
+**Consequences.** Verification with VoiceOver is manual: there is no component testing
+infrastructure. The integration tests check that `values` arrives without the password.
+
+---
+
+## 2026-09-24 — Setup: advisory lock, early exit and cause in the log
+
+**Context.** `completeSetup` checked `setupCompletedAt` inside the transaction and the
+comment claimed it was atomic, but under READ COMMITTED two simultaneous submissions both
+read "not set up" at the same time and created two admins (reproduced with a test:
+without a lock, two ADMINs come out). Also, with setup already done the action still
+validated and spent bcrypt time before finding out, and any failure ended in "Try again"
+without recording the cause.
+
+**Decision.**
+- Logic in `app/lib/services/setup.ts` (`completeInstanceSetup`), whose first statement
+  is `pg_advisory_xact_lock(hashtext('orgtable:setup'))`.
+- The action exits with `redirect("/login")` if `isSetupComplete()` before validating and
+  hashing; the check inside the transaction stays.
+- On error, `console.error` with the Prisma name, code and fields plus the message,
+  without FormData or email. The visible text does not change.
+
+**Alternatives considered.**
+- `SELECT … FOR UPDATE` or a conditional `updateMany`: the `InstanceConfig` row does not
+  exist before the first setup and there is nothing to lock.
+- Creating `InstanceConfig` first and treating the P2002 on its PK as "already set up":
+  requires telling it apart from the duplicate-email P2002.
+- SERIALIZABLE level: would require retries on serialization failures.
+- A specific message for a duplicate email: it was optional and added a new visible
+  text.
+
+**Consequences.** The second submission waits for the first and gets `ALREADY_SETUP`
+(redirect to `/login`). A 20-iteration test with two simultaneous calls in
 `test/integration/setup.int.test.ts`.
 
 ---
 
-## 2026-09-24 — La auditoría registra sus propios fallos
+## 2026-09-24 — The audit log records its own failures
 
-**Contexto.** `recordAudit` tenía un `catch {}` vacío: si fallaba la escritura en
-`AuditLog`, los eventos de seguridad (`auth.login_failed`, `user.deleted`…) se perdían
-sin rastro.
+**Context.** `recordAudit` had an empty `catch {}`: if the write to `AuditLog` failed,
+security events (`auth.login_failed`, `user.deleted`…) were lost without a trace.
 
-**Decisión.** Se sigue sin relanzar (best-effort), pero se escribe `console.error` con
-`action`, `targetType`, `targetId` y un resumen del error (tipo, código de Prisma y
-mensaje). Nunca `detail`, `ip` ni `userId`. Para `PrismaClientValidationError` solo se
-registra el tipo, porque su mensaje reproduce los argumentos de la consulta.
+**Decision.** It still does not rethrow (best-effort), but it writes `console.error` with
+`action`, `targetType`, `targetId` and a summary of the error (type, Prisma code and
+message). Never `detail`, `ip` or `userId`. For `PrismaClientValidationError` only the
+type is logged, because its message reproduces the query arguments.
 
-**Alternativas descartadas.**
-- Relanzar el error: haría fallar el login o el borrado por un problema de la tabla de
-  auditoría.
-- Registrar el error completo: el mensaje de validación de Prisma incluye `detail` e
-  `ip`.
+**Alternatives considered.**
+- Rethrowing the error: login or deletion would fail because of a problem in the audit
+  table.
+- Logging the full error: the Prisma validation message includes `detail` and `ip`.
 
-**Consecuencias.** Un fallo de auditoría aparece en los logs del contenedor
-(`docker compose logs app`) con la acción afectada.
+**Consequences.** An audit failure shows up in the container logs
+(`docker compose logs app`) with the affected action.
 
 ---
 
-## 2026-09-24 — Login: IP de confianza, límite por cuenta y hash ficticio válido
+## 2026-09-24 — Login: trusted IP, per-account limit and a valid dummy hash
 
-**Contexto.** Cuatro fallos del login: (1) el límite por IP tomaba el primer valor de
-`X-Forwarded-For`, que escribe el cliente, y cambiándolo en cada intento la fuerza bruta
-no tenía límite; tampoco había límite por cuenta. (2) El hash ficticio para emails
-inexistentes medía 59 caracteres, `bcrypt.compare` devolvía `false` al instante y el
-tiempo de respuesta revelaba qué emails tienen cuenta. (3) Cada fallo guardaba en
-`AuditLog.detail` el email tecleado, exista o no la cuenta. (4) Cada intento rechazado
-por el límite escribía una fila de auditoría.
+**Context.** Four login flaws: (1) the per-IP limit took the first value of
+`X-Forwarded-For`, which the client writes, so by changing it on every attempt brute
+force had no limit; there was no per-account limit either. (2) The dummy hash for
+non-existent emails was 59 characters long, `bcrypt.compare` returned `false` instantly
+and the response time revealed which emails have an account. (3) Every failure stored
+the typed email in `AuditLog.detail`, whether or not the account existed. (4) Every
+attempt rejected by the limit wrote an audit row.
 
-**Decisión.**
-- `TRUSTED_PROXY_HOPS` (entero >= 0, por defecto 0, validado): con 0 se ignoran
-  `X-Forwarded-For` y `X-Real-IP`; con N se toma el N-ésimo valor desde la derecha
-  (`app/lib/client-ip.ts`). Sin IP no se aplica límite por IP ni un contador común.
-- Límite por cuenta: 20 intentos fallidos cada 15 minutos por email normalizado, también
-  para emails inexistentes; se reinicia tras un login correcto. Se cuenta antes de
-  verificar y se borra con el éxito, para no tener carreras entre peticiones simultáneas.
-- `DUMMY_PASSWORD_HASH`: hash bcrypt real de 60 caracteres y coste 12, como literal, y
-  `verifyPasswordOrDummy` en `app/lib/auth.ts`.
-- `auth.login_failed` guarda solo el `userId` si la cuenta existe; nunca el email.
-- `RateLimitResult.firstBlock`: se audita solo el primer rechazo de cada ventana, con
-  `detail` «límite por IP» o «límite por cuenta».
-- ADR 0009 actualizado.
+**Decision.**
+- `TRUSTED_PROXY_HOPS` (integer >= 0, default 0, validated): with 0, `X-Forwarded-For`
+  and `X-Real-IP` are ignored; with N, the Nth value from the right is taken
+  (`app/lib/client-ip.ts`). Without an IP, neither a per-IP limit nor a shared counter
+  applies.
+- Per-account limit: 20 failed attempts every 15 minutes per normalized email, also for
+  non-existent emails; it resets after a successful login. The attempt is counted before
+  verifying and cleared on success, to avoid races between simultaneous requests.
+- `DUMMY_PASSWORD_HASH`: a real 60-character bcrypt hash with cost 12, as a literal, and
+  `verifyPasswordOrDummy` in `app/lib/auth.ts`.
+- `auth.login_failed` stores only the `userId` if the account exists; never the email.
+- `RateLimitResult.firstBlock`: only the first rejection in each window is audited, with
+  `detail` "IP limit" or "account limit".
+- ADR 0009 updated.
 
-**Alternativas descartadas.**
-- Seguir con el primer valor de `X-Forwarded-For` o con `X-Real-IP`: los controla el
-  cliente cuando la app está expuesta sin proxy.
-- Contador global `login:unknown` cuando no hay IP: un atacante bloquearía el login de
-  todo el mundo.
-- Guardar un HMAC del email inexistente para correlacionar ataques: sigue siendo un dato
-  seudónimo de un tercero y no hacía falta.
-- `bcrypt.hashSync` al importar el módulo: añade ~200 ms a cada arranque en frío.
+**Alternatives considered.**
+- Keeping the first value of `X-Forwarded-For`, or `X-Real-IP`: the client controls them
+  when the app is exposed without a proxy.
+- A global `login:unknown` counter when there is no IP: an attacker could block login
+  for everyone.
+- Storing an HMAC of the non-existent email to correlate attacks: it is still
+  pseudonymous data about a third party and was not needed.
+- `bcrypt.hashSync` at module import: adds ~200 ms to every cold start.
 
-**Consecuencias.** Con el valor por defecto `AuditLog.ip` queda vacío y solo rige el
-límite por cuenta. Quien conozca un email puede bloquear esa cuenta hasta 15 minutos
-(riesgo aceptado, documentado en el ADR 0009). Las filas antiguas de `auth.login_failed`
-con email siguen en producción: borrarlas es una operación masiva que decide el
-propietario. `.env.example`, README y `docs/operations.md` los actualiza el lote de
-despliegue.
-
----
-
-## 2026-09-24 — Cookie de sesión Secure según el esquema real y SESSION_SECRET ruidoso
-
-**Contexto.** La cookie `session` llevaba `Secure` cuando `NODE_ENV=production`. El
-primer arranque documentado es por `http://IP:3000`, y el navegador descarta una cookie
-`Secure` recibida por HTTP en un origen que no es localhost: tras el asistente la
-instancia no dejaba entrar. Por otro lado, `decrypt` llamaba a `getKey()` dentro del
-`try`, así que un `SESSION_SECRET` ausente se convertía en «sin sesión» y redirigía a
-`/login` sin dejar rastro.
-
-**Decisión.**
-- `secure` = la petición llegó por HTTPS: primer valor de `X-Forwarded-Proto` igual a
-  `https`. Next rellena esa cabecera con el esquema real del socket cuando no la trae
-  un proxy (`??=` en `base-server`), y un proxy TLS la fija a `https`.
-- `decrypt`: sin token devuelve `null` antes de pedir la clave; con token, `getKey()` va
-  fuera del `try` y solo `jwtVerify` queda dentro.
-- `createSession` valida la clave antes de crear la fila `Session`.
-
-**Alternativas descartadas.**
-- Variable `SESSION_COOKIE_SECURE` para desactivarlo en LAN: otra opción de
-  configuración que rebaja la seguridad si se deja puesta tras poner TLS.
-- Seguir con `NODE_ENV`: deja inservible la instalación por HTTP.
-
-**Consecuencias.** Por HTTP la cookie viaja sin `Secure` (lo que ya pasaba en la
-práctica al no poder entrar); detrás de un proxy TLS que envíe `X-Forwarded-Proto` sí
-lo lleva. Falsear esa cabecera solo afecta al propio cliente. La documentación del
-despliegue (TLS delante) la actualiza el lote de despliegue.
+**Consequences.** With the default value `AuditLog.ip` stays empty and only the
+per-account limit applies. Anyone who knows an email can lock that account for up to 15
+minutes (accepted risk, documented in ADR 0009). Old `auth.login_failed` rows with an
+email remain in production: deleting them is a bulk operation for the owner to decide.
+`.env.example`, the README and `docs/operations.md` are updated by the deployment batch.
 
 ---
 
-## 2026-09-24 — Tests de integración con sesión: stub mutable de cookies
+## 2026-09-24 — Secure session cookie based on the real scheme, and a loud SESSION_SECRET
 
-**Contexto.** El stub de `next/headers` devolvía siempre `undefined` en `cookies().get`,
-así que `verifySession`, `requireUser` y `requireBoardAccess` nunca autenticaban en los
-tests: no había forma de probar las Server Actions ni la revocación de sesiones (ADR
-0008). Además `resetDb` usaba una lista fija de tablas a la que le faltaban
-`CardAssignee` y `Comment`.
+**Context.** The `session` cookie had `Secure` when `NODE_ENV=production`. The documented
+first start is over `http://IP:3000`, and the browser discards a `Secure` cookie
+received over HTTP on a non-localhost origin: after the setup wizard the instance would
+not let anyone in. Separately, `decrypt` called `getKey()` inside the `try`, so a missing
+`SESSION_SECRET` turned into "no session" and redirected to `/login` without leaving a
+trace.
 
-**Decisión.**
-- `test/stubs/next-headers.ts` guarda cookies y cabeceras en un almacén mutable de
-  módulo, con `__setHeaders`, `__clearCookies` y `__getCookieOptions` para los tests.
-- `loginAs(userId)` en `test/integration/helpers.ts` llama a la `createSession` real;
-  `resetDb` limpia además el stub y los contadores del rate limit.
-- `SESSION_SECRET` fijo de test en `vitest.integration.config.ts`.
-- `resetDb` lee las tablas de `pg_tables` (esquema actual, sin `_prisma_migrations`) y
-  valida cada nombre antes de interpolarlo en el `TRUNCATE`.
-- Se confirma con un test que `cache()` de React no memoiza fuera de RSC (cambiar de
-  usuario con `loginAs` se ve al instante).
+**Decision.**
+- `secure` = the request arrived over HTTPS: the first value of `X-Forwarded-Proto`
+  equals `https`. Next fills that header with the real socket scheme when no proxy sends
+  it (`??=` in `base-server`), and a TLS proxy sets it to `https`.
+- `decrypt`: with no token it returns `null` before asking for the key; with a token,
+  `getKey()` goes outside the `try` and only `jwtVerify` stays inside.
+- `createSession` validates the key before creating the `Session` row.
 
-**Alternativas descartadas.**
-- `vi.mock("next/headers")` en cada archivo: repetiría el mismo almacén en todos los
-  tests.
-- Mantener la lista de tablas a mano añadiendo las dos que faltaban: se volvería a
-  desfasar con la siguiente tabla.
-- Estimar filas con `reltuples` para decidir qué vaciar: no es exacto.
+**Alternatives considered.**
+- A `SESSION_COOKIE_SECURE` variable to disable it on a LAN: another configuration
+  option that weakens security if left on after adding TLS.
+- Keeping `NODE_ENV`: leaves an HTTP install unusable.
 
-**Consecuencias.** Los tests pueden ejecutar Server Actions con sesión real (fila
-`Session` + JWT firmado). Quitar una comprobación de `verifySession` hace fallar
-`session.int.test.ts` (comprobado quitando `revokedAt` y el control de `userId`).
-## 2026-09-24 — Adjuntos: bloquear las filas padre antes de leer qué ficheros borrar
-
-**Contexto.** El comentario de `services/attachments.ts` decía que «lo leído es
-exactamente lo que se borra», pero con READ COMMITTED no era así: si `uploadAttachment`
-insertaba su fila entre el `findMany` y el `delete`, el borrado esperaba a esa
-inserción y la eliminaba en cascada; su fichero no estaba en la lista leída y quedaba
-huérfano, con la subida respondida como correcta.
-
-**Decisión.** Dentro de la transacción, `SELECT … FOR UPDATE` de arriba abajo antes del
-`findMany`: la tarjeta (`deleteCardWithAttachments`); la lista y sus tarjetas
-(`deleteListWithAttachments`); el tablero, sus listas y sus tarjetas
-(`deleteBoardWithAttachments`). Insertar un `Attachment` toma `FOR KEY SHARE` sobre su
-`Card`, que choca con `FOR UPDATE`; bloquear también los padres frena las altas de
-tarjetas y listas mientras se leen las hijas. Test de integración que reproduce la
-carrera con una transacción sin confirmar y falla sin los bloqueos.
-
-**Alternativas descartadas.**
-- Nivel SERIALIZABLE: obliga a reintentar ante fallos de serialización en cada llamada.
-- Solo corregir el comentario: el fichero seguiría quedando huérfano.
-- Barrido periódico de huérfanos: infraestructura nueva para un caso que el bloqueo
-  evita.
-
-**Consecuencias.** Un borrado grande de tablero bloquea sus listas y tarjetas durante la
-transacción; las ediciones concurrentes de esas filas esperan unos milisegundos. Una
-subida que llegue durante el borrado falla y `uploadAttachment` borra su fichero.
+**Consequences.** Over HTTP the cookie travels without `Secure` (which in practice
+already happened, since nobody could log in); behind a TLS proxy that sends
+`X-Forwarded-Proto` it does carry it. Spoofing that header only affects the client
+itself. The deployment documentation (TLS in front) is updated by the deployment batch.
 
 ---
 
-## 2026-09-24 — Orden: tope de 1024 caracteres para las claves de posición
+## 2026-09-24 — Integration tests with a session: mutable cookie stub
 
-**Contexto.** `isValidPositionKey` limitaba las claves a 64 caracteres. Medido con un
-script sobre `fractional-indexing`: soltar tarjetas siempre en el mismo hueco (p. ej.
-siempre en la segunda posición) supera los 64 caracteres a las 373 inserciones. Desde
-ahí `moveCard`/`reorderList` devolvían `{ ok: false }` para ese hueco y, como
-`BoardView` ignora el resultado, el arrastre parecía funcionar y se deshacía al
-refrescar.
+**Context.** The `next/headers` stub always returned `undefined` from `cookies().get`,
+so `verifySession`, `requireUser` and `requireBoardAccess` never authenticated in tests:
+there was no way to test Server Actions or session revocation (ADR 0008). Also,
+`resetDb` used a fixed table list that was missing `CardAssignee` and `Comment`.
 
-**Decisión.** `POSITION_KEY_MAX = 1024` (unas 6000 inserciones seguidas en el mismo
-hueco). Sigue impidiendo cadenas de megabytes y queda muy por debajo del máximo de una
-entrada del índice btree `(listId, position)` de `Card` (≈2700 bytes). Documentado en
-`docs/drag-and-drop.md` junto con su consecuencia.
+**Decision.**
+- `test/stubs/next-headers.ts` keeps cookies and headers in a mutable module-level
+  store, with `__setHeaders`, `__clearCookies` and `__getCookieOptions` for tests.
+- `loginAs(userId)` in `test/integration/helpers.ts` calls the real `createSession`;
+  `resetDb` also clears the stub and the rate-limit counters.
+- A fixed test `SESSION_SECRET` in `vitest.integration.config.ts`.
+- `resetDb` reads the tables from `pg_tables` (current schema, without
+  `_prisma_migrations`) and validates each name before interpolating it into the
+  `TRUNCATE`.
+- A test confirms that React's `cache()` does not memoise outside RSC (switching user
+  with `loginAs` takes effect immediately).
 
-**Alternativas descartadas.**
-- Mantener 64 y solo documentarlo: el límite se alcanza con un uso normal.
-- Quitar el tope: una clave de megabytes llegaría a la BD y rompería el índice.
-- Rebalancear las posiciones de la lista al pasar de cierta longitud: más código y
-  escrituras en varias filas por un caso que 1024 ya cubre de sobra.
+**Alternatives considered.**
+- `vi.mock("next/headers")` in each file: would repeat the same store in every test.
+- Keeping the table list by hand and adding the two missing ones: it would drift again
+  with the next table.
+- Estimating rows with `reltuples` to decide what to empty: it is not exact.
 
-**Consecuencias.** El fallo silencioso de `BoardView` ante `{ ok: false }` sigue ahí
-(fuera de este lote); con 1024 solo aparece en un uso extremo.
+**Consequences.** Tests can run Server Actions with a real session (`Session` row +
+signed JWT). Removing a check from `verifySession` makes `session.int.test.ts` fail
+(verified by removing `revokedAt` and the `userId` check).
+## 2026-09-24 — Attachments: lock the parent rows before reading which files to delete
 
----
+**Context.** The comment in `services/attachments.ts` said that "what is read is exactly
+what gets deleted", but under READ COMMITTED that was not true: if `uploadAttachment`
+inserted its row between the `findMany` and the `delete`, the deletion waited for that
+insert and removed it by cascade; its file was not in the list that had been read and
+was left orphaned, while the upload was reported as successful.
 
-## 2026-09-24 — Contraseñas de 72 bytes como máximo
+**Decision.** Inside the transaction, `SELECT … FOR UPDATE` top-down before the
+`findMany`: the card (`deleteCardWithAttachments`); the list and its cards
+(`deleteListWithAttachments`); the board, its lists and its cards
+(`deleteBoardWithAttachments`). Inserting an `Attachment` takes `FOR KEY SHARE` on its
+`Card`, which conflicts with `FOR UPDATE`; locking the parents as well stops new cards
+and lists from being created while the children are read. An integration test reproduces
+the race with an uncommitted transaction and fails without the locks.
 
-**Contexto.** `setupSchema` y `passwordSchema` admitían 200 caracteres, pero bcryptjs
-solo usa los primeros 72 bytes UTF-8: dos contraseñas con el mismo prefijo de 72 bytes
-eran equivalentes sin que nadie lo supiera.
+**Alternatives considered.**
+- SERIALIZABLE level: requires retrying on serialization failures in every call.
+- Only fixing the comment: the file would still be left orphaned.
+- A periodic orphan sweep: new infrastructure for a case the lock prevents.
 
-**Decisión.** `passwordSchema` rechaza más de 72 bytes UTF-8 (mensaje «Máximo 72 bytes
-(unos 72 caracteres sin tildes ni emojis)») y `setupSchema.password` lo reutiliza, así
-que el criterio vive en un solo sitio (setup, alta y reset por el administrador).
-`loginSchema` no cambia.
-
-**Alternativas descartadas.**
-- Prehash (SHA-256 antes de bcrypt): invalidaría los hashes existentes o exigiría
-  migrarlos.
-- Aplicar el límite también al login: bloquearía a quien ya tenga guardada una
-  contraseña más larga (que sigue funcionando con sus primeros 72 bytes).
-
-**Consecuencias.** Una contraseña nueva de más de 72 bytes se rechaza con un error
-visible. El `maxLength` de los formularios no se toca aquí.
-
----
-
-## 2026-09-24 — Tiempo real: borrar un tablero avisa por el bus en vivo
-
-**Contexto.** `deleteBoard` (acción y `DELETE` de la API) no publicaba nada: las
-pestañas que tenían el tablero abierto seguían mostrándolo hasta recargar.
-
-**Decisión.** Tras borrar, se llama a `revalidateBoard(boardId)` como en el resto de
-mutaciones; la Server Action solo lo hace si de verdad se borró (dueño).
-
-**Alternativas descartadas.** Un evento específico `board.deleted` en el bus: el cliente
-ya refresca con cualquier aviso del tablero y la página, sin membresía, redirige a
-`/boards`.
-
-**Consecuencias.** Ninguna para instalaciones existentes.
+**Consequences.** A large board deletion locks its lists and cards for the duration of
+the transaction; concurrent edits to those rows wait a few milliseconds. An upload that
+arrives during the deletion fails and `uploadAttachment` deletes its file.
 
 ---
 
-## 2026-09-24 — Adjuntos: borrar los ficheros al borrar tarjetas, listas y tableros
+## 2026-09-24 — Ordering: 1024-character cap on position keys
 
-**Contexto.** El `onDelete: Cascade` borraba las filas `Attachment` al borrar una
-tarjeta, lista o tablero, pero los binarios se quedaban en el volumen para siempre. Una
-subida cuya fila fallaba al crearse también dejaba el fichero.
+**Context.** `isValidPositionKey` limited keys to 64 characters. Measured with a script
+on `fractional-indexing`: always dropping cards into the same gap (e.g. always in second
+position) exceeds 64 characters after 373 insertions. From then on
+`moveCard`/`reorderList` returned `{ ok: false }` for that gap and, since `BoardView`
+ignores the result, the drag looked like it worked and was undone on refresh.
 
-**Decisión.** `services/attachments.ts` lee los nombres en disco y borra en BD en una
-transacción y, tras el commit, borra los ficheros con `Promise.allSettled`. Lo usan
-`deleteCard`, `deleteList`, `deleteBoard` y los `DELETE` de la API. `uploadAttachment`
-borra el fichero si falla el alta de la fila y relanza el error.
+**Decision.** `POSITION_KEY_MAX = 1024` (about 6000 consecutive insertions into the same
+gap). It still prevents megabyte-long strings and stays well below the maximum size of an
+entry in the `Card` btree index `(listId, position)` (≈2700 bytes). Documented in
+`docs/drag-and-drop.md` together with its consequence.
 
-**Alternativas descartadas.**
-- Borrar ficheros antes del commit: si la transacción fallara, la fila quedaría sin su
-  binario.
+**Alternatives considered.**
+- Keeping 64 and only documenting it: the limit is reached with normal use.
+- Removing the cap: a megabyte-long key would reach the DB and break the index.
+- Rebalancing the list's positions past a certain length: more code and writes across
+  several rows for a case that 1024 already covers with plenty of margin.
 
-**Consecuencias.** Los ficheros huérfanos que ya existan en una instalación no se
-limpian (decisión del propietario; un barrido necesitaría script con dry-run).
-
----
-
-## 2026-09-24 — Tarjetas: vencimiento y descripción validados en acciones y API
-
-**Contexto.** Una fecha no parseable se guardaba como `null` y borraba el vencimiento
-sin avisar (en la API, con 200/201), y la descripción no tenía límite en la UI.
-
-**Decisión.**
-- En la UI, `dueDateSchema` (`""`, `null` o `YYYY-MM-DD` real con `z.iso.date()`); en
-  la API, `apiDueDateSchema` (`YYYY-MM-DD` o ISO 8601 con zona). En la API **la cadena
-  vacía da 422**, no es sinónimo de `null`: `null` ya existe para quitar la fecha y un
-  `""` suele ser un error del cliente. Si algo no valida en `updateCard`, no se guarda
-  nada (tampoco la descripción); `setCardDueDate` devuelve `ok:false`.
-- `CARD_DESCRIPTION_MAX = 5000` compartido por UI, API e import.
-
-**Alternativas descartadas.**
-- `Date.parse` o solo `z.iso.datetime()` para la API: el primero acepta formatos
-  ambiguos y el segundo rompería el `YYYY-MM-DD` documentado.
-
-**Consecuencias.** Un cliente de la API que enviara `dueDate: ""` para borrar la fecha
-ahora recibe 422 y debe enviar `null`.
+**Consequences.** The silent failure of `BoardView` on `{ ok: false }` is still there
+(outside this batch); with 1024 it only shows up under extreme use.
 
 ---
 
-## 2026-09-24 — Orden: claves de posición validadas y altas al final serializadas
+## 2026-09-24 — Passwords of at most 72 bytes
 
-**Contexto.** `moveCard`/`reorderList` guardaban cualquier cadena como posición y una
-clave inválida dejaba la lista o el tablero sin poder crear nada (`positionAtEnd`
-lanzaba). Además, leer la última posición y crear eran dos pasos, así que dos altas
-simultáneas guardaban la misma clave y el arrastre se rompía en esa lista.
+**Context.** `setupSchema` and `passwordSchema` allowed 200 characters, but bcryptjs only
+uses the first 72 UTF-8 bytes: two passwords with the same 72-byte prefix were
+equivalent without anyone knowing.
 
-**Decisión.**
-- `isValidPositionKey` (`ordering.ts`): regex base62 con tope de longitud + la propia
-  validación de `fractional-indexing` (la librería sola acepta `'a0 '`). Se valida antes
-  de cualquier consulta.
-- Altas al final (`createCardAtEnd`, `createListAtEnd`, `createChecklistAtEnd`,
-  `createChecklistItemAtEnd`) en una transacción interactiva con `SELECT … FOR UPDATE`
-  sobre la fila padre (lista, tablero, tarjeta, checklist). Funciona con el adapter
-  `@prisma/adapter-pg`; probado con 10 POST en paralelo.
+**Decision.** `passwordSchema` rejects more than 72 UTF-8 bytes (message "Maximum 72
+bytes (about 72 characters without accents or emoji)") and `setupSchema.password` reuses
+it, so the rule lives in a single place (setup, account creation and admin reset).
+`loginSchema` does not change.
 
-**Alternativas descartadas.**
-- Índice único `(listId, position)`: los movimientos concurrentes también colisionan y
-  fallarían en vez de ordenarse.
-- Cambiar el contrato de arrastre a `beforeId/afterId`: cambio de API que decide el
-  propietario.
+**Alternatives considered.**
+- Prehashing (SHA-256 before bcrypt): would invalidate existing hashes or require
+  migrating them.
+- Applying the limit to login as well: would lock out anyone who already has a longer
+  password stored (which still works with its first 72 bytes).
 
-**Consecuencias.** Las posiciones inválidas o repetidas que ya existan no se limpian.
+**Consequences.** A new password longer than 72 bytes is rejected with a visible error.
+The forms' `maxLength` is not touched here.
 
 ---
 
-## 2026-09-24 — Etiquetas: IDOR de toggleCardLabel y colores validados contra la paleta
+## 2026-09-24 — Realtime: deleting a board notifies over the live bus
 
-**Contexto.** `toggleCardLabel` autorizaba por el tablero de la tarjeta, pero aceptaba
-una etiqueta de otro tablero (IDOR): un editor de A podía vincular una etiqueta de B
-conociendo su id. Además, el operador `in` sobre las paletas aceptaba claves del
-prototipo como `'constructor'`, que acababan pintadas como color.
+**Context.** `deleteBoard` (the action and the API `DELETE`) published nothing: tabs that
+had the board open kept showing it until reloaded.
 
-**Decisión.**
-- `labelBelongsToBoard` (`services/labels.ts`) tras autorizar; entrada validada con zod.
-- Colores validados con `z.enum` de la paleta y `.catch` (etiqueta → `"blue"`, fondo →
-  `null`) para seguir siendo tolerantes con el import y los formularios; en lectura,
-  `Object.hasOwn` en vez de `in`.
+**Decision.** After deleting, `revalidateBoard(boardId)` is called as in the other
+mutations; the Server Action only does so if the board was actually deleted (owner).
 
-**Alternativas descartadas.**
-- Rechazar el import con un color desconocido: un export de otra versión con un color
-  que ya no existe dejaría de importarse por un detalle cosmético.
+**Alternatives considered.** A specific `board.deleted` event on the bus: the client
+already refreshes on any board notification, and the page, with no membership, redirects
+to `/boards`.
 
-**Consecuencias.** Los `CardLabel` cruzados que ya existan en una instalación no se
-limpian (decisión del propietario; un barrido necesitaría script con dry-run).
+**Consequences.** None for existing installations.
 
 ---
 
-## 2026-09-24 — Adjuntos: errores de disco visibles y 404 uniforme en la descarga
+## 2026-09-24 — Attachments: delete the files when cards, lists and boards are deleted
 
-**Contexto.** `deleteAttachmentFile` tenía un `catch` vacío que se tragaba también
-`EACCES`/`EROFS` (la fila se borraba y el binario quedaba en disco sin rastro). La
-descarga respondía 404 a un id inexistente y 403 a uno de un tablero ajeno (revelaba qué
-ids existen) y convertía cualquier error de lectura en 404. Además,
-`path.join(process.cwd(), "uploads")` hacía que Turbopack trazara el proyecto entero
-hacia `.next/standalone`.
+**Context.** `onDelete: Cascade` deleted the `Attachment` rows when a card, list or board
+was deleted, but the binaries stayed on the volume forever. An upload whose row failed to be
+created also left the file behind.
 
-**Decisión.**
-- `deleteAttachmentFile` ignora solo `ENOENT`; el resto se registra con `console.error`
-  (nombre en disco y código, sin el nombre original) y **no se relanza**: la fila ya está
-  borrada y un throw rompería la acción antes de revalidar.
-- La descarga busca el adjunto con una sola consulta acotada por membresía; sin
-  resultado, `404 Not found` con el mismo cuerpo en ambos casos. `ENOENT` al leer → 404 +
-  `console.warn`; cualquier otro código → 500 + `console.error`.
-- `/* turbopackIgnore: true */` en el `path.join` del directorio de subida.
-- Los tests de integración que invocan Server Actions crean una sesión real (fila
-  `Session` + JWT firmado, `test/integration/action-session.ts`) y solo sustituyen la
-  lectura de la cookie con un `vi.mock("next/headers")` local, para ejercer de verdad el
-  DAL y las guardas de rol sin tocar el stub compartido.
+**Decision.** `services/attachments.ts` reads the on-disk names and deletes from the
+database in one transaction and, after the commit, deletes the files with
+`Promise.allSettled`. It is used by `deleteCard`, `deleteList`, `deleteBoard` and the API
+`DELETE` endpoints. `uploadAttachment` deletes the file if creating the row fails and
+rethrows the error.
 
-**Alternativas descartadas.**
-- Relanzar el error de `unlink`: dejaría la acción a medias tras borrar la fila.
-- Mantener el 403 en la descarga: la API v1 ya evita distinguirlos a propósito.
-- Mockear el DAL en los tests: no probaría la autorización real.
+**Alternatives considered.**
+- Deleting the files before the commit: if the transaction failed, the row would be left
+  without its binary.
 
-**Consecuencias.** Un volumen sin permisos de escritura se ve en los logs. La reducción
-del trazado NFT no se ha podido comprobar aquí (el build lo ejecuta el integrador): tras
-`pnpm build`, `api/attachments/[id]/route.js.nft.json` debería bajar a unas 200 entradas
-y `.next/standalone` no debería contener `docs/` ni `test/`.
-## 2026-09-24 — Log del cron de copias fuera de `backups/` y URL del instalador según `APP_PORT`
-
-**Contexto.** La revisión de la primera pasada de este lote encontró que el ejemplo de
-cron de `docs/operations.md` redirigía el log a `backups/backup.log`. En una instalación
-nueva `backups/` no existe (lo crea `backup.sh`), cron abre la redirección antes de
-lanzar el script y la copia no se ejecutaba nunca, sin dejar rastro en ningún log.
-Además, `install.sh` descartaba la IP de `APP_PORT` y mandaba a `http://<IP>:3000`
-aunque la app escuchara solo en `127.0.0.1`, y con `set -o pipefail` un `.env` sin
-`APP_PORT` hacía fallar el instalador en el último paso. La documentación decía que la
-app «no arranca» sin `SESSION_SECRET`, pero el secreto se comprueba al crear la sesión.
-Y el consejo para proteger el asistente reseteado (`APP_PORT=127.0.0.1:3000`) no
-protege nada detrás de un proxy, porque `/setup` sigue abierto por el dominio.
-
-**Decisión.**
-- El ejemplo de cron escribe en `/home/usuario/orgtable-backup.log`, fuera del repo.
-- `install.sh`: con `APP_PORT` de loopback explica cómo llegar por el proxy o por un
-  túnel SSH; con otra IP concreta muestra esa IP; con el puerto solo o `0.0.0.0`, la
-  IP del servidor. Sin `APP_PORT` usa el 3000 en vez de abortar. Tests en
-  `test/ops-scripts.test.ts` con `docker`, `git` y `hostname` falsos.
-- `.env.example` e `installation.md` describen lo que pasa de verdad sin
-  `SESSION_SECRET`: la app arranca, pero el login y el asistente fallan.
-- Reseteo del asistente: cortar el acceso público a `/setup` (parar el proxy o
-  bloquear la ruta) y completarlo por túnel SSH, o completarlo justo después.
-
-**Alternativas descartadas.**
-- Log dentro de `backups/` pidiendo un `mkdir` previo: es un paso más que se olvida y
-  el fallo vuelve a ser silencioso.
-- Log en la raíz del repo: aparece como fichero sin seguimiento en `git status` y
-  entra en el contexto de build de Docker.
-- Hacer que la app se niegue a arrancar sin `SESSION_SECRET`: cambia el
-  comportamiento y queda fuera de este lote, que es de documentación y operación.
-
-**Consecuencias.** Quien ya copió el cron anterior debe cambiar la ruta del log (o
-crear `backups/` una vez con `mkdir -m 700 backups`). El mensaje final del instalador
-depende de `APP_PORT`.
-
-## 2026-09-24 — La documentación se alinea con la licencia propietaria
-
-**Contexto.** `LICENSE` es propietaria (MARA-KASSA SL) desde el commit `27c1ba9`, pero
-el ADR 0005, `docs/index.md`, `docs/roadmap.md`, `docs/design-system.md`,
-`docs/contributing.md`, `PRODUCT.md`, `CLAUDE.md` y `package.json` seguían diciendo
-AGPL u open source.
-
-**Decisión.** Detalle en [ADR 0016](./decisions/0016-licencia-propietaria.md): la
-vigente es `LICENSE`, que no se toca. ADR 0005 marcado «sustituida por ADR 0016»;
-documentación sin «open source»; `contributing.md` remite a la cláusula de cesión de
-`LICENSE` sin copiarla; `package.json` con `"license": "UNLICENSED"`; el CI falla si
-reaparece AGPL u «open source» fuera del ADR 0005, el 0016 y este registro.
-
-**Alternativas descartadas.** Restaurar la AGPL (decisión del propietario) y licencia
-dual (no se planteó).
-
-**Consecuencias.** Los textos visibles de la app (`app/layout.tsx`, pantalla de login)
-los cambia otro lote de esta revisión; hasta que se integre, el paso de licencia del CI
-falla por ellos. La cesión de derechos sin firma es dudosa según la ley española: si
-entran colaboradores externos, conviene revisarla con un abogado o usar un CLA.
+**Consequences.** Orphaned files that already exist in an installation are not cleaned up
+(owner's decision; a sweep would need a script with a dry run).
 
 ---
 
-## 2026-09-24 — README con estructura fija y documentación de recuperación
+## 2026-09-24 — Cards: due date and description validated in actions and API
 
-**Contexto.** El README no tenía requisitos, comandos, variables ni despliegue, y
-seguía diciendo que la interfaz estaba «en construcción» con los hitos 0–13 hechos.
-`SECURITY.md` estaba en inglés y remitía al reporte privado de GitHub, que no existe
-en repositorios privados. El reseteo del asistente abría `/setup` a cualquiera sin
-avisar y se presentaba como forma de «rehacer el administrador», lo que falla con un
-email ya existente. `docs/setup-wizard.md` decía «tres cosas» y listaba dos, y
-`docs/database.md` enseñaba un `createPrismaClient` sin la guarda de `DATABASE_URL`.
+**Context.** An unparseable date was saved as `null` and silently cleared the due date (in
+the API, with 200/201), and the description had no limit in the UI.
 
-**Decisión.**
-- README en seis secciones (qué es, requisitos, instalación, comandos, variables,
-  despliegue) más documentación y licencia, remitiendo a `docs/` sin duplicar. La
-  instalación en local escribe un `.env` mínimo con `SESSION_SECRET` generado por
-  `openssl`, lista para copiar y pegar.
-- `SECURITY.md` en español; el canal de reporte queda como `TODO` (email y plazo) que
-  desbloquea el propietario. «Última release» pasa a «seguir `main` con
-  `scripts/update.sh`».
-- Reseteo del asistente: aviso de exposición, email nuevo y comando con
-  `$POSTGRES_USER`/`$POSTGRES_DB` del contenedor. Recuperación de un administrador:
-  otro ADMIN desde `/admin/users` o `UPDATE` del hash generado con `bcryptjs` coste 12
-  dentro del contenedor.
+**Decision.**
+- In the UI, `dueDateSchema` (`""`, `null` or a real `YYYY-MM-DD` with `z.iso.date()`); in
+  the API, `apiDueDateSchema` (`YYYY-MM-DD` or ISO 8601 with a time zone). In the API **an
+  empty string returns 422**, it is not a synonym for `null`: `null` already exists to
+  clear the date and a `""` is usually a client error. If anything fails validation in
+  `updateCard`, nothing is saved (not even the description); `setCardDueDate` returns
+  `ok:false`.
+- `CARD_DESCRIPTION_MAX = 5000` shared by the UI, the API and import.
 
-**Alternativas descartadas.**
-- Script de recuperación de contraseña: es un caso raro y el procedimiento de dos
-  comandos basta; un script más es más superficie que mantener.
-- Mantener el badge y la URL del repositorio corregidos: la URL oficial la decide el
-  propietario, así que no se cambian (ver consecuencias).
+**Alternatives considered.**
+- `Date.parse` or just `z.iso.datetime()` for the API: the former accepts ambiguous
+  formats and the latter would break the documented `YYYY-MM-DD`.
 
-**Consecuencias.** El procedimiento de recuperación y el reseteo se probaron contra un
-stack Docker real (el hash generado valida con `bcrypt.compare`). Las URLs de
-`install.sh`, README (`aimarmndzz`, badge `Aimarmndz`) y `docs/installation.md`
-(`<owner>`) siguen sin apuntar al remoto real; si el repositorio es privado, el
-instalador con `curl` anónimo no funciona. Pendiente de decisión del propietario.
+**Consequences.** An API client that sent `dueDate: ""` to clear the date now gets a 422
+and must send `null`.
 
 ---
 
-## 2026-09-24 — Imagen Docker: código de solo lectura y contexto de build sin datos
+## 2026-09-24 — Ordering: validated position keys and serialized appends at the end
 
-**Contexto.** El `Dockerfile` terminaba con `chown -R nextjs:nodejs /app`: una capa
-nueva que duplicaba `node_modules` (cientos de MB) y dejaba `server.js`, `.next` y
-`node_modules` escribibles por el proceso de la app. `.dockerignore` no excluía
-`backups/` ni `uploads/`, así que `COPY . .` metía volcados con datos personales en el
-builder y en su caché.
+**Context.** `moveCard`/`reorderList` saved any string as a position, and an invalid key
+left the list or board unable to create anything (`positionAtEnd` threw). Also, reading the
+last position and creating were two separate steps, so two simultaneous creations saved the
+same key and drag and drop broke in that list.
 
-**Decisión.**
-- Sin `chown -R`: `/app` queda de root. El entrypoint entra con `COPY --chmod=755` y
-  solo `.next/cache` se cede a `nextjs` (además de `/data/uploads`, que ya lo estaba).
-- `.dockerignore` excluye `backups`, `**/*.sql.gz`, `**/*.tar.gz`, `uploads`, `data`,
-  `**/*.pem`, `coverage`, `test`, `scripts` e `install.sh`.
+**Decision.**
+- `isValidPositionKey` (`ordering.ts`): a base62 regex with a length cap + the validation
+  of `fractional-indexing` itself (the library alone accepts `'a0 '`). It is validated
+  before any query.
+- Appends at the end (`createCardAtEnd`, `createListAtEnd`, `createChecklistAtEnd`,
+  `createChecklistItemAtEnd`) run in an interactive transaction with `SELECT … FOR UPDATE`
+  on the parent row (list, board, card, checklist). It works with the
+  `@prisma/adapter-pg` adapter; tested with 10 parallel POSTs.
 
-**Alternativas descartadas.**
-- `COPY --chown` en cada `COPY`: deja igualmente el código escribible.
-- Stage `prod-deps` para reducir `node_modules`: mejora aparte, ya anotada en
+**Alternatives considered.**
+- A unique index on `(listId, position)`: concurrent moves also collide and would fail
+  instead of being ordered.
+- Changing the drag contract to `beforeId/afterId`: an API change that is the owner's call.
+
+**Consequences.** Invalid or duplicate positions that already exist are not cleaned up.
+
+---
+
+## 2026-09-24 — Labels: toggleCardLabel IDOR and colors validated against the palette
+
+**Context.** `toggleCardLabel` authorized against the card's board, but accepted a label
+from another board (IDOR): an editor of A could attach a label from B by knowing its id.
+Also, the `in` operator on the palettes accepted prototype keys such as `'constructor'`,
+which ended up rendered as a color.
+
+**Decision.**
+- `labelBelongsToBoard` (`services/labels.ts`) after authorizing; input validated with zod.
+- Colors validated with a `z.enum` of the palette and `.catch` (label → `"blue"`,
+  background → `null`) to stay tolerant of import and forms; on read, `Object.hasOwn`
+  instead of `in`.
+
+**Alternatives considered.**
+- Rejecting the import on an unknown color: an export from another version with a color
+  that no longer exists would fail to import over a cosmetic detail.
+
+**Consequences.** Cross-board `CardLabel` rows that already exist in an installation are
+not cleaned up (owner's decision; a sweep would need a script with a dry run).
+
+---
+
+## 2026-09-24 — Attachments: visible disk errors and a uniform 404 on download
+
+**Context.** `deleteAttachmentFile` had an empty `catch` that also swallowed
+`EACCES`/`EROFS` (the row was deleted and the binary stayed on disk without a trace). The
+download returned 404 for a nonexistent id and 403 for one from someone else's board
+(revealing which ids exist), and turned any read error into a 404. Also,
+`path.join(process.cwd(), "uploads")` made Turbopack trace the whole project into
+`.next/standalone`.
+
+**Decision.**
+- `deleteAttachmentFile` ignores only `ENOENT`; everything else is logged with
+  `console.error` (on-disk name and code, without the original name) and **is not
+  rethrown**: the row is already deleted and a throw would break the action before
+  revalidating.
+- The download looks up the attachment with a single query scoped by membership; with no
+  result, `404 Not found` with the same body in both cases. `ENOENT` on read → 404 +
+  `console.warn`; any other code → 500 + `console.error`.
+- `/* turbopackIgnore: true */` on the `path.join` of the upload directory.
+- The integration tests that invoke Server Actions create a real session (a `Session` row
+  + signed JWT, `test/integration/action-session.ts`) and only replace the cookie read with
+  a local `vi.mock("next/headers")`, so they really exercise the DAL and the role guards
+  without touching the shared stub.
+
+**Alternatives considered.**
+- Rethrowing the `unlink` error: it would leave the action half done after deleting the
+  row.
+- Keeping the 403 on download: the v1 API already avoids telling them apart on purpose.
+- Mocking the DAL in the tests: it would not test the real authorization.
+
+**Consequences.** A volume without write permissions shows up in the logs. The reduction of
+the NFT trace could not be checked here (the build is run by the integrator): after
+`pnpm build`, `api/attachments/[id]/route.js.nft.json` should drop to about 200 entries and
+`.next/standalone` should not contain `docs/` or `test/`.
+## 2026-09-24 — Backup cron log outside `backups/` and installer URL based on `APP_PORT`
+
+**Context.** The review of the first pass of this batch found that the cron example in
+`docs/operations.md` redirected the log to `backups/backup.log`. In a fresh installation
+`backups/` does not exist (`backup.sh` creates it), cron opens the redirection before
+launching the script, and the backup never ran, without leaving a trace in any log. Also,
+`install.sh` discarded the IP from `APP_PORT` and pointed to `http://<IP>:3000` even when
+the app listened only on `127.0.0.1`, and with `set -o pipefail` an `.env` without
+`APP_PORT` made the installer fail at the last step. The documentation said the app "does
+not start" without `SESSION_SECRET`, but the secret is checked when the session is created.
+And the advice for protecting the reset wizard (`APP_PORT=127.0.0.1:3000`) protects nothing
+behind a proxy, because `/setup` is still open through the domain.
+
+**Decision.**
+- The cron example writes to `/home/usuario/orgtable-backup.log`, outside the repo.
+- `install.sh`: with a loopback `APP_PORT` it explains how to get in through the proxy or
+  an SSH tunnel; with another specific IP it shows that IP; with only the port or
+  `0.0.0.0`, the server's IP. Without `APP_PORT` it uses 3000 instead of aborting. Tests in
+  `test/ops-scripts.test.ts` with fake `docker`, `git` and `hostname`.
+- `.env.example` and `installation.md` describe what really happens without
+  `SESSION_SECRET`: the app starts, but login and the wizard fail.
+- Wizard reset: cut public access to `/setup` (stop the proxy or block the route) and
+  complete it through an SSH tunnel, or complete it right afterwards.
+
+**Alternatives considered.**
+- Log inside `backups/` with a prior `mkdir`: it is one more step that gets forgotten and
+  the failure becomes silent again.
+- Log in the repo root: it shows up as an untracked file in `git status` and goes into the
+  Docker build context.
+- Making the app refuse to start without `SESSION_SECRET`: it changes behavior and is out
+  of scope for this batch, which is about documentation and operations.
+
+**Consequences.** Anyone who already copied the previous cron must change the log path (or
+create `backups/` once with `mkdir -m 700 backups`). The installer's final message depends
+on `APP_PORT`.
+
+## 2026-09-24 — The documentation is aligned with the proprietary license
+
+**Context.** `LICENSE` has been proprietary (MARA-KASSA SL) since commit `27c1ba9`, but
+ADR 0005, `docs/index.md`, `docs/roadmap.md`, `docs/design-system.md`,
+`docs/contributing.md`, `PRODUCT.md`, `CLAUDE.md` and `package.json` still said AGPL or
+open source.
+
+**Decision.** Details in [ADR 0016](./decisions/0016-licencia-propietaria.md): the license
+in force is `LICENSE`, which is not touched. ADR 0005 marked "superseded by ADR 0016";
+documentation without "open source"; `contributing.md` points to the assignment clause in
+`LICENSE` without copying it; `package.json` with `"license": "UNLICENSED"`; CI fails if
+AGPL or "open source" reappears outside ADR 0005, ADR 0016 and this log.
+
+**Alternatives considered.** Restoring the AGPL (owner's decision) and dual licensing (not
+considered).
+
+**Consequences.** The app's visible texts (`app/layout.tsx`, the login screen) are changed
+by another batch of this review; until it is merged, the CI license step fails because of
+them. An unsigned assignment of rights is questionable under Spanish law: if external
+contributors join, it should be reviewed with a lawyer or replaced by a CLA.
+
+---
+
+## 2026-09-24 — README with a fixed structure and recovery documentation
+
+**Context.** The README had no requirements, commands, variables or deployment, and still
+said the interface was "under construction" when every feature through API token scopes
+was done. `SECURITY.md` was in English and pointed to GitHub private reporting, which
+does not exist in private repositories. The wizard reset opened `/setup` to anyone
+without warning and was presented as a way to "redo the administrator", which fails with
+an email that already exists. `docs/setup-wizard.md` said "three things" and listed two,
+and `docs/database.md` showed a `createPrismaClient` without the `DATABASE_URL` guard.
+
+**Decision.**
+- README in six sections (what it is, requirements, installation, commands, variables,
+  deployment) plus documentation and license, pointing to `docs/` without duplicating. The
+  local installation writes a minimal `.env` with a `SESSION_SECRET` generated by
+  `openssl`, ready to copy and paste.
+- `SECURITY.md` in Spanish; the reporting channel stays as a `TODO` (email and response
+  time) for the owner to unblock. "Latest release" becomes "follow `main` with
+  `scripts/update.sh`".
+- Wizard reset: exposure warning, new email and a command using the container's
+  `$POSTGRES_USER`/`$POSTGRES_DB`. Recovering an administrator: another ADMIN from
+  `/admin/users`, or an `UPDATE` with a hash generated with `bcryptjs` cost 12 inside the
+  container.
+
+**Alternatives considered.**
+- A password recovery script: it is a rare case and the two-command procedure is enough;
+  one more script is more surface to maintain.
+- Keeping the badge and the repository URL corrected: the official URL is the owner's
+  call, so they are not changed (see consequences).
+
+**Consequences.** The recovery procedure and the reset were tested against a real Docker
+stack (the generated hash validates with `bcrypt.compare`). The URLs in `install.sh`, the
+README (`aimarmndzz`, badge `Aimarmndz`) and `docs/installation.md` (`<owner>`) still do not
+point to the real remote; if the repository is private, the installer with anonymous `curl`
+does not work. Pending the owner's decision.
+
+---
+
+## 2026-09-24 — Docker image: read-only code and a build context without data
+
+**Context.** The `Dockerfile` ended with `chown -R nextjs:nodejs /app`: a new layer that
+duplicated `node_modules` (hundreds of MB) and left `server.js`, `.next` and
+`node_modules` writable by the app process. `.dockerignore` did not exclude `backups/` or
+`uploads/`, so `COPY . .` put dumps with personal data into the builder and its cache.
+
+**Decision.**
+- No `chown -R`: `/app` stays owned by root. The entrypoint comes in with
+  `COPY --chmod=755` and only `.next/cache` is handed to `nextjs` (besides
+  `/data/uploads`, which already was).
+- `.dockerignore` excludes `backups`, `**/*.sql.gz`, `**/*.tar.gz`, `uploads`, `data`,
+  `**/*.pem`, `coverage`, `test`, `scripts` and `install.sh`.
+
+**Alternatives considered.**
+- `COPY --chown` on each `COPY`: it still leaves the code writable.
+- A `prod-deps` stage to shrink `node_modules`: a separate improvement, already noted in
   `docs/docker.md`.
 
-**Consecuencias.** Verificado construyendo la imagen: `docker history` ya no tiene la
-capa del `chown`; dentro del contenedor `touch server.js` y `node_modules/x` fallan con
-`Permission denied` y `.next/cache` y `/data/uploads` son escribibles; el stack arranca
-`healthy`, aplica migraciones y sin `EACCES`. El builder no contiene `backups`,
-`uploads`, `test`, `scripts` ni `.env`.
+**Consequences.** Verified by building the image: `docker history` no longer has the
+`chown` layer; inside the container `touch server.js` and `node_modules/x` fail with
+`Permission denied`, and `.next/cache` and `/data/uploads` are writable; the stack starts
+`healthy`, applies migrations and has no `EACCES`. The builder does not contain `backups`,
+`uploads`, `test`, `scripts` or `.env`.
 
 ---
 
-## 2026-09-24 — Variables del contenedor, CRON_SECRET, proxies de confianza y HTTPS
+## 2026-09-24 — Container variables, CRON_SECRET, trusted proxies and HTTPS
 
-**Contexto.** El servicio `app` de `docker-compose.yml` solo recibe las variables de
-`environment:`, y `CRON_SECRET` no estaba: en Docker los recordatorios respondían
-siempre 503. Las variables nuevas de otros cambios (`TRUSTED_PROXY_HOPS`,
-`ORGTABLE_TIMEZONE`) tampoco llegarían. La documentación daba por buena
-`X-Forwarded-For` para el límite de login, mandaba completar el asistente por
-`http://IP:3000` sin advertir de nada y dejaba `SESSION_SECRET=changeme` (8
-caracteres, por debajo del mínimo de 16).
+**Context.** The `app` service in `docker-compose.yml` only receives the variables in
+`environment:`, and `CRON_SECRET` was not there: in Docker the reminders always returned
+503. The new variables from other changes (`TRUSTED_PROXY_HOPS`, `ORGTABLE_TIMEZONE`) would
+not get through either. The documentation trusted `X-Forwarded-For` for the login limit,
+told users to complete the wizard over `http://IP:3000` without any warning, and left
+`SESSION_SECRET=changeme` (8 characters, below the minimum of 16).
 
-**Decisión.**
-- `docker-compose.yml` pasa `CRON_SECRET` (vacío por defecto = 503),
-  `TRUSTED_PROXY_HOPS` (0 por defecto) y `ORGTABLE_TIMEZONE` (`Atlantic/Canary`). El
-  CI comprueba con `docker compose config` que llegan.
-- `install.sh` genera `CRON_SECRET` en instalaciones nuevas y lo añade al `.env` de
-  las existentes si falta; al terminar avisa de que por HTTP todo viaja sin cifrar.
-- El puerto sigue publicado en todas las interfaces por defecto. Para publicarlo solo
-  en local se documenta `APP_PORT=127.0.0.1:3000`, que la interpolación del compose ya
-  admite, sin variable nueva.
-- Se documenta HTTPS como recomendación (no requisito): la cookie de sesión es `Secure`
-  cuando la petición llega por HTTPS o con `X-Forwarded-Proto: https`. Ejemplos de
-  Caddy y nginx (`X-Forwarded-For $remote_addr`), `TRUSTED_PROXY_HOPS=1` y aviso de
-  que Docker se salta `ufw`.
-- `docs/installation.md` es la referencia única de variables; `.env.example`,
-  `docs/docker.md` y el README remiten a ella.
+**Decision.**
+- `docker-compose.yml` passes `CRON_SECRET` (empty by default = 503),
+  `TRUSTED_PROXY_HOPS` (0 by default) and `ORGTABLE_TIMEZONE` (`Atlantic/Canary`). CI
+  checks with `docker compose config` that they get through.
+- `install.sh` generates `CRON_SECRET` on new installations and adds it to the `.env` of
+  existing ones if missing; at the end it warns that over HTTP everything travels
+  unencrypted.
+- The port is still published on all interfaces by default. To publish it only locally,
+  `APP_PORT=127.0.0.1:3000` is documented, which the compose interpolation already
+  supports, with no new variable.
+- HTTPS is documented as a recommendation (not a requirement): the session cookie is
+  `Secure` when the request arrives over HTTPS or with `X-Forwarded-Proto: https`. Caddy
+  and nginx examples (`X-Forwarded-For $remote_addr`), `TRUSTED_PROXY_HOPS=1` and a warning
+  that Docker bypasses `ufw`.
+- `docs/installation.md` is the single reference for variables; `.env.example`,
+  `docs/docker.md` and the README point to it.
 
-**Alternativas descartadas.**
-- `env_file: .env` en el servicio: metería en el contenedor todas las variables,
-  incluidas `POSTGRES_PASSWORD` y las que no necesita.
-- Publicar la app en `127.0.0.1` por defecto (o una variable `APP_BIND`): rompe a
-  quien entra hoy por `IP:3000`; lo decidió el propietario.
-- `SESSION_COOKIE_SECURE`: descartada por el propietario a favor de detectar HTTPS.
+**Alternatives considered.**
+- `env_file: .env` on the service: it would put every variable into the container,
+  including `POSTGRES_PASSWORD` and the ones it does not need.
+- Publishing the app on `127.0.0.1` by default (or an `APP_BIND` variable): it breaks
+  whoever currently connects through `IP:3000`; the owner decided.
+- `SESSION_COOKIE_SECURE`: rejected by the owner in favor of detecting HTTPS.
 
-**Consecuencias.** Tras actualizar hay que recrear el contenedor
-(`docker compose up -d`) para que vea las variables nuevas. Quien tenga `CRON_SECRET`
-en el `.env` empieza a recibir recordatorios en cuanto programe el cron. Los
-comportamientos de `TRUSTED_PROXY_HOPS`, `ORGTABLE_TIMEZONE` y la cookie `Secure`
-dependen del código de otros cambios de esta misma revisión.
-
----
-
-## 2026-09-24 — Copias de seguridad, restauración y actualización fiables
-
-**Contexto.** `scripts/backup.sh` usaba `sh` sin `pipefail`: si `pg_dump` fallaba
-quedaba un `.sql.gz` vacío y el script anunciaba «✓ Backup completado». Desde cron
-(directorio `$HOME`) fallaba cada noche sin que nadie lo notara, omitía los adjuntos en
-silencio y dejaba las copias legibles por todos (644). `restore.sh` cargaba el volcado
-sin `--clean` ni `ON_ERROR_STOP` sobre un esquema ya migrado: mezclaba datos y decía
-«✓». `update.sh` migraba producción sin copia previa.
-
-**Decisión.**
-- Los tres scripts pasan a `bash` con `set -euo pipefail` y se sitúan en la raíz del
-  repositorio, así que funcionan desde cualquier directorio.
-- `backup.sh`: `umask 077` (ficheros 600, directorio por defecto 700); escribe en
-  `.partial` y solo renombra si el gzip es válido, no está vacío y contiene la marca
-  final de `pg_dump`. `pg_dump --clean --if-exists`. Los adjuntos se leen con `exec` si
-  la app está en marcha o con un contenedor efímero (`run --rm --no-deps`) si no; solo
-  se omiten si no existe `/data/uploads` (código 3), cualquier otro fallo aborta.
-- `restore.sh`: valida el fichero antes de preguntar, hace copia previa con
-  `backup.sh` en `backups/pre-restore-<fecha>`, para la app y carga
-  `DROP SCHEMA public CASCADE; CREATE SCHEMA public;` + volcado en una sola
-  transacción con `ON_ERROR_STOP`. Sirve también para volcados antiguos sin `--clean`.
-- `update.sh`: `docker compose up -d --wait postgres` y `backup.sh` antes del
-  `git pull`; si la copia falla, no actualiza.
-- Tests en `test/ops-scripts.test.ts` con un `docker` falso en el `PATH`, y
-  `shellcheck` en el CI.
-
-**Alternativas descartadas.**
-- Dejar `sh` POSIX: no tiene `pipefail`, que es justo lo que faltaba.
-- Restaurar solo con `--clean`: no arregla los volcados ya hechos sin él.
-- `chmod 700` sobre cualquier destino que pase el usuario: con `/tmp` (o cron como
-  root) rompería el sistema. Solo se fuerza en el directorio por defecto; uno nuevo ya
-  nace en 700 por el umask.
-- Omitir los adjuntos si la app está parada: es el fallo silencioso que se quería
-  quitar.
-
-**Consecuencias.** Verificado con Docker real (proyecto compose desechable): copia
-desde `$HOME` con umask 022 da 700/600; con Postgres parado sale con código 1 y sin
-ficheros; restaurar devuelve los datos y quita tablas ajenas; fichero inexistente o
-corrupto sale con 1 sin tocar nada; el procedimiento de restaurar adjuntos de
-`docs/operations.md` funciona. Las copias antiguas siguen con 644: la documentación da
-el `chmod` para cerrarlas. `update.sh` no se probó contra un remoto real (solo con los
-falsos del test).
-## 2026-09-24 — Interfaz del tablero: arrastre, fechas, teclado y móvil
-
-**Contexto.** La tarjeta que vence hoy salía en rojo (se comparaba el instante de
-medianoche UTC con `Date.now()`) mientras el filtro «Vencidas» la excluía, y la fecha se
-formateaba en la zona local: al oeste de UTC mostraba el día anterior y descuadraba la
-hidratación. Las tarjetas no se podían abrir con el teclado y, sin permisos de edición o
-con filtros, ni siquiera recibían foco. Los chips del filtro no exponían su estado, las
-etiquetas sin seleccionar tenían ~2,2:1 de contraste y los campos de añadir
-lista/tarjeta solo tenían placeholder. El ✕ de una lista la borraba con todas sus
-tarjetas al primer clic, junto al asa de arrastre. Reordenar listas arrastrando casi
-nunca funcionaba (`over` resultaba ser una tarjeta), Escape dejaba la tarjeta en otra
-lista sin guardarse, el resultado de `moveCard`/`reorderList`/`setCardDueDate` se
-ignoraba y el calendario no se podía usar con teclado ni mostraba la pastilla bajo el
-puntero. El deep-link `?card=` no abría la tarjeta si ya estabas en ese tablero: el
-modal se inicializaba una sola vez con `useState(initialCardId)` y Next no remonta el
-componente si solo cambian los searchParams.
-
-**Decisión.**
-- `isOverdue(dueDate, now)` en `app/lib/board-filters.ts`: compara el día guardado
-  (`slice(0,10)`) con el día local; la usan el filtro y la tarjeta.
-- `formatDueDay` con `Intl.DateTimeFormat('es-ES', { timeZone: 'UTC' })`: el vencimiento
-  es una fecha de calendario.
-- «Vencida» depende del día del navegador, así que la tarjeta solo la calcula tras
-  hidratar (`useSyncExternalStore`); en el HTML del servidor nunca sale en rojo.
-- La tarjeta es siempre `role="button"` y `tabIndex=0` (la copia flotante,
-  `tabIndex=-1`). Sin `aria-label`: el nombre accesible sale del contenido (etiquetas,
-  título, vencimiento, subtareas, contadores) y «vencida» se añade en texto `sr-only`,
-  porque el rojo solo se ve. Intro la abre; Espacio también si no se puede arrastrar.
-- `aria-roledescription` en español («tarjeta», «lista») en lugar del «sortable» de
-  dnd-kit.
-- Filtros: `type="button"`, `aria-pressed` y grupos etiquetados por su título. Etiqueta
-  sin seleccionar: texto de tinta con borde del color; seleccionada: relleno con ✓ y
-  anillo.
-- `aria-label` en los campos: «Nombre de la nueva lista» y «Nueva tarjeta en <lista>».
-- Popover de filtros anclado a la izquierda a cualquier ancho (`left-0`): «Filtrar» es
-  el primer botón de su grupo y a su derecha siempre caben los 288 px. Anclado a la
-  derecha se salía por la izquierda a 375 px y también hacia 768 px con un título largo,
-  cuando la cabecera se parte en dos filas.
-- Borrar lista pide un segundo clic en línea («¿Borrar? Sí / No», el foco va a «No»),
-  sin `window.confirm`.
-- `boardCollisionDetection` (`app/lib/board-collision.ts`): `closestCorners` filtrado a
-  listas cuando se arrastra una lista; `handleDragEnd` traduce además una tarjeta a su
-  lista.
-- `KeyboardSensor` con Espacio para coger y Espacio/Intro para soltar (Intro no coge,
-  queda para abrir). Las listas usan `boardKeyboardCoordinates` (salta a la columna
-  vecina) y el calendario `calendarKeyboardCoordinates` (día o semana vecinos).
-  Instrucciones y anuncios en español.
-- Instantánea de las listas al empezar el arrastre: se restaura con Escape, al soltar
-  fuera o si la acción falla. `persistOptimistic` (`app/lib/optimistic.ts`) deshace ante
-  `{ ok: false }` o excepción, hace `router.refresh()` y relanza las redirecciones de
-  Next (`unstable_rethrow`). En el tablero se avisa con `role="alert"` en la cabecera
-  («No se pudo mover la tarjeta. Inténtalo de nuevo.» / «…la lista…»); el aviso se
-  borra al empezar el siguiente arrastre.
-- Título del tablero truncado (`min-w-0 truncate`) para que un nombre largo no desborde
-  en móvil.
-- Calendario: `DragOverlay` con la pastilla, `id` estable y aviso «No se pudo cambiar la
-  fecha. Inténtalo de nuevo.» con `role="alert"` si el servidor no guarda.
-- La tarjeta abierta se deriva de `useSearchParams()`. Abrir y cerrar cambian `?card`
-  con `window.history.replaceState` (Next lo sincroniza sin pedir la página); cerrar lo
-  quita siempre. La página del tablero deja de leer `searchParams`.
-
-**Alternativas descartadas.**
-- Formatear en la zona del servidor (`ORGTABLE_TIMEZONE`): el vencimiento no es un
-  instante, es un día, y en UTC se muestra igual en todas partes.
-- Un asa de arrastre separada dentro de la tarjeta: añade un control más; con Espacio
-  para coger e Intro para abrir basta.
-- `window.confirm`: bloquea la página y no sigue el estilo de la app.
-- `useOptimistic`: exigiría reestructurar el estado del arrastre; la instantánea
-  resuelve lo mismo con menos cambios. Deshacer en silencio: la tarjeta volvía a su
-  sitio sin explicación y el calendario ya avisaba.
-- `aria-label` con solo el título en la tarjeta: tapaba el vencimiento, el estado
-  «vencida» y los contadores. Anclar el popover a la derecha solo en `lg`: depende de
-  que la cabecera no se parta, que varía con la longitud del título.
-- `router.replace` con `?card`: cada apertura pediría la página al servidor. Sincronizar
-  `initialCardId` durante el render: seguiría sin abrir la misma notificación dos veces.
-
-**Consecuencias.** Tests en `test/board-filters.test.ts` (vence hoy/ayer, formato con
-`TZ=America/New_York`). Test de render en servidor (`test/card-item.test.ts`) para rol,
-foco, nombre accesible desde el contenido (sin `aria-label`) y ausencia de «vencida» en
-el HTML inicial. El aviso de movimiento fallido no tiene test automático (necesita un
-fallo de la Server Action en un DOM real); `persistOptimistic` llama a `onFailure` y eso
-sí está probado. Sin test automático (no hay entorno
-DOM); verificación manual pendiente. Tests con rectángulos sintéticos en
-`test/board-collision.test.ts` (incluido el fallo de `closestCorners` a secas) y de
-`persistOptimistic` en `test/optimistic.test.ts`. El arrastre real con ratón y teclado
-queda por verificar a mano en el navegador. Toca `app/(app)/board/[id]/page.tsx` (fuera
-del lote) para quitar la prop `initialCardId`. Verificación manual pendiente.
+**Consequences.** After updating, the container must be recreated (`docker compose up -d`)
+so it sees the new variables. Anyone with `CRON_SECRET` in their `.env` starts receiving
+reminders as soon as they schedule the cron. The behavior of `TRUSTED_PROXY_HOPS`,
+`ORGTABLE_TIMEZONE` and the `Secure` cookie depends on code from other changes in this same
+review.
 
 ---
 
-## 2026-09-24 — Content-Security-Policy con nonce y HSTS
+## 2026-09-24 — Reliable backups, restore and update
 
-**Contexto.** La norma de seguridad exige CSP, HSTS, X-Content-Type-Options y
-Referrer-Policy. Solo había las dos últimas (más `X-Frame-Options` y
-`Permissions-Policy`, que además incluía `interest-cohort`, una directiva que los
-navegadores ya no reconocen y que ensuciaba la consola).
+**Context.** `scripts/backup.sh` used `sh` without `pipefail`: if `pg_dump` failed, an
+empty `.sql.gz` was left and the script announced "✓ Backup completed". From cron
+(directory `$HOME`) it failed every night without anyone noticing, silently skipped the
+attachments and left the backups world-readable (644). `restore.sh` loaded the dump without
+`--clean` or `ON_ERROR_STOP` onto an already migrated schema: it mixed data and still said
+"✓". `update.sh` migrated production without a prior backup.
 
-**Decisión.**
-- CSP generada en `proxy.ts` con un nonce aleatorio por petición (`app/lib/csp.ts`,
-  patrón de la guía de CSP de Next 16). Todas las páginas ya eran dinámicas (sesión),
-  así que el nonce no cambia el renderizado.
-- `style-src-attr 'unsafe-inline'`: React pinta atributos `style` desde el servidor
-  (fondo del tablero, dnd-kit) y el nonce no cubre atributos. Los `<style>` sí exigen
-  nonce en producción.
-- En desarrollo, `'unsafe-eval'` y estilos inline sin nonce (Turbopack y el overlay
-  inyectan `<style>` sin él).
-- `/api/**` recibe `default-src 'none'; frame-ancestors 'none'` desde `next.config.ts`.
-- HSTS `max-age=31536000` sin `includeSubDomains` ni `preload`.
-- Se quita `interest-cohort` de `Permissions-Policy`.
+**Decision.**
+- The three scripts move to `bash` with `set -euo pipefail` and change to the repository
+  root, so they work from any directory.
+- `backup.sh`: `umask 077` (files 600, default directory 700); it writes to `.partial` and
+  only renames if the gzip is valid, not empty and contains the final marker of `pg_dump`.
+  `pg_dump --clean --if-exists`. Attachments are read with `exec` if the app is running or
+  with an ephemeral container (`run --rm --no-deps`) if not; they are only skipped if
+  `/data/uploads` does not exist (exit code 3), any other failure aborts.
+- `restore.sh`: validates the file before asking, makes a prior backup with `backup.sh` in
+  `backups/pre-restore-<fecha>`, stops the app and loads
+  `DROP SCHEMA public CASCADE; CREATE SCHEMA public;` + the dump in a single transaction
+  with `ON_ERROR_STOP`. It also works for older dumps without `--clean`.
+- `update.sh`: `docker compose up -d --wait postgres` and `backup.sh` before the
+  `git pull`; if the backup fails, it does not update.
+- Tests in `test/ops-scripts.test.ts` with a fake `docker` on the `PATH`, and `shellcheck`
+  in CI.
 
-**Alternativas descartadas.**
-- CSP estática con `'unsafe-inline'` en scripts: no protege contra XSS.
-- Hashes en lugar de nonce: los scripts de hidratación de Next cambian en cada
-  respuesta.
-- `upgrade-insecure-requests`: rompe las instalaciones por `http://IP:3000`, que es
-  como se documenta el primer arranque.
-- HSTS con `includeSubDomains`/`preload`: impondría HTTPS a dominios hermanos del
-  instalador.
+**Alternatives considered.**
+- Keeping POSIX `sh`: it has no `pipefail`, which is exactly what was missing.
+- Restoring only with `--clean`: it does not fix the dumps already made without it.
+- `chmod 700` on any destination the user passes: with `/tmp` (or cron as root) it would
+  break the system. It is only forced on the default directory; a new one is already
+  created as 700 because of the umask.
+- Skipping attachments if the app is stopped: that is the silent failure this set out to
+  remove.
 
-**Consecuencias.** Verificado con Playwright contra `pnpm build && pnpm start`: cero
-violaciones de CSP en tablero, calendario, ajustes, administración y búsqueda; el script
-del tema se ejecuta (clase `dark` aplicada) y el tiempo real por SSE sigue funcionando.
-Cualquier script de terceros futuro necesitará el nonce (`x-nonce`).
+**Consequences.** Verified with real Docker (a throwaway compose project): a backup from
+`$HOME` with umask 022 gives 700/600; with Postgres stopped it exits with code 1 and no
+files; restoring brings the data back and removes foreign tables; a nonexistent or corrupt
+file exits with 1 without touching anything; the attachment restore procedure in
+`docs/operations.md` works. Old backups stay at 644: the documentation gives the `chmod` to
+lock them down. `update.sh` was not tested against a real remote (only with the test
+fakes).
+## 2026-09-24 — Board interface: dragging, dates, keyboard and mobile
+
+**Context.** A card due today showed in red (the UTC midnight instant was compared with
+`Date.now()`) while the "Overdue" filter excluded it, and the date was formatted in the
+local time zone: west of UTC it showed the previous day and broke hydration. Cards could
+not be opened with the keyboard and, without edit permissions or with filters active,
+they did not even receive focus. The filter chips did not expose their state, unselected
+labels had ~2.2:1 contrast and the add list/card fields only had a placeholder. A list's
+✕ deleted it with all its cards on the first click, right next to the drag handle.
+Reordering lists by dragging almost never worked (`over` turned out to be a card), Escape
+left the card in another list without saving it, the result of
+`moveCard`/`reorderList`/`setCardDueDate` was ignored, and the calendar could not be used
+with the keyboard nor did it show the chip under the pointer. The `?card=` deep-link did
+not open the card if you were already on that board: the modal was initialized only once
+with `useState(initialCardId)` and Next does not remount the component when only the
+searchParams change.
+
+**Decision.**
+- `isOverdue(dueDate, now)` in `app/lib/board-filters.ts`: compares the stored day
+  (`slice(0,10)`) with the local day; both the filter and the card use it.
+- `formatDueDay` with `Intl.DateTimeFormat('es-ES', { timeZone: 'UTC' })`: the due date
+  is a calendar date.
+- "Overdue" depends on the browser's day, so the card only computes it after hydration
+  (`useSyncExternalStore`); in the server HTML it never shows in red.
+- The card is always `role="button"` and `tabIndex=0` (the floating copy,
+  `tabIndex=-1`). No `aria-label`: the accessible name comes from the content (labels,
+  title, due date, subtasks, counters) and "overdue" is added as `sr-only` text, because
+  the red is only visual. Enter opens it; Space does too when it cannot be dragged.
+- `aria-roledescription` in Spanish ("tarjeta", "lista") instead of dnd-kit's
+  "sortable".
+- Filters: `type="button"`, `aria-pressed` and groups labeled by their title. Unselected
+  label: ink text with a border in the label color; selected: filled with a ✓ and a ring.
+- `aria-label` on the fields: "Name of the new list" and "New card in <list>".
+- Filter popover anchored to the left at any width (`left-0`): "Filter" is the first
+  button of its group and the 288 px always fit to its right. Anchored to the right it
+  overflowed on the left at 375 px, and also around 768 px with a long title, when the
+  header wraps onto two rows.
+- Deleting a list asks for a second inline click ("Delete? Yes / No", focus goes to
+  "No"), without `window.confirm`.
+- `boardCollisionDetection` (`app/lib/board-collision.ts`): `closestCorners` filtered to
+  lists when a list is being dragged; `handleDragEnd` also maps a card to its list.
+- `KeyboardSensor` with Space to pick up and Space/Enter to drop (Enter does not pick up,
+  it is kept for opening). Lists use `boardKeyboardCoordinates` (jumps to the neighboring
+  column) and the calendar uses `calendarKeyboardCoordinates` (neighboring day or week).
+  Instructions and announcements in Spanish.
+- Snapshot of the lists when dragging starts: it is restored on Escape, when dropping
+  outside, or if the action fails. `persistOptimistic` (`app/lib/optimistic.ts`) rolls
+  back on `{ ok: false }` or an exception, calls `router.refresh()` and rethrows Next's
+  redirects (`unstable_rethrow`). On the board a `role="alert"` message appears in the
+  header ("Could not move the card. Try again." / "...the list..."); the message is
+  cleared when the next drag starts.
+- Board title truncated (`min-w-0 truncate`) so a long name does not overflow on mobile.
+- Calendar: `DragOverlay` with the chip, a stable `id` and a "Could not change the date.
+  Try again." message with `role="alert"` if the server does not save.
+- The open card is derived from `useSearchParams()`. Opening and closing change `?card`
+  with `window.history.replaceState` (Next syncs it without requesting the page); closing
+  always removes it. The board page no longer reads `searchParams`.
+
+**Alternatives considered.**
+- Formatting in the server's time zone (`ORGTABLE_TIMEZONE`): the due date is not an
+  instant, it is a day, and in UTC it shows the same everywhere.
+- A separate drag handle inside the card: adds one more control; Space to pick up and
+  Enter to open is enough.
+- `window.confirm`: blocks the page and does not match the app's style.
+- `useOptimistic`: would require restructuring the drag state; the snapshot solves the
+  same problem with fewer changes. Rolling back silently: the card went back to its place
+  with no explanation, and the calendar already showed a message.
+- An `aria-label` with only the title on the card: it hid the due date, the "overdue"
+  state and the counters. Anchoring the popover to the right only at `lg`: depends on the
+  header not wrapping, which varies with the title length.
+- `router.replace` with `?card`: every opening would request the page from the server.
+  Syncing `initialCardId` during render: it would still not open the same notification
+  twice.
+
+**Consequences.** Tests in `test/board-filters.test.ts` (due today/yesterday, formatting
+with `TZ=America/New_York`). Server render test (`test/card-item.test.ts`) for role,
+focus, accessible name from the content (no `aria-label`) and absence of "overdue" in the
+initial HTML. The failed-move message has no automated test (it needs a Server Action
+failure in a real DOM); `persistOptimistic` calls `onFailure`, and that is tested. No
+automated test (there is no DOM environment); manual verification pending. Tests with
+synthetic rectangles in `test/board-collision.test.ts` (including the failure of plain
+`closestCorners`) and of `persistOptimistic` in `test/optimistic.test.ts`. Real dragging
+with mouse and keyboard remains to be verified by hand in the browser. Touches
+`app/(app)/board/[id]/page.tsx` (outside the batch) to remove the `initialCardId` prop.
+Manual verification pending.
 
 ---
 
-## 2026-09-24 — Tablero: doble envío, hidratación y arrastre con teclado
+## 2026-09-24 — Content-Security-Policy with nonce, and HSTS
 
-**Contexto.** Probando en el navegador se crearon dos listas iguales con 48 ms de
-diferencia (Enter repetido), la consola mostraba un error de hidratación de dnd-kit
-(`aria-describedby` distinto entre servidor y cliente) y las tarjetas solo se podían
-mover con el ratón.
+**Context.** The security rule requires CSP, HSTS, X-Content-Type-Options and
+Referrer-Policy. Only the last two were present (plus `X-Frame-Options` and
+`Permissions-Policy`, which also included `interest-cohort`, a directive browsers no
+longer recognize and which cluttered the console).
 
-**Decisión.**
-- `AddListForm`/`AddCardForm`: una ref `pending` descarta los envíos mientras la acción
-  anterior no ha terminado (`preventDefault` en `onSubmit`; React no lanza la acción
-  de un formulario cuyo evento está cancelado).
-- `DndContext` recibe `id={useId()}`, estable entre servidor y cliente.
-- Se añade `KeyboardSensor` con `sortableKeyboardCoordinates`.
+**Decision.**
+- CSP generated in `proxy.ts` with a random nonce per request (`app/lib/csp.ts`, the
+  pattern from the Next 16 CSP guide). Every page was already dynamic (session), so the
+  nonce does not change rendering.
+- `style-src-attr 'unsafe-inline'`: React renders `style` attributes from the server
+  (board background, dnd-kit) and the nonce does not cover attributes. `<style>` elements
+  do require the nonce in production.
+- In development, `'unsafe-eval'` and inline styles without a nonce (Turbopack and the
+  overlay inject `<style>` without it).
+- `/api/**` gets `default-src 'none'; frame-ancestors 'none'` from `next.config.ts`.
+- HSTS `max-age=31536000` without `includeSubDomains` or `preload`.
+- `interest-cohort` is removed from `Permissions-Policy`.
 
-**Alternativas descartadas.**
-- `useActionState`/`useFormStatus` para deshabilitar el campo: el estado pendiente
-  llega en el siguiente render y un segundo Enter en el mismo tick se cuela; además,
-  deshabilitar el input le quita el foco.
-- Deduplicar en el servidor por título: dos listas con el mismo nombre son legítimas.
+**Alternatives considered.**
+- Static CSP with `'unsafe-inline'` for scripts: does not protect against XSS.
+- Hashes instead of a nonce: Next's hydration scripts change on every response.
+- `upgrade-insecure-requests`: breaks installs reached through `http://IP:3000`, which is
+  how the first start is documented.
+- HSTS with `includeSubDomains`/`preload`: would force HTTPS on sibling domains of the
+  person installing it.
 
-**Consecuencias.** Verificado con Playwright: tres Enter seguidos crean una sola lista y
-la consola queda sin errores. Con teclado: Tab hasta una tarjeta, Espacio para cogerla,
-flechas para moverla y Espacio para soltarla (Escape cancela).
-
----
-
-## 2026-09-24 — Interfaz: móvil a 375 px y contraste del conmutador
-
-**Contexto.** A 375 px todas las páginas del área autenticada desbordaban 76 px en
-horizontal (la barra superior no cabía) y la cabecera del tablero dejaba «Miembros»
-fuera de pantalla. En modo oscuro la opción activa del conmutador Tablero/Calendario
-era texto claro sobre fondo blanco. El fondo del tablero no llegaba al final de la
-pantalla y el calendario mostraba «Septiembre De 2026».
-
-**Decisión.**
-- Barra superior: en móvil «Administración» pasa a icono con `aria-label`, el nombre de
-  la instancia se trunca y los huecos se reducen.
-- Cabecera del tablero con `flex-wrap`.
-- La opción activa usa `bg-surface text-ink` (tokens del tema) en lugar de blanco fijo.
-- El contenedor del área autenticada usa `flex-1` (el `min-h-full` no se resolvía
-  dentro del `body` flex).
-- El mes del calendario usa `first-letter:uppercase` en vez de `capitalize`, que ponía
-  en mayúscula cada palabra.
-
-**Alternativas descartadas.** Un menú hamburguesa en móvil: con pasar a iconos basta
-y no añade un componente nuevo.
-
-**Consecuencias.** Verificado con Playwright a 375 px (desbordamiento 0 en `/boards`,
-tablero, `/settings`, `/admin/users`, `/admin/audit` y `/search`) y a 1440 px en modo
-oscuro.
+**Consequences.** Verified with Playwright against `pnpm build && pnpm start`: zero CSP
+violations on the board, calendar, settings, administration and search; the theme script
+runs (`dark` class applied) and SSE realtime keeps working. Any future third-party script
+will need the nonce (`x-nonce`).
 
 ---
 
-## 2026-09-24 — Actualización de dependencias por seguridad
+## 2026-09-24 — Board: double submit, hydration and keyboard dragging
 
-**Contexto.** Tras pasar a pnpm, `pnpm audit` daba 63 avisos (2 críticos y 30 altos),
-la mayoría en `next` 16.2.7 y en dependencias transitivas de Prisma, ESLint y Vitest.
+**Context.** While testing in the browser, two identical lists were created 48 ms apart
+(repeated Enter), the console showed a dnd-kit hydration error (`aria-describedby`
+differing between server and client) and cards could only be moved with the mouse.
 
-**Decisión.**
-- Subir todo dentro de su versión mayor: `next`/`eslint-config-next` 16.3.6, Prisma
-  7.10.0, React 19.3.0, zod 4.6.5, pg 8.23.0, jose 6.2.12, Tailwind 4.3.3, Vitest
-  4.1.11 y tipos. Los rangos de `package.json` pasan a exigir esas versiones mínimas.
-- `overrides` en `pnpm-workspace.yaml` para transitivas con parche en la misma mayor:
-  `brace-expansion` 5.0.12, `browserslist` 4.28.7 y `mysql2` 3.23.1.
-- Se ignora `GHSA-ggr8-5vv4-36mx` (`deepmerge-ts` <8 dentro de `@prisma/config`): solo
-  fusiona la configuración local de `prisma.config.ts`, no entrada de usuario, y el
-  parche exige una versión mayor que Prisma 7.10 no admite.
+**Decision.**
+- `AddListForm`/`AddCardForm`: a `pending` ref discards submissions while the previous
+  action has not finished (`preventDefault` in `onSubmit`; React does not run the action
+  of a form whose event was cancelled).
+- `DndContext` gets `id={useId()}`, stable between server and client.
+- `KeyboardSensor` is added with `sortableKeyboardCoordinates`.
 
-**Alternativas descartadas.**
-- Subidas mayores (TypeScript 7, ESLint 10, Vitest 5, Prisma 8, `@types/node` 26,
-  `fractional-indexing` 4): van en commits aparte y tras leer sus changelogs; no
-  corrigen ninguno de los avisos.
-- Forzar `deepmerge-ts` 8 con un override: cambiaría una mayor dentro del CLI que
-  aplica las migraciones en cada arranque del contenedor, para un riesgo sin vector
-  de ataque real.
+**Alternatives considered.**
+- `useActionState`/`useFormStatus` to disable the field: the pending state arrives on the
+  next render and a second Enter in the same tick slips through; disabling the input also
+  takes its focus away.
+- Deduplicating on the server by title: two lists with the same name are legitimate.
 
-**Consecuencias.** `pnpm audit` queda sin avisos (1 ignorado y documentado). Al subir
-`next`, `prisma` o `eslint-config-next` hay que revisar si los overrides siguen
-haciendo falta.
+**Consequences.** Verified with Playwright: three Enters in a row create a single list and
+the console stays free of errors. With the keyboard: Tab to a card, Space to pick it up,
+arrows to move it and Space to drop it (Escape cancels).
 
 ---
 
-## 2026-09-24 — Migración de npm a pnpm
+## 2026-09-24 — Interface: mobile at 375 px and switcher contrast
 
-**Contexto.** El estándar de los proyectos pasa a ser pnpm (lockfile siempre versionado,
-nunca `package-lock.json`). El repo usaba npm en local, en CI y en el `Dockerfile`.
+**Context.** At 375 px every page of the signed-in area overflowed 76 px horizontally (the
+top bar did not fit) and the board header pushed "Members" off screen. In dark mode the
+active option of the Board/Calendar switcher was light text on a white background. The
+board background did not reach the bottom of the screen and the calendar showed
+"Septiembre De 2026".
 
-**Decisión.**
-- `pnpm import` generó `pnpm-lock.yaml` a partir de `package-lock.json`, así que las
-  versiones resueltas no cambian en este paso. `package-lock.json` se borra.
-- `packageManager: pnpm@11.24.0` en `package.json`: Corepack (Docker) y
-  `pnpm/action-setup` (CI) instalan exactamente esa versión.
-- pnpm 11 no ejecuta scripts de instalación salvo los permitidos. `pnpm-workspace.yaml`
-  lleva `allowBuilds` con `@prisma/engines` y `prisma` en `true` (descargan el
-  schema-engine que usa `migrate deploy`) y `sharp` y `unrs-resolver` en `false` (traen
-  binarios precompilados por dependencias opcionales; su script solo es un respaldo).
-- CI pasa a Node 22 (igual que la imagen Docker) y añade `pnpm audit --prod
+**Decision.**
+- Top bar: on mobile "Administration" becomes an icon with `aria-label`, the instance name
+  is truncated and gaps are reduced.
+- Board header with `flex-wrap`.
+- The active option uses `bg-surface text-ink` (theme tokens) instead of a fixed white.
+- The signed-in area container uses `flex-1` (`min-h-full` did not resolve inside the flex
+  `body`).
+- The calendar month uses `first-letter:uppercase` instead of `capitalize`, which
+  capitalised every word.
+
+**Alternatives considered.** A hamburger menu on mobile: switching to icons is enough and
+does not add a new component.
+
+**Consequences.** Verified with Playwright at 375 px (0 overflow on `/boards`, board,
+`/settings`, `/admin/users`, `/admin/audit` and `/search`) and at 1440 px in dark mode.
+
+---
+
+## 2026-09-24 — Dependency upgrades for security
+
+**Context.** After moving to pnpm, `pnpm audit` reported 63 advisories (2 critical and 30
+high), most of them in `next` 16.2.7 and in transitive dependencies of Prisma, ESLint and
+Vitest.
+
+**Decision.**
+- Upgrade everything within its major version: `next`/`eslint-config-next` 16.3.6, Prisma
+  7.10.0, React 19.3.0, zod 4.6.5, pg 8.23.0, jose 6.2.12, Tailwind 4.3.3, Vitest 4.1.11
+  and types. The ranges in `package.json` now require those minimum versions.
+- `overrides` in `pnpm-workspace.yaml` for transitive dependencies with a patch in the same
+  major: `brace-expansion` 5.0.12, `browserslist` 4.28.7 and `mysql2` 3.23.1.
+- `GHSA-ggr8-5vv4-36mx` is ignored (`deepmerge-ts` <8 inside `@prisma/config`): it only
+  merges the local configuration from `prisma.config.ts`, not user input, and the patch
+  requires a major version that Prisma 7.10 does not support.
+
+**Alternatives considered.**
+- Major upgrades (TypeScript 7, ESLint 10, Vitest 5, Prisma 8, `@types/node` 26,
+  `fractional-indexing` 4): they go in separate commits after reading their changelogs;
+  they fix none of the advisories.
+- Forcing `deepmerge-ts` 8 with an override: it would change a major version inside the
+  CLI that applies the migrations on every container start, for a risk with no real attack
+  vector.
+
+**Consequences.** `pnpm audit` is clean (1 ignored and documented). When upgrading `next`,
+`prisma` or `eslint-config-next`, check whether the overrides are still needed.
+
+---
+
+## 2026-09-24 — Migration from npm to pnpm
+
+**Context.** pnpm becomes the standard for the projects (lockfile always committed, never
+`package-lock.json`). The repo used npm locally, in CI and in the `Dockerfile`.
+
+**Decision.**
+- `pnpm import` generated `pnpm-lock.yaml` from `package-lock.json`, so the resolved
+  versions do not change in this step. `package-lock.json` is deleted.
+- `packageManager: pnpm@11.24.0` in `package.json`: Corepack (Docker) and
+  `pnpm/action-setup` (CI) install exactly that version.
+- pnpm 11 does not run install scripts except the allowed ones. `pnpm-workspace.yaml` has
+  `allowBuilds` with `@prisma/engines` and `prisma` set to `true` (they download the
+  schema-engine used by `migrate deploy`) and `sharp` and `unrs-resolver` set to `false`
+  (they ship prebuilt binaries through optional dependencies; their script is only a
+  fallback).
+- CI moves to Node 22 (same as the Docker image) and adds `pnpm audit --prod
   --audit-level high`.
-- El `Dockerfile` añade un stage `base` con `corepack enable`; el resto de stages no
-  cambia de estructura.
+- The `Dockerfile` adds a `base` stage with `corepack enable`; the other stages keep their
+  structure.
 
-**Alternativas descartadas.**
-- `node-linker=hoisted` para imitar el árbol plano de npm: no hizo falta; el build
-  standalone y el CLI de Prisma funcionan con el layout aislado de pnpm.
-- Instalar pnpm con `npm i -g` en la imagen: Corepack ya viene en `node:22` y respeta
-  la versión fijada.
-- Aprobar todos los scripts de build (`--all`): amplía la superficie de ataque de la
-  cadena de suministro sin necesidad.
+**Alternatives considered.**
+- `node-linker=hoisted` to mimic npm's flat tree: not needed; the standalone build and the
+  Prisma CLI work with pnpm's isolated layout.
+- Installing pnpm with `npm i -g` in the image: Corepack already ships with `node:22` and
+  honors the pinned version.
+- Approving every build script (`--all`): needlessly widens the supply-chain attack
+  surface.
 
-**Consecuencias.** Hay que usar `pnpm` en lugar de `npm`/`npx` (documentación
-actualizada). Una dependencia nueva con script de instalación necesita entrar en
-`allowBuilds` o pnpm avisará con `ERR_PNPM_IGNORED_BUILDS`.
+**Consequences.** Use `pnpm` instead of `npm`/`npx` (documentation updated). A new
+dependency with an install script must be added to `allowBuilds`, or pnpm will warn with
+`ERR_PNPM_IGNORED_BUILDS`.

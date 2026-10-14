@@ -1,5 +1,5 @@
-// Stub de `next/cache` para los tests de integración: fuera del runtime de Next no hay
-// store de revalidación, así que estas funciones son no-ops. Ver vitest.integration.config.ts.
+// `next/cache` stub for the integration tests: outside the Next runtime there is no
+// revalidation store, so these functions are no-ops. See vitest.integration.config.ts.
 export function revalidatePath(): void {}
 export function revalidateTag(): void {}
 export function refresh(): void {}

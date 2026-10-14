@@ -4,14 +4,14 @@ import { refresh } from "next/cache";
 import { prisma } from "@/app/lib/prisma";
 import { requireUser } from "@/app/lib/dal";
 
-// Acciones sobre las notificaciones propias (Hito 8). La autorización es implícita: el
-// WHERE siempre incluye `userId` del usuario en sesión, así que nadie puede marcar como
-// leídas las de otra persona. Ver docs/notifications.md.
+// Actions on one's own notifications. Authorisation is implicit: the WHERE always includes
+// the signed-in user's `userId`, so nobody can mark someone else's as read. See
+// docs/notifications.md.
 //
-// Ambas llaman a refresh(): el contador vive en el layout compartido y, sin refrescar
-// el router desde el servidor, no se repinta al navegar a un tablero tras marcarla.
+// Both call refresh(): the counter lives in the shared layout and, without refreshing the
+// router from the server, it is not repainted when navigating to a board after marking.
 
-/** Marca una notificación propia como leída. */
+/** Marks one of one's own notifications as read. */
 export async function markNotificationRead(id: string): Promise<void> {
   const user = await requireUser();
   await prisma.notification.updateMany({
@@ -21,7 +21,7 @@ export async function markNotificationRead(id: string): Promise<void> {
   refresh();
 }
 
-/** Marca todas las notificaciones propias como leídas. */
+/** Marks all of one's own notifications as read. */
 export async function markAllNotificationsRead(): Promise<void> {
   const user = await requireUser();
   await prisma.notification.updateMany({

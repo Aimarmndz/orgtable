@@ -10,11 +10,11 @@ import {
   seedCard,
 } from "./helpers";
 
-// Endpoint POST /api/cron/reminders: 503 sin CRON_SECRET, 401 con cualquier credencial que
-// no sea exactamente el secreto (sin lanzar excepción aunque la longitud difiera), 200 con
-// el resultado de la pasada.
+// POST /api/cron/reminders endpoint: 503 without CRON_SECRET, 401 with any credential that
+// is not exactly the secret (without throwing even if the length differs), 200 with the
+// result of the run.
 
-const SECRET = "s3cr3t-largo";
+const SECRET = "s3cr3t-longer";
 const originalSecret = process.env.CRON_SECRET;
 
 function cronRequest(authorization?: string): Request {
@@ -38,26 +38,26 @@ afterAll(async () => {
   await disconnect();
 });
 
-describe("POST /api/cron/reminders (integración)", () => {
-  it("responde 503 si CRON_SECRET no está definido", async () => {
+describe("POST /api/cron/reminders (integration)", () => {
+  it("answers 503 if CRON_SECRET is not set", async () => {
     delete process.env.CRON_SECRET;
     const res = await POST(cronRequest(`Bearer ${SECRET}`));
     expect(res.status).toBe(503);
   });
 
   it.each([
-    ["secreto de la misma longitud", "Bearer s3cr3t-largX"],
-    ["secreto más corto", "Bearer s"],
-    ["sin cabecera", undefined],
-    ["esquema Basic", `Basic ${SECRET}`],
-    ["Bearer vacío", "Bearer "],
-  ])("responde 401 con %s y no crea notificaciones", async (_caso, auth) => {
+    ["a secret of the same length", "Bearer s3cr3t-longeX"],
+    ["a shorter secret", "Bearer s"],
+    ["no header", undefined],
+    ["Basic scheme", `Basic ${SECRET}`],
+    ["empty Bearer", "Bearer "],
+  ])("answers 401 with %s and creates no notifications", async (_case, auth) => {
     const res = await POST(cronRequest(auth));
     expect(res.status).toBe(401);
     expect(await prisma.notification.count()).toBe(0);
   });
 
-  it("con el secreto correcto genera los avisos y es idempotente", async () => {
+  it("with the right secret it creates the reminders and is idempotent", async () => {
     const owner = await seedUser();
     const board = await seedBoard(owner.id);
     const card = await seedCard((await seedList(board.id)).id);

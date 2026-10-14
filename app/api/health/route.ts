@@ -1,6 +1,6 @@
-// Endpoint de health check usado por el healthcheck de docker-compose para saber
-// cuándo el contenedor `app` está listo. No toca la base de datos a propósito:
-// solo confirma que el servidor Next responde.
+// Health check endpoint used by the docker-compose healthcheck to know when the `app`
+// container is ready. It deliberately does not touch the database: it only confirms
+// that the Next server responds.
 export async function GET() {
   return Response.json({ status: "ok" });
 }

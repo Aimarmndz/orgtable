@@ -3,37 +3,37 @@ import { EventEmitter } from "node:events";
 import { Client } from "pg";
 import { z } from "zod";
 
-// Bus de publicación/suscripción para la sincronización en vivo (Hito 4).
+// Publish/subscribe bus for live sync.
 //
-// Por defecto es EN PROCESO (un EventEmitter): suficiente para el despliegue estándar
-// de orgtable (un único contenedor de app, ver docker-compose.yml). Las Server Actions
-// publican un evento por tablero tras mutar; las conexiones SSE (app/api/boards/[id]/
-// stream) se suscriben y reenvían "refresca" al navegador.
+// By default it is IN-PROCESS (an EventEmitter): enough for orgtable's standard deployment
+// (a single app container, see docker-compose.yml). Server Actions publish one event per
+// board after mutating; SSE connections (app/api/boards/[id]/stream) subscribe and forward
+// "refresh" to the browser.
 //
-// Para despliegues MULTI-INSTANCIA hay un puente opcional sobre PostgreSQL
-// LISTEN/NOTIFY (no Redis: ya dependemos de Postgres; ver ADR 0007). Se activa con
-// ORGTABLE_REALTIME_PG_NOTIFY=1. Cada instancia escucha el canal y reemite localmente
-// los eventos de OTRAS instancias (ignora los propios, ya emitidos en el acto).
+// For MULTI-INSTANCE deployments there is an optional bridge over PostgreSQL LISTEN/NOTIFY
+// (not Redis: Postgres is already a dependency; see ADR 0007). Enabled with
+// ORGTABLE_REALTIME_PG_NOTIFY=1. Each instance listens on the channel and re-emits locally
+// the events of OTHER instances (its own were already emitted on the spot).
 
 const CHANNEL = "orgtable_realtime";
 const PG_NOTIFY_ENABLED = process.env.ORGTABLE_REALTIME_PG_NOTIFY === "1";
 
-// Singletons sobre globalThis: en desarrollo Next recarga módulos en caliente (HMR) y
-// crearía emisores/clientes duplicados. En producción se crean una sola vez.
+// Singletons on globalThis: in development Next hot-reloads modules (HMR) and would create
+// duplicate emitters/clients. In production they are created only once.
 const g = globalThis as unknown as {
   __orgtableBus?: EventEmitter;
   __orgtableInstanceId?: string;
-  // Cliente LISTEN activo (solo cuando el LISTEN ya se ha confirmado).
+  // Active LISTEN client (only once the LISTEN has been confirmed).
   __orgtablePgClient?: Client;
-  // Arranque en curso: publishCrossInstance lo espera en vez de perder el evento.
+  // Start-up in progress: publishCrossInstance waits for it instead of losing the event.
   __orgtablePgBridgePromise?: Promise<void>;
-  // Único temporizador de reconexión y número de intentos fallidos seguidos (backoff).
+  // Single reconnect timer and number of consecutive failed attempts (backoff).
   __orgtablePgReconnectTimer?: ReturnType<typeof setTimeout>;
   __orgtablePgReconnectAttempt?: number;
 };
 
 const emitter = g.__orgtableBus ?? new EventEmitter();
-// Sin límite de listeners: puede haber muchas conexiones SSE simultáneas.
+// No listener limit: there can be many simultaneous SSE connections.
 emitter.setMaxListeners(0);
 g.__orgtableBus = emitter;
 
@@ -42,8 +42,8 @@ const INSTANCE_ID =
 g.__orgtableInstanceId = INSTANCE_ID;
 
 export type BoardEvent = { type: "board:changed"; boardId: string; at: number };
-// Evento por usuario (Hito 8): un "ping" para que la pestaña recargue sus
-// notificaciones. No lleva el contenido, solo avisa de que hay algo nuevo.
+// Per-user event: a "ping" so the tab reloads its notifications. It carries no content,
+// it only signals that there is something new.
 export type UserEvent = { type: "notification:new"; userId: string; at: number };
 
 const channelFor = (boardId: string) => `board:${boardId}`;
@@ -67,7 +67,7 @@ function emitLocalUser(userId: string): void {
   emitter.emit(channelForUser(userId), event);
 }
 
-/** Suscribe a los cambios de un tablero. Devuelve la función para cancelar. */
+/** Subscribes to a board's changes. Returns the unsubscribe function. */
 export function subscribeBoard(
   boardId: string,
   handler: (event: BoardEvent) => void,
@@ -77,7 +77,7 @@ export function subscribeBoard(
   return () => emitter.off(channelFor(boardId), handler);
 }
 
-/** Suscribe a los eventos de un usuario (notificaciones). Devuelve cómo cancelar. */
+/** Subscribes to a user's events (notifications). Returns the unsubscribe function. */
 export function subscribeUser(
   userId: string,
   handler: (event: UserEvent) => void,
@@ -87,14 +87,14 @@ export function subscribeUser(
   return () => emitter.off(channelForUser(userId), handler);
 }
 
-/** Publica que un tablero cambió. Lo llaman las Server Actions tras cada mutación. */
+/** Publishes that a board changed. Server Actions call it after every mutation. */
 export async function publishBoardEvent(boardId: string): Promise<void> {
   emitLocal(boardId);
   if (PG_NOTIFY_ENABLED) {
     await publishCrossInstance({ kind: "board", id: boardId }).catch(
       (err: unknown) => {
-        // Un fallo del puente nunca debe romper la mutación: el modo en proceso sigue.
-        console.error("[realtime] no se pudo publicar en el puente LISTEN/NOTIFY", {
+        // A bridge failure must never break the mutation: in-process delivery still works.
+        console.error("[realtime] could not publish on the LISTEN/NOTIFY bridge", {
           kind: "board",
           id: boardId,
         }, err);
@@ -103,14 +103,14 @@ export async function publishBoardEvent(boardId: string): Promise<void> {
   }
 }
 
-/** Publica que un usuario tiene una notificación nueva (entrega en vivo). */
+/** Publishes that a user has a new notification (live delivery). */
 export async function publishUserEvent(userId: string): Promise<void> {
   emitLocalUser(userId);
   if (PG_NOTIFY_ENABLED) {
     await publishCrossInstance({ kind: "user", id: userId }).catch(
       (err: unknown) => {
-        // Best-effort: el modo en proceso ya emitió localmente.
-        console.error("[realtime] no se pudo publicar en el puente LISTEN/NOTIFY", {
+        // Best-effort: in-process delivery has already emitted locally.
+        console.error("[realtime] could not publish on the LISTEN/NOTIFY bridge", {
           kind: "user",
           id: userId,
         }, err);
@@ -119,13 +119,13 @@ export async function publishUserEvent(userId: string): Promise<void> {
   }
 }
 
-// --- Puente opcional PostgreSQL LISTEN/NOTIFY (multi-instancia) ---
+// --- Optional PostgreSQL LISTEN/NOTIFY bridge (multi-instance) ---
 
 const RECONNECT_MIN_MS = 1_000;
 const RECONNECT_MAX_MS = 30_000;
 
-// Cualquiera con acceso a la BD puede hacer NOTIFY en el canal: el payload se valida en
-// vez de fiarse de un cast (un payload sin id emitiría en "board:undefined").
+// Anyone with database access can NOTIFY on the channel: the payload is validated rather
+// than trusted through a cast (a payload without an id would emit on "board:undefined").
 const bridgePayloadSchema = z.object({
   kind: z.enum(["board", "user"]),
   id: z.string().min(1),
@@ -133,13 +133,13 @@ const bridgePayloadSchema = z.object({
 });
 export type BridgePayload = z.infer<typeof bridgePayloadSchema>;
 
-/** Parsea y valida el payload de un NOTIFY. Devuelve null si no es válido. */
+/** Parses and validates a NOTIFY payload. Returns null if it is invalid. */
 export function parseBridgePayload(raw: string): BridgePayload | null {
   let data: unknown;
   try {
     data = JSON.parse(raw);
   } catch {
-    // No es JSON: se trata igual que una estructura inválida.
+    // Not JSON: treated the same as an invalid structure.
     return null;
   }
   const parsed = bridgePayloadSchema.safeParse(data);
@@ -150,13 +150,13 @@ function handleBridgeNotification(raw: string | undefined): void {
   if (!raw) return;
   const data = parseBridgePayload(raw);
   if (!data) {
-    // Sin volcar el payload: puede venir de cualquiera con acceso a la BD.
+    // The payload is not dumped: it may come from anyone with database access.
     console.warn(
-      `[realtime] NOTIFY descartado: no es JSON o no tiene { kind, id, origin } válidos (${raw.length} caracteres)`,
+      `[realtime] NOTIFY discarded: not JSON or no valid { kind, id, origin } (${raw.length} characters)`,
     );
     return;
   }
-  // Ignora los eventos originados en esta instancia: ya se emitieron localmente.
+  // Ignores events from this instance: they were already emitted locally.
   if (data.origin === INSTANCE_ID) return;
   if (data.kind === "user") emitLocalUser(data.id);
   else emitLocal(data.id);
@@ -164,13 +164,13 @@ function handleBridgeNotification(raw: string | undefined): void {
 
 function closeClient(client: Client): void {
   client.end().catch((err: unknown) => {
-    console.error("[realtime] no se pudo cerrar la conexión del puente LISTEN/NOTIFY", err);
+    console.error("[realtime] could not close the LISTEN/NOTIFY bridge connection", err);
   });
 }
 
-// La conexión del puente cayó: se cierra (si no, cada reintento abriría otra conexión
-// hasta agotar las de Postgres) y se programa la reconexión. Solo actúa si `client` es
-// el activo, para que un "error" seguido de "end" no lo haga dos veces.
+// The bridge connection dropped: close it (otherwise each retry would open another
+// connection until Postgres runs out) and schedule a reconnect. Only acts when `client` is
+// the active one, so an "error" followed by "end" does not do it twice.
 function dropPgClient(client: Client): void {
   if (g.__orgtablePgClient !== client) return;
   g.__orgtablePgClient = undefined;
@@ -178,8 +178,8 @@ function dropPgClient(client: Client): void {
   scheduleReconnect();
 }
 
-// Reconexión con backoff exponencial (1 s → 30 s) y un único temporizador. Si ya no
-// queda ningún suscriptor no se programa: la próxima suscripción arranca el puente.
+// Reconnect with exponential backoff (1 s → 30 s) and a single timer. Not scheduled when
+// no subscriber is left: the next subscription starts the bridge.
 function scheduleReconnect(): void {
   if (g.__orgtablePgReconnectTimer) return;
   if (emitter.eventNames().length === 0) return;
@@ -188,11 +188,11 @@ function scheduleReconnect(): void {
   g.__orgtablePgReconnectAttempt = attempt + 1;
   const timer = setTimeout(() => {
     g.__orgtablePgReconnectTimer = undefined;
-    // Todos se desuscribieron durante la espera: no hace falta conexión.
+    // Everyone unsubscribed during the wait: no connection needed.
     if (emitter.eventNames().length === 0) return;
     void ensurePgBridge();
   }, delay);
-  // No mantiene vivo el proceso solo por este reintento.
+  // Does not keep the process alive just for this retry.
   timer.unref?.();
   g.__orgtablePgReconnectTimer = timer;
 }
@@ -204,12 +204,12 @@ async function startPgBridge(): Promise<void> {
     client = current;
     current.on("notification", (msg) => handleBridgeNotification(msg.payload));
     current.on("error", (err) => {
-      console.error("[realtime] error en la conexión del puente LISTEN/NOTIFY", err);
+      console.error("[realtime] error on the LISTEN/NOTIFY bridge connection", err);
       dropPgClient(current);
     });
     current.on("end", () => {
       if (g.__orgtablePgClient === current) {
-        console.error("[realtime] la conexión del puente LISTEN/NOTIFY se cerró");
+        console.error("[realtime] the LISTEN/NOTIFY bridge connection closed");
       }
       dropPgClient(current);
     });
@@ -218,8 +218,8 @@ async function startPgBridge(): Promise<void> {
     g.__orgtablePgClient = current;
     g.__orgtablePgReconnectAttempt = 0;
   } catch (err) {
-    // El error de pg no incluye la contraseña; DATABASE_URL no se registra nunca.
-    console.error("[realtime] no se pudo iniciar el puente LISTEN/NOTIFY", err);
+    // pg's error does not include the password; DATABASE_URL is never logged.
+    console.error("[realtime] could not start the LISTEN/NOTIFY bridge", err);
     if (client) closeClient(client);
     scheduleReconnect();
   }
@@ -228,7 +228,7 @@ async function startPgBridge(): Promise<void> {
 function ensurePgBridge(): Promise<void> {
   if (!PG_NOTIFY_ENABLED) return Promise.resolve();
   if (g.__orgtablePgClient) return Promise.resolve();
-  // Con una reconexión programada se respeta el backoff: no se abre otra conexión.
+  // With a reconnect scheduled the backoff is honoured: no other connection is opened.
   if (g.__orgtablePgReconnectTimer) return Promise.resolve();
   if (!g.__orgtablePgBridgePromise) {
     g.__orgtablePgBridgePromise = startPgBridge().finally(() => {
@@ -242,8 +242,8 @@ async function publishCrossInstance(target: {
   kind: "board" | "user";
   id: string;
 }): Promise<void> {
-  // Espera un arranque en curso: antes, mientras el estado era "starting", el evento
-  // se descartaba sin publicarse.
+  // Waits for a start-up in progress: previously, while the state was "starting", the
+  // event was dropped without being published.
   await ensurePgBridge();
   const client = g.__orgtablePgClient;
   if (!client) return;

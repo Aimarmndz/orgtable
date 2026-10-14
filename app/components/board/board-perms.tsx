@@ -4,15 +4,15 @@ import { createContext, useContext } from "react";
 import type { BoardRole } from "@/app/lib/roles";
 import { canEditBoard, canManageBoard } from "@/app/lib/roles";
 
-// Permisos del visor sobre el tablero actual, expuestos por contexto para que los
-// componentes cliente (columnas, tarjetas, modal) oculten los controles de escritura
-// sin pasar props por todos los niveles. La autorización REAL la hace el servidor en
-// cada Server Action; esto es solo UI. Ver app/lib/roles.ts y docs/authorization.md.
+// The viewer's permissions on the current board, exposed through context so Client
+// Components (columns, cards, modal) can hide write controls without prop drilling. The
+// REAL authorization happens on the server in every Server Action; this is UI only. See
+// app/lib/roles.ts and docs/authorization.md.
 
 export type BoardPerms = {
   role: BoardRole;
-  canEdit: boolean; // EDITOR u OWNER: crear/editar/mover contenido.
-  canManage: boolean; // OWNER: miembros, etiquetas, renombrar/borrar.
+  canEdit: boolean; // EDITOR or OWNER: create/edit/move content.
+  canManage: boolean; // OWNER: members, labels, rename/delete.
 };
 
 const BoardPermsContext = createContext<BoardPerms>({

@@ -1,42 +1,43 @@
-# ADR 0016 — Licencia propietaria (MARA-KASSA SL)
+# ADR 0016 — Proprietary license (MARA-KASSA SL)
 
-**Estado:** aceptada · **Fecha:** 2026-08-05 · **Sustituye a:** [ADR 0005](./0005-agpl.md)
+**Status:** superseded on 2026-10-14 (see [`docs/DECISIONES.md`](../DECISIONES.md#2026-10-14--agpl-30-or-later-license-with-attribution)) · **Date:** 2026-08-05 · **Supersedes:** [ADR 0005](./0005-agpl.md)
 
-## Contexto
+> This decision is no longer in force: on 2026-10-14 the project went back to the AGPL
+> (AGPL-3.0-or-later with an attribution term). The current license is the one in
+> [`LICENSE`](../../LICENSE). It is kept as a historical record.
 
-El proyecto se publicó al principio bajo AGPL-3.0 (ADR 0005). El 2026-08-05 el
-propietario sustituyó el texto de `LICENSE` por una licencia propietaria a nombre de
-MARA-KASSA SL (commit `27c1ba9`), pero la documentación, el `package.json` y algunos
-textos de la app seguían diciendo AGPL u «open source». Esta ADR deja constancia de la
-decisión y alinea el resto con ella.
+## Context
 
-## Decisión
+The project was first published under AGPL-3.0 (ADR 0005). On 2026-08-05 the owner
+replaced the text of `LICENSE` with a proprietary license in the name of MARA-KASSA SL
+(commit `27c1ba9`), but the documentation, `package.json` and some app texts still said
+AGPL or "open source". This ADR records the decision and aligns everything else with it.
 
-- La licencia vigente es la de [`LICENSE`](../../LICENSE): todos los derechos reservados
-  por MARA-KASSA SL, uso restringido a personas autorizadas y cesión a la empresa de los
-  derechos sobre las aportaciones. El texto de `LICENSE` es la única fuente; el resto de
-  documentos remite a él sin copiarlo.
-- `package.json` declara `"license": "UNLICENSED"` (el valor que npm reserva para
-  software sin licencia de uso pública).
-- La documentación y los textos visibles dejan de describir el proyecto como open source.
-- El CI falla si reaparecen referencias a la licencia anterior fuera de esta ADR, de la
-  ADR 0005 y del registro de decisiones.
+## Decision
 
-## Alternativas descartadas
+- The current license is the one in [`LICENSE`](../../LICENSE): all rights reserved by
+  MARA-KASSA SL, use restricted to authorized people, and assignment to the company of the
+  rights over contributions. The text of `LICENSE` is the only source; the other documents
+  point to it without copying it.
+- `package.json` declares `"license": "UNLICENSED"` (the value npm reserves for software
+  without a public license to use it).
+- The documentation and visible texts stop describing the project as open source.
+- CI fails if references to the previous license reappear outside this ADR, ADR 0005 and
+  the decision log.
 
-- **Mantener la AGPL-3.0 y restaurar `LICENSE`.** Descartada por el propietario al
-  hacer el cambio.
-- **Licencia dual (AGPL + comercial).** No se planteó; exigiría volver a publicar el
-  código bajo AGPL.
+## Alternatives considered
 
-## Consecuencias
+- **Keep AGPL-3.0 and restore `LICENSE`.** Rejected by the owner when making the change.
+- **Dual license (AGPL + commercial).** Not considered; it would require publishing the
+  code under the AGPL again.
 
-- Las copias que se distribuyeron mientras regía la AGPL-3.0 siguen bajo esa licencia
-  para quien las recibió: el cambio no es retroactivo.
-- La cesión de derechos por aportaciones que incluye `LICENSE` se acepta al contribuir,
-  sin firma. Su validez frente a la ley española de propiedad intelectual es dudosa; si
-  entran colaboradores externos conviene que un abogado la revise o firmar un acuerdo de
-  contribución (CLA).
-- `install.sh` y la documentación de instalación siguen apuntando a un repositorio
-  público de GitHub; si el repositorio es privado, la instalación con `curl` anónimo no
-  funciona. Lo decide el propietario.
+## Consequences
+
+- Copies distributed while AGPL-3.0 applied remain under that license for whoever received
+  them: the change is not retroactive.
+- The assignment of rights over contributions included in `LICENSE` is accepted by
+  contributing, without a signature. Its validity under Spanish intellectual property law
+  is doubtful; if external contributors join, a lawyer should review it, or a contributor
+  license agreement (CLA) should be signed.
+- `install.sh` and the installation docs still point to a public GitHub repository; if the
+  repository is private, installing with anonymous `curl` does not work. The owner decides.

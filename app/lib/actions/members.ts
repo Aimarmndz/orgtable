@@ -3,19 +3,23 @@
 import { prisma } from "@/app/lib/prisma";
 import { revalidateBoard } from "@/app/lib/realtime/notify";
 import { requireBoardAccess } from "@/app/lib/dal";
-import { canManageBoard, BOARD_ROLE_LABELS } from "@/app/lib/roles";
+import { canManageBoard } from "@/app/lib/roles";
 import { recordAudit } from "@/app/lib/audit";
-import { notify } from "@/app/lib/notifications";
+import { notify, recipientI18n } from "@/app/lib/notifications";
+import { getI18n, i18nFor, issueMessage } from "@/app/i18n/server";
+import { fmt } from "@/app/i18n/format";
 import { removeMemberFromBoard } from "@/app/lib/services/members";
 import { addMemberSchema, assignableBoardRoleSchema } from "@/app/lib/validators";
 
-// Gestión de miembros de un tablero (Hito 3). Solo el PROPIETARIO (OWNER) puede
-// invitar, cambiar el rol o quitar miembros. No hay registro abierto: solo se puede
-// invitar a usuarios que ya existen (el administrador los crea, ver actions/admin.ts).
-// Ver docs/authorization.md.
+// Board member management. Only the OWNER can invite, change the role of or remove members.
+// Only existing users can be invited (created by the administrator, see actions/admin.ts,
+// or through open registration). See docs/authorization.md.
+//
+// Notifications are written in the recipient's language; the messages returned to the
+// form, in the actor's.
 
-// `values` devuelve lo que se envió cuando hay error: React resetea el formulario tras la
-// acción, y sin esto el campo de email se vaciaría justo cuando hay que corregirlo.
+// `values` returns what was sent when there is an error: React resets the form after the
+// action, and without this the email field would be cleared just when it needs fixing.
 export type MemberActionState = {
   error?: string;
   message?: string;
@@ -31,7 +35,7 @@ function submittedValues(formData: FormData): { email: string; role: string } {
   };
 }
 
-/** Invita a un usuario existente (por email) a un tablero con un rol (EDITOR/VIEWER). */
+/** Invites an existing user (by email) to a board with a role (EDITOR/VIEWER). */
 export async function addBoardMember(
   _prev: MemberActionState,
   formData: FormData,
@@ -39,8 +43,9 @@ export async function addBoardMember(
   const boardId = String(formData.get("boardId"));
   const values = submittedValues(formData);
   const { user: actor, role: actorRole } = await requireBoardAccess(boardId);
+  const { m } = await getI18n();
   if (!canManageBoard(actorRole)) {
-    return { error: "Solo el propietario puede gestionar los miembros.", values };
+    return { error: m.errors.members.ownerOnly, values };
   }
 
   const parsed = addMemberSchema.safeParse({
@@ -49,21 +54,17 @@ export async function addBoardMember(
   });
   if (!parsed.success) {
     return {
-      error: parsed.error.issues[0]?.message ?? "Datos no válidos.",
+      error: issueMessage(m, parsed.error.issues[0]),
       values,
     };
   }
 
   const user = await prisma.user.findUnique({
     where: { email: parsed.data.email.toLowerCase() },
-    select: { id: true, name: true },
+    select: { id: true, name: true, locale: true },
   });
   if (!user) {
-    return {
-      error:
-        "No existe ningún usuario con ese email. Pídele al administrador que cree la cuenta primero.",
-      values,
-    };
+    return { error: m.errors.members.userNotFound, values };
   }
 
   const existing = await prisma.boardMember.findUnique({
@@ -71,7 +72,7 @@ export async function addBoardMember(
     select: { userId: true },
   });
   if (existing) {
-    return { error: `${user.name} ya es miembro de este tablero.`, values };
+    return { error: fmt(m.errors.members.alreadyMember, { name: user.name }), values };
   }
 
   await prisma.boardMember.create({
@@ -84,25 +85,29 @@ export async function addBoardMember(
     targetId: boardId,
     detail: `${user.id} (${parsed.data.role})`,
   });
-  // Notifica al invitado (Hito 8).
+  // Notify the invitee, in their language.
   const board = await prisma.board.findUnique({
     where: { id: boardId },
     select: { title: true },
   });
+  const forInvitee = i18nFor(user.locale).m.notifications;
   await notify({
     userId: user.id,
     type: "member.added",
-    title: `Te han añadido a «${board?.title ?? "un tablero"}»`,
-    body: `Como ${BOARD_ROLE_LABELS[parsed.data.role]}.`,
+    title: fmt(forInvitee.memberAdded.title, { board: board?.title ?? forInvitee.someBoard }),
+    body: fmt(forInvitee.memberAdded.body, { role: forInvitee.roles[parsed.data.role] }),
     boardId,
   });
   revalidateBoard(boardId);
   return {
-    message: `${user.name} añadido como ${BOARD_ROLE_LABELS[parsed.data.role]}.`,
+    message: fmt(m.errors.members.added, {
+      name: user.name,
+      role: m.notifications.roles[parsed.data.role],
+    }),
   };
 }
 
-/** Cambia el rol de un miembro (no se puede cambiar el del propietario del tablero). */
+/** Changes a member's role (the board owner's cannot be changed). */
 export async function updateBoardMemberRole(formData: FormData): Promise<void> {
   const boardId = String(formData.get("boardId"));
   const userId = String(formData.get("userId"));
@@ -112,16 +117,16 @@ export async function updateBoardMemberRole(formData: FormData): Promise<void> {
   const parsed = assignableBoardRoleSchema.safeParse(formData.get("role"));
   if (!parsed.success) return;
 
-  // El propietario del tablero (Board.ownerId) siempre conserva el rol OWNER.
+  // The board owner (Board.ownerId) always keeps the OWNER role.
   const board = await prisma.board.findUnique({
     where: { id: boardId },
     select: { ownerId: true, title: true },
   });
   if (!board || board.ownerId === userId) return;
 
-  // Solo cuenta si el usuario ES miembro y su rol cambia de verdad: con un userId ajeno o
-  // el mismo rol no hay nada que auditar ni notificar (evita avisos falsos que, además,
-  // revelarían el título del tablero a quien no es miembro).
+  // It only counts if the user IS a member and their role really changes: with an unrelated
+  // userId or the same role there is nothing to audit or notify (avoids false notifications
+  // that, moreover, would reveal the board title to a non-member).
   const { count } = await prisma.boardMember.updateMany({
     where: { boardId, userId, role: { not: parsed.data } },
     data: { role: parsed.data },
@@ -134,17 +139,20 @@ export async function updateBoardMemberRole(formData: FormData): Promise<void> {
     targetId: boardId,
     detail: `${userId} → ${parsed.data}`,
   });
+  const { m } = await recipientI18n(userId);
   await notify({
     userId,
     type: "member.role_changed",
-    title: `Tu rol en «${board.title}» ha cambiado`,
-    body: `Ahora eres ${BOARD_ROLE_LABELS[parsed.data]}.`,
+    title: fmt(m.notifications.memberRoleChanged.title, { board: board.title }),
+    body: fmt(m.notifications.memberRoleChanged.body, {
+      role: m.notifications.roles[parsed.data],
+    }),
     boardId,
   });
   revalidateBoard(boardId);
 }
 
-/** Quita a un miembro del tablero (no se puede quitar al propietario). */
+/** Removes a member from the board (the owner cannot be removed). */
 export async function removeBoardMember(formData: FormData): Promise<void> {
   const boardId = String(formData.get("boardId"));
   const userId = String(formData.get("userId"));
@@ -157,7 +165,8 @@ export async function removeBoardMember(formData: FormData): Promise<void> {
   });
   if (!board || board.ownerId === userId) return;
 
-  // Si no era miembro (userId ajeno o expulsión repetida) no se audita ni se notifica.
+  // If they were not a member (unrelated userId or repeated removal) nothing is audited or
+  // notified.
   const removed = await removeMemberFromBoard(boardId, userId);
   if (removed === 0) return;
   await recordAudit({
@@ -167,11 +176,12 @@ export async function removeBoardMember(formData: FormData): Promise<void> {
     targetId: boardId,
     detail: userId,
   });
-  // Sin boardId: el usuario ya no tiene acceso, así que la notificación no enlaza.
+  // No boardId: the user no longer has access, so the notification has no link.
+  const { m } = await recipientI18n(userId);
   await notify({
     userId,
     type: "member.removed",
-    title: `Te han quitado de «${board.title}»`,
+    title: fmt(m.notifications.memberRemoved.title, { board: board.title }),
   });
   revalidateBoard(boardId);
 }

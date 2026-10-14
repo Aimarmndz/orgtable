@@ -16,6 +16,7 @@ import {
   seedCard,
   addMember,
   loginAs,
+  en,
 } from "./helpers";
 
 function form(fields: Record<string, string>): FormData {
@@ -31,12 +32,12 @@ afterAll(async () => {
   await disconnect();
 });
 
-describe("expulsar miembros (integración)", () => {
-  it("removeMemberFromBoard borra sus asignaciones en ese tablero y no en otros", async () => {
+describe("removing members (integration)", () => {
+  it("removeMemberFromBoard deletes their assignments on that board and not on others", async () => {
     const owner = await seedUser();
     const editor = await seedUser();
     const board = await seedBoard(owner.id);
-    const other = await seedBoard(owner.id, "Otro tablero");
+    const other = await seedBoard(owner.id, "Another board");
     await addMember(board.id, editor.id);
     await addMember(other.id, editor.id);
     const card = await seedCard((await seedList(board.id)).id);
@@ -62,7 +63,7 @@ describe("expulsar miembros (integración)", () => {
     expect(left).toEqual([{ cardId: otherCard.id }]);
   });
 
-  it("removeBoardMember notifica y audita una sola vez, aunque se repita", async () => {
+  it("removeBoardMember notifies and audits only once, even if repeated", async () => {
     const owner = await seedUser();
     const editor = await seedUser();
     const board = await seedBoard(owner.id);
@@ -83,7 +84,7 @@ describe("expulsar miembros (integración)", () => {
     ).toBe(1);
   });
 
-  it("removeBoardMember con un usuario que no es miembro no notifica ni audita", async () => {
+  it("removeBoardMember with a user who is not a member neither notifies nor audits", async () => {
     const owner = await seedUser();
     const stranger = await seedUser();
     const board = await seedBoard(owner.id);
@@ -96,8 +97,8 @@ describe("expulsar miembros (integración)", () => {
   });
 });
 
-describe("cambiar el rol (integración)", () => {
-  it("con un usuario que no es miembro no notifica ni audita", async () => {
+describe("changing the role (integration)", () => {
+  it("with a user who is not a member neither notifies nor audits", async () => {
     const owner = await seedUser();
     const stranger = await seedUser();
     const board = await seedBoard(owner.id);
@@ -111,7 +112,7 @@ describe("cambiar el rol (integración)", () => {
     expect(await prisma.auditLog.count()).toBe(0);
   });
 
-  it("cambia el rol una vez y no repite el aviso si el rol no cambia", async () => {
+  it("changes the role once and does not repeat the notification if the role stays the same", async () => {
     const owner = await seedUser();
     const editor = await seedUser();
     const board = await seedBoard(owner.id);
@@ -138,8 +139,8 @@ describe("cambiar el rol (integración)", () => {
   });
 });
 
-describe("tiempo real en la gestión de miembros (integración)", () => {
-  it("cambiar el rol y expulsar publican board:changed en el bus", async () => {
+describe("real time in member management (integration)", () => {
+  it("changing the role and removing publish board:changed on the bus", async () => {
     const owner = await seedUser();
     const editor = await seedUser();
     const board = await seedBoard(owner.id);
@@ -161,7 +162,7 @@ describe("tiempo real en la gestión de miembros (integración)", () => {
     expect(events.every((e) => e.type === "board:changed")).toBe(true);
   });
 
-  it("invitar publica board:changed en el bus", async () => {
+  it("inviting publishes board:changed on the bus", async () => {
     const owner = await seedUser();
     const guest = await seedUser();
     const board = await seedBoard(owner.id);
@@ -182,22 +183,22 @@ describe("tiempo real en la gestión de miembros (integración)", () => {
   });
 });
 
-describe("formulario de invitación (integración)", () => {
-  it("con un email que no existe devuelve lo enviado para no vaciar el campo", async () => {
+describe("invitation form (integration)", () => {
+  it("with an email that does not exist it returns what was sent so the field is not cleared", async () => {
     const owner = await seedUser();
     const board = await seedBoard(owner.id);
     await loginAs(owner.id);
 
     const state = await addBoardMember(
       {},
-      form({ boardId: board.id, email: "nadie@test.local", role: "VIEWER" }),
+      form({ boardId: board.id, email: "nobody@test.local", role: "VIEWER" }),
     );
 
     expect(state.error).toBeDefined();
-    expect(state.values).toEqual({ email: "nadie@test.local", role: "VIEWER" });
+    expect(state.values).toEqual({ email: "nobody@test.local", role: "VIEWER" });
   });
 
-  it("si la invitación sale bien no devuelve valores (el formulario se vacía)", async () => {
+  it("if the invitation succeeds it returns no values (the form is cleared)", async () => {
     const owner = await seedUser();
     const guest = await seedUser();
     const board = await seedBoard(owner.id);
@@ -213,12 +214,12 @@ describe("formulario de invitación (integración)", () => {
   });
 });
 
-// Con la sesión real, estas acciones pasan por requireBoardAccess + canManageBoard. Antes
-// el DAL estaba sustituido y devolvía el rol que pedía el test, así que una guarda rota no
-// se habría notado.
-describe("autorización de la gestión de miembros (integración)", () => {
+// With the real session, these actions go through requireBoardAccess + canManageBoard.
+// The DAL used to be mocked and returned whatever role the test asked for, so a broken
+// guard would have gone unnoticed.
+describe("authorization of member management (integration)", () => {
   for (const role of ["EDITOR", "VIEWER"] as const) {
-    it(`un ${role} no puede invitar, cambiar roles ni expulsar`, async () => {
+    it(`a ${role} cannot invite, change roles or remove`, async () => {
       const owner = await seedUser();
       const actor = await seedUser();
       const target = await seedUser();
@@ -232,7 +233,7 @@ describe("autorización de la gestión de miembros (integración)", () => {
         {},
         form({ boardId: board.id, email: guest.email, role: "EDITOR" }),
       );
-      expect(state.error).toBe("Solo el propietario puede gestionar los miembros.");
+      expect(state.error).toBe(en.errors.members.ownerOnly);
       await updateBoardMemberRole(
         form({ boardId: board.id, userId: target.id, role: "VIEWER" }),
       );

@@ -1,0 +1,121 @@
+{
+  "meta": {
+    "title": "Settings",
+    "description": "Your profile, security, API tokens and data."
+  },
+  "title": "Settings",
+  "navLabel": "Settings sections",
+  "groups": {
+    "account": "Account",
+    "data": "Your data"
+  },
+  "sections": {
+    "profile": "Profile",
+    "security": "Password and sessions",
+    "api": "API tokens",
+    "appearance": "Appearance",
+    "data": "Privacy and data",
+    "about": "About"
+  },
+  "profile": {
+    "description": "This is how the people you share boards with see you.",
+    "name": "Name",
+    "email": "Email",
+    "currentPassword": "Current password",
+    "currentPasswordHint": "Only needed if you change your email.",
+    "save": "Save profile"
+  },
+  "security": {
+    "description": "Changing your password signs out your other sessions.",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "newPasswordHint": "At least 8 characters.",
+    "confirmPassword": "Repeat the new password",
+    "submit": "Change password",
+    "submitting": "Changing…",
+    "sessionsTitle": "Open sessions",
+    "thisSession": "This session",
+    "sessionDates": "started {started} · expires {expires}",
+    "signOut": "Sign out",
+    "signOutOthers": {
+      "one": "Sign out the other session",
+      "other": "Sign out the other {count} sessions"
+    },
+    "browserOnOs": "{browser} on {os}",
+    "unknownBrowser": "Unknown browser"
+  },
+  "tokens": {
+    "description": "To use the orgtable API from scripts or other apps. A token acts <strong>as you</strong>, with the same access to boards, and is only shown once. See the <link>API documentation</link>.",
+    "empty": "You haven't created any tokens yet.",
+    "scopeRead": "Read only",
+    "scopeFull": "Read and write",
+    "scopeWrite": "Write",
+    "expired": "Expired",
+    "created": "created {date}",
+    "expires": "expires {date}",
+    "neverExpires": "never expires",
+    "used": "used {date}",
+    "neverUsed": "never used",
+    "revoke": "Revoke",
+    "form": {
+      "created": "Token “{name}” created",
+      "copyNow": "Copy it now: for security reasons it won't be shown again.",
+      "copy": "Copy",
+      "copied": "Copied",
+      "copyFailed": "Couldn't copy automatically: select the token and copy it by hand.",
+      "name": "Token name",
+      "namePlaceholder": "e.g. Backup script",
+      "scope": "Permissions",
+      "expiry": "Expires",
+      "expiryNever": "Never",
+      "expiryDays": {
+        "one": "{count} day",
+        "other": "{count} days"
+      },
+      "expiryYear": "1 year",
+      "submit": "Create token",
+      "submitting": "Creating…"
+    }
+  },
+  "appearance": {
+    "description": "Theme and language of the interface.",
+    "theme": "Theme",
+    "themeHint": "Saved in this browser.",
+    "themes": {
+      "light": {
+        "label": "Light",
+        "hint": "Warm paper"
+      },
+      "dark": {
+        "label": "Dark",
+        "hint": "Warm charcoal"
+      },
+      "system": {
+        "label": "System",
+        "hint": "Follows your device"
+      }
+    }
+  },
+  "data": {
+    "description": "Your GDPR rights, without having to write to anyone. The details are in the <link>privacy policy</link>.",
+    "export": {
+      "title": "Download my data",
+      "description": "A JSON file with your account, your boards, your comments, your notifications and your security log.",
+      "button": "Download .json"
+    },
+    "delete": {
+      "title": "Delete my account",
+      "descriptionNoBoards": "Your account and your comments are deleted forever. Other people's boards remain, without you. This can't be undone.",
+      "descriptionWithBoards": {
+        "one": "Your account, the board you created (with its cards and attachments) and your comments are deleted forever. Other people's boards remain, without you. This can't be undone.",
+        "other": "Your account, the {count} boards you created (with their cards and attachments) and your comments are deleted forever. Other people's boards remain, without you. This can't be undone."
+      },
+      "confirmPassword": "Type your password to confirm",
+      "submit": "Delete my account",
+      "submitting": "Deleting…"
+    }
+  },
+  "about": {
+    "line": "orgtable <version>{version}</version> · <source>Source code</source> · License <license>{license}</license>"
+  }
+}

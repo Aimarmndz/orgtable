@@ -1,46 +1,46 @@
-# ADR 0008 — Almacén de sesiones en servidor para revocación inmediata
+# ADR 0008 — Server-side session store for immediate revocation
 
-**Estado:** aceptada · **Fecha:** 2026-06-05 · **Relacionada:** [ADR 0004](./0004-no-redis-mvp.md)
+**Status:** accepted · **Date:** 2026-06-05 · **Related:** [ADR 0004](./0004-no-redis-mvp.md)
 
-## Contexto
+## Context
 
-El MVP usaba sesiones **JWT stateless**: el token se firmaba y se validaba solo por su
-firma, sin guardar nada en la base de datos. Ventaja: cero consultas para autenticar.
-Inconveniente, documentado como límite conocido: **no se podía revocar un token al
-instante**. `logout` borraba la cookie local, pero un token robado o una sesión en otro
-dispositivo seguían válidos hasta expirar (7 días).
+The MVP used **stateless JWT** sessions: the token was signed and validated only by its
+signature, without storing anything in the database. Advantage: zero queries to
+authenticate. Drawback, documented as a known limitation: **a token could not be revoked
+instantly**. `logout` deleted the local cookie, but a stolen token or a session on another
+device stayed valid until it expired (7 days).
 
-El Hito 4 pide "revocación inmediata de sesiones (tabla de sesiones)".
+The realtime feature called for "immediate session revocation (sessions table)".
 
-## Decisión
+## Decision
 
-Introducir una tabla **`Session`** y validar cada petición contra ella. La cookie sigue
-siendo un JWT firmado, pero su payload lleva el **id de la sesión** (`sid`). El DAL:
+Introduce a **`Session`** table and validate every request against it. The cookie is still
+a signed JWT, but its payload carries the **session id** (`sid`). The DAL:
 
-1. Verifica la firma y la expiración del JWT (como antes).
-2. Busca la fila `Session` por `sid` y la rechaza si no existe, está revocada
-   (`revokedAt`) o ha expirado (`expiresAt`).
+1. Verifies the JWT signature and expiry (as before).
+2. Looks up the `Session` row by `sid` and rejects it if it does not exist, is revoked
+   (`revokedAt`) or has expired (`expiresAt`).
 
-## Justificación
+## Rationale
 
-- **Revocación inmediata y real.** Marcar `revokedAt` invalida la sesión en la
-  siguiente petición. Habilita: logout que revoca de verdad, "cerrar en todos los
-  dispositivos" al cambiar la contraseña, y cierre forzado por el administrador.
-- **Sin Redis.** Se reутiliza PostgreSQL (coherente con [ADR 0007](./0007-pg-notify-over-redis.md)).
-  No hace falta un almacén de sesiones aparte.
-- **Coste acotado.** Es **una** consulta por petición, memoizada con `cache()` de React
-  (una sola vez por render). Para esta clase de app self-hosted, el coste es
-  despreciable frente a la ganancia de seguridad.
-- **Los cambios de rol no necesitan revocación.** El rol se lee fresco de la BD en cada
-  petición, así que surten efecto solos.
+- **Immediate, real revocation.** Setting `revokedAt` invalidates the session on the next
+  request. It enables: a logout that really revokes, "sign out on all devices" when the
+  password changes, and forced sign-out by the administrator.
+- **No Redis.** PostgreSQL is reused (consistent with [ADR 0007](./0007-pg-notify-over-redis.md)).
+  No separate session store is needed.
+- **Bounded cost.** It is **one** query per request, memoized with React's `cache()`
+  (only once per render). For this kind of self-hosted app, the cost is negligible
+  compared with the security gain.
+- **Role changes do not need revocation.** The role is read fresh from the database on
+  every request, so changes take effect on their own.
 
-## Consecuencias
+## Consequences
 
-- Nueva migración `Session` (`userId`, `userAgent`, `createdAt`, `expiresAt`,
-  `revokedAt`; FK con borrado en cascada al usuario).
-- `login` y el setup crean una fila de sesión; `logout` la revoca; el reset de
-  contraseña y el cierre forzado revocan todas las del usuario.
-- Esto supera el límite "no hay revocación inmediata" que describía
-  [`docs/authentication.md`](../authentication.md) para el MVP.
-- Conviene una limpieza periódica de sesiones expiradas/revocadas (tarea de
-  mantenimiento futura); no es crítica porque el DAL ya las rechaza.
+- New `Session` migration (`userId`, `userAgent`, `createdAt`, `expiresAt`, `revokedAt`;
+  FK to the user with cascade delete).
+- `login` and the setup create a session row; `logout` revokes it; a password reset and a
+  forced sign-out revoke all of the user's sessions.
+- This removes the "no immediate revocation" limitation that
+  [`docs/authentication.md`](../authentication.md) described for the MVP.
+- A periodic cleanup of expired/revoked sessions would be useful (future maintenance
+  task); it is not critical because the DAL already rejects them.

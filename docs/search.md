@@ -1,59 +1,59 @@
-# Búsqueda
+# Search
 
-La búsqueda global (Hito 6) permite encontrar **tableros** y **tarjetas** desde
-cualquier punto de la app. Es de solo lectura y está acotada a lo que el usuario puede
-ver. La decisión técnica está en [ADR 0011](./decisions/0011-search-ilike-scoped.md).
+Global search finds **boards** and **cards** from anywhere in the app. It is read-only and
+scoped to what the user can see. The technical decision is in
+[ADR 0011](./decisions/0011-search-ilike-scoped.md).
 
-## Cómo se usa
+## How to use it
 
-- En pantallas medianas o más anchas hay una **caja de búsqueda en la barra superior**.
-  En móvil, un icono de lupa lleva a la página de búsqueda.
-- Escribir y enviar (Enter) navega a `/search?q=…`. La página renderiza los resultados
-  en el servidor: no hace falta JavaScript (mejora progresiva).
-- Los resultados se agrupan en **Tableros** y **Tarjetas**. Cada tarjeta muestra su
-  tablero y su lista, y al pulsarla se abre directamente en su tablero mediante un
-  **deep-link** `?card=<id>` (ver más abajo).
+- On medium and wider screens there is a **search box in the top bar**. On mobile, a
+  magnifier icon leads to the search page.
+- Typing and submitting (Enter) navigates to `/search?q=…`. The page renders the results
+  on the server: no JavaScript is needed (progressive enhancement).
+- Results are grouped into **Boards** and **Cards**. Each card shows its board and list,
+  and clicking it opens it directly on its board through a `?card=<id>` **deep-link**
+  (see below).
 
-## Qué se busca
+## What is searched
 
-- **Tableros**: por `title` y `description`.
-- **Tarjetas**: por `title` y `description`.
+- **Boards**: by `title` and `description`.
+- **Cards**: by `title` and `description`.
 
-La coincidencia es por **subcadena, insensible a mayúsculas** (`ILIKE`), con un mínimo
-de 2 caracteres. Los resultados se ordenan por `updatedAt` (lo más reciente primero) y
-se limitan (12 tableros, 30 tarjetas) para mantener la respuesta ligera.
+Matching is **case-insensitive substring** (`ILIKE`), with a minimum of 2 characters.
+Results are sorted by `updatedAt` (most recent first) and capped (12 boards, 30 cards) to
+keep the response light.
 
-## Autorización
+## Authorization
 
-La consulta (`searchForUser` en `app/lib/queries.ts`) **incluye el filtro de acceso en
-el propio `WHERE`**: solo tableros donde el usuario es dueño o miembro, y tarjetas
-dentro de esos tableros. Es el mismo patrón que `getBoardsForUser`. No hay filtrado en
-cliente ni después de la consulta: el servidor es la única autoridad
-([docs/authorization.md](./authorization.md)). Un usuario nunca verá en los resultados
-una tarjeta de un tablero al que no pertenece.
+The query (`searchForUser` in `app/lib/queries.ts`) **puts the access filter in the
+`WHERE` itself**: only boards the user owns or belongs to, and cards inside those boards.
+It is the same pattern as `getBoardsForUser`. There is no filtering on the client or after
+the query: the server is the only authority
+([docs/authorization.md](./authorization.md)). A user never sees a card from a board they
+do not belong to in the results.
 
-## Deep-link a una tarjeta
+## Deep-link to a card
 
-`/board/<id>?card=<cardId>` abre el tablero con esa tarjeta ya desplegada en su modal.
-`BoardView` deriva la tarjeta abierta de la URL con `useSearchParams()`, así que el
-enlace funciona también si ya estás en ese tablero (Next no remonta el componente cuando
-solo cambian los parámetros). Abrir y cerrar una tarjeta actualiza `?card` con
-`window.history.replaceState`, sin pedir la página al servidor; al cerrar se quita, de
-modo que volver a pulsar la misma notificación la abre de nuevo. Si el id no existe en el
-tablero (por ejemplo, la tarjeta se borró), no se abre nada: es un comportamiento seguro
-por defecto.
+`/board/<id>?card=<cardId>` opens the board with that card already open in its modal.
+`BoardView` derives the open card from the URL with `useSearchParams()`, so the link also
+works when you are already on that board (Next does not remount the component when only
+the parameters change). Opening and closing a card updates `?card` with
+`window.history.replaceState`, without requesting the page from the server; closing
+removes it, so clicking the same notification again reopens it. If the id does not exist
+on the board (for example, the card was deleted), nothing opens: a safe default.
 
-## Componentes y archivos
+## Components and files
 
-- `app/lib/queries.ts` — `searchForUser(userId, query)` y el tipo `SearchResults`.
-- `app/(app)/search/page.tsx` — la página de resultados.
-- `app/components/search-box.tsx` — la caja (formulario GET reutilizable, navbar y página).
-- `app/(app)/board/[id]/page.tsx` + `app/components/board/board-view.tsx` — el deep-link.
+- `app/lib/queries.ts` — `searchForUser(userId, query)` and the `SearchResults` type.
+- `app/(app)/search/page.tsx` — the results page.
+- `app/components/search-box.tsx` — the box (reusable GET form, used in the navbar and on
+  the page).
+- `app/(app)/board/[id]/page.tsx` + `app/components/board/board-view.tsx` — the deep-link.
 
-## Límites conocidos y evolución
+## Known limits and possible improvements
 
-- Sin ranking por relevancia ni tolerancia a erratas. Orden por recencia.
-- `ILIKE '%term%'` es un escaneo (el comodín inicial impide usar un índice B-tree). A la
-  escala de una instancia self-hosted es instantáneo; si creciera, la vía es full-text
-  de PostgreSQL (`tsvector` + GIN) o `pg_trgm`, sin cambiar la interfaz de
-  `searchForUser`. Ver el ADR para el detalle.
+- No relevance ranking or typo tolerance. Results are sorted by recency.
+- `ILIKE '%term%'` is a scan (the leading wildcard prevents using a B-tree index). At the
+  scale of a self-hosted instance it is instant; if it grew, the path is PostgreSQL
+  full-text (`tsvector` + GIN) or `pg_trgm`, without changing the `searchForUser`
+  interface. See the ADR for details.

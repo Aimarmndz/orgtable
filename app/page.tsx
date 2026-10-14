@@ -1,12 +1,12 @@
 import { redirect } from "next/navigation";
 import { isSetupComplete, verifySession } from "@/app/lib/dal";
 
-// Depende del estado de la base de datos y de la sesión: nunca debe prerenderizarse
-// en build (además, en el build de Docker la DB no existe).
+// Depends on the database and the session, so it must never be prerendered at build
+// time (the Docker build has no database either).
 export const dynamic = "force-dynamic";
 
-// Punto de entrada: decide a dónde mandar al visitante según el estado de la
-// instancia y la sesión.
+// Entry point: sends the visitor where they belong given the instance state and the
+// session.
 export default async function Home() {
   if (!(await isSetupComplete())) redirect("/setup");
   if (!(await verifySession())) redirect("/login");

@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
 import { access, readdir, rm } from "node:fs/promises";
 import path from "node:path";
 
-// Directorio de subida temporal: storage.ts lo fija al importarse, así que se define antes
-// de cualquier import (vi.hoisted se ejecuta primero).
+// Temporary upload directory: storage.ts reads it when imported, so it is set before any
+// import (vi.hoisted runs first).
 const uploadDir = await vi.hoisted(async () => {
   const { mkdtempSync } = await import("node:fs");
   const { tmpdir } = await import("node:os");
@@ -45,13 +45,13 @@ afterAll(async () => {
   await disconnect();
 });
 
-/** Guarda un fichero real en el directorio temporal y su fila Attachment. */
+/** Saves a real file in the temporary directory, plus its Attachment row. */
 async function seedAttachment(cardId: string): Promise<string> {
   const { storedName, size } = await saveAttachmentFile(
-    new File(["contenido"], "nota.txt", { type: "text/plain" }),
+    new File(["content"], "note.txt", { type: "text/plain" }),
   );
   await prisma.attachment.create({
-    data: { cardId, filename: "nota.txt", storedName, mimeType: "text/plain", size },
+    data: { cardId, filename: "note.txt", storedName, mimeType: "text/plain", size },
   });
   return path.join(uploadDir, storedName);
 }
@@ -66,7 +66,7 @@ async function fileExists(filePath: string): Promise<boolean> {
   }
 }
 
-/** Propietario con sesión, tablero, lista, tarjeta y un adjunto en disco. */
+/** Signed-in owner, board, list, card and an attachment on disk. */
 async function seedBoardWithAttachment() {
   const owner = await seedUser();
   const board = await seedBoard(owner.id);
@@ -83,9 +83,9 @@ function form(fields: Record<string, string>): FormData {
   return fd;
 }
 
-// Regresión: el Cascade borraba las filas Attachment, pero los ficheros se quedaban en el
-// volumen para siempre.
-describe("borrar tarjeta, lista o tablero borra los ficheros de sus adjuntos", () => {
+// Regression: the Cascade deleted the Attachment rows, but the files stayed on the volume
+// forever.
+describe("deleting a card, list or board deletes its attachment files", () => {
   it("deleteCard (Server Action)", async () => {
     const { card, filePath } = await seedBoardWithAttachment();
     expect(await fileExists(filePath)).toBe(true);
@@ -103,12 +103,12 @@ describe("borrar tarjeta, lista o tablero borra los ficheros de sus adjuntos", (
     expect(await fileExists(filePath)).toBe(false);
   });
 
-  it("deleteBoard (Server Action) borra ficheros y avisa por el bus en vivo", async () => {
+  it("deleteBoard (Server Action) deletes the files and announces it on the live bus", async () => {
     const { board, filePath } = await seedBoardWithAttachment();
     const events: string[] = [];
     const unsubscribe = subscribeBoard(board.id, (e) => events.push(e.boardId));
 
-    // deleteBoard termina con redirect("/boards"), que lanza NEXT_REDIRECT.
+    // deleteBoard ends with redirect("/boards"), which throws NEXT_REDIRECT.
     await expect(deleteBoard(form({ boardId: board.id }))).rejects.toThrow("NEXT_REDIRECT");
     unsubscribe();
 
@@ -117,7 +117,7 @@ describe("borrar tarjeta, lista o tablero borra los ficheros de sus adjuntos", (
     expect(events).toEqual([board.id]);
   });
 
-  it("deleteBoard de alguien que no es el dueño no borra nada", async () => {
+  it("deleteBoard by someone who is not the owner deletes nothing", async () => {
     const { board, filePath } = await seedBoardWithAttachment();
     const editor = await seedUser();
     await addMember(board.id, editor.id, "EDITOR");
@@ -140,7 +140,7 @@ describe("borrar tarjeta, lista o tablero borra los ficheros de sus adjuntos", (
     expect(await fileExists(filePath)).toBe(false);
   });
 
-  it("DELETE /api/v1/boards/:id borra ficheros y avisa por el bus en vivo", async () => {
+  it("DELETE /api/v1/boards/:id deletes the files and announces it on the live bus", async () => {
     const { owner, board, filePath } = await seedBoardWithAttachment();
     const token = await seedApiToken(owner.id);
     const events: string[] = [];
@@ -156,7 +156,7 @@ describe("borrar tarjeta, lista o tablero borra los ficheros de sus adjuntos", (
     expect(events).toEqual([board.id]);
   });
 
-  it("un VIEWER recibe 403 y el fichero sigue ahí", async () => {
+  it("a VIEWER gets 403 and the file is still there", async () => {
     const { board, card, filePath } = await seedBoardWithAttachment();
     const viewer = await seedUser();
     await addMember(board.id, viewer.id, "VIEWER");
@@ -173,13 +173,13 @@ describe("borrar tarjeta, lista o tablero borra los ficheros de sus adjuntos", (
 });
 
 /**
- * Abre una transacción que da de alta un adjunto (con su fichero en disco) y la deja sin
- * confirmar, como una subida a medias. Devuelve la ruta del fichero y `commit()`, que la
- * confirma y espera a que termine.
+ * Opens a transaction that inserts an attachment (with its file on disk) and leaves it
+ * uncommitted, like an upload halfway through. Returns the file path and `commit()`, which
+ * commits it and waits for it to finish.
  */
 async function pendingUpload(cardId: string) {
   const { storedName, size } = await saveAttachmentFile(
-    new File(["tarde"], "tarde.txt", { type: "text/plain" }),
+    new File(["late"], "late.txt", { type: "text/plain" }),
   );
   let release!: () => void;
   const gate = new Promise<void>((resolve) => (release = resolve));
@@ -188,7 +188,7 @@ async function pendingUpload(cardId: string) {
   const tx = prisma.$transaction(
     async (t) => {
       await t.attachment.create({
-        data: { cardId, filename: "tarde.txt", storedName, mimeType: "text/plain", size },
+        data: { cardId, filename: "late.txt", storedName, mimeType: "text/plain", size },
       });
       inserted();
       await gate;
@@ -205,7 +205,7 @@ async function pendingUpload(cardId: string) {
   };
 }
 
-/** Espera a que alguna sesión de esta BD esté bloqueada esperando un lock. */
+/** Waits until some session of this DB is blocked waiting for a lock. */
 async function waitForLockWait(): Promise<void> {
   for (let i = 0; i < 200; i++) {
     const [row] = await prisma.$queryRaw<{ n: bigint }[]>`
@@ -214,14 +214,14 @@ async function waitForLockWait(): Promise<void> {
     if (row.n > BigInt(0)) return;
     await new Promise((r) => setTimeout(r, 25));
   }
-  throw new Error("ninguna sesión llegó a esperar un lock");
+  throw new Error("no session ever waited for a lock");
 }
 
-// Regresión: el borrado leía los adjuntos sin bloquear la tarjeta. Una subida confirmada
-// entre esa lectura y el delete se borraba en cascada, pero su fichero no estaba en la
-// lista leída y quedaba huérfano.
-describe("borrado concurrente con una subida en curso", () => {
-  it("deleteCardWithAttachments espera a la subida y borra también su fichero", async () => {
+// Regression: the deletion read the attachments without locking the card. An upload
+// committed between that read and the delete was removed by the cascade, but its file was
+// not in the list that had been read and was orphaned.
+describe("concurrent deletion with an upload in progress", () => {
+  it("deleteCardWithAttachments waits for the upload and deletes its file too", async () => {
     const { card, filePath } = await seedBoardWithAttachment();
     const upload = await pendingUpload(card.id);
 
@@ -235,7 +235,7 @@ describe("borrado concurrente con una subida en curso", () => {
     expect(await fileExists(upload.filePath)).toBe(false);
   });
 
-  it("deleteListWithAttachments espera a la subida y borra también su fichero", async () => {
+  it("deleteListWithAttachments waits for the upload and deletes its file too", async () => {
     const { list, card } = await seedBoardWithAttachment();
     const upload = await pendingUpload(card.id);
 
@@ -248,7 +248,7 @@ describe("borrado concurrente con una subida en curso", () => {
     expect(await fileExists(upload.filePath)).toBe(false);
   });
 
-  it("deleteBoardWithAttachments espera a la subida y borra también su fichero", async () => {
+  it("deleteBoardWithAttachments waits for the upload and deletes its file too", async () => {
     const { owner, board, card } = await seedBoardWithAttachment();
     const upload = await pendingUpload(card.id);
     const token = await seedApiToken(owner.id);
@@ -267,17 +267,17 @@ describe("borrado concurrente con una subida en curso", () => {
 });
 
 describe("uploadAttachment", () => {
-  it("si falla el alta en BD no deja el fichero huérfano", async () => {
+  it("does not orphan the file if the DB insert fails", async () => {
     const { card } = await seedBoardWithAttachment();
     const before = await readdir(uploadDir);
     const spy = vi
       .spyOn(prisma.attachment, "create")
-      .mockRejectedValueOnce(new Error("fallo simulado de la BD"));
+      .mockRejectedValueOnce(new Error("simulated DB failure"));
 
     const fd = new FormData();
     fd.set("cardId", card.id);
-    fd.set("file", new File(["x"], "otro.txt", { type: "text/plain" }));
-    await expect(uploadAttachment({}, fd)).rejects.toThrow("fallo simulado de la BD");
+    fd.set("file", new File(["x"], "other.txt", { type: "text/plain" }));
+    await expect(uploadAttachment({}, fd)).rejects.toThrow("simulated DB failure");
     spy.mockRestore();
 
     expect((await readdir(uploadDir)).sort()).toEqual(before.sort());

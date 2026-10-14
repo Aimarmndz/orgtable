@@ -2,9 +2,9 @@ import "server-only";
 import { prisma } from "@/app/lib/prisma";
 import { positionAtEnd } from "@/app/lib/ordering";
 
-// Contexto de una tarjeta (su tablero) para autorizar y notificar. Aislado aquí para
-// reutilizarlo desde las Server Actions de comentarios y asignaciones (Hito 10) y para
-// poder testearlo. Devuelve null si la tarjeta no existe.
+// A card's context (its board) for authorization and notifications. Isolated here so the
+// comment and assignee Server Actions can reuse it and so it can be tested. Returns null
+// if the card does not exist.
 export type CardContext = {
   cardId: string;
   cardTitle: string;
@@ -13,8 +13,8 @@ export type CardContext = {
 };
 
 /**
- * ¿La tarjeta pertenece a este tablero? Lo usa moveCard para impedir mover a tu tablero una
- * tarjeta de OTRO al que no tienes acceso (IDOR). Aislado aquí para poder testearlo.
+ * Does the card belong to this board? moveCard uses it to prevent moving into your board a
+ * card from ANOTHER board you have no access to (IDOR). Isolated here so it can be tested.
  */
 export async function cardBelongsToBoard(
   cardId: string,
@@ -48,12 +48,12 @@ export async function cardContext(
 }
 
 /**
- * Crea una tarjeta al final de la lista. Leer la última posición y crear son dos pasos:
- * sin bloqueo, dos altas simultáneas (dos usuarios o Promise.all contra la API) leían la
- * misma última clave y guardaban la MISMA posición, y luego generateKeyBetween(a, a)
- * rompía el arrastre en esa lista. El `FOR UPDATE` sobre la fila de la lista serializa
- * las altas de esa lista (las de otras listas no esperan). No se usa un índice único
- * (listId, position) porque los movimientos concurrentes también colisionan y fallarían.
+ * Creates a card at the end of the list. Reading the last position and creating are two
+ * steps: without a lock, two concurrent creates (two users, or Promise.all against the
+ * API) read the same last key and stored the SAME position, and then
+ * generateKeyBetween(a, a) broke drag and drop in that list. `FOR UPDATE` on the list row
+ * serializes creates within that list (other lists do not wait). There is no unique
+ * index on (listId, position) because concurrent moves also collide and would fail.
  */
 export async function createCardAtEnd(data: {
   listId: string;

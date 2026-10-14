@@ -9,10 +9,12 @@ import {
 } from "@/app/lib/actions/admin";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
+import { useI18n } from "@/app/i18n/client";
+import { fmt } from "@/app/i18n/format";
 
-// Acciones por fila del panel de administración: cambiar rol global, restablecer la
-// contraseña (con un campo desplegable) y borrar la cuenta. Las acciones devuelven el
-// resultado por redirección con query (?ok/?error) que la página traduce a un aviso.
+// Per-row actions of the admin panel: change the global role, reset the password (with
+// an inline field) and delete the account. The actions report back through a redirect
+// with a query (?ok/?error) that the page turns into a notice.
 export function UserRowActions({
   userId,
   userName,
@@ -25,13 +27,15 @@ export function UserRowActions({
   isSelf: boolean;
 }) {
   const [resetting, setResetting] = useState(false);
+  const { m } = useI18n();
+  const t = m.admin.users;
 
-  // No puedes cambiar tu propio rol ni borrarte: evita quedarte sin acceso de admin.
+  // You can't change your own role or delete yourself: avoids locking yourself out.
   if (isSelf) {
     return (
       <div className="flex items-center justify-end gap-2 text-xs text-ink-muted">
         <span className="rounded-full bg-surface-2 px-2.5 py-1 font-medium">
-          Tú
+          {t.you}
         </span>
       </div>
     );
@@ -46,10 +50,10 @@ export function UserRowActions({
           defaultValue={role}
           onChange={(e) => e.currentTarget.form?.requestSubmit()}
           className="h-8 rounded-lg border border-border bg-surface px-2 text-xs text-ink outline-none focus-visible:border-accent"
-          aria-label="Rol global"
+          aria-label={t.roleLabel}
         >
-          <option value="MEMBER">Miembro</option>
-          <option value="ADMIN">Administrador</option>
+          <option value="MEMBER">{m.admin.roles.MEMBER}</option>
+          <option value="ADMIN">{m.admin.roles.ADMIN}</option>
         </select>
       </form>
 
@@ -65,20 +69,20 @@ export function UserRowActions({
             type="password"
             required
             minLength={8}
-            placeholder="Nueva contraseña"
-            aria-label={`Nueva contraseña para ${userName}`}
+            placeholder={t.newPassword}
+            aria-label={fmt(t.newPasswordFor, { name: userName })}
             autoComplete="new-password"
             className="h-8 w-40 text-xs"
           />
           <Button type="submit" variant="subtle" className="h-8 px-2.5 text-xs">
-            Guardar
+            {m.common.actions.save}
           </Button>
           <button
             type="button"
             onClick={() => setResetting(false)}
             className="text-xs text-ink-muted hover:text-ink"
           >
-            Cancelar
+            {m.common.actions.cancel}
           </button>
         </form>
       ) : (
@@ -87,7 +91,7 @@ export function UserRowActions({
           onClick={() => setResetting(true)}
           className="rounded-lg px-2 py-1 text-xs text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
         >
-          Restablecer contraseña
+          {t.resetPassword}
         </button>
       )}
 
@@ -96,23 +100,23 @@ export function UserRowActions({
         <button
           type="submit"
           className="rounded-lg px-2 py-1 text-xs text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
-          title="Cierra todas las sesiones activas de este usuario"
+          title={t.revokeSessionsTitle}
         >
-          Cerrar sesiones
+          {t.revokeSessions}
         </button>
       </form>
 
       <form
         action={deleteUser}
         onSubmit={(e) => {
-          if (!confirm("¿Borrar esta cuenta? Esta acción no se puede deshacer."))
+          if (!confirm(t.deleteConfirm))
             e.preventDefault();
         }}
       >
         <input type="hidden" name="userId" value={userId} />
         <button
           className="grid size-8 place-items-center rounded-lg text-ink-muted transition-colors hover:bg-danger/10 hover:text-danger"
-          aria-label="Borrar usuario"
+          aria-label={t.deleteLabel}
         >
           ✕
         </button>

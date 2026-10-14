@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Modo oscuro por clase en <html> (toggle manual + preferencia del sistema). */
+/* Dark mode via a class on <html> (manual toggle + system preference). */
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
@@ -16,18 +16,18 @@
   --color-accent-ink: var(--accent-ink);
   --color-danger: var(--danger);
   --color-success: var(--success);
-  --font-sans: var(--font-satoshi);
-  --font-display: var(--font-cabinet);
+  --font-sans: var(--font-figtree);
+  --font-display: var(--font-bricolage);
   --font-mono: var(--font-geist-mono);
 }
 
 /* ───────────────────────────────────────────────────────────────────────────
-   Estética: EDITORIAL CÁLIDO. Cromo en neutros cálidos (arena, papel, espresso)
-   con un único acento terracota. El color del contenido (tableros, etiquetas)
-   vive en una paleta apagada y cohesiva (app/lib/colors.ts). Tokens en OKLCH.
+   Look: WARM EDITORIAL. Chrome in warm neutrals (sand, paper, espresso) with a
+   single terracotta accent. Content colour (boards, labels) lives in a muted,
+   cohesive palette (app/lib/colors.ts). Tokens in OKLCH.
    ─────────────────────────────────────────────────────────────────────────── */
 
-/* Tema claro (por defecto) — papel cálido sobre arena */
+/* Light theme (default): warm paper on sand */
 :root {
   --bg: oklch(0.965 0.013 74);
   --surface: oklch(0.992 0.005 80);
@@ -39,13 +39,13 @@
   --accent: oklch(0.49 0.13 40);
   --accent-hover: oklch(0.44 0.13 40);
   --accent-ink: oklch(0.99 0.01 80);
-  /* danger y success oscurecidos lo justo para 4,5:1 (WCAG AA) también sobre su propio
-     fondo al 10-15 % (avisos, insignia de vencida). Lo comprueba test/contrast.test.ts. */
+  /* danger and success are darkened just enough for 4.5:1 (WCAG AA), also on their own
+     10-15 % background (notices, overdue badge). Checked by test/contrast.test.ts. */
   --danger: oklch(0.52 0.18 28);
   --success: oklch(0.48 0.1 145);
 }
 
-/* Tema oscuro — carbón cálido (espresso), mismo acento terracota más luminoso */
+/* Dark theme: warm charcoal (espresso), same terracotta accent, brighter */
 .dark {
   --bg: oklch(0.205 0.012 52);
   --surface: oklch(0.25 0.014 52);
@@ -67,15 +67,15 @@ body {
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
-/* Titulares con la display (Cabinet Grotesk): carácter editorial, tracking ceñido.
-   Se aplica con la utilidad `font-display`; aquí solo afinamos el render. */
+/* Headings in the display face (Bricolage Grotesque): editorial character, tight
+   tracking. Applied with the `font-display` utility; this only tunes the rendering. */
 .font-display {
   font-feature-settings: "ss01";
   letter-spacing: -0.02em;
 }
 
-/* Grano de papel sutil: capa fija, sin eventos de puntero y sin repintar al
-   hacer scroll (no se aplica a contenedores scrollables). Aporta textura cálida. */
+/* Subtle paper grain: a fixed layer, without pointer events and without repainting on
+   scroll (never applied to scrollable containers). Adds warm texture. */
 body::before {
   content: "";
   position: fixed;
@@ -91,7 +91,7 @@ body::before {
   opacity: 0.18;
 }
 
-/* Scrollbars discretas (las columnas del tablero scrollean a menudo). */
+/* Discreet scrollbars (board columns scroll often). */
 @media (pointer: fine) {
   * {
     scrollbar-width: thin;
@@ -99,7 +99,7 @@ body::before {
   }
 }
 
-/* Respeta la preferencia de movimiento reducido en toda la app. */
+/* Honour the reduced-motion preference across the app. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -128,4 +128,87 @@ body::before {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
+}
+
+/* Long-form text of the legal pages (/legal/*). No typography plugin: a few rules
+   wrapped in :where() (specificity 0), so any Tailwind utility on a given element wins
+   without fighting them. */
+.legal-prose {
+  font-size: 0.9375rem;
+  line-height: 1.7;
+}
+.legal-prose :where(h2) {
+  margin: 2.25rem 0 0.6rem;
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+.legal-prose :where(p, ul, dl, .table-scroll) {
+  margin: 0.75rem 0;
+}
+.legal-prose :where(ul) {
+  padding-left: 1.25rem;
+  list-style: disc;
+}
+.legal-prose :where(li + li) {
+  margin-top: 0.35rem;
+}
+.legal-prose :where(a) {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.legal-prose :where(code) {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  padding: 0.1em 0.35em;
+  border-radius: 0.3rem;
+  background: var(--surface-2);
+}
+.legal-prose :where(.table-scroll) {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+}
+.legal-prose :where(table) {
+  width: 100%;
+  min-width: 34rem;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.legal-prose :where(th, td) {
+  padding: 0.6rem 0.85rem;
+  text-align: left;
+  vertical-align: top;
+}
+.legal-prose :where(th) {
+  background: var(--surface-2);
+  font-weight: 700;
+}
+.legal-prose :where(tr + tr td, tbody tr td) {
+  border-top: 1px solid var(--border);
+}
+
+/* Account menu (native popover, app/components/account-menu.tsx). Anchored under its
+   button with anchor positioning; browsers without support fall back to the top right,
+   which is where the button is. */
+.account-menu {
+  position: fixed;
+  inset: auto;
+  top: 3.75rem;
+  right: 0.75rem;
+}
+@supports (position-anchor: --account-menu) {
+  .account-menu {
+    position-anchor: --account-menu;
+    top: calc(anchor(bottom) + 0.4rem);
+    right: anchor(right);
+  }
+}
+.account-menu:popover-open {
+  animation: dialog-in 160ms ease-out;
 }

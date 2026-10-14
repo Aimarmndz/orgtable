@@ -3,18 +3,18 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { buildPoolConfig } from "@/app/lib/prisma";
 
-// Configuración del pool de pg y singleton de PrismaClient (app/lib/prisma.ts).
+// pg pool configuration and the PrismaClient singleton (app/lib/prisma.ts).
 
-describe("pool de conexiones de Prisma", () => {
-  it("fija un timeout de conexión (pg espera para siempre por defecto)", () => {
+describe("Prisma connection pool", () => {
+  it("sets a connection timeout (pg waits forever by default)", () => {
     const config = buildPoolConfig("postgresql://u:p@localhost:5432/x_test");
     expect(config.connectionTimeoutMillis).toBe(5_000);
     expect(config.idleTimeoutMillis).toBe(10_000);
   });
 
-  // Comprueba el cableado: el cliente que exporta el módulo se crea con buildPoolConfig y
-  // con onPoolError. Si alguien vuelve a `new PrismaPg({ connectionString })`, falla.
-  it("el cliente exportado usa buildPoolConfig y registra solo el mensaje de los errores", async () => {
+  // Checks the wiring: the client the module exports is created with buildPoolConfig and
+  // with onPoolError. If someone goes back to `new PrismaPg({ connectionString })`, it fails.
+  it("the exported client uses buildPoolConfig and logs only the error message", async () => {
     const g = globalThis as unknown as { prisma: PrismaClient | undefined };
     const previous = g.prisma;
     const calls: ConstructorParameters<typeof PrismaPg>[] = [];
@@ -37,10 +37,10 @@ describe("pool de conexiones de Prisma", () => {
       const [config, options] = calls[0];
       expect(config).toEqual(buildPoolConfig(process.env.DATABASE_URL));
 
-      // Se registra el mensaje, no el objeto Error (que podría arrastrar más datos).
-      options?.onPoolError?.(new Error("conexión cerrada"));
+      // The message is logged, not the Error object (which could carry more data).
+      options?.onPoolError?.(new Error("connection closed"));
       expect(errorSpy).toHaveBeenCalledTimes(1);
-      expect(errorSpy.mock.calls[0]).toEqual([expect.any(String), "conexión cerrada"]);
+      expect(errorSpy.mock.calls[0]).toEqual([expect.any(String), "connection closed"]);
       await prisma.$disconnect();
     } finally {
       errorSpy.mockRestore();
@@ -50,10 +50,10 @@ describe("pool de conexiones de Prisma", () => {
     }
   });
 
-  // Reproduce el cuelgue con la configuración de pg: con el pool agotado, la consulta
-  // siguiente falla por timeout en vez de quedarse esperando. Se usa un pool de 1 y
-  // 200 ms para no tardar 5 s; que la app use ese timeout lo vigila el test anterior.
-  it("con el pool agotado, una consulta falla por timeout en vez de colgarse", async () => {
+  // Reproduces the hang with the pg configuration: with the pool exhausted, the next query
+  // fails with a timeout instead of waiting. A pool of 1 and 200 ms are used so it does not
+  // take 5 s; that the app uses that timeout is checked by the previous test.
+  it("with the pool exhausted, a query fails with a timeout instead of hanging", async () => {
     const adapter = new PrismaPg({
       ...buildPoolConfig(process.env.DATABASE_URL),
       max: 1,
@@ -62,7 +62,7 @@ describe("pool de conexiones de Prisma", () => {
     const client = new PrismaClient({ adapter });
     try {
       await client.$transaction(async (tx) => {
-        // La transacción interactiva ocupa la única conexión del pool.
+        // The interactive transaction takes the pool's only connection.
         await tx.$queryRaw`SELECT 1`;
         await expect(client.$queryRaw`SELECT 1`).rejects.toThrow(/timeout/i);
       });
@@ -72,10 +72,10 @@ describe("pool de conexiones de Prisma", () => {
   });
 });
 
-describe("singleton de PrismaClient", () => {
-  // Turbopack evalúa el módulo una vez por capa; en producción, sin globalThis, cada
-  // evaluación abría su propio pool.
-  it("en producción reutiliza el mismo cliente entre evaluaciones del módulo", async () => {
+describe("PrismaClient singleton", () => {
+  // Turbopack evaluates the module once per layer; in production, without globalThis, each
+  // evaluation opened its own pool.
+  it("in production it reuses the same client across module evaluations", async () => {
     const g = globalThis as unknown as { prisma: PrismaClient | undefined };
     const previous = g.prisma;
     vi.stubEnv("NODE_ENV", "production");

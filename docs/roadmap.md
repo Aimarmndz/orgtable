@@ -1,263 +1,172 @@
-# Hoja de ruta
+# Roadmap
 
-orgtable se construye por hitos incrementales. Esta página resume qué incluye cada
-uno y su estado. El alcance puede ajustarse conforme avanza el proyecto.
+This page lists what orgtable already does and where it is heading. Plans can change as
+the project evolves and as people use it; the order of planned work is indicative.
 
-## Hito 0 — Cimientos ✅ (completado)
+Every feature follows the same principles: orgtable stays self-hosted, needs no mandatory
+external services, keeps the server as the only authority on permissions, and builds on
+what already exists (Server Actions + Data Access Layer + Prisma, role-based access
+control and the real-time bus).
 
-La infraestructura sobre la que se monta todo lo demás. Sin interfaz todavía.
+If you want to work on something here, open an issue first so we can agree on the
+approach. See [`contributing.md`](./contributing.md).
 
-- [x] Esquema de base de datos (Prisma 7 + PostgreSQL) y primera migración.
-- [x] Cliente Prisma con driver adapter (`@prisma/adapter-pg`).
-- [x] Next.js configurado para `output: standalone`.
-- [x] Endpoint de health (`/api/health`).
-- [x] Imagen Docker multi-stage + `docker-compose.yml` (app + postgres).
-- [x] Migraciones automáticas en el arranque del contenedor.
-- [x] Instalador de un comando (`install.sh`) con generación de secretos.
-- [x] Licencia y documentación base. (La licencia inicial se sustituyó después por la
-      propietaria de `LICENSE`; ver [ADR 0016](./decisions/0016-licencia-propietaria.md).)
+## Shipped
 
-## Hito 1 — MVP de extremo a extremo ✅ (completado)
+### Boards, lists and cards
 
-El producto mínimo usable: instalar con un comando → configurar → usar como Trello.
+- Create, rename and delete boards, lists and cards.
+- Drag and drop for lists and cards, by mouse, touch and keyboard, with an optimistic UI
+  and fractional indexing so a move writes a single row. See
+  [`drag-and-drop.md`](./drag-and-drop.md).
+- Card details: description, color labels, due dates with an overdue warning, and
+  checklists with a progress bar. See [`card-detail.md`](./card-detail.md).
+- Attachments stored on disk (a Docker volume) and downloaded through an authorized
+  route. See [`attachments.md`](./attachments.md).
+- Board export and import as JSON.
 
-- [x] **Asistente de configuración inicial** (`/setup`): crear el usuario administrador
-      y el nombre de la instancia; bloqueo una vez completado.
-- [x] **Autenticación**: sesiones JWT con `jose` (cookie httpOnly), Data Access Layer
-      (`verifySession`), login/logout, protección de rutas con `proxy.ts`.
-- [x] **Tableros**: crear, listar, abrir y borrar.
-- [x] **Listas y tarjetas**: crear, renombrar y borrar.
-- [x] **Arrastrar y soltar** de listas y tarjetas con `@dnd-kit` + fractional indexing
-      + UI optimista, persistido vía Server Actions.
+### Collaboration
 
-## Hito 2 — Detalle de tarjeta ✅ (completado)
+- Board members with roles (owner, editor, viewer), checked by the server on every
+  action; viewers get a read-only interface. See [`authorization.md`](./authorization.md).
+- Real-time sync between everyone on a board over Server-Sent Events, with an optional
+  PostgreSQL `LISTEN/NOTIFY` bridge for several app instances. See
+  [`realtime.md`](./realtime.md).
+- Card assignees (board members only) and comments. See
+  [`card-collaboration.md`](./card-collaboration.md).
+- In-app notifications with a bell and unread counter, delivered live. See
+  [`notifications.md`](./notifications.md).
+- Due-date reminders, triggered by an external cron job. See
+  [`reminders.md`](./reminders.md).
 
-- [x] Modal de tarjeta con descripción.
-- [x] Etiquetas (labels): crear y asignar, con badges en la tarjeta.
-- [x] Fechas de vencimiento (due dates), con aviso de vencida.
-- [x] Checklists con ítems marcables y barra de progreso.
-- [x] **Sistema de diseño** (estética Trello colorida) con tema claro y oscuro
-      (toggle persistente). Ver `DESIGN.md` y `PRODUCT.md`.
+### Finding and viewing work
 
-## Hito 3 — Multiusuario ✅ (completado)
+- Global search across boards and cards, limited to what each person can see, with links
+  that open a card directly. See [`search.md`](./search.md).
+- Board filters by label, assignee and due-date status. See [`filters.md`](./filters.md).
+- Calendar view with a monthly grid; dragging a card to another day changes its due date.
+  See [`calendar.md`](./calendar.md).
 
-- [x] Invitar miembros a un tablero (`board_members`) por email, con rol.
-- [x] Roles (owner / editor / viewer) y autorización por rol en cada Server Action,
-      con la UI en solo lectura para los lectores. Ver `docs/authorization.md`.
-- [x] Gestión de usuarios por el administrador (`/admin/users`): altas, roles,
-      restablecer contraseña y borrado con salvaguardas. Ver `docs/admin.md`.
+### Public API
 
-## Hito 4 — Tiempo real ✅ (completado)
+- REST API (`/api/v1`) for boards, lists and cards, authenticated with personal access
+  tokens that are stored hashed and shown only once.
+- Tokens act with their owner's permissions, can be read-only or read-write, and can
+  expire. See [`api/public-api.md`](./api/public-api.md).
 
-- [x] Sincronización en vivo entre usuarios con **SSE** (`/api/boards/[id]/stream`) y
-      un bus pub/sub; el cliente recarga con `router.refresh()`. Ver `docs/realtime.md`.
-- [x] Pub/sub **en proceso** por defecto, con puente opcional vía PostgreSQL
-      `LISTEN/NOTIFY` para multi-instancia (no Redis; ver
-      [ADR 0007](./decisions/0007-pg-notify-over-redis.md)).
-- [x] Revocación inmediata de sesiones con tabla `Session` (logout, reset de
-      contraseña, cierre forzado por el admin). Ver
-      [ADR 0008](./decisions/0008-session-store.md).
+### Accounts, administration and security
 
-## Hito 5 — Operación y pulido ✅ (completado)
+- Setup wizard on first start that creates the admin account. See
+  [`setup-wizard.md`](./setup-wizard.md).
+- JWT sessions backed by a session table, so signing out, resetting a password or an
+  admin action revokes them immediately. See [`authentication.md`](./authentication.md).
+- User management for admins, sign-in rate limiting and an audit log. See
+  [`admin.md`](./admin.md) and [`operations.md`](./operations.md).
+- Optional open sign-up per instance, with consent and anti-abuse measures.
+- Account settings: profile, password, active sessions, API tokens, appearance, data
+  export and account deletion.
+- Security headers, hardened dependencies and authorization tests. See
+  [`security.md`](./security.md).
 
-- [x] Backups de PostgreSQL (`scripts/backup.sh` / `restore.sh`) y exportar/importar
-      tableros en JSON. Ver `docs/operations.md`.
-- [x] Adjuntos en tarjetas, en disco (volumen) con descarga autorizada. Ver
-      `docs/attachments.md`.
-- [x] Flujo de actualización (`scripts/update.sh`; migraciones automáticas al arrancar).
-- [x] Rate-limiting del login y registro de auditoría (`/admin/audit`). Ver
-      `docs/operations.md`.
+### Privacy and legal
 
-## Hito 6 — Búsqueda global ✅ (completado)
+- Operator details entered once by the admin feed the privacy policy, terms, cookie
+  policy and legal notice pages.
+- Everyone can download all their data as JSON or delete their account.
+- Scheduled cleanup of expired sessions, notifications and audit entries. See
+  [`privacy.md`](./privacy.md).
 
-- [x] Búsqueda de **tableros** y **tarjetas** por `title`/`description`, acotada en el
-      servidor a lo que el usuario puede ver (mismo patrón de acceso que
-      `getBoardsForUser`). Coincidencia `ILIKE`, sin motor de búsqueda externo
-      ([ADR 0011](./decisions/0011-search-ilike-scoped.md)).
-- [x] Caja de búsqueda en la barra superior + página `/search` (formulario GET, sin
-      depender de JavaScript) y **deep-link** `?card=` para abrir una tarjeta desde un
-      resultado. Ver [`docs/search.md`](./search.md).
+### Interface
 
-## Hito 7 — Vista de calendario ✅ (completado)
+- Light and dark themes, keyboard and screen reader support, and a layout that works on
+  phones. See [`design-system.md`](./design-system.md).
+- Interface in English and Spanish, chosen from the browser language or a picker in the
+  footer and in Settings › Appearance. New languages can be added without touching code.
+  See [`../locales/README.md`](../locales/README.md).
 
-- [x] Conmutador **Tablero / Calendario** en cada tablero. La vista de calendario
-      coloca las tarjetas con fecha de vencimiento en una rejilla mensual (lunes
-      primero), con navegación entre meses y resalte del día de hoy.
-- [x] Al pulsar una tarjeta se abre su modal (se reutiliza el detalle de tarjeta y el
-      tiempo real). Indexación por fecha sin desfases de zona horaria. Ver
-      [`docs/calendar.md`](./calendar.md).
+### Self-hosting and operations
 
-## Hito 8 — Notificaciones ✅ (completado)
+- One-command installer that sets up Docker and generates the secrets. See
+  [`installation.md`](./installation.md).
+- Multi-stage Docker image with automatic migrations on startup and a health endpoint.
+  See [`docker.md`](./docker.md).
+- Backup, restore and update scripts. See [`self-hosting.md`](./self-hosting.md) and
+  [`operations.md`](./operations.md).
+- Released under the AGPL-3.0-or-later with an attribution term. See
+  [`../LICENSE`](../LICENSE).
 
-- [x] Notificaciones in-app por usuario (te añaden / te cambian el rol / te quitan de un
-      tablero), con campana y contador de no leídas en la barra superior, marcar una o
-      todas como leídas, y enlace al tablero.
-- [x] **Entrega en vivo reutilizando el bus pub/sub** del Hito 4 con un canal por
-      usuario (`user:<id>`) y un stream SSE `/api/notifications/stream`; sin email ni
-      cola ([ADR 0012](./decisions/0012-notifications.md)). Ver
-      [`docs/notifications.md`](./notifications.md).
+## Planned
 
-## Hito 9 — API pública ✅ (completado)
+### PWA and mobile
 
-- [x] API REST `/api/v1` para tableros, listas y tarjetas (CRUD esencial), autenticada
-      con **tokens de acceso personal** (`Authorization: Bearer`). El token se guarda
-      hasheado (SHA-256) y se muestra una sola vez ([ADR 0013](./decisions/0013-api-tokens.md)).
-- [x] La API **reutiliza la autorización por rol**: un token actúa como su dueño, con su
-      mismo acceso; el rol del tablero se revalida en cada petición. Las mutaciones por
-      API también emiten eventos de tiempo real.
-- [x] Gestión de tokens en `/settings` (crear, ver una vez, revocar), con auditoría. Ver
-      [`docs/api/public-api.md`](./api/public-api.md).
+- Installable progressive web app: manifest, icons and a service worker with a basic
+  offline shell.
+- Mobile polish for the board and the dialogs: touch dragging, full-width columns and
+  touch targets of at least 44 px.
 
----
+### Automations
 
-> **Hitos 0–13 completados.** A partir de aquí van los **próximos hitos planificados**
-> (14–20): pendientes, con el alcance pensado y dónde encajan en la arquitectura actual,
-> para poder arrancar cada uno directamente. El orden es orientativo; se priorizará según
-> el uso real. Mantener la filosofía del proyecto: self-hosted, sin servicios externos
-> obligatorios, el servidor como única autoridad, y reutilizar lo que ya existe
-> (Server Actions + DAL + Prisma, RBAC, bus de tiempo real).
+Rules of the form "when X happens, do Y" inside a board, in the style of Trello's Butler,
+without external services.
 
-## Hito 10 — Colaboración en la tarjeta: asignados y comentarios ✅ (completado)
+- Triggers: card moved to a list, label added or removed, due date approaching or
+  reached, checklist completed.
+- Actions: move, assign, set a label or a due date, add a checklist, notify.
+- Rules run on the existing event bus, with the board's permissions, a per-event limit
+  to prevent loops, and an audit trail. Only board owners can create them.
 
-- [x] **Asignados**: modelo de unión `CardAssignee`. Asignar/quitar miembros desde el
-      modal (avatares también en la cara de la tarjeta). Solo se puede asignar a miembros
-      del tablero (servicio testeable `assignMemberToCard`).
-- [x] **Comentarios**: modelo `Comment`, hilo plano en el modal; comentar requiere
-      edición, borrar lo hace el autor o el OWNER. `revalidateBoard` para el tiempo real.
-- [x] **Notificaciones** reutilizando `notify()`: `card.assigned` y `comment.added` (a los
-      asignados). Tipos añadidos a `NotificationType`.
-- [x] La **API** expone asignados y comentarios en las respuestas de tarjeta (lectura);
-      crear/borrar por API queda como ampliación. Decisión en
-      [ADR 0014](./decisions/0014-card-collaboration.md). Ver
-      [`docs/card-collaboration.md`](./card-collaboration.md).
+### More board views
 
-## Hito 11 — Fechas y recordatorios de vencimiento ✅ (completado)
+- Table view: every card of a board in a sortable, filterable table (title, list,
+  assignee, due date, labels), next to the Board and Calendar views.
+- Swimlanes: group the board into rows by label or by assignee.
+- Both reuse the existing board filters.
 
-- [x] **Recordatorios de vencimiento**: `generateDueReminders` (servicio testeable) genera
-      notificaciones `due.reminder` para los asignados de tarjetas que vencen en 24 h o
-      están vencidas (política de avisos en [`docs/reminders.md`](./reminders.md)). Lo
-      dispara un **cron externo** vía el endpoint protegido `POST /api/cron/reminders`
-      (secreto en `Authorization: Bearer`, comparado en tiempo constante), sin scheduler
-      en proceso
-      ([ADR 0015](./decisions/0015-reminders-cron.md)).
-- [x] **Arrastrar en el calendario** a otro día cambia el vencimiento (`@dnd-kit` +
-      `setCardDueDate`). Notificaciones con **deep-link** a la tarjeta (`Notification.cardId`).
-      Ver [`docs/reminders.md`](./reminders.md).
+### Templates, duplication and archiving
 
-> Diferido al **backlog**: email/Web Push (otro consumidor de `notify()`, SMTP opcional) y
-> preferencias de notificación por usuario. No bloquean el resto del roadmap.
+- Board templates, and duplicating boards, lists and cards.
+- Archive instead of delete for boards, lists and cards, with an archive view and
+  restore.
 
-## Hito 12 — Filtros de tablero ✅ (completado)
+### Card activity
 
-- [x] **Filtros en el tablero** por etiqueta, asignado (Hito 10) y estado de vencimiento
-      (cualquiera / vencidas / con fecha / sin fecha). Barra desplegable en la cabecera que
-      oculta las tarjetas que no encajan, sin recargar; el arrastre se desactiva mientras se
-      filtra. Lógica pura testeable en `app/lib/board-filters.ts`. Ver
-      [`docs/filters.md`](./filters.md).
+- An activity history on each card, visible to board members: created, moved, renamed,
+  commented, assigned, due date changed.
+- Optionally, an activity feed per board, updated in real time.
 
-> Diferido al **backlog**: búsqueda **full-text** de PostgreSQL (`tsvector` + GIN) detrás de
-> `searchForUser` y filtros rápidos guardados. El `ILIKE` actual es adecuado a la escala
-> self-hosted ([ADR 0011](./decisions/0011-search-ilike-scoped.md)); el full-text es una
-> optimización, no un bloqueo.
+### Webhooks and integrations
 
-## Hito 13 — Scopes y caducidad de tokens de API ✅ (completado)
+- Outgoing webhooks per board, with HMAC-signed payloads and best-effort retries.
+- Incoming webhooks to create cards, and optionally email-to-card.
+- Managed by board owners from the board settings.
 
-- [x] **Scope por token**: `full` (lectura+escritura) o `read` (solo lectura). Los tokens
-      de solo lectura reciben `403` en todo `POST`/`PATCH`/`DELETE` (`isReadOnly` en cada
-      handler de escritura). Columna `scope` en `ApiToken`.
-- [x] **Caducidad opcional** (`expiresAt`): un token caducado se rechaza con `401`. Elección
-      de scope/caducidad en `/settings`; estado «Caducado» visible. Extiende
-      [ADR 0013](./decisions/0013-api-tokens.md). Ver [`docs/api/public-api.md`](./api/public-api.md).
+### Accessibility
 
-> Diferido al **backlog**: ampliar la superficie de la API (checklists, etiquetas, adjuntos,
-> miembros, mover/reordenar), **rate limiting** de la API y una **referencia OpenAPI**.
+- A full pass on focus handling, ARIA roles and screen reader announcements for drag and
+  drop, dialogs and notifications, plus a contrast review.
 
-## Hito 14 — PWA y experiencia móvil 🔜 (planificado)
+### More languages
 
-- [ ] **PWA instalable**: `manifest`, iconos, service worker con shell offline básico.
-- [ ] **Pulido móvil** del tablero (arrastre táctil, columnas a pantalla completa,
-      objetivos de toque ≥44px) y de los modales.
-- [ ] Docs: `docs/pwa.md`.
+- Community translations beyond English and Spanish. The guide is in
+  [`../locales/README.md`](../locales/README.md).
 
-## Hito 15 — Automatizaciones (reglas tipo Butler) 🔜 (planificado)
+## Ideas / later
 
-Reglas "cuando pase X, haz Y" dentro de un tablero, al estilo de Butler de Trello, sin
-servicios externos.
+- Optional single sign-on with OpenID Connect, alongside the built-in sign-in.
+- Two-factor authentication (TOTP).
+- Observability: a metrics endpoint (Prometheus), structured logs and a readiness check.
+- Scheduled backups and guided restore from the interface.
 
-- [ ] Modelo `AutomationRule` (tablero, **disparador**, **condición** y **acción** en
-      JSON). Disparadores: tarjeta movida a una lista, etiqueta añadida/quitada,
-      vencimiento próximo/cumplido, checklist completada. Acciones: mover, asignar, poner
-      etiqueta/fecha, crear checklist, notificar.
-- [ ] **Ejecución enganchada al bus de eventos existente** (no un proceso aparte): cuando
-      una mutación publica su evento, el motor evalúa las reglas del tablero. Ejecutar
-      como el sistema, respetando los permisos del tablero.
-- [ ] UI por tablero para crear/activar reglas (solo OWNER); auditoría de ejecuciones y
-      **tope por evento** para evitar bucles (regla que se dispara a sí misma).
-- [ ] Migración; ADR (formato de reglas y prevención de bucles). Docs: `docs/automations.md`.
+## Smaller improvements
 
-## Hito 16 — Vistas adicionales: tabla y swimlanes 🔜 (planificado)
-
-- [ ] **Vista de tabla**: todas las tarjetas del tablero en una tabla ordenable y
-      filtrable (título, lista, asignado, vencimiento, etiquetas). Conmutador junto a
-      Tablero / Calendario en `BoardView`.
-- [ ] **Swimlanes**: agrupar el tablero en filas por etiqueta o por asignado (Hito 10).
-      Estado de cliente, sin tocar el modelo de datos.
-- [ ] Reutiliza los filtros del Hito 12. Docs: `docs/views.md`.
-
-## Hito 17 — Plantillas, duplicar y archivar 🔜 (planificado)
-
-- [ ] **Plantillas de tablero** y **duplicar** tablero/lista/tarjeta, regenerando ids y
-      posiciones (reutilizando la lógica de `importBoard` en `actions/boards.ts`).
-- [ ] **Archivar** en vez de borrar (tableros, listas y tarjetas): columna `archivedAt`
-      nullable; ocultas por defecto, con una vista de archivados y opción de **restaurar**.
-      Migración aditiva (columnas nullable, sin romper datos existentes).
-- [ ] Docs: `docs/templates-archive.md`.
-
-## Hito 18 — Actividad e historial de tarjeta 🔜 (planificado)
-
-- [ ] Registro de **actividad por tarjeta** visible para los miembros (creada, movida,
-      renombrada, comentario, asignación, cambio de vencimiento…). Modelo `CardActivity`
-      propio (el `AuditLog` actual es de seguridad/operación y solo lo ve el admin).
-- [ ] Sección de actividad en el modal de tarjeta y, opcional, un feed por tablero.
-      Tiempo real reutilizando el bus. Migración. Docs: `docs/activity.md`.
-
-## Hito 19 — Webhooks e integraciones 🔜 (planificado)
-
-- [ ] **Webhooks salientes** por tablero: modelo `Webhook` (URL, secreto, eventos) y
-      entrega como **otro consumidor del bus** de eventos, con **firma HMAC** del payload
-      y reintentos best-effort (sin añadir una cola; coherente con ADR 0004/0007).
-- [ ] **Entrada**: crear tarjetas vía **webhook entrante** con secreto (y, opcional,
-      email-to-card si hay buzón configurado).
-- [ ] Gestión en los ajustes del tablero (solo OWNER). ADR (firma HMAC, reintentos sin
-      cola). Docs: `docs/webhooks.md`.
-
-## Hito 20 — Internacionalización (i18n) y accesibilidad 🔜 (planificado)
-
-- [ ] **i18n**: extraer los textos (hoy en español embebido) a un catálogo, selector de
-      idioma por usuario y un **locale en inglés** como segundo idioma. Las notificaciones
-      dejarían de precalcular texto fijo y pasarían a clave + datos (revisar
-      [ADR 0012](./decisions/0012-notifications.md)).
-- [ ] **Accesibilidad**: pasada de foco, roles ARIA y lectores de pantalla en el
-      arrastrar y soltar, los modales y la campana; verificar contraste.
-- [ ] ADR (estrategia i18n e impacto en notificaciones). Docs: `docs/i18n.md`.
-
----
-
-### Más allá del Hito 20 (candidatos, sin alcance cerrado)
-
-- **SSO / OIDC** opcional (OpenID Connect) además del login propio.
-- **Doble factor (TOTP)** para endurecer el acceso.
-- **Observabilidad**: endpoint de métricas (Prometheus), logs estructurados, readiness.
-- **Backups programados desde la UI** y restauración guiada.
-
-### Backlog continuo (mejoras menores, sin hito propio)
-
-- **Email / Web Push** para notificaciones y recordatorios (otro consumidor de `notify()`,
-  SMTP opcional por entorno) + **preferencias de notificación por usuario** (diferido del Hito 11).
-- Portadas/colores por tarjeta; descripción con **Markdown**.
-- Exportar el tablero también a **CSV** (hoy solo JSON).
-- Reacciones/emoji en comentarios (tras el Hito 10).
-
-> Al cerrar cada hito: marcar sus casillas, mover el encabezado a "✅ (completado)",
-> actualizar `docs/index.md`, `CLAUDE.md` (decisiones + notas de hito) y escribir el ADR
-> correspondiente si hubo una decisión técnica con su porqué.
+- Email and Web Push for notifications and reminders, with per-user notification
+  preferences. With email in place: address verification for open sign-up and password
+  recovery without an admin.
+- Full-text search with PostgreSQL (`tsvector` + GIN) and saved quick filters.
+- A wider public API (checklists, labels, attachments, members, moving and reordering,
+  creating assignees and comments), API rate limiting and an OpenAPI reference.
+- Transferring board ownership, so deleting an account does not take shared boards with
+  it.
+- Card covers and colors, and Markdown in descriptions.
+- CSV export of a board, in addition to JSON.
+- Reactions on comments.

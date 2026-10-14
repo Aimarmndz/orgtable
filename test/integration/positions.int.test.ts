@@ -24,12 +24,12 @@ afterAll(async () => {
   await disconnect();
 });
 
-// Claves que antes se guardaban tal cual y dejaban la lista o el tablero sin poder crear
-// nada (positionAtEnd lanzaba con ellas). 123 simula un cliente que envía un número.
+// Keys that used to be stored as is and left the list or board unable to create anything
+// (positionAtEnd threw on them). 123 simulates a client sending a number.
 const BAD_POSITIONS: unknown[] = ["x", "", 123, "a".repeat(10_000), "a0 ", "zzzz~"];
 
-describe("posiciones: moveCard y reorderList validan la clave", () => {
-  it.each(BAD_POSITIONS)("moveCard con %j da ok:false y no toca la BD", async (bad) => {
+describe("positions: moveCard and reorderList validate the key", () => {
+  it.each(BAD_POSITIONS)("moveCard with %j gives ok:false and does not touch the DB", async (bad) => {
     const owner = await seedUser();
     const board = await seedBoard(owner.id);
     const list = await seedList(board.id);
@@ -46,19 +46,19 @@ describe("posiciones: moveCard y reorderList validan la clave", () => {
     const after = await prisma.card.findUniqueOrThrow({ where: { id: card.id } });
     expect(after.position).toBe(before.position);
 
-    // La lista sigue admitiendo altas al final.
+    // The list still accepts inserts at the end.
     const token = await seedApiToken(owner.id);
     const created = await createCardApi(
       apiRequest("POST", `/api/v1/lists/${list.id}/cards`, {
         token,
-        body: { title: "Otra" },
+        body: { title: "Another" },
       }),
       ctx({ id: list.id }),
     );
     expect(created.status).toBe(201);
   });
 
-  it.each(BAD_POSITIONS)("reorderList con %j da ok:false y no toca la BD", async (bad) => {
+  it.each(BAD_POSITIONS)("reorderList with %j gives ok:false and does not touch the DB", async (bad) => {
     const owner = await seedUser();
     const board = await seedBoard(owner.id);
     const list = await seedList(board.id);
@@ -74,14 +74,14 @@ describe("posiciones: moveCard y reorderList validan la clave", () => {
     const created = await createListApi(
       apiRequest("POST", `/api/v1/boards/${board.id}/lists`, {
         token,
-        body: { title: "Otra" },
+        body: { title: "Another" },
       }),
       ctx({ id: board.id }),
     );
     expect(created.status).toBe(201);
   });
 
-  it("una clave válida se guarda (moveCard y reorderList)", async () => {
+  it("a valid key is saved (moveCard and reorderList)", async () => {
     const owner = await seedUser();
     const board = await seedBoard(owner.id);
     const listA = await seedList(board.id);
@@ -102,10 +102,10 @@ describe("posiciones: moveCard y reorderList validan la clave", () => {
   });
 });
 
-// Regresión: leer la última posición y crear eran dos pasos sin bloqueo, así que altas
-// simultáneas guardaban la misma clave.
-describe("posiciones: altas concurrentes al final", () => {
-  it("10 POST en paralelo a /lists/:id/cards dan 10 posiciones distintas", async () => {
+// Regression: reading the last position and creating were two steps without a lock, so
+// simultaneous inserts stored the same key.
+describe("positions: concurrent inserts at the end", () => {
+  it("10 parallel POSTs to /lists/:id/cards give 10 distinct positions", async () => {
     const owner = await seedUser();
     const token = await seedApiToken(owner.id);
     const board = await seedBoard(owner.id);
@@ -134,7 +134,7 @@ describe("posiciones: altas concurrentes al final", () => {
     expect(positions).toEqual([...positions].sort());
   });
 
-  it("10 POST en paralelo a /boards/:id/lists dan 10 posiciones distintas", async () => {
+  it("10 parallel POSTs to /boards/:id/lists give 10 distinct positions", async () => {
     const owner = await seedUser();
     const token = await seedApiToken(owner.id);
     const board = await seedBoard(owner.id);

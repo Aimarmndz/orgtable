@@ -1,54 +1,53 @@
-# Colaboración en la tarjeta: asignados y comentarios
+# Card collaboration: assignees and comments
 
-El Hito 10 permite **asignar miembros** a una tarjeta y **comentar** en ella. La decisión
-de diseño está en [ADR 0014](./decisions/0014-card-collaboration.md).
+Board members can be **assigned** to a card and can **comment** on it. The design
+decision is in [ADR 0014](./decisions/0014-card-collaboration.md).
 
-## Asignados
+## Assignees
 
-- En el modal de tarjeta, la sección **Asignados** muestra quién la tiene asignada
-  (avatares con la inicial) y, para quien puede editar, una lista de miembros del tablero
-  para asignar con un clic. Se puede quitar a un asignado con la ✕.
-- En la cara de la tarjeta (en el tablero) aparecen los avatares de los asignados, así que
-  se ve de un vistazo quién la lleva.
-- **Solo se puede asignar a miembros del tablero**: el servidor lo verifica
-  (`assignMemberToCard` en `app/lib/services/assignees.ts`). Asignar/quitar requiere
-  permiso de edición.
-- Al asignar a otra persona se le envía una notificación `card.assigned`
+- In the card modal, the **Assignees** section shows who is assigned (avatars with their
+  initial) and, for users who can edit, a list of board members to assign with one click.
+  An assignee can be removed with the ✕.
+- The card face on the board shows the assignees' avatars, so you can see at a glance who
+  is working on it.
+- **Only board members can be assigned**: the server checks it (`assignMemberToCard` in
+  `app/lib/services/assignees.ts`). Assigning and unassigning require edit permission.
+- Assigning someone else sends them a `card.assigned` notification
   ([docs/notifications.md](./notifications.md)).
-- **Expulsar a un miembro del tablero borra sus asignaciones** en las tarjetas de ese
-  tablero (`removeMemberFromBoard` en `app/lib/services/members.ts`, en la misma
-  transacción que la membresía). Si quedaran, seguiría recibiendo el título de la tarjeta
-  y el texto de los comentarios de un tablero al que ya no tiene acceso.
+- **Removing a member from a board deletes their assignments** on that board's cards
+  (`removeMemberFromBoard` in `app/lib/services/members.ts`, in the same transaction as
+  the membership). Otherwise they would keep receiving the card title and comment text
+  from a board they no longer have access to.
 
-## Comentarios
+## Comments
 
-- La sección **Comentarios** del modal es un hilo plano: cada comentario muestra autor,
-  fecha y texto. Comentar requiere permiso de edición (los lectores no comentan).
-- **Borrar** un comentario lo puede hacer su **autor** o el **propietario** del tablero.
-- Al comentar, los **asignados** de la tarjeta (menos el autor) que sigan siendo
-  miembros del tablero reciben una notificación `comment.added`. El filtro por membresía
-  cubre también las asignaciones huérfanas que dejaban las expulsiones anteriores a este
-  cambio (no se han borrado de la BD).
+- The **Comments** section of the modal is a flat thread: each comment shows its author,
+  date and text. Commenting requires edit permission (viewers cannot comment).
+- A comment can be **deleted** by its **author** or by the board **owner**.
+- When someone comments, the card's **assignees** (except the author) who are still board
+  members receive a `comment.added` notification. The membership filter also covers
+  orphaned assignments left by member removals made before assignments were cleaned up
+  (they were not deleted from the database).
 
-## Archivos
+## Files
 
-- Modelos `CardAssignee` y `Comment` en `prisma/schema.prisma` (migración
+- `CardAssignee` and `Comment` models in `prisma/schema.prisma` (migration
   `…_card_collaboration`).
-- Servicios testeables: `app/lib/services/assignees.ts` (`assignMemberToCard`),
+- Testable services: `app/lib/services/assignees.ts` (`assignMemberToCard`),
   `app/lib/services/cards.ts` (`cardContext`), `app/lib/services/members.ts`
   (`removeMemberFromBoard`).
 - Server Actions: `app/lib/actions/assignees.ts`, `app/lib/actions/comments.ts`.
-- UI: secciones en `app/components/card/card-modal.tsx`; avatares en
+- UI: sections in `app/components/card/card-modal.tsx`; avatars in
   `app/components/board/card-item.tsx`.
-- DTO y lectura: `app/lib/types.ts` (`AssigneeDTO`, `CommentDTO`), `getBoardWithLists` en
-  `app/lib/queries.ts`. La API los expone en las respuestas de tarjeta
+- DTOs and reads: `app/lib/types.ts` (`AssigneeDTO`, `CommentDTO`), `getBoardWithLists` in
+  `app/lib/queries.ts`. The API exposes them in card responses
   (`app/lib/api/serialize.ts`).
-- Tests: `test/integration/collaboration.int.test.ts` y
+- Tests: `test/integration/collaboration.int.test.ts` and
   `test/integration/members.int.test.ts`.
 
-## Límites y evolución
+## Limits and possible improvements
 
-- Hilo plano, sin respuestas anidadas ni reacciones (reacciones están en el backlog).
-- Crear/borrar comentarios y asignaciones **por la API** queda como ampliación (hoy la API
-  los expone en lectura; la interfaz cubre la escritura).
-- @menciones que notifiquen a un usuario concreto: ampliación natural del parseo del texto.
+- Flat thread, with no nested replies or reactions (reactions are in the backlog).
+- Creating/deleting comments and assignments **through the API** is a possible extension
+  (today the API exposes them read-only; the interface covers writes).
+- @mentions that notify a specific user: a natural extension of parsing the text.

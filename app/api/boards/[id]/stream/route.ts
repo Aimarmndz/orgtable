@@ -3,10 +3,10 @@ import { prisma } from "@/app/lib/prisma";
 import { subscribeBoard, type BoardEvent } from "@/app/lib/realtime/bus";
 import { createSseResponse, isSessionActive } from "@/app/lib/realtime/sse";
 
-// Stream de eventos (SSE) de un tablero para la sincronización en vivo (Hito 4). El
-// navegador abre un EventSource a esta ruta (ver app/components/board/board-realtime.tsx);
-// cada vez que alguien muta el tablero, las Server Actions publican un evento en el bus
-// y aquí lo reenviamos para que el cliente haga router.refresh(). Ver docs/realtime.md.
+// Event stream (SSE) of a board for live sync. The browser opens an EventSource to this
+// route (see app/components/board/board-realtime.tsx); whenever someone changes the board,
+// the Server Actions publish an event on the bus and we forward it here so the client
+// calls router.refresh(). See docs/realtime.md.
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -17,8 +17,8 @@ export async function GET(
 ) {
   const { id: boardId } = await params;
 
-  // Autorización: sesión válida + ser miembro del tablero. Devolvemos códigos HTTP
-  // (no redirect) porque es una conexión de datos, no una navegación.
+  // Authorization: valid session + board membership. HTTP status codes (no redirect)
+  // because this is a data connection, not a navigation.
   const session = await verifySession();
   if (!session) return new Response("Unauthorized", { status: 401 });
   const { userId, sessionId } = session;
@@ -30,13 +30,13 @@ export async function GET(
 
   return createSseResponse({
     signal: request.signal,
-    label: "tablero",
+    label: "board",
     subscribe: (send) =>
       subscribeBoard(boardId, (event: BoardEvent) => {
         send(`event: change\ndata: ${JSON.stringify(event)}\n\n`);
       }),
-    // En cada latido: si la sesión se revocó o la persona dejó de ser miembro, se corta
-    // el stream (ADR 0008: la revocación es inmediata, también para el tiempo real).
+    // On every heartbeat: if the session was revoked or the person is no longer a member,
+    // the stream is cut (ADR 0008: revocation is immediate, real time included).
     isStillAuthorized: async () => {
       if (!(await isSessionActive(sessionId))) return false;
       const stillMember = await prisma.boardMember.findUnique({

@@ -7,52 +7,52 @@ import { recordAudit } from "@/app/lib/audit";
 import { boardTitleSchema } from "@/app/lib/validators";
 import { deleteBoardWithAttachments } from "@/app/lib/services/attachments";
 import { authenticateApiToken, apiBoardRole, isReadOnly } from "@/app/lib/api/auth";
-import { apiError, apiOk } from "@/app/lib/api/respond";
+import { apiError, apiOk, apiValidationError } from "@/app/lib/api/respond";
 import {
   serializeBoardFull,
   serializeBoardSummary,
 } from "@/app/lib/api/serialize";
 
-// API pública v1 — un tablero (Hito 9). Ver docs/api/public-api.md.
+// Public API v1: a single board. See docs/api/public-api.md.
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-/** GET /api/v1/boards/:id — el tablero con sus listas y tarjetas. */
+/** GET /api/v1/boards/:id: the board with its lists and cards. */
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const auth = await authenticateApiToken(request);
-  if (!auth) return apiError(401, "Token de API no válido o ausente.");
+  if (!auth) return apiError(401, "Missing or invalid API token.");
   const { id } = await params;
 
-  // getBoardWithLists ya acota por acceso (dueño o miembro); null = sin acceso.
+  // getBoardWithLists already scopes by access (owner or member); null = no access.
   const board = await getBoardWithLists(id, auth.userId);
-  if (!board) return apiError(404, "Tablero no encontrado.");
+  if (!board) return apiError(404, "Board not found.");
   return apiOk(serializeBoardFull(board));
 }
 
-/** PATCH /api/v1/boards/:id — renombra el tablero (solo propietario). */
+/** PATCH /api/v1/boards/:id: renames the board (owner only). */
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const auth = await authenticateApiToken(request);
-  if (!auth) return apiError(401, "Token de API no válido o ausente.");
-  if (isReadOnly(auth)) return apiError(403, "Token de solo lectura.");
+  if (!auth) return apiError(401, "Missing or invalid API token.");
+  if (isReadOnly(auth)) return apiError(403, "Read-only token.");
   const { id } = await params;
 
   const role = await apiBoardRole(auth.userId, id);
-  if (!role) return apiError(404, "Tablero no encontrado.");
+  if (!role) return apiError(404, "Board not found.");
   if (!canManageBoard(role)) {
-    return apiError(403, "Necesitas ser propietario del tablero.");
+    return apiError(403, "You need to be the board owner.");
   }
 
   const body = await request.json().catch(() => null);
   const parsed = boardTitleSchema.safeParse((body as { title?: unknown })?.title);
   if (!parsed.success) {
-    return apiError(422, parsed.error.issues[0]?.message ?? "Datos no válidos.");
+    return apiValidationError(parsed.error.issues[0]);
   }
 
   const board = await prisma.board.update({
@@ -63,20 +63,20 @@ export async function PATCH(
   return apiOk(serializeBoardSummary(board));
 }
 
-/** DELETE /api/v1/boards/:id — borra el tablero (solo propietario). */
+/** DELETE /api/v1/boards/:id: deletes the board (owner only). */
 export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const auth = await authenticateApiToken(request);
-  if (!auth) return apiError(401, "Token de API no válido o ausente.");
-  if (isReadOnly(auth)) return apiError(403, "Token de solo lectura.");
+  if (!auth) return apiError(401, "Missing or invalid API token.");
+  if (isReadOnly(auth)) return apiError(403, "Read-only token.");
   const { id } = await params;
 
   const role = await apiBoardRole(auth.userId, id);
-  if (!role) return apiError(404, "Tablero no encontrado.");
+  if (!role) return apiError(404, "Board not found.");
   if (!canManageBoard(role)) {
-    return apiError(403, "Necesitas ser propietario del tablero.");
+    return apiError(403, "You need to be the board owner.");
   }
 
   await deleteBoardWithAttachments({ id });
@@ -88,7 +88,7 @@ export async function DELETE(
     detail: "api",
   });
   revalidatePath("/boards");
-  // Avisa a las pestañas abiertas del tablero (SSE), igual que la Server Action.
+  // Tells the board's open tabs (SSE), like the Server Action does.
   revalidateBoard(id);
   return apiOk({ deleted: true });
 }

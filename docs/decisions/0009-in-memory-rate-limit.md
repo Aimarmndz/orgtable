@@ -1,64 +1,64 @@
-# ADR 0009 — Rate limiting en memoria (sin dependencias)
+# ADR 0009 — In-memory rate limiting (no dependencies)
 
-**Estado:** aceptada · **Fecha:** 2026-06-05 · **Relacionada:** [ADR 0007](./0007-pg-notify-over-redis.md)
+**Status:** accepted · **Date:** 2026-06-05 · **Related:** [ADR 0007](./0007-pg-notify-over-redis.md)
 
-## Contexto
+## Context
 
-El login necesita protección contra fuerza bruta. Las soluciones típicas usan Redis o
-un servicio dedicado para contar intentos de forma compartida entre instancias.
+Login needs protection against brute force. The usual solutions use Redis or a dedicated
+service to count attempts in a way that is shared across instances.
 
-## Decisión
+## Decision
 
-Implementar un limitador **en memoria** (ventana fija, un `Map` en `globalThis`), sin
-dependencias externas. Dos límites para el login (`app/lib/actions/auth.ts`):
+Implement an **in-memory** limiter (fixed window, a `Map` on `globalThis`), with no
+external dependencies. Two limits for login (`app/lib/actions/auth.ts`):
 
-- **Por IP**: 10 intentos cada 10 minutos. Solo se aplica si hay una IP fiable.
-- **Por cuenta** (email normalizado): 20 intentos fallidos cada 15 minutos, cuente o no
-  el email con una cuenta real. Se reinicia tras un login correcto.
+- **Per IP**: 10 attempts every 10 minutes. Only applied when there is a trustworthy IP.
+- **Per account** (normalized email): 20 failed attempts every 15 minutes, whether or not
+  the email belongs to a real account. Reset after a successful login.
 
-### IP del cliente y `TRUSTED_PROXY_HOPS` (revisión 2026-09-24)
+### Client IP and `TRUSTED_PROXY_HOPS` (review of 2026-09-24)
 
-`X-Forwarded-For` la escribe el cliente: cada proxy **añade** al final la IP que ve,
-pero lo anterior viene de la petición, y Next solo rellena la cabecera si no llega
-(`??=`). La versión inicial tomaba el **primer** valor, así que bastaba con enviar una
-cabecera distinta en cada intento para que cada uno cayera en un contador nuevo.
+`X-Forwarded-For` is written by the client: each proxy **appends** the IP it sees, but
+whatever came before comes from the request, and Next only fills the header in if it is
+missing (`??=`). The initial version took the **first** value, so sending a different
+header on each attempt was enough to land each one in a new counter.
 
-Ahora la IP sale de `app/lib/client-ip.ts` con la variable `TRUSTED_PROXY_HOPS` (entero
->= 0, por defecto 0):
+Now the IP comes from `app/lib/client-ip.ts` with the `TRUSTED_PROXY_HOPS` variable
+(integer >= 0, default 0):
 
-- `0`: se ignoran `X-Forwarded-For` y `X-Real-IP`. No hay IP (desde una Server Action no
-  se lee la del socket), así que solo rige el límite por cuenta. No se usa un contador
-  común `unknown`, que bloquearía el login de todo el mundo a la vez.
-- `N > 0`: se toma el N-ésimo valor **contando desde la derecha**, el que añadió el
-  proxy de confianza más externo. Con un nginx delante (`$proxy_add_x_forwarded_for`),
-  `N = 1`. Solo es seguro si la app **no** es accesible saltándose ese proxy; si lo es,
-  el cliente vuelve a elegir su IP.
+- `0`: `X-Forwarded-For` and `X-Real-IP` are ignored. There is no IP (a Server Action
+  cannot read the socket's), so only the per-account limit applies. A shared `unknown`
+  counter is not used, since it would block everyone's login at once.
+- `N > 0`: the Nth value **counting from the right** is taken, the one added by the
+  outermost trusted proxy. With an nginx in front (`$proxy_add_x_forwarded_for`),
+  `N = 1`. It is only safe if the app is **not** reachable bypassing that proxy; if it
+  is, the client gets to choose its IP again.
 
-La misma IP es la que se guarda en `AuditLog.ip`: con `0` queda vacía.
+The same IP is the one stored in `AuditLog.ip`: with `0` it stays empty.
 
-Un intento rechazado solo escribe `auth.login_rate_limited` la **primera** vez en cada
-ventana (`firstBlock`), para que un ataque sostenido no llene la tabla de auditoría.
+A rejected attempt only writes `auth.login_rate_limited` the **first** time in each
+window (`firstBlock`), so a sustained attack does not flood the audit table.
 
-## Justificación
+## Rationale
 
-- **Cero infraestructura.** Coherente con el resto del proyecto (ADR 0004/0007): no
-  añadir Redis para una app self-hosted que ya intenta minimizar piezas.
-- **El caso por defecto es una sola instancia**, donde un contador en memoria es
-  exacto y suficiente.
-- **Degradación aceptable en multi-instancia.** Con N réplicas el límite efectivo es
-  N×10 intentos (y N×20 por cuenta): sigue cortando un ataque de fuerza bruta masivo, solo que de forma
-  menos estricta. Es un compromiso razonable frente a añadir un store compartido.
+- **Zero infrastructure.** Consistent with the rest of the project (ADR 0004/0007): do not
+  add Redis to a self-hosted app that already tries to minimize moving parts.
+- **The default case is a single instance**, where an in-memory counter is exact and
+  sufficient.
+- **Acceptable degradation with multiple instances.** With N replicas the effective limit
+  is N×10 attempts (and N×20 per account): it still stops a massive brute-force attack,
+  just less strictly. It is a reasonable compromise compared with adding a shared store.
 
-## Consecuencias
+## Consequences
 
-- **Bloqueo de cuentas ajenas**: quien conozca un email puede agotar sus 20 intentos y
-  dejar a esa persona sin poder entrar hasta 15 minutos. Se acepta a cambio de frenar
-  los ataques repartidos entre muchas IPs; un umbral más bajo empeoraría este riesgo.
-- Sin IP fiable (`TRUSTED_PROXY_HOPS=0`) no hay límite global: probar una contraseña
-  contra muchos emails distintos solo lo frena el coste de bcrypt.
-- El estado se pierde al reiniciar el proceso (un atacante gana una ventana nueva tras
-  un reinicio). Aceptable para el modelo de amenazas de una instancia self-hosted.
-- Si en el futuro hace falta un límite global estricto, se puede sustituir la
-  implementación de `app/lib/rate-limit.ts` por una respaldada en Postgres sin tocar
-  los sitios que la llaman.
-- Documentado en [`docs/operations.md`](../operations.md).
+- **Locking out other people's accounts**: anyone who knows an email can use up its 20
+  attempts and keep that person from signing in for up to 15 minutes. This is accepted in
+  exchange for slowing down attacks spread across many IPs; a lower threshold would make
+  this risk worse.
+- Without a trustworthy IP (`TRUSTED_PROXY_HOPS=0`) there is no global limit: trying one
+  password against many different emails is only slowed down by the cost of bcrypt.
+- The state is lost when the process restarts (an attacker gets a fresh window after a
+  restart). Acceptable for the threat model of a self-hosted instance.
+- If a strict global limit is ever needed, the implementation in `app/lib/rate-limit.ts`
+  can be replaced with one backed by Postgres without touching its callers.
+- Documented in [`docs/operations.md`](../operations.md).

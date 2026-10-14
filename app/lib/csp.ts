@@ -1,17 +1,17 @@
-// Content-Security-Policy de las páginas HTML. La genera proxy.ts en cada petición con
-// un nonce nuevo; Next lee el nonce de la cabecera y lo aplica a sus propios scripts
-// (ver node_modules/next/dist/docs/01-app/02-guides/content-security-policy.md).
+// Content-Security-Policy for HTML pages. proxy.ts builds it on every request with a new
+// nonce; Next reads the nonce from the header and applies it to its own scripts
+// (see node_modules/next/dist/docs/01-app/02-guides/content-security-policy.md).
 //
-// Decisiones (docs/DECISIONES.md, 2026-09-24):
-// - Sin `upgrade-insecure-requests`: orgtable se instala a menudo por http://IP:3000;
-//   esa directiva pasaría todos los recursos a https y la app no cargaría.
-// - `style-src-attr 'unsafe-inline'`: React pinta atributos `style` en el HTML del
-//   servidor (color de fondo del tablero, transformaciones de dnd-kit) y un nonce no
-//   cubre atributos. Los elementos <style>/<link> sí exigen nonce o mismo origen.
-// - Solo en desarrollo: `'unsafe-eval'` (React reconstruye trazas de error con eval) y
-//   estilos inline sin nonce (Turbopack y el overlay de errores inyectan <style> sin
-//   él). Si hay nonce, el navegador ignora 'unsafe-inline', por eso se quita el nonce.
-//   El build de producción no genera ninguna violación (verificado con Playwright).
+// Decisions (docs/DECISIONES.md, 2026-09-24):
+// - No `upgrade-insecure-requests`: orgtable is often installed at http://IP:3000; that
+//   directive would move every resource to https and the app would not load.
+// - `style-src-attr 'unsafe-inline'`: React renders `style` attributes in the server HTML
+//   (board background colour, dnd-kit transforms) and a nonce does not cover attributes.
+//   <style>/<link> elements still require a nonce or the same origin.
+// - Development only: `'unsafe-eval'` (React rebuilds error stacks with eval) and inline
+//   styles without a nonce (Turbopack and the error overlay inject <style> without one).
+//   When a nonce is present the browser ignores 'unsafe-inline', hence the nonce is
+//   dropped. The production build triggers no violations (checked with Playwright).
 
 export function buildContentSecurityPolicy(nonce: string, isDev: boolean): string {
   const styleSources = isDev ? "'self' 'unsafe-inline'" : `'self' 'nonce-${nonce}'`;
@@ -32,7 +32,7 @@ export function buildContentSecurityPolicy(nonce: string, isDev: boolean): strin
   return directives.join("; ");
 }
 
-/** Nonce aleatorio de 128 bits en base64, uno por petición. */
+/** Random 128-bit nonce in base64, one per request. */
 export function generateNonce(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(16));
   return btoa(String.fromCharCode(...bytes));

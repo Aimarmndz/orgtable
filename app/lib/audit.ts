@@ -3,11 +3,10 @@ import { headers } from "next/headers";
 import { prisma } from "@/app/lib/prisma";
 import { parseTrustedProxyHops, pickClientIp } from "@/app/lib/client-ip";
 
-// Registro de auditoría (Hito 5). `recordAudit` escribe una fila por evento relevante
-// de seguridad u operación. Está pensado para NO romper nunca la operación principal:
-// si la escritura falla no se relanza, pero se deja constancia en el log del servidor
-// (sin detail, ip ni datos personales). Ver el modelo AuditLog en prisma/schema.prisma
-// y la vista en /admin/audit (docs/operations.md).
+// Audit log. `recordAudit` writes one row per relevant security or operations event. It
+// must NEVER break the main operation: a failed write is not rethrown, but it is recorded
+// in the server log (without detail, ip or personal data). See the AuditLog model in
+// prisma/schema.prisma and the view at /admin/audit (docs/operations.md).
 
 export type AuditAction =
   | "setup.completed"
@@ -15,6 +14,14 @@ export type AuditAction =
   | "auth.login_failed"
   | "auth.login_rate_limited"
   | "auth.logout"
+  | "auth.registered"
+  | "auth.register_rate_limited"
+  | "account.updated"
+  | "account.password_changed"
+  | "account.sessions_revoked"
+  | "account.exported"
+  | "account.deleted"
+  | "instance.updated"
   | "user.created"
   | "user.deleted"
   | "user.role_changed"
@@ -29,10 +36,10 @@ export type AuditAction =
   | "apitoken.revoked";
 
 /**
- * IP del cliente según X-Forwarded-For y TRUSTED_PROXY_HOPS (ver app/lib/client-ip.ts).
- * null si no hay proxies de confianza declarados: desde una Server Action no se puede
- * leer la IP del socket, y la cabecera sin proxy delante la escribe el propio cliente.
- * X-Real-IP no se usa por lo mismo.
+ * Client IP from X-Forwarded-For and TRUSTED_PROXY_HOPS (see app/lib/client-ip.ts). null
+ * when no trusted proxies are declared: a Server Action cannot read the socket's IP, and
+ * without a proxy in front the client writes the header itself. X-Real-IP is not used for
+ * the same reason.
  */
 export async function clientIp(): Promise<string | null> {
   const hops = parseTrustedProxyHops(process.env.TRUSTED_PROXY_HOPS);
@@ -61,9 +68,9 @@ export async function recordAudit(params: {
       },
     });
   } catch (error) {
-    // Best-effort: no se relanza para no hacer fallar la acción que audita, pero perder
-    // un evento de seguridad en silencio no es aceptable.
-    console.error("[audit] no se pudo escribir en AuditLog", {
+    // Best-effort: not rethrown so the audited action does not fail, but silently losing
+    // a security event is not acceptable.
+    console.error("[audit] could not write to AuditLog", {
       action: params.action,
       targetType: params.targetType,
       targetId: params.targetId,
@@ -73,8 +80,8 @@ export async function recordAudit(params: {
 }
 
 /**
- * Resumen del error para el log. El mensaje de PrismaClientValidationError reproduce los
- * argumentos de la consulta (detail, ip…), así que en ese caso solo se registra el tipo.
+ * Error summary for the log. PrismaClientValidationError's message echoes the query
+ * arguments (detail, ip…), so in that case only the type is logged.
  */
 function describeError(error: unknown): string {
   if (!(error instanceof Error)) return String(error).slice(0, 200);

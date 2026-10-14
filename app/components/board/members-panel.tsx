@@ -7,13 +7,11 @@ import {
   removeBoardMember,
   type MemberActionState,
 } from "@/app/lib/actions/members";
-import {
-  BOARD_ROLE_LABELS,
-  ASSIGNABLE_BOARD_ROLES,
-  type BoardRole,
-} from "@/app/lib/roles";
+import { ASSIGNABLE_BOARD_ROLES, type BoardRole } from "@/app/lib/roles";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
+import { useI18n } from "@/app/i18n/client";
+import { fmt } from "@/app/i18n/format";
 
 export type BoardMemberDTO = {
   id: string;
@@ -23,9 +21,9 @@ export type BoardMemberDTO = {
   isOwner: boolean;
 };
 
-// Panel de gestión de miembros de un tablero (Hito 3). Solo lo abre el propietario.
-// Invitar usa useActionState (feedback inline); cambiar rol y quitar usan formularios
-// simples (la autorización la resuelve el servidor). Ver docs/authorization.md.
+// Board members panel. Everyone can open it; only the owner gets the controls. Inviting
+// uses useActionState (inline feedback); changing a role and removing use plain forms
+// (the server handles authorization). See docs/authorization.md.
 export function MembersPanel({
   boardId,
   members,
@@ -37,13 +35,15 @@ export function MembersPanel({
   canManage: boolean;
   onClose: () => void;
 }) {
+  const { m } = useI18n();
+  const t = m.boards.members;
   const [state, action, pending] = useActionState<MemberActionState, FormData>(
     addBoardMember,
     {},
   );
 
-  // Rol con el que se remonta el selector tras un error. `values.role` es lo que se envió,
-  // sin validar: solo se reutiliza si es un rol asignable; si no, vuelve al por defecto.
+  // Role the select remounts with after an error. `values.role` is what was sent,
+  // unvalidated: it is only reused if it is an assignable role; otherwise the default.
   const inviteRole =
     ASSIGNABLE_BOARD_ROLES.find((r) => r === state.values?.role) ?? "EDITOR";
 
@@ -51,10 +51,10 @@ export function MembersPanel({
   const titleId = useId();
   const descriptionId = useId();
 
-  // <dialog> nativo abierto con showModal(): el navegador pone el foco dentro, lo atrapa
-  // (el resto de la página queda inerte) y Escape dispara `cancel`. Al desmontar se cierra
-  // y se devuelve el foco a mano a quien lo tenía, porque el navegador no lo restaura si
-  // el <dialog> se quita del DOM en vez de cerrarse.
+  // Native <dialog> opened with showModal(): the browser moves focus inside, traps it
+  // (the rest of the page becomes inert) and Escape fires `cancel`. On unmount it is
+  // closed and focus is returned by hand to whoever had it, because the browser does not
+  // restore it if the <dialog> is removed from the DOM instead of being closed.
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
@@ -72,14 +72,14 @@ export function MembersPanel({
       aria-labelledby={titleId}
       aria-describedby={descriptionId}
       onCancel={(e) => {
-        // El cierre lo decide el padre (desmonta el panel); así no queda un <dialog>
-        // cerrado pero montado.
+        // The parent decides on closing (it unmounts the panel), so no closed <dialog>
+        // stays mounted.
         e.preventDefault();
         onClose();
       }}
       onClick={(e) => {
-        // El <dialog> no tiene relleno: un clic cuyo destino es el propio <dialog> solo
-        // puede venir del fondo (::backdrop).
+        // The <dialog> has no padding: a click whose target is the <dialog> itself can
+        // only come from the backdrop (::backdrop).
         if (e.target === e.currentTarget) onClose();
       }}
       className="mx-auto mt-8 max-h-[calc(100dvh-4rem)] w-[calc(100%-2rem)] max-w-lg overflow-y-auto rounded-2xl border border-border bg-surface text-ink shadow-[0_32px_64px_-24px_oklch(0.27_0.022_52/0.45)] backdrop:bg-black/50 backdrop:motion-safe:animate-[overlay-in_150ms_ease-out] sm:mt-12"
@@ -92,49 +92,47 @@ export function MembersPanel({
               id={titleId}
               className="font-display text-xl font-bold leading-snug tracking-tight"
             >
-              Miembros
+              {t.title}
             </h2>
             <p id={descriptionId} className="mt-1 text-sm text-ink-muted">
-              {canManage
-                ? "Invita a personas y elige qué pueden hacer en este tablero."
-                : "Personas con acceso a este tablero."}
+              {canManage ? t.descriptionManage : t.descriptionView}
             </p>
           </div>
           <button
             onClick={onClose}
-            aria-label="Cerrar"
+            aria-label={m.common.actions.close}
             className="grid size-8 shrink-0 place-items-center rounded-lg text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
           >
             ✕
           </button>
         </div>
 
-        {/* Invitar (solo el propietario) */}
+        {/* Invite (owner only) */}
         {canManage && (
         <form action={action} className="mt-5">
           <input type="hidden" name="boardId" value={boardId} />
           <div className="flex flex-wrap items-end gap-2">
             <label className="flex-1 text-sm">
               <span className="block text-xs font-semibold uppercase tracking-wide text-ink-muted">
-                Email
+                {t.email}
               </span>
               <Input
                 name="email"
                 type="email"
                 required
                 defaultValue={state.values?.email}
-                placeholder="persona@ejemplo.com"
+                placeholder={t.emailPlaceholder}
                 className="mt-1.5"
               />
             </label>
             <label className="text-sm">
               <span className="block text-xs font-semibold uppercase tracking-wide text-ink-muted">
-                Rol
+                {t.role}
               </span>
-              {/* React restablece el formulario a sus valores por defecto tras la acción,
-                  pero no actualiza el defaultValue de un <select> ya montado: la key lo
-                  remonta con lo elegido para que un error no devuelva «Lector» a «Editor»
-                  y la invitación siguiente dé más permisos de los queridos. */}
+              {/* React resets the form to its default values after the action, but does
+                  not update the defaultValue of an already mounted <select>: the key
+                  remounts it with the chosen role so an error does not turn "Viewer" back
+                  into "Editor" and the next invite grants more access than intended. */}
               <select
                 key={inviteRole}
                 name="role"
@@ -143,17 +141,17 @@ export function MembersPanel({
               >
                 {ASSIGNABLE_BOARD_ROLES.map((r) => (
                   <option key={r} value={r}>
-                    {BOARD_ROLE_LABELS[r]}
+                    {m.boards.roles[r]}
                   </option>
                 ))}
               </select>
             </label>
             <Button type="submit" disabled={pending}>
-              {pending ? "Añadiendo…" : "Invitar"}
+              {pending ? t.inviting : t.invite}
             </Button>
           </div>
-          {/* role="alert" para que el lector de pantalla lo anuncie. Se retira mientras se
-              envía: así un segundo error idéntico se vuelve a insertar y se anuncia de nuevo. */}
+          {/* role="alert" so the screen reader announces it. It is removed while
+              submitting, so a second identical error is inserted and announced again. */}
           {state.error && !pending && (
             <p
               role="alert"
@@ -162,8 +160,8 @@ export function MembersPanel({
               {state.error}
             </p>
           )}
-          {/* Región viva siempre montada: los lectores de pantalla solo anuncian los
-              cambios dentro de una región que ya existía. */}
+          {/* Live region always mounted: screen readers only announce changes inside a
+              region that already existed. */}
           <div role="status">
             {state.message && (
               <p className="mt-2 rounded-lg bg-success/10 px-3 py-2 text-sm text-success">
@@ -174,47 +172,47 @@ export function MembersPanel({
         </form>
         )}
 
-        {/* Lista de miembros */}
+        {/* Member list */}
         <ul className="mt-6 divide-y divide-border">
-          {members.map((m) => (
-            <li key={m.id} className="flex items-center gap-3 py-3">
+          {members.map((member) => (
+            <li key={member.id} className="flex items-center gap-3 py-3">
               <div className="grid size-9 shrink-0 place-items-center rounded-full bg-surface-2 text-sm font-semibold uppercase">
-                {m.name.charAt(0)}
+                {member.name.charAt(0)}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{m.name}</p>
-                <p className="truncate text-xs text-ink-muted">{m.email}</p>
+                <p className="truncate text-sm font-medium">{member.name}</p>
+                <p className="truncate text-xs text-ink-muted">{member.email}</p>
               </div>
 
-              {m.isOwner || !canManage ? (
+              {member.isOwner || !canManage ? (
                 <span className="rounded-full bg-surface-2 px-2.5 py-1 text-xs font-medium text-ink-muted">
-                  {BOARD_ROLE_LABELS[m.role]}
+                  {m.boards.roles[member.role]}
                 </span>
               ) : (
                 <div className="flex items-center gap-1.5">
                   <form action={updateBoardMemberRole}>
                     <input type="hidden" name="boardId" value={boardId} />
-                    <input type="hidden" name="userId" value={m.id} />
+                    <input type="hidden" name="userId" value={member.id} />
                     <select
                       name="role"
-                      defaultValue={m.role}
+                      defaultValue={member.role}
                       onChange={(e) => e.currentTarget.form?.requestSubmit()}
                       className="h-8 rounded-lg border border-border bg-surface px-2 text-xs text-ink outline-none focus-visible:border-accent"
-                      aria-label={`Rol de ${m.name}`}
+                      aria-label={fmt(t.roleOf, { name: member.name })}
                     >
                       {ASSIGNABLE_BOARD_ROLES.map((r) => (
                         <option key={r} value={r}>
-                          {BOARD_ROLE_LABELS[r]}
+                          {m.boards.roles[r]}
                         </option>
                       ))}
                     </select>
                   </form>
                   <form action={removeBoardMember}>
                     <input type="hidden" name="boardId" value={boardId} />
-                    <input type="hidden" name="userId" value={m.id} />
+                    <input type="hidden" name="userId" value={member.id} />
                     <button
                       className="grid size-8 place-items-center rounded-lg text-ink-muted transition-colors hover:bg-danger/10 hover:text-danger"
-                      aria-label={`Quitar a ${m.name}`}
+                      aria-label={fmt(t.remove, { name: member.name })}
                     >
                       ✕
                     </button>

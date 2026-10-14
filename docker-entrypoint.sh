@@ -1,12 +1,12 @@
 #!/bin/sh
-# Entrypoint del contenedor `app`. Aplica las migraciones pendientes de Prisma
-# (idempotente: `migrate deploy` solo ejecuta las que faltan) y luego arranca el
-# servidor Next.js. Ver docs/docker.md.
+# Entrypoint of the `app` container. Applies pending Prisma migrations (idempotent:
+# `migrate deploy` only runs the missing ones) and then starts the Next.js server.
+# See docs/docker.md.
 set -e
 
-echo "[orgtable] Aplicando migraciones de la base de datos..."
-# Invocamos el CLI por ruta directa (no `npx`) para no depender de symlinks de .bin.
+echo "[orgtable] Applying database migrations..."
+# Call the CLI by its direct path (not `npx`) so we do not depend on .bin symlinks.
 node node_modules/prisma/build/index.js migrate deploy
 
-echo "[orgtable] Arrancando el servidor..."
+echo "[orgtable] Starting the server..."
 exec "$@"

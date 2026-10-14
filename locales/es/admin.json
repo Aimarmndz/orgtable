@@ -1,0 +1,145 @@
+{
+  "nav": {
+    "label": "Administración",
+    "users": "Usuarios",
+    "instance": "Instancia",
+    "audit": "Auditoría"
+  },
+  "roles": {
+    "MEMBER": "Miembro",
+    "ADMIN": "Administrador"
+  },
+  "users": {
+    "meta": {
+      "title": "Usuarios",
+      "description": "Altas, roles y contraseñas de las cuentas de la instancia."
+    },
+    "title": "Usuarios",
+    "intro": "Administra las cuentas de tu instancia: altas, roles y contraseñas.",
+    "ok": {
+      "role": "Rol actualizado.",
+      "password": "Contraseña restablecida. Se han cerrado las sesiones del usuario y revocado sus tokens de API.",
+      "delete": "Usuario borrado.",
+      "revoked": "Sesiones cerradas."
+    },
+    "errors": {
+      "self-role": "No puedes cambiar tu propio rol.",
+      "self-delete": "No puedes borrar tu propia cuenta.",
+      "owns-boards": "Ese usuario es propietario de tableros. Transfiérelos o bórralos antes de eliminar la cuenta.",
+      "password": "La contraseña debe tener al menos 8 caracteres.",
+      "invalid": "Datos no válidos.",
+      "not-found": "Ese usuario ya no existe."
+    },
+    "table": {
+      "user": "Usuario",
+      "boards": "Tableros",
+      "joined": "Alta",
+      "actions": "Acciones"
+    },
+    "adminBadge": "Admin",
+    "ownedBoards": "Tableros propios",
+    "memberBoards": "Tableros donde es miembro",
+    "you": "Tú",
+    "roleLabel": "Rol global",
+    "newPassword": "Nueva contraseña",
+    "newPasswordFor": "Nueva contraseña para {name}",
+    "resetPassword": "Restablecer contraseña",
+    "revokeSessions": "Cerrar sesiones",
+    "revokeSessionsTitle": "Cierra todas las sesiones activas de este usuario",
+    "deleteConfirm": "¿Borrar esta cuenta? Esta acción no se puede deshacer.",
+    "deleteLabel": "Borrar usuario",
+    "create": {
+      "title": "Crear cuenta",
+      "intro": "No hay registro abierto: aquí das de alta a las personas de tu instancia.",
+      "name": "Nombre",
+      "email": "Email",
+      "password": "Contraseña inicial",
+      "role": "Rol",
+      "submit": "Crear usuario",
+      "submitting": "Creando…"
+    }
+  },
+  "instance": {
+    "meta": {
+      "title": "Instancia",
+      "description": "Nombre, registro abierto y datos legales de la instancia."
+    },
+    "title": "Instancia",
+    "intro": "Quién puede registrarse y los datos que salen en las páginas legales.",
+    "notConfigured": "La instancia aún no está configurada.",
+    "general": "General",
+    "instanceName": "Nombre de la instancia",
+    "registration": {
+      "title": "Registro",
+      "description": "Quién puede crear una cuenta.",
+      "closedTitle": "Cerrado",
+      "closedText": "Solo un administrador da de alta las cuentas.",
+      "openTitle": "Abierto",
+      "openText": "Cualquiera puede registrarse gratis en /register."
+    },
+    "legal": {
+      "title": "Datos legales",
+      "description": "Los de quien opera esta instancia. Salen en la <link>política de privacidad</link>, las condiciones y el aviso legal. Lo que dejes vacío aparece como «sin indicar».",
+      "requiredToOpen": "Obligatorio para abrir el registro.",
+      "optional": "Opcional.",
+      "fields": {
+        "operatorName": "Responsable (nombre o razón social)",
+        "operatorEmail": "Email de contacto para privacidad",
+        "operatorLegalId": "NIF",
+        "operatorAddress": "Dirección postal",
+        "hostingDescription": "Dónde se alojan los datos",
+        "backupRetentionDays": "Días que guardas las copias de seguridad"
+      },
+      "hostingPlaceholder": "p. ej. un VPS de [proveedor] en la Unión Europea",
+      "hostingHint": "Proveedor y país o región.",
+      "backupHint": "0 si no haces copias. Debe coincidir con tu rotación real."
+    },
+    "save": "Guardar ajustes",
+    "saving": "Guardando…"
+  },
+  "audit": {
+    "meta": {
+      "title": "Auditoría",
+      "description": "Eventos recientes de seguridad y operación de la instancia."
+    },
+    "title": "Auditoría",
+    "intro": {
+      "one": "El evento de seguridad y operación más reciente.",
+      "other": "Los {count} eventos de seguridad y operación más recientes."
+    },
+    "empty": "Todavía no hay eventos.",
+    "table": {
+      "when": "Cuándo",
+      "action": "Acción",
+      "who": "Quién",
+      "detail": "Detalle"
+    },
+    "actions": {
+      "setup.completed": "Configuración inicial completada",
+      "auth.login": "Inicio de sesión",
+      "auth.login_failed": "Inicio de sesión fallido",
+      "auth.login_rate_limited": "Login bloqueado por límite de intentos",
+      "auth.logout": "Cierre de sesión",
+      "auth.registered": "Cuenta creada desde el registro",
+      "auth.register_rate_limited": "Registro bloqueado por límite de altas",
+      "account.updated": "Perfil cambiado",
+      "account.password_changed": "Contraseña cambiada por su titular",
+      "account.sessions_revoked": "Sesiones cerradas por su titular",
+      "account.exported": "Datos personales descargados",
+      "account.deleted": "Cuenta borrada por su titular",
+      "instance.updated": "Ajustes de la instancia cambiados",
+      "user.created": "Usuario creado",
+      "user.deleted": "Usuario borrado",
+      "user.role_changed": "Rol de usuario cambiado",
+      "user.password_reset": "Contraseña restablecida",
+      "user.sessions_revoked": "Sesiones cerradas",
+      "board.created": "Tablero creado",
+      "board.deleted": "Tablero borrado",
+      "member.added": "Miembro añadido",
+      "member.removed": "Miembro quitado",
+      "member.role_changed": "Rol de miembro cambiado",
+      "apitoken.created": "Token de API creado",
+      "apitoken.revoked": "Token de API revocado"
+    }
+  }
+}

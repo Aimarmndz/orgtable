@@ -1,165 +1,171 @@
-# Self-hosting: operar orgtable en producción
+# Self-hosting: running orgtable in production
 
-Esta guía cubre el día a día de una instancia de orgtable ya instalada (ver
-[instalación](./installation.md)). Todo gira en torno al `docker-compose.yml` y al
-`.env` generados durante la instalación.
+This guide covers the day-to-day running of an orgtable instance that is already installed
+(see [installation](./installation.md)). Everything revolves around the
+`docker-compose.yml` and the `.env` generated during installation.
 
-## Comandos básicos
+## Basic commands
 
-Desde el directorio de instalación (por defecto `~/orgtable`):
+From the installation directory (`~/orgtable` by default):
 
 ```bash
-docker compose ps               # estado de los servicios
-docker compose logs -f app      # logs de la aplicación en vivo
-docker compose logs -f postgres # logs de la base de datos
-docker compose restart app      # reiniciar solo la app
-docker compose down             # parar todo (los datos persisten en el volumen)
-docker compose up -d            # levantar de nuevo
+docker compose ps               # service status
+docker compose logs -f app      # live app logs
+docker compose logs -f postgres # database logs
+docker compose restart app      # restart the app only
+docker compose down             # stop everything (data persists in the volume)
+docker compose up -d            # start again
 ```
 
-## Actualizar a una versión nueva
+## Updating to a new version
 
-La imagen se construye localmente, así que actualizar es traer el código nuevo y
-reconstruir. Hay un script que lo hace:
+The image is built locally, so updating means fetching the new code and rebuilding. A
+script does it for you:
 
 ```bash
 cd ~/orgtable
-scripts/update.sh        # copia de seguridad, git pull --ff-only y docker compose up -d --build
+scripts/update.sh        # backup, git pull --ff-only and docker compose up -d --build
 ```
 
-Las migraciones de base de datos pendientes se aplican **solas** al arrancar el
-contenedor (`prisma migrate deploy` en el entrypoint; es idempotente). El script hace
-antes una copia de seguridad y no actualiza si la copia falla; un `docker compose up -d
---build` a mano no la hace. Ver [docker.md](./docker.md) y
-[operations.md](./operations.md#actualizaciones).
+Pending database migrations are applied **automatically** when the container starts
+(`prisma migrate deploy` in the entrypoint; it is idempotent). The script takes a backup
+first and does not update if the backup fails; a manual `docker compose up -d --build`
+does not take one. See [docker.md](./docker.md) and
+[operations.md](./operations.md#updates).
 
-## Copias de seguridad
+## Backups
 
-Hay **dos** cosas que respaldar: la base de datos (volumen `pgdata`) y los **adjuntos**
-(volumen `uploads`). El script [`scripts/backup.sh`](../scripts/backup.sh) hace ambas:
+There are **two** things to back up: the database (`pgdata` volume) and the
+**attachments** (`uploads` volume). The [`scripts/backup.sh`](../scripts/backup.sh)
+script does both:
 
 ```bash
-scripts/backup.sh                 # genera backups/orgtable-db-*.sql.gz y -uploads-*.tar.gz
-scripts/restore.sh backups/orgtable-db-<fecha>.sql.gz   # restaurar la BD
+scripts/backup.sh                 # creates backups/orgtable-db-*.sql.gz and -uploads-*.tar.gz
+scripts/restore.sh backups/orgtable-db-<date>.sql.gz   # restore the database
 ```
 
-> Programa `scripts/backup.sh` con un `cron` del sistema y guarda copias fuera del
-> servidor. Las copias contienen datos personales. Detalles completos (cron, permisos,
-> restauración de adjuntos, exportar/importar tableros sueltos) en
-> [operations.md](./operations.md#copias-de-seguridad).
+> Schedule `scripts/backup.sh` with a system `cron` job and keep copies off the server.
+> Backups contain personal data. Full details (cron, permissions, restoring attachments,
+> exporting/importing single boards) in
+> [operations.md](./operations.md#backups).
 
-## El archivo `.env`
+## The `.env` file
 
-Contiene los secretos de la instancia (contraseña de PostgreSQL, `SESSION_SECRET`).
-Generado con permisos `600` por el instalador.
+It holds the instance secrets (PostgreSQL password, `SESSION_SECRET`). The installer
+creates it with `600` permissions.
 
-- **No lo borres ni cambies `POSTGRES_PASSWORD`** una vez creado el volumen: PostgreSQL
-  fija la contraseña en la primera inicialización del volumen, así que cambiarla
-  después provoca errores de autenticación (tendrías que recrear el volumen y perder
-  los datos).
-- Si cambias `SESSION_SECRET`, todas las sesiones activas se invalidan (los usuarios
-  tendrán que volver a iniciar sesión).
+- **Do not delete it or change `POSTGRES_PASSWORD`** once the volume exists: PostgreSQL
+  sets the password when the volume is first initialized, so changing it later causes
+  authentication errors (you would have to recreate the volume and lose the data).
+- If you change `SESSION_SECRET`, every active session is invalidated (users have to
+  sign in again).
 
-## HTTPS y dominio (reverse proxy)
+## HTTPS and domain (reverse proxy)
 
-orgtable sirve HTTP plano en el puerto `APP_PORT` (3000 por defecto). Se puede usar así,
-por ejemplo en `http://IP:3000` para el primer arranque o en una red local, pero **la
-contraseña y la cookie de sesión viajan sin cifrar**. Para un uso real, ponlo detrás de
-un proxy inverso con TLS.
+orgtable serves plain HTTP on `APP_PORT` (3000 by default). You can use it that way, for
+example at `http://IP:3000` for the first start or on a local network, but **the password
+and the session cookie travel unencrypted**. For real use, put it behind a reverse proxy
+with TLS.
 
-La cookie de sesión lleva el atributo `Secure` cuando la petición llega por HTTPS:
-directamente o con la cabecera `X-Forwarded-Proto: https` que añade el proxy. Por HTTP
-plano se envía sin `Secure` para que el login funcione.
+The session cookie gets the `Secure` attribute when the request arrives over HTTPS:
+directly, or with the `X-Forwarded-Proto: https` header added by the proxy. Over plain
+HTTP it is sent without `Secure` so that sign-in works.
 
-Tres pasos:
+Three steps:
 
-1. **Publica la app solo en local**, para que nadie llegue a ella sin pasar por el
-   proxy. En el `.env`:
+1. **Publish the app on localhost only**, so nobody can reach it without going through
+   the proxy. In `.env`:
 
    ```env
    APP_PORT=127.0.0.1:3000
    ```
 
-   y aplica el cambio con `docker compose up -d`. Un firewall como `ufw` **no basta**:
-   Docker publica los puertos con sus propias reglas de iptables y se lo salta.
+   and apply it with `docker compose up -d`. A firewall such as `ufw` is **not enough**:
+   Docker publishes ports with its own iptables rules and bypasses it.
 
-2. **Indica que hay un proxy delante**, para que el límite de intentos de login use la
-   IP real del cliente ([operations.md](./operations.md#límite-de-intentos-de-login-rate-limiting)).
-   En el `.env`:
+2. **Declare that there is a proxy in front**, so the sign-in rate limit uses the real
+   client IP ([operations.md](./operations.md#login-rate-limiting)).
+   In `.env`:
 
    ```env
    TRUSTED_PROXY_HOPS=1
    ```
 
-   Con `TRUSTED_PROXY_HOPS` mayor que 0 y el puerto de la app abierto al exterior,
-   cualquiera podría falsear su IP con `X-Forwarded-For`: haz antes el paso 1.
+   With `TRUSTED_PROXY_HOPS` greater than 0 and the app port open to the outside, anyone
+   could spoof their IP with `X-Forwarded-For`: do step 1 first.
 
-3. **Configura el proxy.** Con **Caddy** (certificados automáticos):
+3. **Configure the proxy.** With **Caddy** (automatic certificates):
 
    ```caddyfile
-   tablero.midominio.com {
+   boards.example.com {
        reverse_proxy 127.0.0.1:3000
    }
    ```
 
-   Caddy ya envía `X-Forwarded-Proto` y, mientras no configures `trusted_proxies`,
-   sustituye el `X-Forwarded-For` que mande el cliente por su IP real. No añadas
-   `trusted_proxies` salvo que haya otro proxy delante de Caddy.
+   Caddy already sends `X-Forwarded-Proto` and, as long as you do not configure
+   `trusted_proxies`, replaces any `X-Forwarded-For` sent by the client with its real
+   IP. Do not add `trusted_proxies` unless there is another proxy in front of Caddy.
 
-   Con **nginx** (certificados aparte, p. ej. con certbot):
+   With **nginx** (certificates handled separately, e.g. with certbot):
 
    ```nginx
    server {
        listen 443 ssl;
-       server_name tablero.midominio.com;
+       server_name boards.example.com;
        # ssl_certificate / ssl_certificate_key …
 
        location / {
            proxy_pass http://127.0.0.1:3000;
            proxy_http_version 1.1;
            proxy_set_header Host $host;
-           # La IP del cliente tal como la ve nginx, sin lo que mande el propio cliente.
+           # The client IP as nginx sees it, ignoring whatever the client sends.
            proxy_set_header X-Forwarded-For $remote_addr;
            proxy_set_header X-Forwarded-Proto $scheme;
-           # Tiempo real (SSE): sin buffer y con conexiones largas.
+           # Real time (SSE): no buffering and long-lived connections.
            proxy_buffering off;
            proxy_read_timeout 1h;
        }
    }
    ```
 
-## Seguridad
+## Security
 
-- **PostgreSQL no se expone al host**: en el `docker-compose.yml` el servicio
-  `postgres` no publica puertos, solo es accesible desde la red interna de Compose.
-- Mantén el servidor y Docker actualizados.
-- Si no usas proxy inverso, recuerda que Docker se salta `ufw`: para cerrar el puerto
-  de la app usa `APP_PORT=127.0.0.1:3000` o reglas en la cadena `DOCKER-USER` de
-  iptables.
+- **PostgreSQL is not exposed to the host**: in `docker-compose.yml` the `postgres`
+  service publishes no ports; it is only reachable from the internal Compose network.
+- Keep the server and Docker up to date.
+- If you do not use a reverse proxy, remember that Docker bypasses `ufw`: to close the
+  app port use `APP_PORT=127.0.0.1:3000` or rules in the iptables `DOCKER-USER` chain.
 
-## Restablecer el asistente de configuración
+## Opening the instance to the public
 
-El estado "configurado" vive en la fila `InstanceConfig` de la base de datos. Si
-necesitas volver a ejecutar el [asistente inicial](./setup-wizard.md) (por ejemplo en
-una demo), borra esa fila:
+If you let anyone sign up, you become the data controller for their data. Before enabling
+sign-up in **Admin › Instance**, go through the checklist in
+[privacy.md](./privacy.md#checklist-for-opening-a-public-instance): HTTPS,
+`TRUSTED_PROXY_HOPS`, both cron jobs, backups and your legal details. If you have modified
+the code, set `ORGTABLE_SOURCE_URL` to offer your version, as the AGPL requires.
+
+## Resetting the setup wizard
+
+The "configured" state lives in the `InstanceConfig` row of the database. If you need to
+run the [setup wizard](./setup-wizard.md) again (for example on a demo), delete that row:
 
 ```bash
 docker compose exec -T postgres sh -c \
   'psql -U "$POSTGRES_USER" "$POSTGRES_DB" -c "DELETE FROM \"InstanceConfig\";"'
 ```
 
-La próxima visita mostrará de nuevo el asistente. Esto no borra usuarios ni tableros
-existentes. Antes de hacerlo, ten en cuenta:
+The next visit shows the wizard again. This does not delete existing users or boards.
+Before doing it, keep in mind:
 
-- **Mientras el asistente está abierto, cualquiera que llegue a la app puede crear una
-  cuenta de administrador.** Publicar la app solo en local (`APP_PORT=127.0.0.1:3000`)
-  no basta: detrás de un proxy inverso, `/setup` sigue abierto por el dominio. Mientras
-  dure, corta ese acceso (para el proxy o bloquea `/setup` en él, p. ej. en Caddy con
-  `respond /setup* 403`) y completa el asistente por un túnel SSH:
-  `ssh -L 3000:127.0.0.1:3000 usuario@servidor` y abre `http://localhost:3000`. Si no
-  puedes cortar el acceso, o `APP_PORT` publica la app en todas las interfaces,
-  completa el asistente justo después del reseteo.
-- El asistente crea un administrador **nuevo**: usa un email que no exista ya, o la
-  creación fallará.
-- No sirve para recuperar el acceso de un administrador existente. Para eso, ver
-  [setup-wizard.md](./setup-wizard.md#recuperar-el-acceso-de-un-administrador).
+- **While the wizard is open, anyone who reaches the app can create an admin account.**
+  Publishing the app on localhost only (`APP_PORT=127.0.0.1:3000`) is not enough: behind
+  a reverse proxy, `/setup` is still reachable through the domain. For the duration, cut
+  that access (stop the proxy or block `/setup` in it, e.g. in Caddy with
+  `respond /setup* 403`) and complete the wizard through an SSH tunnel:
+  `ssh -L 3000:127.0.0.1:3000 user@server` and open `http://localhost:3000`. If you
+  cannot cut access, or `APP_PORT` publishes the app on every interface, complete the
+  wizard right after the reset.
+- The wizard creates a **new** admin: use an email address that does not exist yet, or
+  the creation fails.
+- It does not recover access for an existing admin. For that, see
+  [setup-wizard.md](./setup-wizard.md#recovering-access-for-an-admin).

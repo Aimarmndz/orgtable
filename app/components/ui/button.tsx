@@ -1,7 +1,7 @@
 import type { ComponentProps } from "react";
 
-// Botón con vocabulario de variantes consistente en toda la app (ver DESIGN.md).
-// Sin "use client": es solo presentación, válido en componentes de servidor y cliente.
+// Button with a consistent set of variants across the app (see DESIGN.md).
+// No "use client": it is presentation only, valid in both Server and Client Components.
 
 const VARIANTS = {
   primary: "bg-accent text-accent-ink hover:bg-accent-hover",

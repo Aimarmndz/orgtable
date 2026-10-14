@@ -18,8 +18,8 @@ afterAll(async () => {
   await disconnect();
 });
 
-describe("restablecer contraseña retira todo el acceso (integración)", () => {
-  it("revoca los tokens de API: el mismo Bearer pasa de 200 a 401", async () => {
+describe("resetting a password removes all access (integration)", () => {
+  it("revokes the API tokens: the same Bearer goes from 200 to 401", async () => {
     const victim = await seedUser();
     const other = await seedUser();
     const token = await seedApiToken(victim.id);
@@ -32,7 +32,7 @@ describe("restablecer contraseña retira todo el acceso (integración)", () => {
 
     const result = await resetPasswordAndRevokeAccess(
       victim.id,
-      "nueva-contraseña-larga",
+      "new-long-password",
     );
     expect(result).toEqual({ ok: true, revokedTokens: 1 });
 
@@ -42,34 +42,34 @@ describe("restablecer contraseña retira todo el acceso (integración)", () => {
     expect(after.status).toBe(401);
     expect(await prisma.apiToken.count({ where: { userId: victim.id } })).toBe(0);
 
-    // Los tokens de otros usuarios no se tocan.
+    // Other users' tokens are left alone.
     const otherRes = await listBoards(
       apiRequest("GET", "/api/v1/boards", { token: otherToken }),
     );
     expect(otherRes.status).toBe(200);
   });
 
-  it("cambia la contraseña y revoca las sesiones activas", async () => {
-    const user = await seedUser({ password: "contraseña-antigua" });
+  it("changes the password and revokes the active sessions", async () => {
+    const user = await seedUser({ password: "old-password" });
     await prisma.session.create({
       data: { userId: user.id, expiresAt: new Date(Date.now() + 60_000) },
     });
 
-    await resetPasswordAndRevokeAccess(user.id, "contraseña-nueva");
+    await resetPasswordAndRevokeAccess(user.id, "new-password");
 
     const row = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
-    expect(await verifyPassword("contraseña-nueva", row.passwordHash)).toBe(true);
+    expect(await verifyPassword("new-password", row.passwordHash)).toBe(true);
     expect(
       await prisma.session.count({ where: { userId: user.id, revokedAt: null } }),
     ).toBe(0);
   });
 
-  it("con un usuario inexistente no cambia nada", async () => {
+  it("changes nothing for a user that does not exist", async () => {
     const other = await seedUser();
     await seedApiToken(other.id);
     const result = await resetPasswordAndRevokeAccess(
-      "no-existe",
-      "contraseña-nueva",
+      "does-not-exist",
+      "new-password",
     );
     expect(result).toEqual({ ok: false, error: "not_found" });
     expect(await prisma.apiToken.count()).toBe(1);

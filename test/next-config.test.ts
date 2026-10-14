@@ -1,15 +1,15 @@
 import { describe, it, expect } from "vitest";
 import nextConfig from "@/next.config";
 import { MAX_ATTACHMENT_BYTES } from "@/app/lib/storage";
-// El mismo compilador de reglas que usa el router de Next en runtime: así el test entiende
-// los parámetros con regex (`/:file(.*\\.svg)`) igual que el servidor.
+// The same rule compiler Next's router uses at runtime: that way the test understands
+// parameters with a regex (`/:file(.*\\.svg)`) the same way the server does.
 import { buildCustomRoute } from "next/dist/server/lib/router-utils/filesystem";
 
-// Holgura mínima para la sobrecarga de multipart (límites, cabeceras de cada parte y
-// campos del formulario). La guía de Next recomienda 10–20 KB; se exige más.
+// Minimum headroom for the multipart overhead (boundaries, headers of each part and form
+// fields). Next's guide recommends 10–20 KB; more is required here.
 const MULTIPART_OVERHEAD_BYTES = 64 * 1024;
 
-/** Cabeceras que next.config.ts aplica a una ruta concreta, fusionadas por orden. */
+/** Headers next.config.ts applies to a given path, merged in order. */
 async function headersFor(path: string): Promise<Map<string, string>> {
   const rules = (await nextConfig.headers?.()) ?? [];
   const result = new Map<string, string>();
@@ -21,26 +21,26 @@ async function headersFor(path: string): Promise<Map<string, string>> {
   return result;
 }
 
-describe("límite del cuerpo de las Server Actions", () => {
-  // Con el valor por defecto de Next (1 MB) cualquier adjunto de más de 1 MB fallaba
-  // antes de llegar a uploadAttachment.
-  it("deja pasar un adjunto del tamaño máximo con su sobrecarga multipart", () => {
+describe("Server Actions body size limit", () => {
+  // With Next's default (1 MB) any attachment over 1 MB failed before reaching
+  // uploadAttachment.
+  it("lets through an attachment of the maximum size with its multipart overhead", () => {
     const limit = nextConfig.experimental?.serverActions?.bodySizeLimit;
     expect(typeof limit).toBe("number");
     expect(limit).toBeGreaterThan(MAX_ATTACHMENT_BYTES + MULTIPART_OVERHEAD_BYTES);
   });
 
-  // proxy.ts pasa por las rutas de página: si guarda menos que eso, el cuerpo llega
-  // truncado a la acción sin ningún error.
-  it("proxy guarda en memoria el cuerpo completo de esas peticiones", () => {
+  // proxy.ts runs on page routes: if it buffers less than that, the body reaches the
+  // action truncated without any error.
+  it("proxy buffers the full body of those requests", () => {
     expect(nextConfig.experimental?.proxyClientMaxBodySize).toBe(
       nextConfig.experimental?.serverActions?.bodySizeLimit,
     );
   });
 });
 
-describe("cabeceras de seguridad (next.config.ts)", () => {
-  it.each(["/", "/login", "/api/v1/boards"])("%s lleva las cabeceras fijas", async (path) => {
+describe("security headers (next.config.ts)", () => {
+  it.each(["/", "/login", "/api/v1/boards"])("%s carries the fixed headers", async (path) => {
     const h = await headersFor(path);
     expect(h.get("Strict-Transport-Security")).toBe("max-age=31536000");
     expect(h.get("X-Content-Type-Options")).toBe("nosniff");
@@ -48,20 +48,20 @@ describe("cabeceras de seguridad (next.config.ts)", () => {
     expect(h.get("Referrer-Policy")).toBe("strict-origin-when-cross-origin");
   });
 
-  it("/api/v1 recibe una CSP cerrada (solo JSON, SSE y descargas)", async () => {
+  it("/api/v1 gets a locked-down CSP (only JSON, SSE and downloads)", async () => {
     const h = await headersFor("/api/v1/boards");
     expect(h.get("Content-Security-Policy")).toBe(
       "default-src 'none'; frame-ancestors 'none'",
     );
   });
 
-  it("las páginas no reciben la CSP estática: la pone proxy.ts con nonce", async () => {
+  it("pages do not get the static CSP: proxy.ts sets it with a nonce", async () => {
     expect((await headersFor("/login")).has("Content-Security-Policy")).toBe(false);
   });
 
-  // proxy.ts excluye los .svg de su matcher: sin esta regla se servían sin CSP y un SVG
-  // abierto directamente podía ejecutar scripts en el origen de la app.
-  it.each(["/file.svg", "/icons/logo.svg"])("%s recibe una CSP que bloquea scripts", async (path) => {
+  // proxy.ts excludes .svg from its matcher: without this rule they were served without a
+  // CSP and an SVG opened directly could run scripts on the app's origin.
+  it.each(["/file.svg", "/icons/logo.svg"])("%s gets a CSP that blocks scripts", async (path) => {
     const h = await headersFor(path);
     expect(h.get("Content-Security-Policy")).toBe(
       "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'",

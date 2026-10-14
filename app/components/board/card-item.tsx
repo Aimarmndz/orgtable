@@ -7,8 +7,10 @@ import type { CardDTO } from "@/app/lib/types";
 import { labelBackground } from "@/app/lib/colors";
 import { formatDueDay, isOverdue } from "@/app/lib/board-filters";
 import { useBoardPerms } from "./board-perms";
+import { useI18n } from "@/app/i18n/client";
+import { fmt } from "@/app/i18n/format";
 
-// Suscripción vacía: solo se usa useSyncExternalStore para saber si ya se hidrató.
+// Empty subscription: useSyncExternalStore is only used to know whether we hydrated.
 const subscribeNothing = () => () => {};
 
 export function CardItem({
@@ -24,6 +26,7 @@ export function CardItem({
   overlay?: boolean;
   sortingDisabled?: boolean;
 }) {
+  const { m, intl } = useI18n();
   const { canEdit } = useBoardPerms();
   const draggable = canEdit && !sortingDisabled;
   const {
@@ -37,11 +40,11 @@ export function CardItem({
     id: card.id,
     data: { type: "card", listId },
     disabled: !draggable,
-    // dnd-kit anuncia por defecto «sortable» (en inglés).
-    attributes: { roleDescription: "tarjeta" },
+    // dnd-kit announces "sortable" by default.
+    attributes: { roleDescription: m.boards.card.roleDescription },
   });
 
-  // Regla lateral tintada con el color de la primera etiqueta (o el borde si no hay).
+  // Side rule tinted with the first label's colour (or the border if there is none).
   const firstLabel = card.labels[0];
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -57,12 +60,12 @@ export function CardItem({
     0,
   );
   const attachCount = card.attachments.length;
-  // Date.now() se lee una vez al montar (no en cada render) para no romper la pureza
-  // del render; el badge de "vencida" no necesita actualizarse al segundo.
+  // Date.now() is read once on mount (not on every render) to keep rendering pure; the
+  // "overdue" badge does not need to update every second.
   const [now] = useState(() => Date.now());
-  // "Vencida" depende del día LOCAL del navegador, que el servidor no conoce: se calcula
-  // solo tras hidratar (en el servidor y durante la hidratación vale false), para que el
-  // HTML del servidor y el primer render del cliente coincidan.
+  // "Overdue" depends on the browser's LOCAL day, which the server does not know: it is
+  // only computed after hydration (false on the server and during hydration), so the
+  // server HTML and the client's first render match.
   const hydrated = useSyncExternalStore(
     subscribeNothing,
     () => true,
@@ -77,21 +80,21 @@ export function CardItem({
       style={style}
       {...(draggable ? attributes : {})}
       {...(draggable ? listeners : {})}
-      // Siempre enfocable y anunciada como botón (también para lectores o con filtros,
-      // cuando dnd-kit no pone sus atributos). La copia flotante no recibe foco. Sin
-      // aria-label: el nombre sale del contenido (etiquetas, título, vencimiento...) y un
-      // aria-label con solo el título lo taparía.
+      // Always focusable and announced as a button (also for viewers or with filters,
+      // when dnd-kit does not add its attributes). The floating copy gets no focus. No
+      // aria-label: the name comes from the content (labels, title, due date...) and an
+      // aria-label with only the title would hide it.
       role="button"
       tabIndex={overlay ? -1 : 0}
       onClick={() => onOpen?.(card.id)}
       onKeyDown={(e) => {
-        // Primero dnd-kit (Espacio coge la tarjeta si se puede arrastrar; si la coge,
-        // marca el evento con preventDefault). Durante un arrastre con teclado, Intro
-        // suelta la tarjeta y no debe abrirla.
+        // dnd-kit first (Space picks up the card if it is draggable; if it does, it marks
+        // the event with preventDefault). During a keyboard drag, Enter drops the card
+        // and must not open it.
         if (draggable) listeners?.onKeyDown?.(e);
         if (e.defaultPrevented || isDragging || overlay) return;
         if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault(); // Espacio desplazaría la página.
+          e.preventDefault(); // Space would scroll the page.
           onOpen?.(card.id);
         }
       }}
@@ -126,7 +129,7 @@ export function CardItem({
             aria-valuenow={done}
             aria-valuemin={0}
             aria-valuemax={total}
-            aria-label={`Subtareas: ${done} de ${total} completadas`}
+            aria-label={fmt(m.boards.card.subtasks, { done, total })}
           >
             <div
               className={`h-full rounded-full transition-[width] duration-200 ease-out ${
@@ -162,9 +165,9 @@ export function CardItem({
                 <rect x="3" y="4" width="18" height="18" rx="2" />
                 <path d="M16 2v4M8 2v4M3 10h18" />
               </svg>
-              {formatDueDay(due)}
-              {/* El rojo solo se ve: el lector de pantalla necesita el estado en texto. */}
-              {overdue && <span className="sr-only">, vencida</span>}
+              {formatDueDay(due, intl)}
+              {/* Red is only visual: the screen reader needs the state as text. */}
+              {overdue && <span className="sr-only">{m.boards.card.overdue}</span>}
             </span>
           )}
           {attachCount > 0 && (

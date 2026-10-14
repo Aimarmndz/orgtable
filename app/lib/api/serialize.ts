@@ -1,9 +1,8 @@
 import "server-only";
 
-// Serialización a JSON de la API pública (Hito 9). Define la forma estable que ven los
-// clientes (fechas como ISO string, etiquetas aplanadas). Los tipos de entrada describen
-// solo los campos que se leen: los resultados de Prisma encajan estructuralmente aunque
-// traigan campos extra. Ver docs/api/public-api.md.
+// JSON serialization for the public API. Defines the stable shape clients see (dates as
+// ISO strings, flattened labels). The input types describe only the fields that are read:
+// Prisma results fit structurally even with extra fields. See docs/api/public-api.md.
 
 type LabelRow = { id: string; name: string; color: string };
 

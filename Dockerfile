@@ -1,20 +1,20 @@
 # syntax=docker/dockerfile:1
 
-# orgtable — imagen de producción multi-stage. Ver docs/docker.md.
-# Se construye localmente en el servidor del usuario (docker compose build).
+# orgtable — multi-stage production image. See docs/docker.md.
+# Built locally on the user's server (docker compose build).
 
-# --- Base con pnpm -------------------------------------------------------------
-# pnpm llega por Corepack, fijado a la versión de `packageManager` en package.json,
-# para que la imagen instale con el mismo gestor y versión que el lockfile.
+# --- Base with pnpm ------------------------------------------------------------
+# pnpm comes from Corepack, pinned to the `packageManager` version in package.json,
+# so the image installs with the same package manager and version as the lockfile.
 FROM node:22-alpine AS base
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 RUN corepack enable
 
 # --- Stage 1: deps -----------------------------------------------------------
-# Instala dependencias en Alpine para que los engines nativos de Prisma (el
-# schema-engine de Migrate) se descarguen para linux-musl, no para glibc.
-# pnpm-workspace.yaml lleva la lista `allowBuilds`: sin ella pnpm no ejecuta los
-# scripts de instalación de Prisma y faltaría el schema-engine.
+# Install dependencies on Alpine so Prisma's native engines (Migrate's schema-engine)
+# are downloaded for linux-musl, not glibc.
+# pnpm-workspace.yaml holds the `allowBuilds` list: without it pnpm does not run
+# Prisma's install scripts and the schema-engine would be missing.
 FROM base AS deps
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -25,11 +25,12 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# DATABASE_URL ficticia: prisma.config.ts exige resolver esta variable al cargar la
-# config (Prisma 7 lanza error si falta), pero ni `generate` ni el build conectan a
-# la BD —las páginas son dinámicas (auth) y no la consultan en build—.
+# Dummy DATABASE_URL: prisma.config.ts must resolve this variable when loading the
+# config (Prisma 7 throws if it is missing), but neither `generate` nor the build
+# connect to the database (pages are dynamic because of auth and do not query it at
+# build time).
 ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
-# Genera el Prisma Client (query engine WASM, sin binario).
+# Generate the Prisma Client (WASM query engine, no binary).
 RUN pnpm exec prisma generate
 RUN pnpm build
 
@@ -39,38 +40,38 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
-# Directorio de adjuntos. En producción es un volumen montado (ver docker-compose.yml);
-# se crea aquí y se cede al usuario sin privilegios para que pueda escribir.
+# Attachments directory. In production it is a mounted volume (see docker-compose.yml);
+# it is created here and handed to the unprivileged user so it can write to it.
 ENV ORGTABLE_UPLOAD_DIR=/data/uploads
 
-# openssl: requerido por el schema-engine de Prisma para `migrate deploy`.
+# openssl: required by Prisma's schema-engine for `migrate deploy`.
 RUN apk add --no-cache openssl
 
-# Usuario sin privilegios.
+# Unprivileged user.
 RUN addgroup -g 1001 nodejs && adduser -u 1001 -G nodejs -S nextjs
 
-# Directorio de adjuntos escribible por el usuario (lo monta un volumen en producción).
+# Attachments directory writable by that user (a volume is mounted here in production).
 RUN mkdir -p /data/uploads && chown -R nextjs:nodejs /data
 
-# Aplicación Next.js standalone (servidor Node mínimo + assets).
+# Standalone Next.js app (minimal Node server + assets).
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 
-# node_modules completo: el CLI de Prisma (`migrate deploy` en el entrypoint) necesita
-# sus dependencias transitivas (p. ej. `effect`, que usa @prisma/config) y el cliente
-# generado. El trazado de `output: standalone` solo incluye lo que importa la app, no
-# el CLI, así que copiamos el árbol completo. (Optimizable a futuro con un stage
-# prod-deps; ver docs/docker.md.)
+# Full node_modules: the Prisma CLI (`migrate deploy` in the entrypoint) needs its
+# transitive dependencies (e.g. `effect`, used by @prisma/config) and the generated
+# client. `output: standalone` tracing only includes what the app imports, not the CLI,
+# so the whole tree is copied. (Could be slimmed down later with a prod-deps stage; see
+# docs/docker.md.)
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder /app/package.json ./package.json
 
 COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-# El código queda de root y de solo lectura para `nextjs`: un fallo en la app no puede
-# reescribir server.js, .next ni node_modules. Un `chown -R /app` además duplicaría
-# node_modules en otra capa de cientos de MB. Solo la caché de Next necesita escritura.
+# The code stays owned by root and read-only for `nextjs`: a bug in the app cannot
+# rewrite server.js, .next or node_modules. A `chown -R /app` would also duplicate
+# node_modules in another layer of hundreds of MB. Only Next's cache needs to be writable.
 RUN mkdir -p .next/cache && chown nextjs:nodejs .next/cache
 
 USER nextjs

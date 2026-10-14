@@ -1,44 +1,39 @@
-// Modelo de roles y permisos, compartido entre servidor y cliente (NO lleva
-// "server-only" a propósito: los componentes cliente lo importan para ocultar los
-// controles de escritura a quien no puede usarlos). La autorización REAL vive en el
-// servidor (cada Server Action vuelve a comprobar el rol); esto es solo para la UI y
-// para no duplicar la jerarquía de roles. Ver docs/authorization.md.
+// Role and permission model, shared by server and client (deliberately NOT
+// "server-only": Client Components import it to hide write controls from people who
+// cannot use them). The REAL authorization lives on the server (every Server Action
+// checks the role again); this is only for the UI and to avoid duplicating the role
+// hierarchy. See docs/authorization.md.
+//
+// Role names shown in the UI live in the messages: `m.boards.roles[role]`.
 
-// Rol del usuario DENTRO de un tablero concreto (tabla board_members).
+// The user's role WITHIN a given board (board_members table).
 export type BoardRole = "OWNER" | "EDITOR" | "VIEWER";
 
-// Rol GLOBAL del usuario en la instancia (tabla users).
+// The user's GLOBAL role in the instance (users table).
 export type GlobalRole = "ADMIN" | "MEMBER";
 
-// Jerarquía: VIEWER < EDITOR < OWNER. Un rol "incluye" a todos los de menor rango.
+// Hierarchy: VIEWER < EDITOR < OWNER. A role "includes" every lower-ranked one.
 const BOARD_RANK: Record<BoardRole, number> = {
   VIEWER: 0,
   EDITOR: 1,
   OWNER: 2,
 };
 
-/** true si `role` tiene al menos el rango de `min`. */
+/** true if `role` ranks at least as high as `min`. */
 export function atLeastBoardRole(role: BoardRole, min: BoardRole): boolean {
   return BOARD_RANK[role] >= BOARD_RANK[min];
 }
 
-/** ¿Puede crear/editar/mover contenido (listas, tarjetas, checklists)? EDITOR u OWNER. */
+/** Can create/edit/move content (lists, cards, checklists)? EDITOR or OWNER. */
 export function canEditBoard(role: BoardRole): boolean {
   return atLeastBoardRole(role, "EDITOR");
 }
 
-/** ¿Puede administrar el tablero (miembros, etiquetas, renombrar, borrar)? Solo OWNER. */
+/** Can administer the board (members, labels, rename, delete)? OWNER only. */
 export function canManageBoard(role: BoardRole): boolean {
   return role === "OWNER";
 }
 
-// Etiquetas legibles para la interfaz (en español, como el resto de la UI).
-export const BOARD_ROLE_LABELS: Record<BoardRole, string> = {
-  OWNER: "Propietario",
-  EDITOR: "Editor",
-  VIEWER: "Lector",
-};
-
-// Roles que un propietario puede asignar al invitar/editar miembros (no se asigna
-// OWNER desde la UI: el propietario es el creador del tablero).
+// Roles an owner can grant when inviting or editing members (OWNER is never granted
+// from the UI: the owner is whoever created the board).
 export const ASSIGNABLE_BOARD_ROLES: BoardRole[] = ["EDITOR", "VIEWER"];

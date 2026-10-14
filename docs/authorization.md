@@ -1,102 +1,99 @@
-# Autorización y roles (multiusuario)
+# Authorization and roles
 
-orgtable tiene **dos niveles de roles**, independientes entre sí:
+orgtable has **two independent levels of roles**:
 
-- **Rol global** (`User.role`): `ADMIN` o `MEMBER`. Decide quién administra la
-  instancia (crear cuentas, cambiar roles, restablecer contraseñas, borrar usuarios).
-- **Rol de tablero** (`BoardMember.role`): `OWNER`, `EDITOR` o `VIEWER`. Decide qué
-  puede hacer cada persona **dentro de un tablero concreto**.
+- **Global role** (`User.role`): `ADMIN` or `MEMBER`. Decides who administers the
+  instance (creates accounts, changes roles, resets passwords, deletes users).
+- **Board role** (`BoardMember.role`): `OWNER`, `EDITOR` or `VIEWER`. Decides what each
+  person can do **inside a specific board**.
 
-Ambos modelos existían en el esquema desde el Hito 0 (ver `docs/database.md`); el
-Hito 3 los pone en uso.
+Both models are part of the schema (see `docs/database.md`) and every mutation enforces
+them.
 
-## Jerarquía de roles de tablero
+## Board role hierarchy
 
 ```
 VIEWER  <  EDITOR  <  OWNER
 ```
 
-| Acción | VIEWER | EDITOR | OWNER |
+| Action | VIEWER | EDITOR | OWNER |
 | --- | :---: | :---: | :---: |
-| Ver el tablero, listas y tarjetas | ✅ | ✅ | ✅ |
-| Crear/editar/mover listas, tarjetas y checklists | — | ✅ | ✅ |
-| Asignar etiquetas existentes a tarjetas | — | ✅ | ✅ |
-| Crear/borrar etiquetas del tablero | — | — | ✅ |
-| Renombrar el tablero | — | — | ✅ |
-| Invitar/quitar miembros y cambiar sus roles | — | — | ✅ |
-| Borrar el tablero | — | — | ✅ (solo el dueño) |
+| View the board, lists and cards | ✅ | ✅ | ✅ |
+| Create/edit/move lists, cards and checklists | — | ✅ | ✅ |
+| Apply existing labels to cards | — | ✅ | ✅ |
+| Create/delete board labels | — | — | ✅ |
+| Rename the board | — | — | ✅ |
+| Invite/remove members and change their roles | — | — | ✅ |
+| Delete the board | — | — | ✅ (owner only) |
 
-El **propietario** de un tablero es su creador (`Board.ownerId`), que además es
-miembro con rol `OWNER`. Su rol no se puede cambiar ni se le puede quitar del
-tablero: es el ancla de la propiedad.
+A board's **owner** is its creator (`Board.ownerId`), who is also a member with the
+`OWNER` role. The owner's role cannot be changed and the owner cannot be removed from the
+board: it anchors ownership.
 
-Los ayudantes que codifican esta jerarquía viven en
+The helpers that encode this hierarchy live in
 [`app/lib/roles.ts`](../app/lib/roles.ts):
 
 ```ts
-canEditBoard(role)    // EDITOR u OWNER → puede editar contenido
-canManageBoard(role)  // solo OWNER → puede administrar el tablero
+canEditBoard(role)    // EDITOR or OWNER → can edit content
+canManageBoard(role)  // OWNER only → can administer the board
 ```
 
-Este módulo **no** lleva `server-only` a propósito: también lo importan los
-componentes cliente para ocultar los controles que el usuario no puede usar.
+This module deliberately does **not** import `server-only`: Client Components also import
+it to hide the controls the user cannot use.
 
-## Dónde se aplica la autorización
+## Where authorization is enforced
 
-La regla de oro: **el servidor es la única autoridad**. La interfaz oculta botones
-por comodidad, pero nunca es la barrera de seguridad.
+The golden rule: **the server is the only authority**. The interface hides buttons for
+convenience, but it is never the security barrier.
 
 ### 1. Data Access Layer (`app/lib/dal.ts`)
 
-- `requireUser()` — exige sesión válida (si no, redirige a `/login`).
-- `requireAdmin()` — exige `User.role === "ADMIN"` (si no, redirige a `/boards`).
-- `requireBoardAccess(boardId)` — exige ser miembro del tablero (si no, redirige a
-  `/boards`) y **devuelve el rol** del usuario en ese tablero.
+- `requireUser()` — requires a valid session (otherwise redirects to `/login`).
+- `requireAdmin()` — requires `User.role === "ADMIN"` (otherwise redirects to `/boards`).
+- `requireBoardAccess(boardId)` — requires board membership (otherwise redirects to
+  `/boards`) and **returns the user's role** on that board.
 
-### 2. Cada Server Action
+### 2. Every Server Action
 
-Tras `requireBoardAccess`, la acción comprueba el rol con los ayudantes de
-`roles.ts` y, si no alcanza, **no hace nada** (acciones de formulario) o devuelve
-`{ ok: false }` (acciones de drag & drop / imperativas):
+After `requireBoardAccess`, the action checks the role with the `roles.ts` helpers and,
+if it is not enough, **does nothing** (form actions) or returns `{ ok: false }`
+(drag-and-drop and other imperative actions):
 
 ```ts
 export async function createList(formData: FormData) {
   const boardId = String(formData.get("boardId"));
   const { role } = await requireBoardAccess(boardId);
-  if (!canEditBoard(role)) return; // backstop de seguridad
+  if (!canEditBoard(role)) return; // security backstop
   // …
 }
 ```
 
-### 3. La interfaz (defensa en profundidad)
+### 3. The interface (defense in depth)
 
-El componente de tablero recibe el rol del visor y lo expone por contexto
-([`board-perms.tsx`](../app/components/board/board-perms.tsx)). Con `canEdit` y
-`canManage` los componentes ocultan: arrastrar y soltar, los formularios de añadir,
-los botones de borrar, la edición en el modal de tarjeta y el panel de gestión de
-miembros. Un `VIEWER` ve un tablero **de solo lectura**.
+The board component receives the viewer's role and exposes it through context
+([`board-perms.tsx`](../app/components/board/board-perms.tsx)). With `canEdit` and
+`canManage`, components hide drag and drop, the "add" forms, the delete buttons, editing
+in the card modal and the member management panel. A `VIEWER` sees a **read-only** board.
 
-## Por qué guardas explícitas y no `forbidden()`
+## Why explicit guards instead of `forbidden()`
 
-Next.js 16 ofrece `forbidden()`/`unauthorized()` para cortar la ejecución con una
-página 403/401, pero son **experimentales** (requieren `experimental.authInterrupts`).
-orgtable prefiere **guardas explícitas** (`if (!canEditBoard(role)) return;`) por
-tres motivos: no dependen de una API experimental, encajan con el estilo existente
-de "fallar en silencio" de las acciones, y permiten que las acciones de drag & drop
-devuelvan `{ ok: false }` para que el cliente revierta su UI optimista sin lanzar una
-excepción. La decisión está registrada en
+Next.js 16 provides `forbidden()`/`unauthorized()` to stop execution with a 403/401 page,
+but they are **experimental** (they require `experimental.authInterrupts`). orgtable
+prefers **explicit guards** (`if (!canEditBoard(role)) return;`) for three reasons: they
+do not depend on an experimental API, they match the existing "fail silently" style of the
+actions, and they let drag-and-drop actions return `{ ok: false }` so the client can roll
+back its optimistic UI without throwing. The decision is recorded in
 [ADR 0006](./decisions/0006-rbac-explicit-guards.md).
 
-## Invitar miembros
+## Inviting members
 
-No hay registro abierto: solo se puede invitar a **usuarios que ya existen**. El
-flujo es:
+Only **existing accounts** can be invited; there are no invitation emails. The flow is:
 
-1. El administrador da de alta las cuentas en `/admin/users` (ver
-   [`docs/admin.md`](./admin.md)).
-2. El propietario de un tablero abre **Miembros**, escribe el email de una persona
-   existente y elige su rol (`EDITOR` o `VIEWER`).
+1. The account exists: the administrator created it in `/admin/users` (see
+   [`docs/admin.md`](./admin.md)), or the person signed up, if the instance has open
+   sign-up enabled.
+2. The board owner opens **Members**, types the email of an existing person and picks a
+   role (`EDITOR` or `VIEWER`).
 
-Si el email no corresponde a ninguna cuenta, la invitación se rechaza con un mensaje
-que pide al administrador crear la cuenta primero. Así evitamos correos de
-invitación, tokens y verificación en una app self-hosted de equipo pequeño.
+If the email does not match any account, the invitation is rejected. This avoids
+invitation emails, tokens and verification in a self-hosted app for small teams.

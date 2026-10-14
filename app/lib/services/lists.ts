@@ -3,9 +3,9 @@ import { prisma } from "@/app/lib/prisma";
 import { positionAtEnd } from "@/app/lib/ordering";
 
 /**
- * Crea una lista al final del tablero. Bloquea la fila del tablero (`FOR UPDATE`) para
- * que dos altas simultáneas no lean la misma última posición y guarden la misma clave.
- * Mismo razonamiento que createCardAtEnd (app/lib/services/cards.ts).
+ * Creates a list at the end of the board. Locks the board row (`FOR UPDATE`) so two
+ * concurrent creates do not read the same last position and store the same key.
+ * Same reasoning as createCardAtEnd (app/lib/services/cards.ts).
  */
 export async function createListAtEnd(data: {
   boardId: string;

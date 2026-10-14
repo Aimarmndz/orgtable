@@ -1,6 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { isLocale } from "@/app/i18n/config";
+import { setLocaleCookie } from "@/app/i18n/cookie";
 import { prisma } from "@/app/lib/prisma";
 import { verifyPasswordOrDummy } from "@/app/lib/auth";
 import { createSession, deleteSession } from "@/app/lib/session";
@@ -8,31 +10,35 @@ import { verifySession } from "@/app/lib/dal";
 import { loginSchema } from "@/app/lib/validators";
 import { rateLimit, resetRateLimit } from "@/app/lib/rate-limit";
 import { recordAudit, clientIp } from "@/app/lib/audit";
+import { getI18n } from "@/app/i18n/server";
+import { plural } from "@/app/i18n/format";
 
-// `values` devuelve lo tecleado (nunca la contraseña) para repintar el formulario: React
-// 19 resetea los formularios no controlados tras la acción y, sin esto, un error borraba
-// el email.
+// `values` returns what was typed (never the password) to repaint the form: React 19
+// resets uncontrolled forms after the action and, without this, an error cleared the email.
 export type AuthState = { error?: string; values?: { email: string } };
 
-// Hasta 10 intentos de login por IP cada 10 minutos (anti fuerza bruta). Solo se aplica
-// si hay IP fiable (TRUSTED_PROXY_HOPS > 0, ver app/lib/client-ip.ts); sin ella no se
-// agrupa a todos en un bucket común, que dejaría el login bloqueado para todo el mundo.
+// Up to 10 login attempts per IP every 10 minutes (anti brute force). Only applied when
+// there is a trustworthy IP (TRUSTED_PROXY_HOPS > 0, see app/lib/client-ip.ts); without one,
+// everybody is not lumped into a shared bucket, which would lock the login for everyone.
 const LOGIN_LIMIT = 10;
 const LOGIN_WINDOW_MS = 10 * 60 * 1000;
 
-// Límite por cuenta, independiente de la IP: frena los ataques repartidos entre muchas
-// IPs. Cuenta los intentos fallidos (también para emails que no existen, para no revelar
-// cuáles existen) y se reinicia tras un login correcto. Riesgo aceptado: quien conozca un
-// email puede bloquear esa cuenta hasta 15 minutos. Ver docs/decisions/0009.
+// Per-account limit, independent of the IP: slows down attacks spread over many IPs. It
+// counts failed attempts (also for emails that do not exist, so as not to reveal which do)
+// and is reset after a successful login. Accepted risk: whoever knows an email can lock
+// that account for up to 15 minutes. See docs/decisions/0009.
 const EMAIL_LIMIT = 20;
 const EMAIL_WINDOW_MS = 15 * 60 * 1000;
 
-function tooManyAttempts(
+async function tooManyAttempts(
   retryAfterSec: number,
   values: AuthState["values"],
-): AuthState {
+): Promise<AuthState> {
+  const { m, intl } = await getI18n();
   return {
-    error: `Demasiados intentos. Inténtalo de nuevo en ${retryAfterSec} s.`,
+    error: plural(intl, m.errors.auth.tooManyAttempts, retryAfterSec, {
+      seconds: retryAfterSec,
+    }),
     values,
   };
 }
@@ -48,10 +54,10 @@ export async function login(
   if (ip) {
     const limit = rateLimit(`login:${ip}`, LOGIN_LIMIT, LOGIN_WINDOW_MS);
     if (!limit.ok) {
-      // Una fila por ventana bloqueada, no una por intento: un ataque sostenido no debe
-      // llenar AuditLog justo cuando el límite lo está conteniendo.
+      // One row per blocked window, not one per attempt: a sustained attack must not fill
+      // AuditLog precisely while the limit is holding it back.
       if (limit.firstBlock) {
-        await recordAudit({ action: "auth.login_rate_limited", ip, detail: "límite por IP" });
+        await recordAudit({ action: "auth.login_rate_limited", ip, detail: "IP limit" });
       }
       return tooManyAttempts(limit.retryAfterSec, values);
     }
@@ -62,12 +68,12 @@ export async function login(
     password: formData.get("password"),
   });
   if (!parsed.success) {
-    return { error: "Revisa el email y la contraseña.", values };
+    return { error: (await getI18n()).m.errors.auth.checkCredentials, values };
   }
   const email = parsed.data.email.toLowerCase();
 
-  // Se cuenta ANTES de verificar (sin carreras entre peticiones simultáneas) y se borra
-  // si el login es correcto, así que en la práctica solo suman los fallos.
+  // Counted BEFORE verifying (no races between simultaneous requests) and cleared if the
+  // login succeeds, so in practice only failures add up.
   const emailKey = `login-email:${email}`;
   const emailLimit = rateLimit(emailKey, EMAIL_LIMIT, EMAIL_WINDOW_MS);
   if (!emailLimit.ok) {
@@ -75,34 +81,38 @@ export async function login(
       await recordAudit({
         action: "auth.login_rate_limited",
         ip,
-        detail: "límite por cuenta",
+        detail: "account limit",
       });
     }
     return tooManyAttempts(emailLimit.retryAfterSec, values);
   }
 
   const user = await prisma.user.findUnique({ where: { email } });
-  // Si el usuario no existe se verifica contra un hash ficticio del mismo coste, para no
-  // filtrar por tiempo si un email está registrado.
+  // If the user does not exist, a dummy hash of the same cost is verified, so as not to leak
+  // through timing whether an email is registered.
   const valid = await verifyPasswordOrDummy(
     parsed.data.password,
     user?.passwordHash ?? null,
   );
 
   if (!user || !valid) {
-    // Sin el email tecleado: podría ser de un tercero (o una contraseña pegada en el
-    // campo equivocado) y acabaría visible en /admin/audit. Si la cuenta existe basta
-    // con su userId.
+    // Without the typed email: it could belong to someone else (or be a password pasted
+    // into the wrong field) and would end up visible in /admin/audit. If the account exists,
+    // its userId is enough.
     await recordAudit({
       action: "auth.login_failed",
       userId: user?.id ?? null,
       ip,
     });
-    return { error: "Credenciales incorrectas.", values };
+    return { error: (await getI18n()).m.errors.auth.invalidCredentials, values };
   }
 
   resetRateLimit(emailKey);
   await createSession(user.id);
+  // The account's language wins over the browser's on any device it signs in from.
+  if (isLocale(user.locale)) {
+    await setLocaleCookie(user.locale);
+  }
   await recordAudit({ action: "auth.login", userId: user.id, ip });
   redirect("/boards");
 }

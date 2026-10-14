@@ -11,9 +11,10 @@ import { BoardRealtime } from "@/app/components/board/board-realtime";
 import type { BoardMemberDTO } from "@/app/components/board/members-panel";
 import type { BoardDTO } from "@/app/lib/types";
 import type { BoardRole } from "@/app/lib/roles";
+import { getI18n } from "@/app/i18n/server";
 
-// El nombre sale de la misma guarda de acceso que la página: sin acceso, título
-// genérico (la página redirige o da 404, pero el <title> se resuelve aparte).
+// The name comes from the same access guard as the page: without access, a generic
+// title (the page redirects or 404s, but the <title> is resolved separately).
 export async function generateMetadata({
   params,
 }: {
@@ -22,7 +23,9 @@ export async function generateMetadata({
   const { id } = await params;
   const user = await requireUser();
   const title = await getBoardTitleForUser(id, user.id);
-  return { title: title ?? "Tablero" };
+  if (title) return { title };
+  const { m } = await getI18n();
+  return { title: m.boards.board.metaTitle };
 }
 
 export default async function BoardPage({
@@ -30,15 +33,15 @@ export default async function BoardPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  // En Next.js 16 `params` es asíncrono. El deep-link ?card=… lo lee BoardView de la URL
-  // (useSearchParams). Ver docs/search.md.
+  // In Next.js 16 `params` is async. BoardView reads the ?card=… deep link from the URL
+  // (useSearchParams). See docs/search.md.
   const { id } = await params;
   const user = await requireUser();
   const board = await getBoardWithLists(id, user.id);
   if (!board) notFound();
 
-  // Miembros del tablero y rol del visor (para autorizar la UI). El propietario es
-  // siempre miembro OWNER; si por algún motivo no apareciera, caemos a VIEWER.
+  // Board members and the viewer's role (to authorize the UI). The owner is always an
+  // OWNER member; if for some reason they were missing, fall back to VIEWER.
   const memberData = await getBoardMembers(id);
   const members: BoardMemberDTO[] = (memberData?.members ?? []).map((m) => ({
     id: m.user.id,
@@ -50,7 +53,7 @@ export default async function BoardPage({
   const viewerRole: BoardRole =
     members.find((m) => m.id === user.id)?.role ?? "VIEWER";
 
-  // Proyectamos a un DTO mínimo y serializable (las fechas a ISO string).
+  // Project to a minimal, serializable DTO (dates as ISO strings).
   const dto: BoardDTO = {
     id: board.id,
     title: board.title,

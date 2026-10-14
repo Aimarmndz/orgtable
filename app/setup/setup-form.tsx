@@ -4,12 +4,15 @@ import { useActionState } from "react";
 import { completeSetup, type SetupState } from "@/app/lib/actions/setup";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
+import { useI18n } from "@/app/i18n/client";
 
 export function SetupForm() {
   const [state, action, pending] = useActionState<SetupState, FormData>(
     completeSetup,
     {},
   );
+  const { m } = useI18n();
+  const t = m.auth.setup;
 
   return (
     <form
@@ -26,14 +29,14 @@ export function SetupForm() {
       </div>
 
       <h1 className="mt-7 font-display text-2xl font-bold tracking-tight">
-        Configura tu instancia
+        {t.title}
       </h1>
       <p className="mt-1 text-sm text-ink-muted">
-        Este asistente solo aparece una vez. Crea tu cuenta de administrador.
+        {t.subtitle}
       </p>
 
-      {/* role="alert" para que el lector de pantalla lo anuncie. Se retira mientras se
-          envía: así un segundo error idéntico se vuelve a insertar y se anuncia de nuevo. */}
+      {/* role="alert" so screen readers announce it. It is removed while submitting, so an
+          identical second error is inserted again and announced again. */}
       {state.error && !pending && (
         <p
           role="alert"
@@ -45,16 +48,16 @@ export function SetupForm() {
 
       <fieldset className="mt-6">
         <legend className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
-          Instancia
+          {t.instanceLegend}
         </legend>
         <label className="mt-3 block text-sm font-medium">
-          Nombre de la instancia
+          {t.instanceName}
           <Input
             name="instanceName"
             type="text"
             required
             maxLength={60}
-            placeholder="Mi equipo"
+            placeholder={t.instanceNamePlaceholder}
             defaultValue={state.values?.instanceName}
             className="mt-1.5"
           />
@@ -63,11 +66,11 @@ export function SetupForm() {
 
       <fieldset className="mt-6">
         <legend className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
-          Administrador
+          {t.adminLegend}
         </legend>
         <div className="mt-3 space-y-4">
           <label className="block text-sm font-medium">
-            Tu nombre
+            {t.yourName}
             <Input
               name="name"
               type="text"
@@ -79,7 +82,7 @@ export function SetupForm() {
             />
           </label>
           <label className="block text-sm font-medium">
-            Email
+            {m.auth.fields.email}
             <Input
               name="email"
               type="email"
@@ -90,7 +93,7 @@ export function SetupForm() {
             />
           </label>
           <label className="block text-sm font-medium">
-            Contraseña
+            {m.auth.fields.password}
             <Input
               name="password"
               type="password"
@@ -100,14 +103,14 @@ export function SetupForm() {
               className="mt-1.5"
             />
             <span className="mt-1 block text-xs text-ink-muted">
-              Mínimo 8 caracteres.
+              {t.passwordHint}
             </span>
           </label>
         </div>
       </fieldset>
 
       <Button type="submit" disabled={pending} className="mt-6 w-full">
-        {pending ? "Creando…" : "Crear y entrar"}
+        {pending ? t.submitting : t.submit}
       </Button>
     </form>
   );

@@ -2,14 +2,14 @@ import { defineConfig } from "vitest/config";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
-// Tests de INTEGRACIÓN: ejercen las rutas de la API y los servicios contra una base de
-// datos PostgreSQL real (efímera). Se ejecutan con `pnpm test:integration` y requieren
-// DATABASE_URL apuntando a una base de datos de test (su nombre debe acabar en `_test`;
-// los helpers lo verifican para no tocar nunca datos de dev/producción). Ver docs/testing.md.
+// INTEGRATION tests: they exercise the API routes and services against a real
+// (ephemeral) PostgreSQL database. Run with `pnpm test:integration`; they require
+// DATABASE_URL pointing at a test database (its name must end in `_test`; the helpers
+// check it so dev/production data is never touched). See docs/testing.md.
 //
-// Alias para poder importar módulos de la app fuera de Next:
-//  - server-only / next-cache / next-headers: stubs (no hay runtime de Next en los tests).
-//  - @/…: el mismo alias que usa la app.
+// Aliases to import app modules outside Next:
+//  - server-only / next-cache / next-headers: stubs (there is no Next runtime in tests).
+//  - @/…: the same alias the app uses.
 const root = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
@@ -32,14 +32,14 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    // Zona horaria fija: la lógica de fechas (recordatorios) usa la hora local; UTC la
-    // hace determinista en cualquier máquina y en CI.
-    // SESSION_SECRET: clave FIJA y solo de test para que createSession/verifySession
-    // funcionen con el stub de cookies (loginAs). No protege nada real.
-    env: { TZ: "UTC", SESSION_SECRET: "clave-de-sesion-solo-para-tests-0123456789" },
+    // Fixed time zone: date logic (reminders) uses local time; UTC makes it
+    // deterministic on any machine and in CI.
+    // SESSION_SECRET: a FIXED, test-only key so createSession/verifySession work with
+    // the cookie stub (loginAs). It protects nothing real.
+    env: { TZ: "UTC", SESSION_SECRET: "test-only-session-secret-0123456789" },
     include: ["test/integration/**/*.int.test.ts"],
-    // Una sola conexión a la BD: los tests comparten un PrismaClient y resetean entre
-    // cada uno, así que no deben correr en paralelo entre archivos.
+    // A single DB connection: tests share one PrismaClient and reset between each test,
+    // so files must not run in parallel.
     fileParallelism: false,
     sequence: { concurrent: false },
     hookTimeout: 30000,

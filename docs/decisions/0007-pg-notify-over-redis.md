@@ -1,43 +1,43 @@
-# ADR 0007 — PostgreSQL LISTEN/NOTIFY en lugar de Redis para pub/sub
+# ADR 0007 — PostgreSQL LISTEN/NOTIFY instead of Redis for pub/sub
 
-**Estado:** aceptada · **Fecha:** 2026-06-05 · **Relacionada:** [ADR 0004](./0004-no-redis-mvp.md)
+**Status:** accepted · **Date:** 2026-06-05 · **Related:** [ADR 0004](./0004-no-redis-mvp.md)
 
-## Contexto
+## Context
 
-El Hito 4 introduce la sincronización en vivo: cuando alguien cambia un tablero, el
-resto de personas con ese tablero abierto deben verlo sin recargar. Eso necesita un
-mecanismo de **publicación/suscripción** entre el código que muta (Server Actions) y
-las conexiones abiertas (SSE).
+The realtime feature introduces live sync: when someone changes a board, everyone else
+with that board open must see it without reloading. That needs a
+**publish/subscribe** mechanism between the code that mutates (Server Actions) and the
+open connections (SSE).
 
-La [ADR 0004](./0004-no-redis-mvp.md) anticipaba que Redis entraría "cuando llegue el
-tiempo real con pub/sub". Al implementarlo, reconsideramos esa suposición.
+[ADR 0004](./0004-no-redis-mvp.md) anticipated that Redis would come in "when realtime
+with pub/sub arrives". When implementing it, we reconsidered that assumption.
 
-## Decisión
+## Decision
 
-**No añadir Redis.** El bus es **en proceso** (un `EventEmitter`) por defecto, y para
-despliegues multi-instancia se usa **PostgreSQL `LISTEN/NOTIFY`** como puente opcional
+**Do not add Redis.** The bus is **in-process** (an `EventEmitter`) by default, and for
+multi-instance deployments **PostgreSQL `LISTEN/NOTIFY`** is used as an optional bridge
 (`ORGTABLE_REALTIME_PG_NOTIFY=1`).
 
-## Justificación
+## Rationale
 
-- **Una pieza menos de infraestructura.** Ya dependemos de PostgreSQL. Añadir Redis
-  significaría otro servicio que instalar, operar, respaldar y vigilar — justo lo que
-  una app self-hosted intenta evitar.
-- **El caso por defecto no necesita nada.** El despliegue estándar es un solo
-  contenedor de app: Server Actions y SSE comparten proceso, así que un `EventEmitter`
-  en memoria basta. Redis sería complejidad muerta para el 95 % de las instalaciones.
-- **`LISTEN/NOTIFY` cubre el multi-instancia.** Para varias réplicas, Postgres ya
-  ofrece pub/sub nativo. El payload de orgtable es diminuto ("el tablero X cambió"),
-  muy por debajo del límite de 8 KB de `NOTIFY`.
-- **Degradación segura.** Si el puente falla, el modo en proceso sigue funcionando; una
-  mutación nunca se rompe por un problema de pub/sub.
+- **One less piece of infrastructure.** We already depend on PostgreSQL. Adding Redis
+  would mean another service to install, operate, back up and monitor — exactly what a
+  self-hosted app tries to avoid.
+- **The default case needs nothing.** The standard deployment is a single app container:
+  Server Actions and SSE share a process, so an in-memory `EventEmitter` is enough. Redis
+  would be dead complexity for 95% of installations.
+- **`LISTEN/NOTIFY` covers multi-instance.** For several replicas, Postgres already
+  offers native pub/sub. orgtable's payload is tiny ("board X changed"), far below the
+  8 KB limit of `NOTIFY`.
+- **Safe degradation.** If the bridge fails, the in-process mode keeps working; a
+  mutation never breaks because of a pub/sub problem.
 
-## Consecuencias
+## Consequences
 
-- El bus vive en `app/lib/realtime/bus.ts` con una interfaz (`publishBoardEvent` /
-  `subscribeBoard`) que aísla el transporte. Si algún día hiciera falta Redis (p. ej.
-  por escala muy alta de fan-out), se añadiría como otro adaptador sin tocar las
-  Server Actions ni el endpoint SSE.
-- `docker-compose.yml` sigue con solo `app` + `postgres`.
-- ADR 0004 queda **actualizada**: Redis no entra con el tiempo real; se elige
-  `LISTEN/NOTIFY`.
+- The bus lives in `app/lib/realtime/bus.ts` behind an interface (`publishBoardEvent` /
+  `subscribeBoard`) that isolates the transport. If Redis were ever needed (e.g. for a
+  very high fan-out scale), it would be added as another adapter without touching the
+  Server Actions or the SSE endpoint.
+- `docker-compose.yml` still has only `app` + `postgres`.
+- ADR 0004 is **updated**: Redis does not come in with realtime; `LISTEN/NOTIFY` is
+  chosen.

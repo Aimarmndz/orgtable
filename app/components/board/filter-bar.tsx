@@ -10,16 +10,18 @@ import {
 } from "@/app/lib/board-filters";
 import type { LabelDTO } from "@/app/lib/types";
 import type { BoardMemberDTO } from "./members-panel";
+import { useI18n } from "@/app/i18n/client";
 
-const DUE_OPTIONS: { value: DueFilter; label: string }[] = [
-  { value: "any", label: "Cualquiera" },
-  { value: "overdue", label: "Vencidas" },
-  { value: "due", label: "Con fecha" },
-  { value: "none", label: "Sin fecha" },
-];
+// Message key of each due-date option, in display order.
+const DUE_OPTIONS = [
+  { value: "any", key: "dueAny" },
+  { value: "overdue", key: "dueOverdue" },
+  { value: "due", key: "dueSet" },
+  { value: "none", key: "dueNone" },
+] as const satisfies readonly { value: DueFilter; key: string }[];
 
-// Barra de filtros del tablero (Hito 12). Solo afecta a la presentación: oculta las
-// tarjetas que no encajan; no cambia datos. Ver docs/filters.md.
+// Board filter bar. Presentation only: it hides the cards that do not match; it does not
+// change any data. See docs/filters.md.
 export function FilterBar({
   labels,
   members,
@@ -31,6 +33,8 @@ export function FilterBar({
   filters: BoardFilters;
   onChange: (f: BoardFilters) => void;
 }) {
+  const { m } = useI18n();
+  const t = m.boards.filters;
   const [open, setOpen] = useState(false);
   const idPrefix = useId();
 
@@ -79,7 +83,7 @@ export function FilterBar({
         >
           <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" />
         </svg>
-        Filtrar
+        {t.button}
         {count > 0 && (
           <span className="grid min-w-4 place-items-center rounded-full bg-accent px-1 font-mono text-[10px] font-bold text-accent-ink tabular-nums">
             {count}
@@ -94,22 +98,22 @@ export function FilterBar({
             aria-hidden
             onClick={() => setOpen(false)}
           />
-          {/* Anclado a la izquierda a cualquier ancho: «Filtrar» es el primer botón de su
-              grupo, así que a su derecha siempre caben los 288 px (con la cabecera en una
-              fila, el resto del grupo es más ancho; partida, el grupo empieza en el borde).
-              Anclado a la derecha se salía por la izquierda al partirse la cabecera. */}
+          {/* Anchored to the left at any width: "Filter" is the first button of its
+              group, so the 288 px always fit to its right (with the header on one row the
+              rest of the group is wider; when it wraps, the group starts at the edge).
+              Anchored to the right it overflowed on the left when the header wrapped. */}
           <div
             role="dialog"
-            aria-label="Filtros"
+            aria-label={t.dialog}
             className="absolute left-0 top-11 z-40 w-72 max-w-[calc(100vw-2rem)] space-y-4 rounded-xl border border-border bg-surface p-4 text-ink shadow-[0_24px_48px_-24px_oklch(0.27_0.022_52/0.4)]"
           >
-            {/* Etiquetas */}
+            {/* Labels */}
             <div>
               <h3
                 id={`${idPrefix}-labels`}
                 className="text-xs font-semibold uppercase tracking-wide text-ink-muted"
               >
-                Etiquetas
+                {t.labels}
               </h3>
               {labels.length > 0 ? (
                 <div
@@ -120,9 +124,9 @@ export function FilterBar({
                   {labels.map((l) => {
                     const on = filters.labelIds.includes(l.id);
                     const color = labelBackground(l.color);
-                    // Sin seleccionar: texto de tinta sobre la superficie con el borde del
-                    // color (antes texto blanco con opacity-55, ~2,2:1 de contraste).
-                    // Seleccionada: rellena del color, con ✓ y anillo.
+                    // Unselected: ink text on the surface with a border in the colour
+                    // (it used to be white text with opacity-55, ~2.2:1 contrast).
+                    // Selected: filled with the colour, with a ✓ and a ring.
                     return (
                       <button
                         key={l.id}
@@ -147,17 +151,17 @@ export function FilterBar({
                   })}
                 </div>
               ) : (
-                <p className="mt-1 text-xs text-ink-muted">Sin etiquetas.</p>
+                <p className="mt-1 text-xs text-ink-muted">{t.noLabels}</p>
               )}
             </div>
 
-            {/* Asignados */}
+            {/* Assignees */}
             <div>
               <h3
                 id={`${idPrefix}-assignees`}
                 className="text-xs font-semibold uppercase tracking-wide text-ink-muted"
               >
-                Asignados
+                {t.assignees}
               </h3>
               <div
                 role="group"
@@ -185,13 +189,13 @@ export function FilterBar({
               </div>
             </div>
 
-            {/* Vencimiento */}
+            {/* Due date */}
             <div>
               <h3
                 id={`${idPrefix}-due`}
                 className="text-xs font-semibold uppercase tracking-wide text-ink-muted"
               >
-                Vencimiento
+                {t.due}
               </h3>
               <div
                 role="group"
@@ -210,7 +214,7 @@ export function FilterBar({
                         : "border-border text-ink-muted hover:text-ink"
                     }`}
                   >
-                    {o.label}
+                    {t[o.key]}
                   </button>
                 ))}
               </div>
@@ -221,7 +225,7 @@ export function FilterBar({
                 onClick={() => onChange(EMPTY_FILTERS)}
                 className="w-full rounded-lg border border-border py-1.5 text-sm font-medium text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
               >
-                Limpiar filtros
+                {t.clear}
               </button>
             )}
           </div>

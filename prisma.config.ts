@@ -1,13 +1,14 @@
 import path from "node:path";
 import { defineConfig, env } from "prisma/config";
 
-// Prisma 7 no carga `.env` automáticamente. Lo cargamos a mano con la API nativa de
-// Node (disponible en 20.12+), sin depender de `dotenv`. En CI/producción donde no
-// existe `.env` (las variables se inyectan por el entorno) el try/catch lo ignora.
+// Prisma 7 does not load `.env` automatically. It is loaded by hand with Node's native
+// API (available since 20.12), without depending on `dotenv`. In CI/production, where
+// there is no `.env` (variables are injected through the environment), the try/catch
+// skips it.
 try {
   process.loadEnvFile(path.join(process.cwd(), ".env"));
 } catch {
-  // .env ausente: las variables ya vienen del entorno (p. ej. docker-compose).
+  // No .env: the variables already come from the environment (e.g. docker-compose).
 }
 
 export default defineConfig({
@@ -15,8 +16,8 @@ export default defineConfig({
   migrations: {
     path: path.join("prisma", "migrations"),
   },
-  // URL usada por el CLI de Migrate (migrate dev/deploy). El runtime de la app usa
-  // su propio adapter en app/lib/prisma.ts.
+  // URL used by the Migrate CLI (migrate dev/deploy). The app runtime uses its own
+  // adapter in app/lib/prisma.ts.
   datasource: {
     url: env("DATABASE_URL"),
   },

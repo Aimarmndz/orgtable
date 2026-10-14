@@ -27,13 +27,13 @@ import {
   ctx,
 } from "./helpers";
 
-// Autorización de las Server Actions de comentarios, checklists, adjuntos e
-// import/export, ejecutadas con sesión real (loginAs). Se comprueba siempre el efecto en
-// la BD, no solo el valor devuelto. La descarga de adjuntos (404/403) la cubre su propio
-// test de route handler.
+// Authorization of the Server Actions for comments, checklists, attachments and
+// import/export, run with a real session (loginAs). The effect on the DB is always
+// checked, not just the returned value. Attachment download (404/403) is covered by its
+// own route handler test.
 
-// storage.ts lee ORGTABLE_UPLOAD_DIR al importarse: se fija a un directorio temporal
-// antes de cualquier import para no escribir en ./uploads del repo.
+// storage.ts reads ORGTABLE_UPLOAD_DIR when imported: it is pointed at a temporary
+// directory before any import so nothing is written to the repo's ./uploads.
 const uploadDir = await vi.hoisted(async () => {
   const { mkdtempSync } = await import("node:fs");
   const { tmpdir } = await import("node:os");
@@ -70,18 +70,18 @@ async function boardWithRoles() {
   return { owner, editor, viewer, board, list, card };
 }
 
-describe("comentarios", () => {
-  it("un VIEWER no puede comentar", async () => {
+describe("comments", () => {
+  it("a VIEWER cannot comment", async () => {
     const { viewer, card } = await boardWithRoles();
     await loginAs(viewer.id);
-    await addComment(fd({ cardId: card.id, text: "hola" }));
+    await addComment(fd({ cardId: card.id, text: "hello" }));
     expect(await prisma.comment.count()).toBe(0);
   });
 
-  it("un EDITOR que no es el autor no puede borrar; el OWNER sí", async () => {
+  it("an EDITOR who is not the author cannot delete; the OWNER can", async () => {
     const { owner, editor, viewer, card } = await boardWithRoles();
     const comment = await prisma.comment.create({
-      data: { cardId: card.id, authorId: viewer.id, text: "de otro" },
+      data: { cardId: card.id, authorId: viewer.id, text: "someone else's" },
     });
 
     await loginAs(editor.id);
@@ -93,7 +93,7 @@ describe("comentarios", () => {
     expect(await prisma.comment.count()).toBe(0);
   });
 
-  it("notifica comment.added a los asignados, no al autor", async () => {
+  it("notifies comment.added to the assignees, not to the author", async () => {
     const { owner, editor, card } = await boardWithRoles();
     await prisma.cardAssignee.createMany({
       data: [
@@ -103,7 +103,7 @@ describe("comentarios", () => {
     });
 
     await loginAs(editor.id);
-    await addComment(fd({ cardId: card.id, text: "listo" }));
+    await addComment(fd({ cardId: card.id, text: "done" }));
 
     expect(await prisma.comment.count({ where: { authorId: editor.id } })).toBe(1);
     const notified = await prisma.notification.findMany({
@@ -115,18 +115,18 @@ describe("comentarios", () => {
 });
 
 describe("checklists", () => {
-  it("un VIEWER no cambia nada con ninguna de las cinco acciones", async () => {
+  it("a VIEWER changes nothing with any of the five actions", async () => {
     const { viewer, card } = await boardWithRoles();
     const checklist = await prisma.checklist.create({
-      data: { cardId: card.id, title: "Tareas", position: "a0" },
+      data: { cardId: card.id, title: "Tasks", position: "a0" },
     });
     const item = await prisma.checklistItem.create({
-      data: { checklistId: checklist.id, text: "uno", position: "a0" },
+      data: { checklistId: checklist.id, text: "one", position: "a0" },
     });
 
     await loginAs(viewer.id);
-    await createChecklist(fd({ cardId: card.id, title: "Nueva" }));
-    await addChecklistItem(fd({ checklistId: checklist.id, text: "dos" }));
+    await createChecklist(fd({ cardId: card.id, title: "New" }));
+    await addChecklistItem(fd({ checklistId: checklist.id, text: "two" }));
     expect(await toggleChecklistItem({ itemId: item.id, done: true })).toEqual({ ok: false });
     await deleteChecklistItem(fd({ itemId: item.id }));
     await deleteChecklist(fd({ checklistId: checklist.id }));
@@ -137,12 +137,12 @@ describe("checklists", () => {
     expect(items[0]?.done).toBe(false);
   });
 
-  it("un EDITOR sí puede usarlas", async () => {
+  it("an EDITOR can use them", async () => {
     const { editor, card } = await boardWithRoles();
     await loginAs(editor.id);
-    await createChecklist(fd({ cardId: card.id, title: "Nueva" }));
+    await createChecklist(fd({ cardId: card.id, title: "New" }));
     const checklist = await prisma.checklist.findFirstOrThrow({ where: { cardId: card.id } });
-    await addChecklistItem(fd({ checklistId: checklist.id, text: "uno" }));
+    await addChecklistItem(fd({ checklistId: checklist.id, text: "one" }));
     const item = await prisma.checklistItem.findFirstOrThrow();
     expect(await toggleChecklistItem({ itemId: item.id, done: true })).toEqual({ ok: true });
     expect((await prisma.checklistItem.findUniqueOrThrow({ where: { id: item.id } })).done).toBe(
@@ -151,38 +151,38 @@ describe("checklists", () => {
   });
 });
 
-describe("adjuntos", () => {
-  it("un VIEWER no puede subir", async () => {
+describe("attachments", () => {
+  it("a VIEWER cannot upload", async () => {
     const { viewer, card } = await boardWithRoles();
     await loginAs(viewer.id);
     const state = await uploadAttachment(
       {},
-      fd({ cardId: card.id, file: new File(["hola"], "nota.txt", { type: "text/plain" }) }),
+      fd({ cardId: card.id, file: new File(["data"], "note.txt", { type: "text/plain" }) }),
     );
     expect(state.error).toBeTruthy();
     expect(await prisma.attachment.count()).toBe(0);
   });
 
-  it("rechaza un archivo vacío y uno de más del máximo", async () => {
+  it("rejects an empty file and one over the maximum", async () => {
     const { editor, card } = await boardWithRoles();
     await loginAs(editor.id);
 
-    const empty = await uploadAttachment({}, fd({ cardId: card.id, file: new File([], "vacio.txt") }));
+    const empty = await uploadAttachment({}, fd({ cardId: card.id, file: new File([], "empty.txt") }));
     expect(empty.error).toBeTruthy();
 
-    const big = new File([new Uint8Array(MAX_ATTACHMENT_BYTES + 1)], "grande.bin");
+    const big = new File([new Uint8Array(MAX_ATTACHMENT_BYTES + 1)], "large.bin");
     const tooBig = await uploadAttachment({}, fd({ cardId: card.id, file: big }));
     expect(tooBig.error).toBeTruthy();
 
     expect(await prisma.attachment.count()).toBe(0);
   });
 
-  it("un EDITOR sube un archivo y queda en el directorio de adjuntos", async () => {
+  it("an EDITOR uploads a file and it lands in the attachments directory", async () => {
     const { editor, card } = await boardWithRoles();
     await loginAs(editor.id);
     const state = await uploadAttachment(
       {},
-      fd({ cardId: card.id, file: new File(["hola"], "nota.txt", { type: "text/plain" }) }),
+      fd({ cardId: card.id, file: new File(["data"], "note.txt", { type: "text/plain" }) }),
     );
     expect(state.error).toBeUndefined();
     const attachment = await prisma.attachment.findFirstOrThrow({ where: { cardId: card.id } });
@@ -191,8 +191,8 @@ describe("adjuntos", () => {
   });
 });
 
-describe("export/import de tableros", () => {
-  it("un no miembro recibe 404 al exportar", async () => {
+describe("board export/import", () => {
+  it("a non-member gets 404 when exporting", async () => {
     const { board } = await boardWithRoles();
     const stranger = await seedUser();
     await loginAs(stranger.id);
@@ -200,9 +200,9 @@ describe("export/import de tableros", () => {
     expect(res.status).toBe(404);
   });
 
-  it("ida y vuelta: lo exportado por un miembro se importa como tablero nuevo suyo", async () => {
+  it("round trip: what a member exports is imported as a new board of their own", async () => {
     const { viewer, board, card } = await boardWithRoles();
-    await prisma.card.update({ where: { id: card.id }, data: { description: "detalle" } });
+    await prisma.card.update({ where: { id: card.id }, data: { description: "details" } });
     await loginAs(viewer.id);
 
     const res = await exportBoard(new Request("http://test/export"), ctx({ id: board.id }));
@@ -210,7 +210,7 @@ describe("export/import de tableros", () => {
     const json = await res.text();
 
     await expect(
-      importBoard({}, fd({ file: new File([json], "tablero.json", { type: "application/json" }) })),
+      importBoard({}, fd({ file: new File([json], "board.json", { type: "application/json" }) })),
     ).rejects.toMatchObject({ digest: expect.stringContaining(";/board/") });
 
     const imported = await prisma.board.findFirstOrThrow({
@@ -222,6 +222,6 @@ describe("export/import de tableros", () => {
       expect.objectContaining({ userId: viewer.id, role: "OWNER" }),
     ]);
     expect(imported.lists).toHaveLength(1);
-    expect(imported.lists[0]?.cards.map((c) => c.description)).toEqual(["detalle"]);
+    expect(imported.lists[0]?.cards.map((c) => c.description)).toEqual(["details"]);
   });
 });

@@ -1,9 +1,9 @@
 import "server-only";
 import { prisma } from "@/app/lib/prisma";
 
-// Invariante de negocio de la asignación (Hito 10): una tarjeta solo se puede asignar a
-// alguien que YA es miembro del tablero. Aislado aquí para reutilizarlo desde la Server
-// Action y poder testearlo directamente. NO autoriza al actor: eso lo hace la acción.
+// Assignment business invariant: a card can only be assigned to someone who is ALREADY a
+// member of the board. Isolated here so the Server Action can reuse it and it can be
+// tested directly. It does NOT authorize the actor: the action does that.
 
 export type AssignResult = {
   assigned: boolean;

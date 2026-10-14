@@ -1,228 +1,256 @@
-# Arquitectura de orgtable
+# orgtable architecture
 
-Esta guía ofrece una visión general del sistema para contribuidores. Describe la
-estructura real del repositorio, la frontera entre servidor y cliente, el flujo de
-una petición y las convenciones propias de Next.js 16 que conviene tener presentes.
+This guide gives contributors an overview of the system. It describes the actual
+repository layout, the server/client boundary, the path a request takes, and the
+Next.js 16 conventions worth keeping in mind.
 
-> Antes de escribir código, lee también [`AGENTS.md`](../AGENTS.md): esta versión de
-> Next.js tiene cambios de ruptura respecto a versiones anteriores, y la documentación
-> local en `node_modules/next/dist/docs/` es la fuente de verdad.
+> Before writing code, also read [`AGENTS.md`](../AGENTS.md): this version of Next.js has
+> breaking changes compared with earlier versions, and the local documentation in
+> `node_modules/next/dist/docs/` is the source of truth.
 
-## Visión general
+## Overview
 
-orgtable es un clon self-hosted de Trello construido sobre:
+orgtable is a self-hosted Trello alternative built on:
 
-| Capa | Tecnología |
+| Layer | Technology |
 | --- | --- |
 | Framework | Next.js 16 (App Router) |
 | UI | React 19 |
-| ORM | Prisma 7 (con driver adapter `@prisma/adapter-pg`) |
-| Base de datos | PostgreSQL |
-| Sesiones | JWT stateless (`jose`) en cookie `httpOnly` |
-| Drag & drop | `@dnd-kit` + `fractional-indexing` |
+| ORM | Prisma 7 (with the `@prisma/adapter-pg` driver adapter) |
+| Database | PostgreSQL |
+| Sessions | Signed JWT (`jose`) in an `httpOnly` cookie, backed by a `Session` table |
+| Drag and drop | `@dnd-kit` + `fractional-indexing` |
+| Internationalization | Own helpers on native `Intl`, messages in `locales/` (English and Spanish) |
 
-El modelo de ejecución es **servidor por defecto**: páginas, layouts, lecturas de datos
-y mutaciones (Server Actions) se ejecutan en el servidor. La interactividad
-(arrastrar tarjetas, formularios con feedback en vivo) se concentra en **islas de
-cliente** marcadas con `'use client'`. La persistencia es PostgreSQL a través de
-Prisma 7.
+The execution model is **server by default**: pages, layouts, data reads and mutations
+(Server Actions) run on the server. Interactivity (dragging cards, forms with live
+feedback) lives in **client islands** marked with `'use client'`. Persistence is
+PostgreSQL through Prisma 7.
 
-## Mapa de carpetas
+## Folder map
 
-El código de la aplicación vive bajo `app/`. Árbol real:
+Application code lives under `app/`. Abridged tree:
 
 ```
 app/
-├── layout.tsx                  # Layout raíz
-├── page.tsx                    # Entrada: decide setup / login / boards
+├── layout.tsx                  # Root layout (theme, CSP nonce, I18nProvider)
+├── page.tsx                    # Entry point: decides setup / login / boards
 ├── globals.css
-├── favicon.ico
-├── setup/                      # Wizard de configuración inicial (público)
-│   ├── page.tsx
-│   └── setup-form.tsx          # 'use client'
-├── (auth)/
-│   └── login/                  # Grupo de rutas de autenticación (público)
-│       ├── page.tsx
-│       └── login-form.tsx      # 'use client'
-├── (app)/                      # Grupo de rutas autenticadas
-│   ├── layout.tsx              # Frontera de seguridad SEGURA (DAL)
-│   ├── boards/page.tsx         # Lista de tableros del usuario
-│   └── board/[id]/page.tsx     # Un tablero concreto (params asíncronos)
+├── icon.svg
+├── robots.ts                   # robots.txt depending on the instance
+├── setup/                      # Initial setup wizard (public)
+├── (auth)/                     # Public auth routes: login/, register/
+├── (public)/legal/             # Legal pages generated from the operator's data
+├── (app)/                      # Authenticated route group
+│   ├── layout.tsx              # SECURE security boundary (DAL)
+│   ├── boards/                 # The user's boards (+ import/delete)
+│   ├── board/[id]/page.tsx     # A single board (async params)
+│   ├── search/                 # Global search
+│   ├── settings/               # Profile, sessions, API tokens, appearance, data
+│   └── admin/                  # users/, audit/, instance/ (admins only)
 ├── api/
-│   └── health/route.ts         # Health check (no toca la DB)
+│   ├── health/route.ts         # Health check (does not touch the DB)
+│   ├── boards/[id]/stream      # Real-time SSE stream of a board
+│   ├── boards/[id]/export      # Board export (JSON)
+│   ├── notifications/stream    # Per-user SSE stream of notifications
+│   ├── attachments/[id]        # Authorized attachment download
+│   ├── account/export          # Download of the user's own data
+│   ├── cron/                   # reminders, maintenance (Bearer secret)
+│   └── v1/                     # Public REST API (personal tokens)
+├── i18n/                       # config, server/client helpers, rich(), formatting
 ├── components/
-│   └── board/                  # Islas de cliente del tablero
-│       ├── board-view.tsx      # 'use client' — DndContext, estado optimista
-│       ├── list-column.tsx
-│       ├── card-item.tsx
-│       ├── add-list-form.tsx
-│       └── add-card-form.tsx
+│   ├── board/                  # Board client islands (board-view, list-column,
+│   │                           # card-item, calendar-view, filter-bar, members-panel…)
+│   ├── card/                   # Card modal
+│   └── …                       # Navbar pieces, language picker, theme toggle, ui/
 └── lib/
-    ├── prisma.ts               # Singleton de PrismaClient (server-only)
-    ├── session.ts              # JWT: encrypt/decrypt, crear/borrar cookie
-    ├── auth.ts                 # Hash/verificación de contraseña
-    ├── dal.ts                  # Data Access Layer (autorización segura)
-    ├── ordering.ts             # Helpers de fractional indexing
-    ├── queries.ts              # Lecturas (autorización en el WHERE)
-    ├── validators.ts           # Esquemas zod compartidos
-    ├── types.ts                # DTOs servidor → cliente
-    └── actions/                # Server Actions ('use server')
-        ├── auth.ts             # login / logout
-        ├── setup.ts            # Completar el wizard
-        ├── boards.ts           # Crear / renombrar / borrar tablero
-        ├── lists.ts            # Listas (columnas)
-        └── cards.ts            # Tarjetas (crear, renombrar, borrar, mover)
+    ├── prisma.ts               # PrismaClient singleton (server-only)
+    ├── session.ts              # JWT + Session row, cookie handling
+    ├── auth.ts                 # Password hashing and verification
+    ├── dal.ts                  # Data Access Layer (secure authorization)
+    ├── roles.ts                # Board role helpers (canEditBoard, canManageBoard)
+    ├── ordering.ts             # Fractional indexing helpers
+    ├── queries.ts              # Reads (authorization in the WHERE clause)
+    ├── validators.ts           # Shared zod schemas
+    ├── types.ts                # Server → client DTOs
+    ├── realtime/               # Pub/sub bus, SSE, revalidateBoard()
+    ├── api/                    # Public API helpers (Bearer auth, serialization)
+    ├── services/               # Business logic without request context (testable)
+    └── actions/                # Server Actions ('use server'): auth, boards, lists,
+                                # cards, labels, checklists, comments, members, …
+locales/                        # Messages per language (en/, es/); see locales/README.md
+proxy.ts                        # Optimistic auth check + per-request CSP nonce
 ```
 
-### Rutas
+### Main routes
 
-| Ruta | Acceso | Descripción |
+| Route | Access | Description |
 | --- | --- | --- |
-| `/` | mixto | Punto de entrada; redirige según estado de instancia y sesión |
-| `/setup` | público | Wizard de configuración inicial (se bloquea tras completarse) |
-| `/login` | público | Inicio de sesión (grupo `(auth)`) |
-| `/boards` | autenticado | Tableros del usuario (grupo `(app)`) |
-| `/board/[id]` | autenticado | Vista de un tablero con listas y tarjetas |
-| `/api/health` | público | Health check para docker-compose |
+| `/` | mixed | Entry point; redirects depending on instance and session state |
+| `/setup` | public | Initial setup wizard (locked once completed) |
+| `/login` | public | Sign in (`(auth)` group) |
+| `/register` | public | Open sign-up, only if the instance allows it |
+| `/legal/*` | public | Privacy policy, terms, cookies and legal notice |
+| `/boards` | authenticated | The user's boards (`(app)` group) |
+| `/board/[id]` | authenticated | A board with its lists and cards |
+| `/search` | authenticated | Search across boards and cards |
+| `/settings` | authenticated | Account settings |
+| `/admin/*` | admin | User management, audit log, instance settings |
+| `/api/health` | public | Health check for docker-compose |
+| `/api/v1/*` | API token | Public REST API |
 
-Los grupos de rutas entre paréntesis — `(auth)` y `(app)` — agrupan páginas sin
-añadir segmentos a la URL: sirven para compartir un layout. El layout de `(app)` es la
-puerta de entrada al área autenticada.
+Route groups in parentheses, such as `(auth)` and `(app)`, group pages without adding
+segments to the URL: they let pages share a layout. The `(app)` layout is the gateway to
+the authenticated area.
 
-### Convenciones de Next.js 16
+### Next.js 16 files
 
-- **`proxy.ts`** (en la raíz del repo) sustituye al antiguo *middleware*. En Next.js 16
-  el middleware se llama `proxy` y se ejecuta sobre runtime Node.js. Aquí solo hace un
-  chequeo de autenticación **optimista** (ver más abajo).
-- **`prisma.config.ts`** (raíz) configura el CLI de Prisma 7: ruta del schema, de las
-  migraciones y la `DATABASE_URL` para Migrate. Prisma 7 no carga `.env`
-  automáticamente, así que el archivo lo hace a mano con `process.loadEnvFile`.
-- **`next.config.ts`** activa `output: "standalone"` para el empaquetado en Docker.
+- **`proxy.ts`** (repository root) replaces the old *middleware*. In Next.js 16 the
+  middleware is called `proxy` and runs on the Node.js runtime. Here it only does an
+  **optimistic** authentication check (see below) and sets the per-request CSP nonce.
+- **`prisma.config.ts`** (root) configures the Prisma 7 CLI: path of the schema, of the
+  migrations, and the `DATABASE_URL` for Migrate. Prisma 7 does not load `.env`
+  automatically, so the file does it by hand with `process.loadEnvFile`.
+- **`next.config.ts`** enables `output: "standalone"` for the Docker build and sets the
+  security headers.
 
-## Frontera servidor/cliente
+## Server/client boundary
 
-| Es de servidor | Es isla de cliente (`'use client'`) |
+| Server | Client island (`'use client'`) |
 | --- | --- |
-| `page.tsx`, `layout.tsx` | `board-view.tsx`, `list-column.tsx`, `card-item.tsx` |
-| Lecturas en `lib/queries.ts` | Formularios con `useActionState` (`login-form`, `setup-form`, `add-*-form`) |
-| Server Actions en `lib/actions/*` (`'use server'`) | |
-| DAL, prisma, session, auth | |
+| `page.tsx`, `layout.tsx` | `board-view.tsx`, `list-column.tsx`, `card-item.tsx`, `card-modal.tsx` |
+| Reads in `lib/queries.ts` | Forms with `useActionState` (`login-form`, `setup-form`, `add-*-form`) |
+| Server Actions in `lib/actions/*` (`'use server'`) | |
+| DAL, prisma, session, auth, services | |
 
-El código sensible (acceso a base de datos, sesiones, secretos) lleva
-`import "server-only"` en la primera línea para que el bundler **falle el build** si
-alguien lo importa por error desde un componente cliente. Se aplica en
-`lib/prisma.ts`, `lib/session.ts`, `lib/dal.ts`, `lib/queries.ts` y `lib/ordering.ts`.
+Sensitive code (database access, sessions, secrets) starts with `import "server-only"` so
+the bundler **fails the build** if a client component imports it by mistake. This applies
+to `lib/prisma.ts`, `lib/session.ts`, `lib/dal.ts`, `lib/queries.ts`, `lib/ordering.ts`,
+the services, the real-time bus and the server-side i18n helpers, among others.
 
-El puente entre ambos mundos son **DTOs serializables mínimos** (`lib/types.ts`):
-`board/[id]/page.tsx` lee el tablero completo con Prisma y lo proyecta a `BoardDTO`
-(solo `id`, `title`, `position` de listas y tarjetas) antes de pasárselo al componente
-cliente `BoardView`. El componente nunca recibe entidades de Prisma completas.
+The bridge between both worlds is a set of **minimal serializable DTOs** (`lib/types.ts`):
+`board/[id]/page.tsx` reads the board with Prisma and projects it to `BoardDTO` before
+passing it to the `BoardView` client component. Client components never receive full
+Prisma entities.
 
-## Flujo de una petición y autorización en capas
+## Request flow and layered authorization
 
-La autorización está deliberadamente **en capas**: el `proxy` es rápido pero optimista,
-y el `DAL` es la verificación segura real. Una petición a una ruta privada recorre:
+Authorization is deliberately **layered**: the `proxy` is fast but optimistic, and the
+`DAL` is the real, secure check. A request to a private route goes through:
 
 ```
-        Petición HTTP a /board/123
+        HTTP request to /board/123
                   │
                   ▼
    ┌───────────────────────────────┐
-   │ proxy.ts  (chequeo OPTIMISTA)  │  ¿existe la cookie "session"?
-   │ - solo mira si HAY cookie      │  no ─▶ redirect /login
-   │ - NO valida criptográficamente │
+   │ proxy.ts  (OPTIMISTIC check)   │  does the "session" cookie exist?
+   │ - only checks THAT a cookie    │  no ─▶ redirect /login
+   │   exists                       │
+   │ - NO cryptographic validation  │
    └───────────────┬───────────────┘
-                   │ sí
+                   │ yes
                    ▼
    ┌───────────────────────────────┐
-   │ app/(app)/layout.tsx (SEGURO) │  isSetupComplete() → si no, /setup
-   │ - vía DAL (server-only)        │  requireUser()     → si no, /login
-   │ - valida el JWT de verdad      │
+   │ app/(app)/layout.tsx (SECURE) │  isSetupComplete() → otherwise /setup
+   │ - through the DAL (server-only)│  requireUser()     → otherwise /login
+   │ - really validates the JWT     │
+   │   and the Session row          │
    └───────────────┬───────────────┘
-                   │ usuario válido
+                   │ valid user
                    ▼
    ┌───────────────────────────────┐
-   │ page.tsx  (lectura)            │  requireUser() + queries.ts
-   │ - getBoardWithLists(id, userId)│  (autorización en el WHERE)
-   │ - proyecta a BoardDTO          │  si no existe/sin acceso → notFound()
+   │ page.tsx  (read)               │  requireUser() + queries.ts
+   │ - getBoardWithLists(id, userId)│  (authorization in the WHERE)
+   │ - projects to BoardDTO         │  missing / no access → notFound()
    └───────────────┬───────────────┘
                    │ render
                    ▼
    ┌───────────────────────────────┐
-   │ Isla cliente: BoardView        │  drag & drop, estado optimista
+   │ Client island: BoardView       │  drag and drop, optimistic state
    └───────────────┬───────────────┘
-                   │ el usuario muta algo
+                   │ the user changes something
                    ▼
    ┌───────────────────────────────┐
-   │ Server Action ('use server')   │  1. valida con zod
-   │ p. ej. cards.ts:moveCard       │  2. requireBoardAccess(boardId)
-   │                                │  3. escribe en Prisma
-   │                                │  4. revalidatePath(`/board/${id}`)
+   │ Server Action ('use server')   │  1. validates with zod
+   │ e.g. cards.ts:moveCard         │  2. requireBoardAccess(boardId) + role
+   │                                │  3. writes with Prisma
+   │                                │  4. revalidateBoard(id)
    └───────────────────────────────┘
 ```
 
-### Detalle de cada capa
+### Each layer in detail
 
-1. **`proxy.ts` — chequeo optimista.** Comprueba únicamente si la cookie `session`
-   existe (`request.cookies.has("session")`). Si no, y la ruta no es pública
-   (`/login`, `/setup`), redirige a `/login`. No descifra ni valida el token: solo
-   evita renderizar rutas privadas a quien claramente no ha iniciado sesión.
+1. **`proxy.ts`: optimistic check.** It only checks whether the `session` cookie exists
+   (`request.cookies.has("session")`). If it does not and the route is not public
+   (`/login`, `/setup`, `/register`, `/legal`, `/robots.txt`), it redirects to `/login`.
+   It neither decrypts nor validates the token: it just avoids rendering private routes
+   for someone who has clearly not signed in.
 
-2. **`app/(app)/layout.tsx` — verificación segura.** En cada render llama al DAL:
-   `isSetupComplete()` (redirige a `/setup` si la instancia no está configurada) y
-   `requireUser()` (redirige a `/login` si el JWT no es válido). Es la frontera de
-   seguridad real.
+2. **`app/(app)/layout.tsx`: secure check.** On every render it calls the DAL:
+   `isSetupComplete()` (redirects to `/setup` if the instance is not configured) and
+   `requireUser()` (redirects to `/login` if the JWT or its `Session` row is not valid).
+   This is the real security boundary.
 
-3. **Página — lectura.** `requireUser()` obtiene el usuario y `lib/queries.ts` lee los
-   datos. La autorización de lectura está incrustada en el `WHERE` de cada consulta
-   (`ownerId` o `members.some`), de modo que un usuario nunca puede leer un tablero del
-   que no es dueño ni miembro.
+3. **Page: read.** `requireUser()` returns the user and `lib/queries.ts` reads the data.
+   Read authorization is built into the `WHERE` of every query (`ownerId` or
+   `members.some`), so a user can never read a board they neither own nor belong to.
 
-4. **Mutaciones — Server Actions.** Toda escritura es una Server Action (`'use server'`)
-   que sigue el mismo patrón: validar la entrada con un esquema **zod**
-   (`lib/validators.ts`), autorizar con **`requireBoardAccess(boardId)`** del DAL
-   (comprueba la fila en `board_members`), escribir con Prisma y por último
-   **`revalidatePath`** para que la UI se refresque. El drag & drop además mantiene
-   estado optimista en el cliente y calcula la nueva clave de posición con
-   *fractional indexing* (`lib/ordering.ts`), de forma que cada movimiento solo
-   actualiza una fila.
+4. **Mutations: Server Actions.** Every write is a Server Action (`'use server'`) that
+   follows the same pattern: validate the input with a **zod** schema
+   (`lib/validators.ts`), authorize with **`requireBoardAccess(boardId)`** from the DAL
+   (which checks the `board_members` row and returns the role) plus the role helpers in
+   `lib/roles.ts`, write with Prisma and finally call **`revalidateBoard()`**, which
+   revalidates the route and publishes a real-time event. Drag and drop also keeps
+   optimistic state on the client and computes the new position key with *fractional
+   indexing* (`lib/ordering.ts`), so each move updates a single row.
 
-Para el detalle del modelo de sesión, hashing y por qué el chequeo está dividido en dos
-capas, ver [`docs/authentication.md`](./authentication.md).
+For the session model, hashing, and why the check is split into two layers, see
+[`docs/authentication.md`](./authentication.md). For roles, see
+[`docs/authorization.md`](./authorization.md).
 
-## Convenciones de Next.js 16 a tener presentes
+## Internationalization
 
-Esta versión del framework introduce cambios de ruptura. Puntos clave al contribuir:
+The interface is available in English (default and fallback) and Spanish. Messages live
+in `locales/<code>/<area>.json`; the helpers are in `app/i18n/`. The language of a request
+comes from the `locale` cookie set by the language picker, otherwise from
+`Accept-Language`, otherwise English. `User.locale` stores the account's choice: it
+restores the cookie on sign-in and decides the language of the notifications written for
+that person. The picker sits in the footer of the public pages and in
+Settings › Appearance. The public REST API answers in English only. To add a language,
+see [`locales/README.md`](../locales/README.md).
 
-- **APIs asíncronas.** `params`, `cookies()` y `headers()` son **asíncronos** y deben
-  esperarse con `await`. Por ejemplo, `board/[id]/page.tsx` hace
-  `const { id } = await params;`.
-- **Mutaciones con Server Actions.** Las escrituras se hacen con Server Actions
-  (`'use server'`), no con rutas de API. Los formularios las invocan vía la prop
-  `action`; los formularios cliente usan `useActionState` para mostrar errores.
-- **`export const dynamic = "force-dynamic"`.** Las páginas y layouts que dependen de la
-  base de datos o de la sesión se marcan así para que **no se prerendericen en build**.
-  Esto es crítico para el build de Docker, que se ejecuta **sin** base de datos: sin
-  esta marca el build intentaría consultar Postgres y fallaría. Lo aplican `page.tsx`
-  (raíz), `app/(app)/layout.tsx` y `app/setup/page.tsx`.
-- **`output: "standalone"`.** `next.config.ts` genera un servidor Node mínimo en
-  `.next/standalone` que se ejecuta con `node server.js`, lo que mantiene pequeña la
-  imagen de producción.
-- **`proxy.ts` y `prisma.config.ts`** (descritos arriba) son convenciones nuevas de
-  esta versión.
+## Next.js 16 conventions to keep in mind
 
-Recuerda: la fuente de verdad es la documentación local en
-`node_modules/next/dist/docs/`. Consúltala antes de escribir código nuevo, tal como
-indica [`AGENTS.md`](../AGENTS.md).
+This version of the framework introduces breaking changes. Key points when contributing:
 
-## Datos y despliegue
+- **Async APIs.** `params`, `searchParams`, `cookies()` and `headers()` are **async** and
+  must be awaited. For example, `board/[id]/page.tsx` does `const { id } = await params;`.
+- **Mutations with Server Actions.** Writes from the UI go through Server Actions
+  (`'use server'`), not API routes. Forms call them through the `action` prop; client
+  forms use `useActionState` to show errors. Route handlers are used for streams,
+  downloads, cron endpoints and the public API.
+- **`export const dynamic = "force-dynamic"`.** Pages and layouts that depend on the
+  database or on the session are marked this way so they are **not prerendered at build
+  time**. This is critical for the Docker build, which runs **without** a database:
+  without this flag the build would try to query Postgres and fail. It is used by the
+  root `page.tsx`, `app/(app)/layout.tsx` and `app/setup/page.tsx`.
+- **`output: "standalone"`.** `next.config.ts` produces a minimal Node server in
+  `.next/standalone` that runs with `node server.js`, which keeps the production image
+  small.
+- **`proxy.ts` and `prisma.config.ts`** (described above) are new conventions in this
+  version.
 
-Para el modelo de datos y las migraciones ver [`docs/database.md`](./database.md); para
-el empaquetado en contenedores ver [`docs/docker.md`](./docker.md); y para poner en
-marcha una instancia ver [`docs/installation.md`](./installation.md).
+Remember: the source of truth is the local documentation in `node_modules/next/dist/docs/`.
+Read it before writing new code, as [`AGENTS.md`](../AGENTS.md) says.
+
+## Data and deployment
+
+For the data model and migrations see [`docs/database.md`](./database.md); for container
+packaging see [`docs/docker.md`](./docker.md); and to get an instance running see
+[`docs/installation.md`](./installation.md).
 
 ---
 
-**Resumen:** orgtable es una app Next.js 16 servidor-por-defecto con islas de cliente,
-autorización en capas (proxy optimista → DAL seguro → Server Actions validadas) y
-persistencia en PostgreSQL vía Prisma 7.
+**Summary:** orgtable is a server-first Next.js 16 app with client islands, layered
+authorization (optimistic proxy → secure DAL → validated Server Actions) and persistence
+in PostgreSQL through Prisma 7.

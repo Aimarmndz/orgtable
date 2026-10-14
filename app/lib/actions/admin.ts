@@ -11,24 +11,26 @@ import {
 } from "@/app/lib/services/users";
 import { revokeAllUserSessions } from "@/app/lib/session";
 import { recordAudit } from "@/app/lib/audit";
+import { getI18n, issueMessage } from "@/app/i18n/server";
+import { fmt } from "@/app/i18n/format";
 import {
   createUserSchema,
   globalRoleSchema,
   resetPasswordSchema,
 } from "@/app/lib/validators";
 
-// Administración de usuarios de la instancia (Hito 3). Solo el ADMIN global puede
-// crear cuentas, cambiar el rol global, restablecer contraseñas o borrar usuarios.
-// No hay registro abierto: el administrador da de alta a las personas. Ver
-// docs/authorization.md y docs/admin.md.
+// User administration of the instance. Only the global ADMIN can create accounts, change
+// the global role, reset passwords or delete users. Accounts are created here unless the
+// instance has open registration (actions/register.ts). See docs/authorization.md and
+// docs/admin.md.
 
 export type CreateUserState = {
   error?: string;
-  // Campo al que se refiere el error, para marcarlo (aria-invalid) en el formulario.
+  // Field the error refers to, to mark it (aria-invalid) in the form.
   field?: "email";
   message?: string;
-  // Lo tecleado, para rellenar de nuevo el formulario tras un error. NUNCA la
-  // contraseña: no debe viajar de vuelta al navegador.
+  // What was typed, to refill the form after an error. NEVER the password: it must not
+  // travel back to the browser.
   values?: { name: string; email: string; role: string };
 };
 
@@ -37,12 +39,13 @@ function formText(formData: FormData, key: string): string {
   return typeof v === "string" ? v : "";
 }
 
-/** Da de alta una cuenta de usuario. Devuelve estado para useActionState. */
+/** Creates a user account. Returns state for useActionState. */
 export async function createUser(
   _prev: CreateUserState,
   formData: FormData,
 ): Promise<CreateUserState> {
   const admin = await requireAdmin();
+  const { m } = await getI18n();
   const values = {
     name: formText(formData, "name"),
     email: formText(formData, "email"),
@@ -57,16 +60,16 @@ export async function createUser(
   });
   if (!parsed.success) {
     return {
-      error: parsed.error.issues[0]?.message ?? "Datos no válidos.",
+      error: issueMessage(m, parsed.error.issues[0]),
       values,
     };
   }
 
-  // La lógica de creación (normalizar email, rechazar duplicados, hashear) vive en el
-  // servicio reutilizable y testeable; aquí solo autorizamos y auditamos.
+  // The creation logic (normalise the email, reject duplicates, hash) lives in the reusable,
+  // testable service; here we only authorise and audit.
   const result = await createUserAccount(parsed.data);
   if (!result.ok) {
-    return { error: "Ya existe un usuario con ese email.", field: "email", values };
+    return { error: m.errors.admin.emailTaken, field: "email", values };
   }
   await recordAudit({
     action: "user.created",
@@ -76,35 +79,35 @@ export async function createUser(
     detail: `${result.user.email} (${parsed.data.role})`,
   });
   revalidatePath("/admin/users");
-  return { message: `Cuenta creada para ${parsed.data.name}.` };
+  return { message: fmt(m.errors.admin.userCreated, { name: parsed.data.name }) };
 }
 
-// Las acciones por fila (cambiar rol, restablecer contraseña, borrar) devuelven el
-// resultado mediante una redirección con query (?ok=… / ?error=…) que la página
-// /admin/users traduce a un mensaje. Así evitamos un componente cliente por fila.
+// Per-row actions (change role, reset password, delete) return their result through a
+// redirect with a query (?ok=… / ?error=…) that the /admin/users page turns into a
+// message. That avoids a client component per row.
 function backToUsers(params: Record<string, string>): never {
   const qs = new URLSearchParams(params).toString();
   redirect(`/admin/users${qs ? `?${qs}` : ""}`);
 }
 
-// Id del usuario objetivo: `String(null)` daría "null" y la acción seguiría adelante.
+// Target user id: `String(null)` would give "null" and the action would carry on.
 function readUserId(formData: FormData): string {
   const userId = formData.get("userId");
   if (typeof userId !== "string" || userId === "") backToUsers({ error: "invalid" });
   return userId;
 }
 
-/** Cambia el rol global (ADMIN/MEMBER). No puedes cambiar tu propio rol. */
+/** Changes the global role (ADMIN/MEMBER). You cannot change your own role. */
 export async function updateUserRole(formData: FormData): Promise<void> {
   const admin = await requireAdmin();
   const userId = readUserId(formData);
   const parsed = globalRoleSchema.safeParse(formData.get("role"));
   if (!parsed.success) backToUsers({ error: "invalid" });
 
-  // No puedes degradarte a ti mismo (evita quedarte sin acceso de admin).
+  // You cannot demote yourself (avoids losing admin access).
   if (userId === admin.id) backToUsers({ error: "self-role" });
 
-  // Se mira el count antes de auditar: con un id inexistente no hay nada que registrar.
+  // The count is checked before auditing: with an unknown id there is nothing to record.
   const { count } = await prisma.user.updateMany({
     where: { id: userId },
     data: { role: parsed.data },
@@ -121,11 +124,11 @@ export async function updateUserRole(formData: FormData): Promise<void> {
   backToUsers({ ok: "role" });
 }
 
-/** Restablece la contraseña de un usuario (el admin teclea la nueva). */
+/** Resets a user's password (the admin types the new one). */
 export async function resetUserPassword(formData: FormData): Promise<void> {
   const admin = await requireAdmin();
-  // El userId se valida antes: si falta, el error del esquema sería el de la
-  // contraseña y el aviso («al menos 8 caracteres») no describiría el problema.
+  // The userId is validated first: if it were missing, the schema error would be the
+  // password one and the message ("at least 8 characters") would not describe the problem.
   const userId = readUserId(formData);
   const parsed = resetPasswordSchema.safeParse({
     userId,
@@ -133,9 +136,9 @@ export async function resetUserPassword(formData: FormData): Promise<void> {
   });
   if (!parsed.success) backToUsers({ error: "password" });
 
-  // Al cambiar la contraseña se retira todo acceso vigente del usuario: sus sesiones
-  // (navegador) y sus tokens de API, que no dependen de la sesión. Si la cuenta estaba
-  // comprometida, un token creado por el atacante seguiría abriendo /api/v1.
+  // Changing the password withdraws all of the user's current access: their sessions
+  // (browser) and their API tokens, which do not depend on the session. If the account was
+  // compromised, a token created by the attacker would keep opening /api/v1.
   const result = await resetPasswordAndRevokeAccess(
     parsed.data.userId,
     parsed.data.password,
@@ -146,17 +149,17 @@ export async function resetUserPassword(formData: FormData): Promise<void> {
     userId: admin.id,
     targetType: "user",
     targetId: parsed.data.userId,
-    detail: `tokens de API revocados: ${result.revokedTokens}`,
+    detail: `API tokens revoked: ${result.revokedTokens}`,
   });
   revalidatePath("/admin/users");
   backToUsers({ ok: "password" });
 }
 
-/** Cierra todas las sesiones activas de un usuario (revocación inmediata). */
+/** Revokes all of a user's active sessions (immediate revocation). */
 export async function revokeUserSessions(formData: FormData): Promise<void> {
   const admin = await requireAdmin();
   const userId = readUserId(formData);
-  // Tener 0 sesiones activas es válido, así que la existencia se comprueba aparte.
+  // Having 0 active sessions is valid, so existence is checked separately.
   const exists = await prisma.user.findUnique({
     where: { id: userId },
     select: { id: true },
@@ -174,9 +177,9 @@ export async function revokeUserSessions(formData: FormData): Promise<void> {
 }
 
 /**
- * Borra una cuenta. No puedes borrarte a ti mismo. Si el usuario es propietario de
- * algún tablero, se bloquea: borrarlo arrastraría sus tableros en cascada. El admin
- * debe transferir o borrar esos tableros primero.
+ * Deletes an account. You cannot delete yourself. If the user owns any board, it is
+ * refused: deleting them would cascade to their boards. The admin must transfer or delete
+ * those boards first.
  */
 export async function deleteUser(formData: FormData): Promise<void> {
   const admin = await requireAdmin();
@@ -184,8 +187,8 @@ export async function deleteUser(formData: FormData): Promise<void> {
 
   if (userId === admin.id) backToUsers({ error: "self-delete" });
 
-  // La comprobación de tableros propios va dentro del DELETE (ver el servicio): así la
-  // cascada nunca borra filas Attachment dejando sus ficheros huérfanos en disco.
+  // The owned-boards check is part of the DELETE itself (see the service): that way the
+  // cascade never deletes Attachment rows leaving their files orphaned on disk.
   const result = await deleteUserAccount(userId);
   if (!result.ok) {
     backToUsers({

@@ -24,7 +24,7 @@ import {
 import { generateKeyBetween } from "fractional-indexing";
 import type { BoardDTO, ListDTO, CardDTO } from "@/app/lib/types";
 import type { BoardRole } from "@/app/lib/roles";
-import { canEditBoard, canManageBoard, BOARD_ROLE_LABELS } from "@/app/lib/roles";
+import { canEditBoard, canManageBoard } from "@/app/lib/roles";
 import { moveCard } from "@/app/lib/actions/cards";
 import { reorderList } from "@/app/lib/actions/lists";
 import { boardBackgroundFor } from "@/app/lib/colors";
@@ -47,12 +47,8 @@ import {
 import { BoardPermsProvider } from "./board-perms";
 import { MembersPanel, type BoardMemberDTO } from "./members-panel";
 import { CardModal } from "../card/card-modal";
-
-// Instrucciones para lectores de pantalla (dnd-kit las trae en inglés).
-const screenReaderInstructions: ScreenReaderInstructions = {
-  draggable:
-    "Pulsa Espacio para coger el elemento, las flechas para moverlo, Espacio para soltarlo y Escape para cancelar. Intro abre la tarjeta.",
-};
+import { useI18n } from "@/app/i18n/client";
+import { fmt } from "@/app/i18n/format";
 
 export function BoardView({
   board,
@@ -65,25 +61,26 @@ export function BoardView({
   members: BoardMemberDTO[];
   currentUserId: string;
 }) {
+  const { m } = useI18n();
   const router = useRouter();
   const pathname = usePathname();
   const [lists, setLists] = useState<ListDTO[]>(board.lists);
   const [activeId, setActiveId] = useState<string | null>(null);
-  // Listas tal como estaban al empezar el arrastre, para deshacer el movimiento
-  // optimista si se cancela (Escape) o si el servidor lo rechaza.
+  // Lists as they were when the drag started, to undo the optimistic move if it is
+  // cancelled (Escape) or the server rejects it.
   const [dragSnapshot, setDragSnapshot] = useState<ListDTO[] | null>(null);
-  // Aviso si el servidor no guarda un movimiento: sin él, la tarjeta o la lista vuelve
-  // a su sitio sin explicación (el calendario avisa igual con dropError).
+  // Warning when the server does not save a move: without it, the card or list jumps
+  // back with no explanation (the calendar warns the same way with dropError).
   const [moveError, setMoveError] = useState<string | null>(null);
-  // Tarjeta abierta: se deriva de la URL (?card=…), no de un estado inicial. Así el
-  // deep-link de /search o de una notificación abre la tarjeta aunque ya estés en este
-  // tablero (Next no remonta el componente si solo cambian los searchParams).
+  // Open card: derived from the URL (?card=…), not from initial state. That way a deep
+  // link from /search or a notification opens the card even if you are already on this
+  // board (Next does not remount the component when only searchParams change).
   const searchParams = useSearchParams();
   const selectedCardId = searchParams.get("card");
   const [membersOpen, setMembersOpen] = useState(false);
-  // Vista activa: tablero (columnas) o calendario mensual (Hito 7).
+  // Active view: board (columns) or monthly calendar.
   const [view, setView] = useState<"board" | "calendar">("board");
-  // Filtros del tablero (Hito 12): solo presentación. `now` estable para "vencidas".
+  // Board filters: presentation only. Stable `now` for "overdue".
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [now] = useState(() => Date.now());
 
@@ -91,21 +88,20 @@ export function BoardView({
   const canManage = canManageBoard(viewerRole);
   const filtering = filtersActive(filters);
 
-  // Resincroniza con el servidor cuando llegan datos nuevos (patrón "ajustar estado
-  // durante el render", sin useEffect): `board` solo cambia de referencia con datos
-  // frescos del servidor.
+  // Resync with the server when new data arrives ("adjust state during render" pattern,
+  // no useEffect): `board` only changes reference with fresh server data.
   const [syncedBoard, setSyncedBoard] = useState(board);
   if (board !== syncedBoard) {
     setSyncedBoard(board);
     setLists(board.lists);
-    // Si llegan datos del servidor en mitad de un arrastre, la instantánea ya es vieja:
-    // cancelar debe volver a estos datos, no a los de antes.
+    // If server data arrives mid-drag, the snapshot is stale: cancelling must go back
+    // to this data, not the previous one.
     if (dragSnapshot) setDragSnapshot(board.lists);
   }
 
-  // Teclado además de puntero: con el foco en una tarjeta o lista, Espacio la coge,
-  // las flechas la mueven y Espacio la suelta (accesibilidad sin ratón). Intro no coge:
-  // queda para abrir la tarjeta (ver DRAG_KEYBOARD_CODES).
+  // Keyboard as well as pointer: with focus on a card or list, Space picks it up, the
+  // arrows move it and Space drops it (mouse-free accessibility). Enter does not pick
+  // up: it is kept for opening the card (see DRAG_KEYBOARD_CODES).
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, {
@@ -113,8 +109,8 @@ export function BoardView({
       keyboardCodes: DRAG_KEYBOARD_CODES,
     }),
   );
-  // dnd-kit genera ids de accesibilidad con un contador global que no coincide entre
-  // servidor y cliente (error de hidratación en aria-describedby); useId es estable.
+  // dnd-kit generates accessibility ids from a global counter that differs between
+  // server and client (hydration error on aria-describedby); useId is stable.
   const dndId = useId();
 
   const isList = (id: string) => lists.some((l) => l.id === id);
@@ -134,9 +130,9 @@ export function BoardView({
     ? lists.flatMap((l) => l.cards).find((c) => c.id === selectedCardId)
     : undefined;
 
-  // Abrir/cerrar la tarjeta cambia solo el ?card de la URL con la History API nativa,
-  // que Next sincroniza con useSearchParams sin pedir la página al servidor. Al cerrar
-  // se quita siempre, para que volver a pulsar la misma notificación la abra de nuevo.
+  // Opening/closing the card only changes the URL's ?card with the native History API,
+  // which Next syncs with useSearchParams without fetching the page from the server. It
+  // is always removed on close, so clicking the same notification again reopens it.
   const openCard = (cardId: string) => {
     window.history.replaceState(
       null,
@@ -148,29 +144,38 @@ export function BoardView({
     window.history.replaceState(null, "", pathname);
   };
 
-  // Nombre legible de un elemento arrastrable/soltable para los anuncios accesibles.
+  // Screen reader texts: dnd-kit's defaults are English-only, so they come from the
+  // messages.
+  const dnd = m.boards.dnd;
+  const screenReaderInstructions: ScreenReaderInstructions = {
+    draggable: dnd.instructions,
+  };
+  // Readable name of a draggable/droppable item for the accessible announcements.
   const describe = (id: UniqueIdentifier | undefined): string => {
     if (id === undefined) return "";
     const key = String(id);
     const list = lists.find((l) => l.id === key);
-    if (list) return `la lista «${list.title}»`;
+    if (list) return fmt(dnd.listName, { title: list.title });
     const card = lists.flatMap((l) => l.cards).find((c) => c.id === key);
-    return card ? `la tarjeta «${card.title}»` : "";
+    return card ? fmt(dnd.cardName, { title: card.title }) : "";
   };
   const announcements: Announcements = {
-    onDragStart: ({ active }) => `Has cogido ${describe(active.id)}.`,
+    onDragStart: ({ active }) => fmt(dnd.pickedUp, { item: describe(active.id) }),
     onDragOver: ({ over }) =>
-      over ? `Sobre ${describe(over.id)}.` : "Fuera de cualquier lista.",
+      over ? fmt(dnd.over, { target: describe(over.id) }) : dnd.outside,
     onDragEnd: ({ active, over }) =>
       over
-        ? `Has soltado ${describe(active.id)} sobre ${describe(over.id)}.`
-        : `Has soltado ${describe(active.id)} fuera de cualquier lista; no se mueve.`,
+        ? fmt(dnd.dropped, {
+            item: describe(active.id),
+            target: describe(over.id),
+          })
+        : fmt(dnd.droppedOutside, { item: describe(active.id) }),
     onDragCancel: ({ active }) =>
-      `Movimiento cancelado; ${describe(active.id)} vuelve a su sitio.`,
+      fmt(dnd.cancelled, { item: describe(active.id) }),
   };
 
-  // Deshace un movimiento optimista que el servidor no guardó, avisa y pide los datos
-  // reales.
+  // Undoes an optimistic move the server did not save, warns, and fetches the real
+  // data.
   const revertTo = (snapshot: ListDTO[], message: string) => {
     setLists(snapshot);
     setMoveError(message);
@@ -183,8 +188,8 @@ export function BoardView({
     setDragSnapshot(lists);
   }
 
-  // Escape (teclado) o arrastre abortado: handleDragOver puede haber movido la tarjeta
-  // a otra lista en el estado local; se vuelve a la instantánea.
+  // Escape (keyboard) or aborted drag: handleDragOver may have moved the card to another
+  // list in local state; go back to the snapshot.
   function handleDragCancel() {
     setActiveId(null);
     if (dragSnapshot) setLists(dragSnapshot);
@@ -235,18 +240,17 @@ export function BoardView({
     setActiveId(null);
     setDragSnapshot(null);
     if (!over) {
-      // Soltado fuera de cualquier zona: nada que guardar, se deshace lo que movió
-      // handleDragOver.
+      // Dropped outside any zone: nothing to save; undo what handleDragOver moved.
       setLists(snapshot);
       return;
     }
     const activeIdStr = String(active.id);
     const overIdStr = String(over.id);
 
-    // Reordenar listas (columnas)
+    // Reorder lists (columns)
     if (isList(activeIdStr)) {
       const oldIndex = lists.findIndex((l) => l.id === activeIdStr);
-      // Defensa: si `over` fuese una tarjeta, cuenta como su lista.
+      // Defensive: if `over` were a card, it counts as its list.
       const overListId = containerOf(overIdStr);
       const newIndex = lists.findIndex((l) => l.id === overListId);
       if (oldIndex < 0 || newIndex < 0 || oldIndex === newIndex) return;
@@ -261,17 +265,16 @@ export function BoardView({
       );
       void persistOptimistic(
         () => reorderList({ listId: activeIdStr, position }),
-        () =>
-          revertTo(snapshot, "No se pudo mover la lista. Inténtalo de nuevo."),
+        () => revertTo(snapshot, m.boards.board.moveListFailed),
         {
-          message: "[tablero] fallo al reordenar la lista",
+          message: "[board] failed to reorder the list",
           context: { listId: activeIdStr },
         },
       );
       return;
     }
 
-    // Mover/reordenar tarjeta
+    // Move/reorder a card
     const container = containerOf(activeIdStr);
     if (!container) return;
     let working = lists;
@@ -314,10 +317,9 @@ export function BoardView({
     );
     void persistOptimistic(
       () => moveCard({ cardId: activeIdStr, toListId: container, position }),
-      () =>
-        revertTo(snapshot, "No se pudo mover la tarjeta. Inténtalo de nuevo."),
+      () => revertTo(snapshot, m.boards.board.moveCardFailed),
       {
-        message: "[tablero] fallo al mover la tarjeta",
+        message: "[board] failed to move the card",
         context: { cardId: activeIdStr, toListId: container },
       },
     );
@@ -352,7 +354,7 @@ export function BoardView({
                   onChange={setFilters}
                 />
               )}
-              {/* Conmutador Tablero / Calendario */}
+              {/* Board / Calendar switch */}
               <div className="flex items-center rounded-lg bg-white/20 p-0.5 backdrop-blur-sm">
                 <button
                   onClick={() => setView("board")}
@@ -363,7 +365,7 @@ export function BoardView({
                       : "text-white hover:bg-white/10"
                   }`}
                 >
-                  Tablero
+                  {m.boards.board.viewBoard}
                 </button>
                 <button
                   onClick={() => setView("calendar")}
@@ -374,11 +376,11 @@ export function BoardView({
                       : "text-white hover:bg-white/10"
                   }`}
                 >
-                  Calendario
+                  {m.boards.board.viewCalendar}
                 </button>
               </div>
               <span className="rounded-full bg-white/20 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm">
-                {BOARD_ROLE_LABELS[viewerRole]}
+                {m.boards.roles[viewerRole]}
               </span>
               <button
                 onClick={() => setMembersOpen(true)}
@@ -396,14 +398,14 @@ export function BoardView({
                   <circle cx="9" cy="7" r="4" />
                   <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
                 </svg>
-                {canManage ? "Miembros" : "Ver miembros"}
+                {canManage ? m.boards.board.members : m.boards.board.viewMembers}
                 <span className="tabular-nums opacity-80">
                   · {members.length}
                 </span>
               </button>
             </div>
-            {/* Fila propia (basis-full) sobre fondo de superficie: el fondo del tablero
-                puede ser cualquier color y el rojo necesita contraste. */}
+            {/* Own row (basis-full) on a surface background: the board background can be
+                any colour and the red needs contrast. */}
             {moveError && (
               <p
                 role="alert"

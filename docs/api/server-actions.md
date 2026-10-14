@@ -1,68 +1,74 @@
-# Referencia de Server Actions
+# Server Actions reference
 
-Este documento cataloga **todas** las Server Actions del proyecto orgtable
-(Next.js 16 + Prisma 7). Está pensado como referencia para contribuidores: para
-cada acción se documenta su firma, qué valida, qué autorización aplica, qué hace
-en la base de datos y qué efectos secundarios produce (`revalidatePath`,
-`redirect`).
+This document lists the project's Server Actions (Next.js 16 + Prisma 7). It is a
+reference for contributors: for each action it describes the signature, what it
+validates, which authorization it applies, what it does in the database and which side
+effects it produces (`revalidatePath`, `redirect`).
 
-Todas las acciones viven en `app/lib/actions/` y comienzan con la directiva
-`"use server"`.
+All actions live in `app/lib/actions/` and start with the `"use server"` directive.
 
-## Patrón común
+## Common pattern
 
-La mayoría de las acciones siguen siempre el mismo flujo de cuatro pasos:
+Most actions follow the same four-step flow:
 
-1. **Validar** la entrada con un esquema [zod](https://zod.dev) de
+1. **Validate** the input with a [zod](https://zod.dev) schema from
    `app/lib/validators.ts`.
-2. **Autorizar** mediante el Data Access Layer (`app/lib/dal.ts`): `requireUser`
-   (exige sesión) o `requireBoardAccess` (exige ser miembro del tablero). Algunas
-   acciones aplican una comprobación de **solo dueño** directamente en la query.
-3. **Mutar** la base de datos con Prisma.
-4. **Revalidar** la caché de la ruta afectada con `revalidatePath` y, cuando
-   procede, **redirigir** con `redirect`.
+2. **Authorize** through the Data Access Layer (`app/lib/dal.ts`): `requireUser`
+   (requires a session) or `requireBoardAccess` (requires board membership). Some actions
+   apply an **owner-only** check directly in the query.
+3. **Mutate** the database with Prisma.
+4. **Revalidate** the cache of the affected route with `revalidatePath` and, where
+   relevant, **redirect** with `redirect`.
 
-> Nota sobre el orden validar/autorizar: en varias acciones la autorización
-> ocurre **antes** de validar el cuerpo (p. ej. `createBoard`, `createList`),
-> porque primero hay que resolver a qué tablero pertenece la mutación. El
-> principio es el mismo: nunca se toca la base de datos sin haber autorizado.
+> About the validate/authorize order: in several actions authorization happens **before**
+> the body is validated (for example `createBoard`, `createList`), because the action
+> first has to work out which board the mutation belongs to. The principle is the same:
+> the database is never touched before authorization.
 
-### Dos estilos de invocación
+### Error messages and language
 
-| Estilo | Acciones | Entrada | Retorno | Efectos |
+Error messages returned to forms are shown to people, so they are in the language of the
+request (the `locale` cookie, then `Accept-Language`, then English). The zod schemas carry
+message **keys** (for example `"errors.validation.titleRequired"`) instead of text, and
+the action resolves them with `issueMessage(m, issue)` from `app/i18n/server.ts`. The
+messages live in `locales/<code>/errors.json`. See
+[`docs/DECISIONES.md`](../DECISIONES.md) ("Bilingual interface").
+
+### Two invocation styles
+
+| Style | Actions | Input | Return | Effects |
 | --- | --- | --- | --- | --- |
-| **Formulario** (`<form action={...}>`) | `completeSetup`, `login`, `logout`, `createBoard`, `renameBoard`, `deleteBoard`, `createList`, `renameList`, `deleteList`, `createCard`, `renameCard`, `deleteCard` | `FormData` (a veces precedido de `_prev` para `useActionState`) | `void` o `{ error?: string }` | `revalidatePath` y/o `redirect` |
-| **Drag & drop** (llamada imperativa desde el cliente) | `reorderList`, `moveCard` | Un **objeto** tipado | `{ ok: boolean }` | `revalidatePath`, sin `redirect` |
+| **Form** (`<form action={...}>`) | `completeSetup`, `login`, `logout`, `createBoard`, `renameBoard`, `deleteBoard`, `createList`, `renameList`, `deleteList`, `createCard`, `renameCard`, `deleteCard` | `FormData` (sometimes preceded by `_prev` for `useActionState`) | `void` or `{ error?: string }` | `revalidatePath` and/or `redirect` |
+| **Drag and drop** (imperative call from the client) | `reorderList`, `moveCard` | A typed **object** | `{ ok: boolean }` | `revalidatePath`, no `redirect` |
 
-Las acciones de formulario reciben `FormData` y normalmente terminan
-redirigiendo o revalidando una ruta para que el servidor vuelva a renderizar. Las
-acciones de drag & drop reciben un objeto plano (el cliente ya calculó la nueva
-posición), actualizan **una única fila** y devuelven `{ ok: boolean }` para que
-la UI pueda revertir el movimiento optimista si algo falla. Ver
+Form actions receive `FormData` and usually end by redirecting or revalidating a route so
+the server renders again. Drag-and-drop actions receive a plain object (the client has
+already computed the new position), update **a single row** and return `{ ok: boolean }`
+so the UI can roll back the optimistic move if something fails. See
 [docs/drag-and-drop.md](../drag-and-drop.md).
 
-### Posicionamiento (fractional indexing)
+### Positioning (fractional indexing)
 
-Las acciones que **crean** elementos (`createList`, `createCard`) calculan la
-posición del nuevo elemento con `positionAtEnd` de `app/lib/ordering.ts`, que
-genera una clave lexicográfica al final de la lista mediante *fractional
-indexing*, dentro de una transacción que bloquea la fila padre para que dos altas
-simultáneas no repitan posición. Las acciones de drag & drop no calculan la
-posición: la reciben ya calculada del cliente y la validan con `isValidPositionKey`
-antes de guardarla. Ver [docs/drag-and-drop.md](../drag-and-drop.md#el-servidor-solo-ordena-al-final-y-valida-lo-que-llega).
+Actions that **create** items (`createList`, `createCard`) compute the new item's
+position with `positionAtEnd` from `app/lib/ordering.ts`, which generates a lexicographic
+key at the end of the list using *fractional indexing*. This happens inside a transaction
+that locks the parent row, so two simultaneous inserts never get the same position.
+Drag-and-drop actions do not compute the position: they receive it from the client and
+check it with `isValidPositionKey` before saving it. See
+[docs/drag-and-drop.md](../drag-and-drop.md#the-server-only-appends-and-validates-what-it-receives).
 
 ---
 
-## Tabla resumen
+## Summary table
 
-| Acción | Archivo | Entrada | Retorno | Valida (zod) | Autorización | Efectos |
+| Action | File | Input | Return | Validates (zod) | Authorization | Effects |
 | --- | --- | --- | --- | --- | --- | --- |
-| `completeSetup` | `setup.ts` | `(_prev, FormData)` | `Promise<SetupState>` | `setupSchema` | Ninguna (solo si el setup no está hecho) | `createSession`, `redirect` |
-| `login` | `auth.ts` | `(_prev, FormData)` | `Promise<AuthState>` | `loginSchema` | Ninguna (es el login) | `createSession`, `redirect` |
+| `completeSetup` | `setup.ts` | `(_prev, FormData)` | `Promise<SetupState>` | `setupSchema` | None (only while setup is not done) | `createSession`, `redirect` |
+| `login` | `auth.ts` | `(_prev, FormData)` | `Promise<AuthState>` | `loginSchema` | None (it is the login) | `createSession`, `redirect` |
 | `logout` | `auth.ts` | `()` | `Promise<void>` | — | — | `deleteSession`, `redirect` |
 | `createBoard` | `boards.ts` | `(FormData)` | `Promise<void>` | `boardTitleSchema` | `requireUser` | `revalidatePath`, `redirect` |
 | `renameBoard` | `boards.ts` | `(FormData)` | `Promise<void>` | `boardTitleSchema` | `requireBoardAccess` | `revalidatePath` |
-| `deleteBoard` | `boards.ts` | `(FormData)` | `Promise<void>` | — | `requireUser` + solo dueño | `revalidatePath`, `redirect` |
+| `deleteBoard` | `boards.ts` | `(FormData)` | `Promise<void>` | — | `requireUser` + owner only | `revalidatePath`, `redirect` |
 | `createList` | `lists.ts` | `(FormData)` | `Promise<void>` | `listTitleSchema` | `requireBoardAccess` | `revalidatePath` |
 | `renameList` | `lists.ts` | `(FormData)` | `Promise<void>` | `listTitleSchema` | `requireBoardAccess` | `revalidatePath` |
 | `deleteList` | `lists.ts` | `(FormData)` | `Promise<void>` | — | `requireBoardAccess` | `revalidatePath` |
@@ -78,8 +84,8 @@ antes de guardarla. Ver [docs/drag-and-drop.md](../drag-and-drop.md#el-servidor-
 
 ### `completeSetup`
 
-**Archivo:** `app/lib/actions/setup.ts` (la transacción vive en
-`completeInstanceSetup`, `app/lib/services/setup.ts`)
+**File:** `app/lib/actions/setup.ts` (the transaction lives in `completeInstanceSetup`,
+`app/lib/services/setup.ts`)
 
 ```ts
 export type SetupState = {
@@ -93,44 +99,41 @@ export async function completeSetup(
 ): Promise<SetupState>
 ```
 
-Acción del asistente de configuración inicial (*setup wizard*). Pensada para
-`useActionState`, por eso recibe el estado previo `_prev` y devuelve un
-`SetupState` con un posible mensaje de error. Los errores devuelven también `values`
-(lo tecleado, **nunca** la contraseña) para que el formulario no se vacíe.
+Action of the setup wizard. It is built for `useActionState`, so it receives the previous
+state `_prev` and returns a `SetupState` with an optional error message. Errors also
+return `values` (what was typed, **never** the password) so the form is not cleared.
 
-- **Corte temprano:** si `isSetupComplete()` ya es cierto, `redirect("/login")` antes
-  de validar y de gastar bcrypt (el ID de la acción sigue en el bundle de `/setup` y se
-  puede invocar a mano).
-- **Valida:** `setupSchema` sobre los campos `instanceName`, `name`, `email` y
-  `password`. Si falla, devuelve el primer mensaje de error de zod (o
-  `"Datos no válidos."`).
-- **Autorización:** no hay sesión todavía. La protección es que el setup solo
-  puede completarse **una vez**. La recomprobación de `setupCompletedAt` dentro de la
-  transacción **no basta por sí sola** (con READ COMMITTED, dos envíos simultáneos la
-  pasarían a la vez): la transacción empieza con un advisory lock que serializa los
-  envíos. El porqué está en [`DECISIONES.md`](../DECISIONES.md) («Setup: advisory lock,
-  corte temprano y causa en el log»).
-- **Base de datos** (`completeInstanceSetup`, todo dentro de `prisma.$transaction`):
+- **Early exit:** if `isSetupComplete()` is already true, it calls `redirect("/login")`
+  before validating and before spending time on bcrypt (the action ID is still in the
+  `/setup` bundle and can be called by hand).
+- **Validates:** `setupSchema` on the `instanceName`, `name`, `email` and `password`
+  fields. On failure it returns the first zod error message.
+- **Authorization:** there is no session yet. The protection is that setup can only be
+  completed **once**. Checking `setupCompletedAt` again inside the transaction is **not
+  enough on its own** (under READ COMMITTED, two simultaneous submissions would both pass
+  it), so the transaction starts with an advisory lock that serializes submissions. The
+  reasoning is in [`DECISIONES.md`](../DECISIONES.md) (setup advisory lock entry).
+- **Database** (`completeInstanceSetup`, all inside `prisma.$transaction`):
   - `pg_advisory_xact_lock(hashtext('orgtable:setup'))`;
-  - relee `InstanceConfig` (`id: "singleton"`); si ya hay `setupCompletedAt`, devuelve
-    `{ ok: false, reason: "ALREADY_SETUP" }` (no lanza);
-  - crea el `User` con `role: "ADMIN"` y la contraseña hasheada
-    (`hashPassword`, email normalizado a minúsculas);
-  - hace `upsert` de `InstanceConfig` fijando `instanceName` y
-    `setupCompletedAt`, y devuelve `{ ok: true, userId }`.
-- **Efectos:**
+  - reads `InstanceConfig` (`id: "singleton"`) again; if `setupCompletedAt` is already
+    set, it returns `{ ok: false, reason: "ALREADY_SETUP" }` (it does not throw);
+  - creates the `User` with `role: "ADMIN"` and the hashed password (`hashPassword`,
+    email lower-cased);
+  - upserts `InstanceConfig` with `instanceName` and `setupCompletedAt`, and returns
+    `{ ok: true, userId }`.
+- **Effects:**
   - `ALREADY_SETUP` → `redirect("/login")`;
-  - ante una excepción (BD caída, email duplicado…) registra la causa en el log sin
-    FormData ni email (`describeSetupError`) y devuelve
-    `{ error: "No se pudo completar la configuración. Inténtalo de nuevo.", values }`;
-  - en éxito crea la sesión (`createSession(userId)`), audita `setup.completed` y
-    `redirect("/boards")`.
+  - on an exception (database down, duplicate email…) it logs the cause without the
+    FormData or the email (`describeSetupError`) and returns a generic "could not
+    complete the setup" error together with `values`;
+  - on success it creates the session (`createSession(userId)`), audits
+    `setup.completed` and calls `redirect("/boards")`.
 
-> Detalle de implementación: `redirect()` se llama **fuera** del `try/catch`,
-> porque internamente lanza la excepción `NEXT_REDIRECT` de Next que no debe ser
-> capturada por el `catch` de la transacción.
+> Implementation detail: `redirect()` is called **outside** the `try/catch`, because it
+> throws Next's internal `NEXT_REDIRECT` exception, which the transaction's `catch` must
+> not swallow.
 
-Ver [docs/authentication.md](../authentication.md) y
+See [docs/authentication.md](../authentication.md) and
 [docs/database.md](../database.md).
 
 ---
@@ -139,7 +142,7 @@ Ver [docs/authentication.md](../authentication.md) y
 
 ### `login`
 
-**Archivo:** `app/lib/actions/auth.ts`
+**File:** `app/lib/actions/auth.ts`
 
 ```ts
 export type AuthState = { error?: string; values?: { email: string } };
@@ -150,158 +153,157 @@ export async function login(
 ): Promise<AuthState>
 ```
 
-Inicio de sesión. Diseñada para `useActionState` (recibe `_prev`, devuelve
-`AuthState`). Los errores devuelven también `values` (el email tecleado, **nunca** la
-contraseña) para repintar el formulario.
+Signs a person in. Built for `useActionState` (receives `_prev`, returns `AuthState`).
+Errors also return `values` (the typed email, **never** the password) to refill the form.
 
-- **Límites de intentos:** por IP (solo si hay IP fiable, `TRUSTED_PROXY_HOPS > 0`)
-  antes de validar, y por cuenta (email normalizado) antes de verificar; el de cuenta se
-  reinicia con un login correcto. Si salta uno, devuelve
-  `{ error: "Demasiados intentos. Inténtalo de nuevo en N s.", values }`. Valores y
-  porqué en el [ADR 0009](../decisions/0009-in-memory-rate-limit.md).
-- **Valida:** `loginSchema` sobre `email` y `password`. Si falla, devuelve
-  `{ error: "Revisa el email y la contraseña.", values }`.
-- **Autorización:** ninguna previa (es la propia puerta de entrada).
-- **Base de datos:** busca el `User` por email (normalizado a minúsculas) y verifica
-  la contraseña con `verifyPasswordOrDummy` (`app/lib/auth.ts`): si el usuario no
-  existe, compara contra un hash bcrypt ficticio válido del mismo coste, para **no
-  filtrar por tiempo** si un email está registrado. Si no hay usuario o la contraseña no
-  es válida, devuelve `{ error: "Credenciales incorrectas.", values }`.
-- **Efectos:** audita `auth.login_failed` (sin el email tecleado),
-  `auth.login_rate_limited` (una vez por ventana bloqueada) o `auth.login`; en éxito,
-  `createSession(user.id)` y `redirect("/boards")`.
+- **Attempt limits:** per IP (only when the IP is trustworthy, `TRUSTED_PROXY_HOPS > 0`)
+  before validating, and per account (normalized email) before verifying; the account
+  limit resets after a successful login. If either limit is hit, it returns a "too many
+  attempts, try again in N s" error with `values`. Values and reasoning are in
+  [ADR 0009](../decisions/0009-in-memory-rate-limit.md).
+- **Validates:** `loginSchema` on `email` and `password`. On failure it returns a
+  "check your email and password" error with `values`.
+- **Authorization:** none beforehand (this is the front door).
+- **Database:** looks up the `User` by email (lower-cased) and checks the password with
+  `verifyPasswordOrDummy` (`app/lib/auth.ts`): if the user does not exist, it compares
+  against a valid dummy bcrypt hash of the same cost, so **timing does not reveal**
+  whether an email is registered. If there is no user or the password is wrong, it
+  returns an "incorrect credentials" error with `values`.
+- **Effects:** audits `auth.login_failed` (without the typed email),
+  `auth.login_rate_limited` (once per blocked window) or `auth.login`. On success it calls
+  `createSession(user.id)`, restores the `locale` cookie from `User.locale` (the
+  account's language wins over the browser's) and calls `redirect("/boards")`.
 
-Paso a paso en [docs/authentication.md](../authentication.md#login).
+Step by step in [docs/authentication.md](../authentication.md#login).
 
 ### `logout`
 
-**Archivo:** `app/lib/actions/auth.ts`
+**File:** `app/lib/actions/auth.ts`
 
 ```ts
 export async function logout(): Promise<void>
 ```
 
-Cierra la sesión. No recibe parámetros.
+Ends the session. Takes no parameters.
 
-- **Valida:** nada.
-- **Autorización:** ninguna (cerrar sesión es seguro siempre).
-- **Base de datos:** ninguna mutación de datos de dominio; `deleteSession`
-  elimina la cookie de sesión.
-- **Efectos:** `deleteSession()` y `redirect("/login")`.
+- **Validates:** nothing.
+- **Authorization:** none (signing out is always safe).
+- **Database:** no change to domain data; `deleteSession` removes the session and its
+  cookie.
+- **Effects:** `deleteSession()`, audits `auth.logout` and calls `redirect("/login")`.
 
-Ver [docs/authentication.md](../authentication.md).
+See [docs/authentication.md](../authentication.md).
 
 ---
 
-## Tableros
+## Boards
 
 ### `createBoard`
 
-**Archivo:** `app/lib/actions/boards.ts`
+**File:** `app/lib/actions/boards.ts`
 
 ```ts
 export async function createBoard(formData: FormData): Promise<void>
 ```
 
-- **Autorización:** `requireUser()` (exige sesión válida; si no, redirige a
+- **Authorization:** `requireUser()` (requires a valid session; otherwise redirects to
   `/login`).
-- **Valida:** `boardTitleSchema` sobre el campo `title`. Si falla, **retorna sin
-  hacer nada** (no muestra error).
-- **Base de datos:** crea el `Board` con `ownerId = user.id` y, en la misma
-  operación anidada, un `BoardMember` con `role: "OWNER"`. El creador queda como
-  dueño y, a la vez, como miembro del tablero — la autorización siempre se
-  comprueba contra `board_members`.
-- **Efectos:** `revalidatePath("/boards")` y `redirect(\`/board/${board.id}\`)`.
+- **Validates:** `boardTitleSchema` on the `title` field. On failure it **returns without
+  doing anything** (no error is shown).
+- **Database:** creates the `Board` with `ownerId = user.id` and, in the same nested
+  write, a `BoardMember` with `role: "OWNER"`. The creator is both owner and member of the
+  board; authorization is always checked against `board_members`.
+- **Effects:** `revalidatePath("/boards")` and `redirect(\`/board/${board.id}\`)`.
 
 ### `renameBoard`
 
-**Archivo:** `app/lib/actions/boards.ts`
+**File:** `app/lib/actions/boards.ts`
 
 ```ts
 export async function renameBoard(formData: FormData): Promise<void>
 ```
 
-- **Autorización:** `requireBoardAccess(boardId)` (exige ser miembro del tablero;
-  si no, redirige a `/boards`).
-- **Valida:** `boardTitleSchema` sobre `title`. Si falla, retorna sin hacer nada.
-- **Base de datos:** `board.update` cambiando el `title`.
-- **Efectos:** `revalidatePath(\`/board/${boardId}\`)`. Sin redirect.
+- **Authorization:** `requireBoardAccess(boardId)` (requires board membership; otherwise
+  redirects to `/boards`).
+- **Validates:** `boardTitleSchema` on `title`. On failure it returns without doing
+  anything.
+- **Database:** `board.update` changing the `title`.
+- **Effects:** `revalidatePath(\`/board/${boardId}\`)`. No redirect.
 
 ### `deleteBoard`
 
-**Archivo:** `app/lib/actions/boards.ts`
+**File:** `app/lib/actions/boards.ts`
 
 ```ts
 export async function deleteBoard(formData: FormData): Promise<void>
 ```
 
-- **Autorización:** `requireUser()` **+ solo dueño**. A diferencia de las demás,
-  no usa `requireBoardAccess`: usa `board.deleteMany({ where: { id, ownerId:
-  user.id } })`, que solo borra si el usuario es el dueño y **no falla** si no
-  coincide (no hay error visible para no-dueños).
-- **Valida:** nada.
-- **Base de datos:** `deleteBoardWithAttachments` (`app/lib/services/attachments.ts`),
-  que hace el `board.deleteMany` y, tras el commit, borra los ficheros de los
-  adjuntos. Listas y tarjetas se borran en cascada (ver el esquema en
-  [docs/database.md](../database.md) y [docs/attachments.md](../attachments.md)).
-- **Efectos:** si se borró, `revalidateBoard(boardId)` (avisa a las pestañas
-  abiertas); siempre `revalidatePath("/boards")` y `redirect("/boards")`.
+- **Authorization:** `requireUser()` **+ owner only**. Unlike the others, it does not use
+  `requireBoardAccess`: it uses `board.deleteMany({ where: { id, ownerId: user.id } })`,
+  which deletes only if the user is the owner and **does not fail** otherwise (non-owners
+  see no error).
+- **Validates:** nothing.
+- **Database:** `deleteBoardWithAttachments` (`app/lib/services/attachments.ts`), which
+  runs the `board.deleteMany` and, after the commit, deletes the attachment files. Lists
+  and cards are deleted by cascade (see the schema in [docs/database.md](../database.md)
+  and [docs/attachments.md](../attachments.md)).
+- **Effects:** if the board was deleted, `revalidateBoard(boardId)` (notifies open tabs);
+  always `revalidatePath("/boards")` and `redirect("/boards")`.
 
 ---
 
-## Listas
+## Lists
 
 ### `createList`
 
-**Archivo:** `app/lib/actions/lists.ts`
+**File:** `app/lib/actions/lists.ts`
 
 ```ts
 export async function createList(formData: FormData): Promise<void>
 ```
 
-- **Autorización:** `requireBoardAccess(boardId)`.
-- **Valida:** `listTitleSchema` sobre `title`. Si falla, retorna sin hacer nada.
-- **Base de datos:** `createListAtEnd` (`app/lib/services/lists.ts`): en una
-  transacción bloquea el tablero (`FOR UPDATE`), busca la última lista y crea la
-  nueva con `positionAtEnd(last?.position ?? null)` (*fractional indexing*, se añade
-  al final).
-- **Efectos:** `revalidatePath(\`/board/${boardId}\`)`.
+- **Authorization:** `requireBoardAccess(boardId)`.
+- **Validates:** `listTitleSchema` on `title`. On failure it returns without doing
+  anything.
+- **Database:** `createListAtEnd` (`app/lib/services/lists.ts`): inside a transaction it
+  locks the board (`FOR UPDATE`), finds the last list and creates the new one with
+  `positionAtEnd(last?.position ?? null)` (*fractional indexing*, appended at the end).
+- **Effects:** `revalidatePath(\`/board/${boardId}\`)`.
 
 ### `renameList`
 
-**Archivo:** `app/lib/actions/lists.ts`
+**File:** `app/lib/actions/lists.ts`
 
 ```ts
 export async function renameList(formData: FormData): Promise<void>
 ```
 
-- **Autorización:** primero resuelve el `boardId` de la lista
-  (`list.findUnique`); si la lista no existe, retorna. Luego
-  `requireBoardAccess(list.boardId)`.
-- **Valida:** `listTitleSchema` sobre `title`. Si falla, retorna sin hacer nada.
-- **Base de datos:** `list.update` cambiando el `title`.
-- **Efectos:** `revalidatePath(\`/board/${list.boardId}\`)`.
+- **Authorization:** first resolves the list's `boardId` (`list.findUnique`); if the list
+  does not exist, it returns. Then `requireBoardAccess(list.boardId)`.
+- **Validates:** `listTitleSchema` on `title`. On failure it returns without doing
+  anything.
+- **Database:** `list.update` changing the `title`.
+- **Effects:** `revalidatePath(\`/board/${list.boardId}\`)`.
 
 ### `deleteList`
 
-**Archivo:** `app/lib/actions/lists.ts`
+**File:** `app/lib/actions/lists.ts`
 
 ```ts
 export async function deleteList(formData: FormData): Promise<void>
 ```
 
-- **Autorización:** resuelve `boardId` de la lista; si no existe, retorna. Luego
-  `requireBoardAccess(list.boardId)`.
-- **Valida:** nada.
-- **Base de datos:** `deleteListWithAttachments` (`app/lib/services/attachments.ts`):
-  `list.delete` y, tras el commit, los ficheros de los adjuntos. Las tarjetas de la
-  lista se borran en cascada (`onDelete: Cascade` en el esquema, ver
-  [docs/database.md](../database.md)).
-- **Efectos:** `revalidatePath(\`/board/${list.boardId}\`)`.
+- **Authorization:** resolves the list's `boardId`; if the list does not exist, it
+  returns. Then `requireBoardAccess(list.boardId)`.
+- **Validates:** nothing.
+- **Database:** `deleteListWithAttachments` (`app/lib/services/attachments.ts`):
+  `list.delete` and, after the commit, the attachment files. The list's cards are deleted
+  by cascade (`onDelete: Cascade` in the schema, see [docs/database.md](../database.md)).
+- **Effects:** `revalidatePath(\`/board/${list.boardId}\`)`.
 
 ### `reorderList`
 
-**Archivo:** `app/lib/actions/lists.ts`
+**File:** `app/lib/actions/lists.ts`
 
 ```ts
 export async function reorderList(input: {
@@ -310,80 +312,79 @@ export async function reorderList(input: {
 }): Promise<{ ok: boolean }>
 ```
 
-Acción de **drag & drop**: persiste el reordenamiento de una lista. Recibe un
-objeto (no `FormData`) y devuelve `{ ok: boolean }`.
+**Drag-and-drop** action: saves a list's new order. It receives an object (not
+`FormData`) and returns `{ ok: boolean }`.
 
-- **Autorización:** resuelve `boardId` de la lista; si no existe, devuelve
-  `{ ok: false }`. Luego `requireBoardAccess(list.boardId)`.
-- **Valida:** `reorderListSchema` (zod) antes de cualquier consulta. La nueva clave
-  de posición la **calcula el cliente** (*fractional indexing*) y el servidor la
-  valida con `isValidPositionKey`; una clave inválida devuelve `{ ok: false }` y no
-  se guarda. La regla está en
-  [docs/drag-and-drop.md](../drag-and-drop.md#validación-de-la-clave-isvalidpositionkey).
-- **Base de datos:** `list.update` actualizando únicamente `position` de **una
-  sola fila**.
-- **Efectos:** `revalidatePath(\`/board/${list.boardId}\`)`; devuelve
-  `{ ok: true }`. Sin redirect.
+- **Authorization:** resolves the list's `boardId`; if the list does not exist, it returns
+  `{ ok: false }`. Then `requireBoardAccess(list.boardId)`.
+- **Validates:** `reorderListSchema` (zod) before any query. The **client computes** the
+  new position key (*fractional indexing*) and the server checks it with
+  `isValidPositionKey`; an invalid key returns `{ ok: false }` and is not saved. The rule
+  is described in
+  [docs/drag-and-drop.md](../drag-and-drop.md#key-validation-isvalidpositionkey).
+- **Database:** `list.update` changing only the `position` of **one row**.
+- **Effects:** `revalidatePath(\`/board/${list.boardId}\`)`; returns `{ ok: true }`. No
+  redirect.
 
-Ver [docs/drag-and-drop.md](../drag-and-drop.md).
+See [docs/drag-and-drop.md](../drag-and-drop.md).
 
 ---
 
-## Tarjetas
+## Cards
 
-> Helper interno `boardIdForList(listId)`: dado un `listId`, devuelve el
-> `boardId` al que pertenece (para autorizar y revalidar), o `null` si la lista
-> no existe.
+> Internal helper `boardIdForList(listId)`: given a `listId`, returns the `boardId` it
+> belongs to (to authorize and revalidate), or `null` if the list does not exist.
 
 ### `createCard`
 
-**Archivo:** `app/lib/actions/cards.ts`
+**File:** `app/lib/actions/cards.ts`
 
 ```ts
 export async function createCard(formData: FormData): Promise<void>
 ```
 
-- **Autorización:** obtiene `boardId` vía `boardIdForList(listId)`; si es `null`,
-  retorna. Luego `requireBoardAccess(boardId)`.
-- **Valida:** `cardTitleSchema` sobre `title`. Si falla, retorna sin hacer nada.
-- **Base de datos:** `createCardAtEnd` (`app/lib/services/cards.ts`): en una
-  transacción bloquea la lista (`FOR UPDATE`), busca la última tarjeta y crea la
-  nueva con `positionAtEnd(last?.position ?? null)` (*fractional indexing*, al final
-  de la lista).
-- **Efectos:** `revalidatePath(\`/board/${boardId}\`)`.
+- **Authorization:** gets `boardId` through `boardIdForList(listId)`; if it is `null`, it
+  returns. Then `requireBoardAccess(boardId)`.
+- **Validates:** `cardTitleSchema` on `title`. On failure it returns without doing
+  anything.
+- **Database:** `createCardAtEnd` (`app/lib/services/cards.ts`): inside a transaction it
+  locks the list (`FOR UPDATE`), finds the last card and creates the new one with
+  `positionAtEnd(last?.position ?? null)` (*fractional indexing*, at the end of the list).
+- **Effects:** `revalidatePath(\`/board/${boardId}\`)`.
 
 ### `renameCard`
 
-**Archivo:** `app/lib/actions/cards.ts`
+**File:** `app/lib/actions/cards.ts`
 
 ```ts
 export async function renameCard(formData: FormData): Promise<void>
 ```
 
-- **Autorización:** busca la tarjeta seleccionando `list.boardId`; si no existe,
-  retorna. Luego `requireBoardAccess(card.list.boardId)`.
-- **Valida:** `cardTitleSchema` sobre `title`. Si falla, retorna sin hacer nada.
-- **Base de datos:** `card.update` cambiando el `title`.
-- **Efectos:** `revalidatePath(\`/board/${card.list.boardId}\`)`.
+- **Authorization:** looks up the card selecting `list.boardId`; if it does not exist, it
+  returns. Then `requireBoardAccess(card.list.boardId)`.
+- **Validates:** `cardTitleSchema` on `title`. On failure it returns without doing
+  anything.
+- **Database:** `card.update` changing the `title`.
+- **Effects:** `revalidatePath(\`/board/${card.list.boardId}\`)`.
 
 ### `deleteCard`
 
-**Archivo:** `app/lib/actions/cards.ts`
+**File:** `app/lib/actions/cards.ts`
 
 ```ts
 export async function deleteCard(formData: FormData): Promise<void>
 ```
 
-- **Autorización:** busca la tarjeta seleccionando `list.boardId`; si no existe,
-  retorna. Luego `requireBoardAccess(card.list.boardId)`.
-- **Valida:** nada.
-- **Base de datos:** `deleteCardWithAttachments` (`app/lib/services/attachments.ts`):
-  `card.delete` y, tras el commit, los ficheros de los adjuntos.
-- **Efectos:** `revalidatePath(\`/board/${card.list.boardId}\`)`.
+- **Authorization:** looks up the card selecting `list.boardId`; if it does not exist, it
+  returns. Then `requireBoardAccess(card.list.boardId)`.
+- **Validates:** nothing.
+- **Database:** `deleteCardWithAttachments` (`app/lib/services/attachments.ts`):
+  `card.delete` and, after the commit, the attachment files.
+- **Effects:** `revalidatePath(\`/board/${card.list.boardId}\`)`.
 
 ### `moveCard`
 
-**Archivo:** `app/lib/actions/cards.ts`
+**File:** `app/lib/actions/cards.ts`
 
 ```ts
 export async function moveCard(input: {
@@ -393,89 +394,101 @@ export async function moveCard(input: {
 }): Promise<{ ok: boolean }>
 ```
 
-Acción de **drag & drop**: mueve una tarjeta, que puede cambiar de lista y/o de
-posición. Recibe un objeto (no `FormData`) y devuelve `{ ok: boolean }`.
+**Drag-and-drop** action: moves a card, which may change list and/or position. It
+receives an object (not `FormData`) and returns `{ ok: boolean }`.
 
-- **Autorización:** obtiene `boardId` de la lista destino vía
-  `boardIdForList(input.toListId)`; si es `null`, devuelve `{ ok: false }`. Luego
-  `requireBoardAccess(boardId)`.
-- **Valida:** `moveCardSchema` (zod) antes de cualquier consulta. La nueva clave de
-  posición la **calcula el cliente** (*fractional indexing*) y el servidor la valida
-  con `isValidPositionKey`; una clave inválida devuelve `{ ok: false }` y no se
-  guarda. La regla está en
-  [docs/drag-and-drop.md](../drag-and-drop.md#validación-de-la-clave-isvalidpositionkey).
-- **Base de datos:** un único `card.update` que fija `listId: toListId` y
-  `position`.
-- **Efectos:** `revalidatePath(\`/board/${boardId}\`)`; devuelve `{ ok: true }`.
-  Sin redirect.
+- **Authorization:** gets the target list's `boardId` through
+  `boardIdForList(input.toListId)`; if it is `null`, it returns `{ ok: false }`. Then
+  `requireBoardAccess(boardId)`, and `cardBelongsToBoard` checks that the card belongs to
+  that same board (prevents moving a card from a board you cannot edit).
+- **Validates:** `moveCardSchema` (zod) before any query. The **client computes** the new
+  position key (*fractional indexing*) and the server checks it with
+  `isValidPositionKey`; an invalid key returns `{ ok: false }` and is not saved. The rule
+  is described in
+  [docs/drag-and-drop.md](../drag-and-drop.md#key-validation-isvalidpositionkey).
+- **Database:** a single `card.update` that sets `listId: toListId` and `position`.
+- **Effects:** `revalidatePath(\`/board/${boardId}\`)`; returns `{ ok: true }`. No
+  redirect.
 
-Ver [docs/drag-and-drop.md](../drag-and-drop.md).
-
----
-
-## Multiusuario (Hito 3)
-
-Toda mutación que ya pasaba por `requireBoardAccess` ahora **comprueba además el
-rol** con los ayudantes de `app/lib/roles.ts` (`canEditBoard`, `canManageBoard`).
-Si el rol no alcanza, la acción no hace nada (formularios) o devuelve `{ ok: false }`
-(drag & drop). Ver [docs/authorization.md](../authorization.md).
-
-### Miembros de tablero — `app/lib/actions/members.ts`
-
-Solo el **propietario** (`OWNER`) del tablero.
-
-- **`addBoardMember(_prev, formData)`** — `{ boardId, email, role }`. Valida con
-  `addMemberSchema`. Busca un usuario existente por email; si no existe, devuelve un
-  error. Crea la fila en `board_members`. Retorno: `{ error?, message?, values? }` para
-  `useActionState`; `values` (`{ email, role }` enviados) solo viene con `error`, para
-  que el formulario no se vacíe al fallar.
-- **`updateBoardMemberRole(formData)`** — `{ boardId, userId, role }`. Cambia el rol
-  de un miembro. No permite tocar el rol del dueño del tablero. Si el usuario no es
-  miembro o ya tenía ese rol, no hace nada (ni auditoría ni notificación).
-- **`removeBoardMember(formData)`** — `{ boardId, userId }`. Quita a un miembro y sus
-  asignaciones en las tarjetas del tablero (`removeMemberFromBoard`, una transacción). No
-  permite quitar al dueño. Si el usuario no era miembro, no audita ni notifica.
-
-Las tres llaman a `revalidateBoard(boardId)`, así que los demás miembros conectados ven
-el cambio en vivo.
-
-### Administración de usuarios — `app/lib/actions/admin.ts`
-
-Solo el **administrador global** (`requireAdmin`).
-
-- **`createUser(_prev, formData)`** — `{ name, email, password, role }`. Valida con
-  `createUserSchema`, comprueba unicidad del email, hashea la contraseña y crea la
-  cuenta. Retorno: `{ error?, field?, message?, values? }` para `useActionState`;
-  `field` (`"email"`) marca el campo del error y `values` (`{ name, email, role }`,
-  **nunca** la contraseña) solo viene con `error`, para que el formulario no se vacíe.
-- **`updateUserRole(formData)`** — `{ userId, role }`. Cambia el rol global. No puedes
-  cambiar tu propio rol. Devuelve el resultado vía redirección con query.
-- **`resetUserPassword(formData)`** — `{ userId, password }`. Restablece la
-  contraseña y, en la misma transacción (`resetPasswordAndRevokeAccess`), revoca todas
-  las sesiones del usuario y **borra sus tokens de API** (ver
-  [docs/admin.md](../admin.md)). Vía redirección con query.
-- **`revokeUserSessions(formData)`** — `{ userId }`. Cierra todas las sesiones activas
-  del usuario al instante; los tokens de API siguen vigentes. Vía redirección con
-  query.
-- **`deleteUser(formData)`** — `{ userId }`. Borra la cuenta. No puedes borrarte a ti
-  mismo ni borrar a un usuario que es propietario de tableros (cascada). Vía
-  redirección con query.
+See [docs/drag-and-drop.md](../drag-and-drop.md).
 
 ---
 
-## Véase también
+## Board roles and administration
 
-- [docs/authentication.md](../authentication.md) — sesiones, `requireUser`,
-  `requireBoardAccess` y el Data Access Layer.
-- [docs/authorization.md](../authorization.md) — modelo de roles y dónde se aplica.
-- [docs/drag-and-drop.md](../drag-and-drop.md) — reordenamiento optimista y
-  *fractional indexing* en el cliente.
-- [docs/database.md](../database.md) — esquema Prisma, relaciones y borrado en
-  cascada.
+Every mutation that goes through `requireBoardAccess` **also checks the role** with the
+helpers in `app/lib/roles.ts` (`canEditBoard`, `canManageBoard`). If the role is not
+enough, the action does nothing (forms) or returns `{ ok: false }` (drag and drop). See
+[docs/authorization.md](../authorization.md).
+
+### Board members — `app/lib/actions/members.ts`
+
+Board **owner** (`OWNER`) only.
+
+- **`addBoardMember(_prev, formData)`** — `{ boardId, email, role }`. Validates with
+  `addMemberSchema`. Looks up an existing user by email; if none exists, it returns an
+  error. Creates the row in `board_members`. Returns `{ error?, message?, values? }` for
+  `useActionState`; `values` (the submitted `{ email, role }`) only comes with `error`, so
+  the form is not cleared on failure.
+- **`updateBoardMemberRole(formData)`** — `{ boardId, userId, role }`. Changes a member's
+  role. The board owner's role cannot be changed. If the user is not a member or already
+  has that role, it does nothing (no audit, no notification).
+- **`removeBoardMember(formData)`** — `{ boardId, userId }`. Removes a member and their
+  card assignments on the board (`removeMemberFromBoard`, one transaction). The owner
+  cannot be removed. If the user was not a member, nothing is audited or notified.
+
+All three call `revalidateBoard(boardId)`, so other connected members see the change
+live.
+
+### User administration — `app/lib/actions/admin.ts`
+
+Global **administrator** only (`requireAdmin`).
+
+- **`createUser(_prev, formData)`** — `{ name, email, password, role }`. Validates with
+  `createUserSchema`, checks the email is unique, hashes the password and creates the
+  account. Returns `{ error?, field?, message?, values? }` for `useActionState`; `field`
+  (`"email"`) marks the field with the error, and `values` (`{ name, email, role }`,
+  **never** the password) only comes with `error`, so the form is not cleared.
+- **`updateUserRole(formData)`** — `{ userId, role }`. Changes the global role. You cannot
+  change your own role. The result is reported by redirecting with a query string.
+- **`resetUserPassword(formData)`** — `{ userId, password }`. Resets the password and, in
+  the same transaction (`resetPasswordAndRevokeAccess`), revokes all the user's sessions
+  and **deletes their API tokens** (see [docs/admin.md](../admin.md)). Reported by
+  redirecting with a query string.
+- **`revokeUserSessions(formData)`** — `{ userId }`. Ends all the user's active sessions
+  immediately; API tokens remain valid. Reported by redirecting with a query string.
+- **`deleteUser(formData)`** — `{ userId }`. Deletes the account. You cannot delete
+  yourself, nor a user who owns boards (cascade). Reported by redirecting with a query
+  string.
 
 ---
 
-En resumen: cada Server Action sigue el patrón validar → autorizar → mutar →
-revalidar, con dos variantes — las de formulario que reciben `FormData` y suelen
-redirigir, y las de drag & drop (`reorderList`, `moveCard`) que reciben un objeto
-y devuelven `{ ok: boolean }`.
+## Sign-up, own account and instance
+
+| Action | File | Who | What it does |
+|---|---|---|---|
+| `register` | `actions/register.ts` | Anonymous, when sign-up is open | Creates a `MEMBER` account with `termsAcceptedAt`, signs in and redirects to `/boards`. |
+| `updateProfile` | `actions/account.ts` | The person themselves | Name and email; changing the email requires `currentPassword`. |
+| `changePassword` | `actions/account.ts` | The person themselves | Checks the current password and ends the other sessions. |
+| `revokeSession` / `revokeOtherSessions` | `actions/account.ts` | The person themselves | Ends one of their own sessions, or all except the current one. |
+| `deleteAccount` | `actions/account.ts` | The person themselves | With the password: deletes the account and its boards (and files) and redirects to `/login?account=deleted`. Not allowed for the last `ADMIN` account. |
+| `saveInstanceSettings` | `actions/instance.ts` | `ADMIN` | Instance name, open or closed sign-up, and the operator's legal details. |
+
+All of them validate with zod (`registerSchema`, `profileSchema`, `changePasswordSchema`,
+`deleteAccountSchema` and `instanceSettingsSchema` in `validators.ts`) and audit the event.
+
+## See also
+
+- [docs/authentication.md](../authentication.md) — sessions, `requireUser`,
+  `requireBoardAccess` and the Data Access Layer.
+- [docs/authorization.md](../authorization.md) — the role model and where it applies.
+- [docs/drag-and-drop.md](../drag-and-drop.md) — optimistic reordering and client-side
+  *fractional indexing*.
+- [docs/database.md](../database.md) — Prisma schema, relations and cascade deletes.
+
+---
+
+In short: every Server Action follows the validate → authorize → mutate → revalidate
+pattern, in two variants: form actions that receive `FormData` and usually redirect, and
+drag-and-drop actions (`reorderList`, `moveCard`) that receive an object and return
+`{ ok: boolean }`.

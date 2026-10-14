@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# Copia de seguridad de orgtable: vuelca PostgreSQL y archiva los adjuntos.
+# orgtable backup: dumps PostgreSQL and archives the attachments.
 #
-# Uso:   scripts/backup.sh [directorio_destino]   (por defecto: <repo>/backups)
-# Se puede lanzar desde cualquier directorio (p. ej. desde cron): se sitúa en la raíz del
-# repositorio para que `docker compose` encuentre el docker-compose.yml y el .env.
-# Requiere que el servicio postgres esté en marcha. Ver docs/operations.md.
+# Usage:   scripts/backup.sh [destination_dir]   (default: <repo>/backups)
+# Can be run from any directory (e.g. from cron): it moves to the repository root so
+# that `docker compose` finds docker-compose.yml and .env.
+# Requires the postgres service to be running. See docs/operations.md.
 #
-# Sale con código distinto de 0 (y sin dejar ficheros a medias) si algo falla: una copia
-# vacía o truncada que se anuncia como buena es peor que ninguna.
+# Exits non-zero (and leaves no half-written files) if anything fails: an empty or
+# truncated backup announced as good is worse than none.
 set -euo pipefail
 
-# Los volcados contienen datos personales (emails, hashes de contraseñas y de tokens,
-# comentarios): solo el propietario puede leerlos.
+# Dumps contain personal data (emails, password and token hashes, comments): only the
+# owner may read them.
 umask 077
 
 fail() {
@@ -19,9 +19,9 @@ fail() {
   exit 1
 }
 
-# El destino se resuelve a ruta absoluta ANTES de cambiar de directorio, para que una
-# ruta relativa se interprete desde donde se lanzó el script. Si hay que crearlo, umask
-# ya lo deja en 700; uno ajeno que ya existía (p. ej. /tmp) no se toca.
+# The destination is made absolute BEFORE changing directory, so a relative path is
+# resolved from where the script was launched. If it has to be created, umask already
+# makes it 700; a pre-existing foreign one (e.g. /tmp) is left alone.
 if [ -n "${1:-}" ]; then
   mkdir -p "$1"
   DIR="$(cd "$1" && pwd)"
@@ -30,12 +30,12 @@ cd "$(dirname "$0")/.."
 if [ -z "${DIR:-}" ]; then
   DIR="$PWD/backups"
   mkdir -p "$DIR"
-  # El directorio por defecto es solo de las copias: se cierra aunque ya existiera
-  # (umask no cambia los permisos de un directorio existente).
+  # The default directory only holds backups: lock it down even if it already existed
+  # (umask does not change the permissions of an existing directory).
   chmod 700 "$DIR"
 fi
 
-# Carga las variables del .env si existe (para el usuario y la base de datos).
+# Load .env if present (for the database user and name).
 if [ -f .env ]; then
   set -a
   # shellcheck disable=SC1091
@@ -48,35 +48,35 @@ PGDB="${POSTGRES_DB:-orgtable}"
 TS=$(date +%Y%m%d-%H%M%S)
 DUMP="$DIR/orgtable-db-$TS.sql.gz"
 UPLOADS="$DIR/orgtable-uploads-$TS.tar.gz"
-# Se escribe en .partial y solo se renombra al final si pasa las comprobaciones: así
-# nunca queda en el destino un fichero con aspecto de copia buena que no lo es.
+# Write to .partial and only rename at the end if the checks pass: the destination never
+# holds a file that looks like a good backup but is not.
 DUMP_PART="$DUMP.partial"
 UPLOADS_PART="$UPLOADS.partial"
 trap 'rm -f "$DUMP_PART" "$UPLOADS_PART"' EXIT
 
-echo "→ Volcando base de datos a $DUMP"
-# --clean --if-exists: el volcado borra los objetos antes de crearlos, así que también
-# sirve para restaurar a mano sobre una base de datos ya migrada.
+echo "→ Dumping database to $DUMP"
+# --clean --if-exists: the dump drops objects before creating them, so it can also be
+# restored by hand over an already migrated database.
 docker compose exec -T postgres pg_dump --clean --if-exists -U "$PGUSER" -d "$PGDB" \
   | gzip > "$DUMP_PART" \
-  || fail "pg_dump ha fallado: no se ha generado la copia de la base de datos."
+  || fail "pg_dump failed: no database backup was created."
 
-[ -s "$DUMP_PART" ] || fail "El volcado de la base de datos está vacío."
-gzip -t "$DUMP_PART" || fail "El volcado de la base de datos no es un gzip válido."
-# pg_dump escribe esta marca al terminar; si falta, el volcado está truncado. Se leen las
-# últimas líneas a una variable (y no con `| grep -q`) para no romper la tubería con
-# SIGPIPE bajo pipefail.
+[ -s "$DUMP_PART" ] || fail "The database dump is empty."
+gzip -t "$DUMP_PART" || fail "The database dump is not a valid gzip file."
+# pg_dump writes this marker when it finishes; if it is missing, the dump is truncated.
+# The last lines are read into a variable (not `| grep -q`) to avoid breaking the pipe
+# with SIGPIPE under pipefail.
 TAIL="$(gunzip -c "$DUMP_PART" | tail -n 10)"
 case "$TAIL" in
   *"PostgreSQL database dump complete"*) ;;
-  *) fail "El volcado de la base de datos está incompleto (falta la marca final de pg_dump)." ;;
+  *) fail "The database dump is incomplete (pg_dump's end marker is missing)." ;;
 esac
 mv "$DUMP_PART" "$DUMP"
 
-# Adjuntos: viven en el volumen montado en /data/uploads del contenedor app. Si la app
-# está en marcha se lee desde ella; si no, se arranca un contenedor efímero con el mismo
-# volumen. El código 3 significa «no hay directorio de adjuntos», lo único que se omite.
-echo "→ Archivando adjuntos a $UPLOADS"
+# Attachments live in the volume mounted at /data/uploads in the app container. If the
+# app is running they are read from it; otherwise a throwaway container is started with
+# the same volume. Exit code 3 means "no attachments directory", the only case skipped.
+echo "→ Archiving attachments to $UPLOADS"
 TAR_CMD='if [ -d /data/uploads ]; then tar czf - -C /data uploads; else exit 3; fi'
 if [ -n "$(docker compose ps --status running -q app)" ]; then
   APP_RUN=(docker compose exec -T app sh -c "$TAR_CMD")
@@ -89,13 +89,13 @@ TAR_STATUS=$?
 set -e
 if [ "$TAR_STATUS" -eq 3 ]; then
   rm -f "$UPLOADS_PART"
-  echo "  (no existe /data/uploads en el contenedor: no hay adjuntos que archivar)"
+  echo "  (/data/uploads does not exist in the container: no attachments to archive)"
 elif [ "$TAR_STATUS" -ne 0 ]; then
-  fail "No se pudieron archivar los adjuntos (código $TAR_STATUS). La base de datos sí se copió en $DUMP."
+  fail "Could not archive the attachments (exit code $TAR_STATUS). The database was backed up to $DUMP."
 else
-  gzip -t "$UPLOADS_PART" || fail "El archivo de adjuntos no es un gzip válido. La base de datos sí se copió en $DUMP."
+  gzip -t "$UPLOADS_PART" || fail "The attachments archive is not a valid gzip file. The database was backed up to $DUMP."
   mv "$UPLOADS_PART" "$UPLOADS"
-  echo "  adjuntos archivados"
+  echo "  attachments archived"
 fi
 
-echo "✓ Backup completado en $DIR/"
+echo "✓ Backup completed in $DIR/"

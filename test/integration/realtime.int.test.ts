@@ -23,10 +23,10 @@ import {
   loginAs,
 } from "./helpers";
 
-// Streams SSE de tiempo real: autorización (401/403), limpieza de la suscripción y del
-// latido al cortar la conexión, y cierre del stream cuando se revoca la sesión o se
-// retira el acceso. Antes nada lo comprobaba y una regresión acumulaba listeners en el
-// bus sin que nadie se enterara.
+// Real-time SSE streams: authorization (401/403), cleanup of the subscription and the
+// heartbeat when the connection drops, and closing the stream when the session is revoked
+// or access is withdrawn. Nothing checked this before, and a regression piled up listeners
+// on the bus without anyone noticing.
 
 const bus = () =>
   (globalThis as { __orgtableBus?: EventEmitter }).__orgtableBus;
@@ -47,7 +47,7 @@ const decoder = new TextDecoder();
 
 async function readChunk(reader: Reader): Promise<string> {
   const { value, done } = await reader.read();
-  if (done) throw new Error("El stream se cerró antes de tiempo");
+  if (done) throw new Error("The stream closed too early");
   return decoder.decode(value);
 }
 
@@ -57,7 +57,7 @@ async function readUntil(reader: Reader, needle: string): Promise<string> {
   return text;
 }
 
-/** Lee hasta el final; si el stream no se cierra, el test acaba por timeout. */
+/** Reads to the end; if the stream does not close, the test ends with a timeout. */
 async function readToEnd(reader: Reader): Promise<string> {
   let text = "";
   for (;;) {
@@ -80,12 +80,12 @@ function openController(): AbortController {
 
 beforeEach(async () => {
   await resetDb();
-  // Solo el latido (setInterval) y el reloj: la BD sigue usando temporizadores reales.
+  // Only the heartbeat (setInterval) and the clock: the DB keeps using real timers.
   vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
 });
 
 afterEach(() => {
-  // Abortar siempre, aunque el test falle, para no dejar streams vivos en el bus.
+  // Always abort, even if the test fails, so no live streams are left on the bus.
   for (const ac of aborters.splice(0)) ac.abort();
   vi.useRealTimers();
 });
@@ -95,7 +95,7 @@ afterAll(async () => {
 });
 
 describe("GET /api/boards/[id]/stream", () => {
-  it("401 sin sesión", async () => {
+  it("401 without a session", async () => {
     const owner = await seedUser();
     const board = await seedBoard(owner.id);
     const res = await boardStream(
@@ -106,7 +106,7 @@ describe("GET /api/boards/[id]/stream", () => {
     expect(listeners(`board:${board.id}`)).toBe(0);
   });
 
-  it("403 si no es miembro del tablero", async () => {
+  it("403 if not a board member", async () => {
     const owner = await seedUser();
     const outsider = await seedUser();
     const board = await seedBoard(owner.id);
@@ -119,7 +119,7 @@ describe("GET /api/boards/[id]/stream", () => {
     expect(listeners(`board:${board.id}`)).toBe(0);
   });
 
-  it("un miembro recibe los cambios y al abortar se libera el listener y el latido", async () => {
+  it("a member receives the changes, and aborting frees the listener and the heartbeat", async () => {
     const owner = await seedUser();
     const board = await seedBoard(owner.id);
     await loginAs(owner.id);
@@ -146,7 +146,7 @@ describe("GET /api/boards/[id]/stream", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it("si la petición ya llegó abortada no se suscribe", async () => {
+  it("does not subscribe if the request arrived already aborted", async () => {
     const owner = await seedUser();
     const board = await seedBoard(owner.id);
     await loginAs(owner.id);
@@ -159,7 +159,7 @@ describe("GET /api/boards/[id]/stream", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it("cancelar el body libera el listener y el latido", async () => {
+  it("cancelling the body frees the listener and the heartbeat", async () => {
     const owner = await seedUser();
     const board = await seedBoard(owner.id);
     await loginAs(owner.id);
@@ -175,7 +175,7 @@ describe("GET /api/boards/[id]/stream", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it("se cierra en el siguiente latido si se revoca la sesión", async () => {
+  it("closes on the next heartbeat if the session is revoked", async () => {
     const owner = await seedUser();
     const board = await seedBoard(owner.id);
     const sessionId = await loginAndGetSessionId(owner.id);
@@ -198,7 +198,7 @@ describe("GET /api/boards/[id]/stream", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it("se cierra en el siguiente latido si expulsan a la persona del tablero", async () => {
+  it("closes on the next heartbeat if the person is removed from the board", async () => {
     const owner = await seedUser();
     const editor = await seedUser();
     const board = await seedBoard(owner.id);
@@ -221,7 +221,7 @@ describe("GET /api/boards/[id]/stream", () => {
     expect(listeners(`board:${board.id}`)).toBe(0);
   });
 
-  it("sigue abierto tras el latido si el acceso es válido y se cierra al llegar a la vida máxima", async () => {
+  it("stays open after the heartbeat if access is valid and closes when it reaches its maximum lifetime", async () => {
     const owner = await seedUser();
     const board = await seedBoard(owner.id);
     await loginAs(owner.id);
@@ -245,14 +245,14 @@ describe("GET /api/boards/[id]/stream", () => {
 });
 
 describe("GET /api/notifications/stream", () => {
-  it("401 sin sesión", async () => {
+  it("401 without a session", async () => {
     const res = await notificationsStream(
       streamRequest("/api/notifications/stream"),
     );
     expect(res.status).toBe(401);
   });
 
-  it("recibe los avisos del usuario y al abortar se libera el listener", async () => {
+  it("receives the user's notifications, and aborting frees the listener", async () => {
     const user = await seedUser();
     await loginAs(user.id);
     const ac = openController();
@@ -275,7 +275,7 @@ describe("GET /api/notifications/stream", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it("si la petición ya llegó abortada no se suscribe", async () => {
+  it("does not subscribe if the request arrived already aborted", async () => {
     const user = await seedUser();
     await loginAs(user.id);
     const res = await notificationsStream(
@@ -285,7 +285,7 @@ describe("GET /api/notifications/stream", () => {
     expect(listeners(`user:${user.id}`)).toBe(0);
   });
 
-  it("se cierra en el siguiente latido si se revoca la sesión", async () => {
+  it("closes on the next heartbeat if the session is revoked", async () => {
     const user = await seedUser();
     const sessionId = await loginAndGetSessionId(user.id);
     const ac = openController();

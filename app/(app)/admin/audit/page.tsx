@@ -1,93 +1,70 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { requireAdmin } from "@/app/lib/dal";
+import { AdminNav } from "../admin-nav";
 import { getRecentAuditLogs } from "@/app/lib/queries";
 import type { AuditAction } from "@/app/lib/audit";
+import { getI18n } from "@/app/i18n/server";
 import { formatDateTime } from "@/app/lib/format-date";
+import { plural } from "@/app/i18n/format";
 
-export const metadata: Metadata = {
-  title: "Auditoría",
-  description: "Eventos recientes de seguridad y operación de la instancia.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { m } = await getI18n();
+  return { title: m.admin.audit.meta.title, description: m.admin.audit.meta.description };
+}
 
-// Etiquetas legibles para cada acción auditada.
-const ACTION_LABELS: Record<AuditAction, string> = {
-  "setup.completed": "Configuración inicial completada",
-  "auth.login": "Inicio de sesión",
-  "auth.login_failed": "Inicio de sesión fallido",
-  "auth.login_rate_limited": "Login bloqueado por límite de intentos",
-  "auth.logout": "Cierre de sesión",
-  "user.created": "Usuario creado",
-  "user.deleted": "Usuario borrado",
-  "user.role_changed": "Rol de usuario cambiado",
-  "user.password_reset": "Contraseña restablecida",
-  "user.sessions_revoked": "Sesiones cerradas",
-  "board.created": "Tablero creado",
-  "board.deleted": "Tablero borrado",
-  "member.added": "Miembro añadido",
-  "member.removed": "Miembro quitado",
-  "member.role_changed": "Rol de miembro cambiado",
-  "apitoken.created": "Token de API creado",
-  "apitoken.revoked": "Token de API revocado",
-};
-
-// Acciones de riesgo que conviene resaltar.
+// Risky actions worth highlighting.
 const WARN_ACTIONS = new Set<string>([
   "auth.login_failed",
   "auth.login_rate_limited",
+  "auth.register_rate_limited",
   "user.deleted",
+  "account.deleted",
   "board.deleted",
 ]);
 
-function actionLabel(action: string): string {
-  return ACTION_LABELS[action as AuditAction] ?? action;
-}
-
 export default async function AdminAuditPage() {
   await requireAdmin();
+  const { intl, m } = await getI18n();
+  const t = m.admin.audit;
+  // Typed against AuditAction: adding an action without its label in locales/en/admin.json
+  // fails the type check. Rows written by an older or newer version may hold an action
+  // that is no longer listed: those show the raw code.
+  const labels: Record<AuditAction, string> = t.actions;
+  const actionLabel = (action: string): string =>
+    Object.hasOwn(labels, action) ? labels[action as AuditAction] : action;
   const logs = await getRecentAuditLogs();
 
   return (
     <div className="relative z-10 mx-auto w-full max-w-4xl overflow-y-auto p-6 sm:p-8">
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <h1 className="font-display text-3xl font-bold tracking-tight">
-          Auditoría
+          {t.title}
         </h1>
-        <nav className="flex gap-1 text-sm">
-          <Link
-            href="/admin/users"
-            className="rounded-lg px-2.5 py-1 text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
-          >
-            Usuarios
-          </Link>
-          <span className="rounded-lg bg-surface-2 px-2.5 py-1 font-medium">
-            Auditoría
-          </span>
-        </nav>
+        <AdminNav current="/admin/audit" />
       </div>
       <p className="mt-1 text-sm text-ink-muted">
-        Los {logs.length} eventos de seguridad y operación más recientes.
+        {plural(intl, t.intro, logs.length)}
       </p>
 
       {logs.length === 0 ? (
-        <p className="mt-8 text-sm text-ink-muted">Todavía no hay eventos.</p>
+        <p className="mt-8 text-sm text-ink-muted">{t.empty}</p>
       ) : (
-        // overflow-x-auto: en móvil la tabla se desplaza en vez de recortarse.
+        // overflow-x-auto: on mobile the table scrolls instead of being clipped.
         <div className="mt-6 overflow-x-auto rounded-xl border border-border">
           <table className="w-full text-sm">
             <thead className="bg-surface-2 text-left text-xs uppercase tracking-wide text-ink-muted">
               <tr>
-                <th className="px-4 py-3 font-semibold">Cuándo</th>
-                <th className="px-4 py-3 font-semibold">Acción</th>
-                <th className="px-4 py-3 font-semibold">Quién</th>
-                <th className="px-4 py-3 font-semibold">Detalle</th>
+                <th className="px-4 py-3 font-semibold">{t.table.when}</th>
+                <th className="px-4 py-3 font-semibold">{t.table.action}</th>
+                <th className="px-4 py-3 font-semibold">{t.table.who}</th>
+                <th className="px-4 py-3 font-semibold">{t.table.detail}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {logs.map((log) => (
                 <tr key={log.id} className="bg-surface align-top">
                   <td className="whitespace-nowrap px-4 py-2.5 text-xs text-ink-muted tabular-nums">
-                    {formatDateTime(log.createdAt)}
+                    {formatDateTime(log.createdAt, intl)}
                   </td>
                   <td className="px-4 py-2.5">
                     <span

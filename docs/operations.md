@@ -1,157 +1,152 @@
-# Operación y seguridad
+# Operations and security
 
-Esta guía cubre las funciones operativas de orgtable: límite de intentos de login,
-registro de auditoría, copias de seguridad, exportar/importar tableros y el flujo de
-actualización. Para la puesta en producción general (reverse proxy, TLS), ver
-[`docs/self-hosting.md`](./self-hosting.md).
+This guide covers the operational features of orgtable: login rate limiting, the audit
+log, backups, board export/import and the update flow. For general production setup
+(reverse proxy, TLS), see [`docs/self-hosting.md`](./self-hosting.md).
 
-## Límite de intentos de login (rate limiting)
+## Login rate limiting
 
-El login está protegido contra fuerza bruta con dos límites:
+Login is protected against brute force with two limits:
 
-- **Por IP: hasta 10 intentos cada 10 minutos**, solo si la IP del cliente es fiable
-  (ver abajo).
-- **Por email: 20 intentos fallidos cada 15 minutos**. Solo cuentan los fallos y el
-  contador se reinicia tras un login correcto.
+- **Per IP: up to 10 attempts every 10 minutes**, only when the client IP can be trusted
+  (see below).
+- **Per email: 20 failed attempts every 15 minutes**. Only failures count, and the counter
+  resets after a successful login.
 
-Superado un límite, el formulario responde con un aviso y un tiempo de espera, y el
-intento se registra en la auditoría (`auth.login_rate_limited`).
+Once a limit is exceeded, the form shows a message with a waiting time, and the attempt is
+recorded in the audit log (`auth.login_rate_limited`).
 
-La implementación ([`app/lib/rate-limit.ts`](../app/lib/rate-limit.ts)) es **en
-memoria** (un contador por ventana fija), sin Redis ni dependencias externas. Es la
-opción adecuada para el despliegue estándar de una sola instancia. La decisión está en
+The implementation ([`app/lib/rate-limit.ts`](../app/lib/rate-limit.ts)) is **in memory**
+(a fixed-window counter), with no Redis or external dependencies. It is the right choice
+for the standard single-instance deployment. The decision is in
 [ADR 0009](./decisions/0009-in-memory-rate-limit.md).
 
-**De dónde sale la IP: `TRUSTED_PROXY_HOPS`.** La cabecera `X-Forwarded-For` la puede
-escribir cualquiera, así que la app solo se fía de ella si se le dice cuántos proxies
-propios hay delante:
+**Where the IP comes from: `TRUSTED_PROXY_HOPS`.** Anyone can write the
+`X-Forwarded-For` header, so the app only trusts it when told how many of your own proxies
+sit in front of it:
 
-| `TRUSTED_PROXY_HOPS` | Comportamiento |
+| `TRUSTED_PROXY_HOPS` | Behaviour |
 | --- | --- |
-| `0` (por defecto) | Se ignora `X-Forwarded-For`. No hay límite por IP; se aplica solo el límite por email. |
-| `N > 0` | Se toma la IP N-ésima de `X-Forwarded-For` contando por la derecha. Con un único proxy inverso (Caddy o nginx), `1`. Se acepta la IP con puerto (`1.2.3.4:5678`, `[2001:db8::1]:443`) y se descarta el puerto. Si la cabecera no llega, trae menos de N valores o el valor que toca no es una IP, esa petición no tiene límite por IP (solo el de email) y `AuditLog.ip` queda vacío; el log muestra un aviso `[client-ip] TRUSTED_PROXY_HOPS=N pero …` con el motivo y el número de valores (sin IPs), una vez por motivo y proceso. |
+| `0` (default) | `X-Forwarded-For` is ignored. There is no per-IP limit; only the per-email limit applies. |
+| `N > 0` | The N-th IP of `X-Forwarded-For`, counting from the right, is used. With a single reverse proxy (Caddy or nginx), use `1`. An IP with a port (`1.2.3.4:5678`, `[2001:db8::1]:443`) is accepted and the port is dropped. If the header is missing, has fewer than N values or the selected value is not an IP, that request has no per-IP limit (only the per-email one) and `AuditLog.ip` stays empty; the log prints a `[client-ip] TRUSTED_PROXY_HOPS=N but …` warning with the reason and the number of values (no IPs), once per reason and process. |
 
-Con `N > 0`, el puerto de la app no debe ser accesible sin pasar por el proxy: quien
-llegue directamente puede inventarse la cabecera. Cómo configurarlo, en
-[self-hosting.md](./self-hosting.md#https-y-dominio-reverse-proxy).
+With `N > 0`, the app port must not be reachable without going through the proxy: anyone
+reaching it directly can forge the header. How to set it up:
+[self-hosting.md](./self-hosting.md#https-and-domain-reverse-proxy).
 
-> **Multi-instancia:** el conteo es por réplica. Con N réplicas el límite efectivo es
-> N×10. Para un límite global compartido haría falta un store común (p. ej.
-> `LISTEN/NOTIFY` no sirve aquí; sería Postgres con una tabla o Redis). No es el caso
-> por defecto y queda como mejora futura.
+> **Multiple instances:** counting is per replica. With N replicas the effective limit is
+> N×10. A global shared limit would need a common store (`LISTEN/NOTIFY` does not help
+> here; it would be a Postgres table or Redis). This is not the default setup and is left
+> as a future improvement.
 
-## Registro de auditoría
+## Audit log
 
-orgtable guarda una fila por evento relevante de seguridad y operación en la tabla
-`AuditLog` ([`app/lib/audit.ts`](../app/lib/audit.ts)). El administrador los consulta
-en **`/admin/audit`** (los 200 más recientes).
+orgtable stores one row per relevant security or operational event in the `AuditLog`
+table ([`app/lib/audit.ts`](../app/lib/audit.ts)). The administrator reviews them at
+**`/admin/audit`** (the 200 most recent).
 
-Eventos registrados:
+Recorded events:
 
-| Área | Acciones |
+| Area | Actions |
 | --- | --- |
-| Autenticación | `auth.login`, `auth.login_failed`, `auth.login_rate_limited`, `auth.logout` |
-| Configuración | `setup.completed` |
-| Usuarios | `user.created`, `user.deleted`, `user.role_changed`, `user.password_reset`, `user.sessions_revoked` |
-| Tableros | `board.created`, `board.deleted` |
-| Miembros | `member.added`, `member.removed`, `member.role_changed` |
+| Authentication | `auth.login`, `auth.login_failed`, `auth.login_rate_limited`, `auth.logout` |
+| Setup | `setup.completed` |
+| Users | `user.created`, `user.deleted`, `user.role_changed`, `user.password_reset`, `user.sessions_revoked` |
+| Boards | `board.created`, `board.deleted` |
+| Members | `member.added`, `member.removed`, `member.role_changed` |
 
-Cada fila guarda quién (usuario, opcional), la IP, el objetivo (`targetType`/
-`targetId`), un detalle y la marca de tiempo. El `userId` es **opcional con
-`onDelete: SetNull`**: borrar una cuenta no borra su rastro de auditoría. El registro
-es *best-effort*: un fallo al escribir el log nunca hace fallar la operación que lo
-origina.
+Each row stores who (user, optional), the IP, the target (`targetType`/`targetId`), a
+detail and the timestamp. `userId` is **optional with `onDelete: SetNull`**: deleting an
+account does not delete its audit trail. Logging is *best-effort*: a failure to write the
+log never makes the originating operation fail.
 
-## Copias de seguridad
+## Backups
 
-Hay dos cosas que respaldar: la **base de datos** (PostgreSQL) y los **adjuntos**
-(volumen de disco). El script [`scripts/backup.sh`](../scripts/backup.sh) hace ambas:
+There are two things to back up: the **database** (PostgreSQL) and the **attachments**
+(disk volume). The [`scripts/backup.sh`](../scripts/backup.sh) script does both:
 
 ```sh
-scripts/backup.sh [directorio_destino]   # por defecto: ./backups
+scripts/backup.sh [destination_dir]   # default: ./backups
 ```
 
-Genera dos ficheros con marca de tiempo:
+It writes two timestamped files:
 
-- `orgtable-db-<fecha>.sql.gz` — volcado de `pg_dump --clean --if-exists` comprimido.
-- `orgtable-uploads-<fecha>.tar.gz` — los adjuntos del volumen `/data/uploads`.
+- `orgtable-db-<date>.sql.gz`: a compressed `pg_dump --clean --if-exists` dump.
+- `orgtable-uploads-<date>.tar.gz`: the attachments from the `/data/uploads` volume.
 
-Cómo se comporta:
+How it behaves:
 
-- Se puede lanzar desde cualquier directorio: se sitúa solo en la raíz de la instalación.
-- Si algo falla (Postgres parado, volcado vacío o truncado, adjuntos que no se pueden
-  leer), sale con un código distinto de 0, lo dice por la salida de error y no deja
-  ficheros a medias. Solo imprime `✓ Backup completado` si las copias están bien.
-- Los adjuntos se omiten únicamente si no existe `/data/uploads`. Si la app está parada,
-  se leen con un contenedor efímero que monta el mismo volumen.
-- **Las copias contienen datos personales** (emails, hashes de contraseñas y de tokens,
-  comentarios). El script crea el directorio `backups/` con permisos `700` y los ficheros
-  con `600`. Las copias hechas con versiones anteriores del script pueden ser legibles
-  por otros usuarios del servidor; ciérralas una vez:
+- It can be run from any directory: it moves to the installation root by itself.
+- If anything fails (Postgres stopped, empty or truncated dump, unreadable attachments),
+  it exits with a non-zero code, reports it on standard error and leaves no partial
+  files. It only prints `✓ Backup completed` when the backups are good.
+- Attachments are skipped only if `/data/uploads` does not exist. If the app is stopped,
+  they are read through a short-lived container that mounts the same volume.
+- **Backups contain personal data** (emails, password and token hashes, comments). The
+  script creates the `backups/` directory with `700` permissions and the files with
+  `600`. Backups made with older versions of the script may be readable by other users on
+  the server; lock them down once:
 
   ```sh
   chmod 700 backups && chmod 600 backups/*.gz
   ```
 
-Automatiza el backup con un `cron` del sistema y guarda copias fuera del servidor.
-Usa rutas absolutas, porque cron arranca en `$HOME`. Por ejemplo, cada día a las 3:30
-(`crontab -e`):
+Automate backups with a system `cron` and keep copies off the server. Use absolute paths,
+because cron starts in `$HOME`. For example, every day at 3:30 (`crontab -e`):
 
 ```cron
-30 3 * * * /home/usuario/orgtable/scripts/backup.sh >> /home/usuario/orgtable-backup.log 2>&1
+30 3 * * * /home/user/orgtable/scripts/backup.sh >> /home/user/orgtable-backup.log 2>&1
 ```
 
-El log va fuera de `backups/` a propósito: cron abre la redirección antes de ejecutar el
-script, y en una instalación nueva ese directorio aún no existe (lo crea el propio
-script), así que cron fallaría sin llegar a lanzar la copia. Si el script falla, el
-error queda en ese log; revísalo o configura `MAILTO` en el crontab para recibirlo por
-correo.
+The log lives outside `backups/` on purpose: cron opens the redirection before running the
+script, and on a fresh installation that directory does not exist yet (the script creates
+it), so cron would fail without ever starting the backup. If the script fails, the error
+ends up in that log; check it, or set `MAILTO` in the crontab to receive it by email.
 
-### Restaurar
+### Restore
 
-Para **restaurar** la base de datos (⚠️ sustituye todos los datos actuales):
+To **restore** the database (⚠️ replaces all current data):
 
 ```sh
-scripts/restore.sh backups/orgtable-db-<fecha>.sql.gz
+scripts/restore.sh backups/orgtable-db-<date>.sql.gz
 ```
 
-El script:
+The script:
 
-1. Comprueba que el fichero existe, que es un gzip válido y que el volcado está
-   completo. Si no, sale sin tocar nada.
-2. Pide confirmación.
-3. Hace una **copia previa automática** en `backups/pre-restore-<fecha>/` con
-   `scripts/backup.sh`. Si la copia falla, no sigue.
-4. Para la app mientras restaura y, si estaba en marcha, la vuelve a arrancar al
-   terminar.
-5. Vacía el esquema y carga el volcado en **una sola transacción** con
-   `ON_ERROR_STOP`: si algo falla, no se aplica nada y la base de datos queda como
-   estaba. Funciona también con volcados antiguos hechos sin `--clean`.
+1. Checks that the file exists, is a valid gzip and that the dump is complete. If not, it
+   exits without touching anything.
+2. Asks for confirmation.
+3. Makes an **automatic safety backup** in `backups/pre-restore-<date>/` with
+   `scripts/backup.sh`. If that backup fails, it stops.
+4. Stops the app while restoring and, if it was running, starts it again at the end.
+5. Empties the schema and loads the dump in **a single transaction** with `ON_ERROR_STOP`:
+   if anything fails, nothing is applied and the database stays as it was. It also works
+   with older dumps made without `--clean`.
 
-Al arrancar, la app aplica las migraciones que falten si el volcado es de una versión
-anterior.
+On startup, the app applies any missing migrations if the dump comes from an older
+version.
 
-Los adjuntos no se restauran con el script. ⚠️ Restaurarlos **sustituye todos los
-adjuntos actuales**. Desde la raíz de la instalación, en este orden:
+The script does not restore attachments. ⚠️ Restoring them **replaces all current
+attachments**. From the installation root, in this order:
 
-1. **Comprueba el archivo** antes de tocar nada. Si alguno de los dos comandos da error
-   (copia truncada al traerla de fuera, ruta equivocada), para aquí:
-
-   ```sh
-   gzip -t backups/orgtable-uploads-<fecha>.tar.gz
-   tar tzf backups/orgtable-uploads-<fecha>.tar.gz > /dev/null
-   ```
-
-2. **Haz una copia de lo actual**, por si hay que volver atrás:
+1. **Check the archive** before touching anything. If either command fails (backup
+   truncated when copied back, wrong path), stop here:
 
    ```sh
-   scripts/backup.sh backups/pre-restore-uploads-<fecha>
+   gzip -t backups/orgtable-uploads-<date>.tar.gz
+   tar tzf backups/orgtable-uploads-<date>.tar.gz > /dev/null
    ```
 
-3. **Restaura con la app parada.** El archivo se extrae primero a un directorio temporal
-   dentro del propio volumen y los adjuntos actuales solo se sustituyen si `tar` termina
-   bien. Tiene que ser dentro del volumen porque `/data/uploads` es su punto de montaje:
-   no se puede borrar ni renombrar, solo su contenido.
+2. **Back up what is there now**, in case you need to roll back:
+
+   ```sh
+   scripts/backup.sh backups/pre-restore-uploads-<date>
+   ```
+
+3. **Restore with the app stopped.** The archive is first extracted to a temporary
+   directory inside the volume itself, and the current attachments are only replaced if
+   `tar` succeeds. It has to be inside the volume because `/data/uploads` is its mount
+   point: it cannot be deleted or renamed, only its contents.
 
    ```sh
    docker compose stop app
@@ -164,48 +159,65 @@ adjuntos actuales**. Desde la raíz de la instalación, en este orden:
      find /data/uploads -mindepth 1 -maxdepth 1 ! -name .restore -exec rm -rf {} +
      find /data/uploads/.restore/uploads -mindepth 1 -maxdepth 1 -exec mv {} /data/uploads/ \;
      rm -rf /data/uploads/.restore
-   ' < backups/orgtable-uploads-<fecha>.tar.gz
+   ' < backups/orgtable-uploads-<date>.tar.gz
    docker compose start app
    ```
 
-Si la restauración falla a mitad, los adjuntos actuales siguen intactos y solo queda el
-directorio temporal `/data/uploads/.restore`, que el siguiente intento borra al empezar.
-Arranca la app igualmente con `docker compose start app`.
+If the restore fails halfway, the current attachments remain intact and only the
+temporary directory `/data/uploads/.restore` is left behind; the next attempt deletes it
+first. Start the app anyway with `docker compose start app`.
 
-## Exportar e importar tableros
+## Board export and import
 
-Independiente de las copias de seguridad de toda la instancia, cada tablero se puede
-**exportar a un JSON portable** y volver a **importar** (en la misma instancia o en
-otra):
+Separately from whole-instance backups, each board can be **exported to a portable JSON
+file** and **imported** again (on the same instance or another one):
 
-- **Exportar:** en la galería de tableros, el icono de descarga de cada tablero
-  (`GET /api/boards/[id]/export`). Incluye listas, tarjetas, descripciones, fechas,
-  etiquetas y checklists. **No** incluye los binarios de los adjuntos.
-- **Importar:** el formulario "Importar tablero" de la galería. Crea un tablero
-  **nuevo** del que pasas a ser propietario, regenerando identificadores y posiciones.
+- **Export:** the download icon of each board in the board gallery
+  (`GET /api/boards/[id]/export`). It includes lists, cards, descriptions, dates, labels
+  and checklists. It does **not** include attachment files.
+- **Import:** the "Import a board from JSON" section of the gallery. It creates a **new** board owned by
+  you, with regenerated identifiers and positions.
 
-Implementación: [`app/api/boards/[id]/export/route.ts`](../app/api/boards/[id]/export/route.ts)
-y la Server Action `importBoard` en
+Implementation: [`app/api/boards/[id]/export/route.ts`](../app/api/boards/[id]/export/route.ts)
+and the `importBoard` Server Action in
 [`app/lib/actions/boards.ts`](../app/lib/actions/boards.ts).
 
-## Actualizaciones
+## Scheduled tasks
 
-La imagen de la app se construye localmente, así que actualizar es traer los cambios y
-reconstruir. El script [`scripts/update.sh`](../scripts/update.sh) lo hace:
+Two endpoints must be called by an **external** cron (ADR 0015), with `CRON_SECRET` from
+`.env` as a `Bearer` token. Without `CRON_SECRET` they answer 503; with a wrong secret,
+401.
+
+| Endpoint | Frequency | What it does |
+|---|---|---|
+| `POST /api/cron/reminders` | Every hour | Reminders for cards that are due soon or overdue ([reminders.md](./reminders.md)). |
+| `POST /api/cron/maintenance` | Once a day | Deletes audit entries older than `ORGTABLE_AUDIT_RETENTION_DAYS` (90 by default), sessions closed or expired more than 30 days ago, and notifications older than 180 days. These are the retention periods promised by the privacy policy ([privacy.md](./privacy.md)). |
+
+```cron
+# host crontab; loads CRON_SECRET from the installation's .env
+0 * * * *  . /opt/orgtable/.env && curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" http://127.0.0.1:3000/api/cron/reminders
+15 4 * * * . /opt/orgtable/.env && curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" http://127.0.0.1:3000/api/cron/maintenance
+```
+
+Adjust the `.env` path and the port (`APP_PORT`) to your installation.
+
+## Updates
+
+The app image is built locally, so updating means pulling the changes and rebuilding. The
+[`scripts/update.sh`](../scripts/update.sh) script does that:
 
 ```sh
 scripts/update.sh
 ```
 
-El script, en este orden:
+The script, in this order:
 
-1. Levanta Postgres si no lo estaba y hace una **copia de seguridad** con
-   `scripts/backup.sh` (queda en `backups/`). Si la copia falla, no actualiza.
-2. Trae los cambios (`git pull --ff-only`).
-3. Reconstruye y relanza (`docker compose up -d --build`).
+1. Starts Postgres if it was not running and makes a **backup** with `scripts/backup.sh`
+   (stored in `backups/`). If the backup fails, it does not update.
+2. Pulls the changes (`git pull --ff-only`).
+3. Rebuilds and restarts (`docker compose up -d --build`).
 
-Las **migraciones de base de datos se aplican solas** al arrancar: el
-`docker-entrypoint.sh` ejecuta `prisma migrate deploy` antes de levantar el servidor.
-Por eso la copia va antes: si una migración sale mal, se puede volver con
-`scripts/restore.sh`. Un `docker compose up -d --build` lanzado a mano **no** hace esa
-copia.
+**Database migrations are applied automatically** on startup: `docker-entrypoint.sh` runs
+`prisma migrate deploy` before starting the server. That is why the backup comes first: if
+a migration goes wrong, you can go back with `scripts/restore.sh`. A
+`docker compose up -d --build` run by hand does **not** make that backup.

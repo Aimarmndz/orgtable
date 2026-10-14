@@ -1,0 +1,12 @@
+{
+  "meta": {
+    "title": "Search"
+  },
+  "title": "Search",
+  "tooShort": "Type at least {min} characters to search your boards and cards.",
+  "noResults": "No results for “{query}”",
+  "noResultsHint": "Try other words. Only boards and cards you have access to are searched.",
+  "boards": "Boards · {count}",
+  "cards": "Cards · {count}",
+  "boardBadge": "Board"
+}

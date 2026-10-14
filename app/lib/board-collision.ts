@@ -1,6 +1,6 @@
-// Detección de colisiones y navegación por teclado del arrastre del tablero, en un
-// módulo PURO (sin React ni DOM) para poder testearlo con rectángulos sintéticos
-// (test/board-collision.test.ts). Ver docs/drag-and-drop.md.
+// Collision detection and keyboard navigation for board dragging, in a PURE module (no
+// React, no DOM) so it can be tested with synthetic rectangles
+// (test/board-collision.test.ts). See docs/drag-and-drop.md.
 import {
   closestCorners,
   KeyboardCode,
@@ -17,10 +17,10 @@ function isListDroppable(c: Typed): boolean {
 }
 
 /**
- * `closestCorners`, pero al arrastrar una LISTA solo considera otras listas. Sin el
- * filtro, el rectángulo flotante de la lista (bajo, arriba de la columna) queda más
- * cerca de la primera tarjeta de la columna que de la propia columna, `over` resultaba
- * ser una tarjeta y el reordenado de listas se descartaba en casi todos los casos.
+ * `closestCorners`, but when dragging a LIST it only considers other lists. Without the
+ * filter, the list's floating rectangle (short, at the top of the column) is closer to
+ * the column's first card than to the column itself, `over` turned out to be a card and
+ * list reordering was discarded almost every time.
  */
 export const boardCollisionDetection: CollisionDetection = (args) => {
   if (args.active.data.current?.type !== "list") return closestCorners(args);
@@ -31,8 +31,8 @@ export const boardCollisionDetection: CollisionDetection = (args) => {
 };
 
 /**
- * Teclas del `KeyboardSensor`. Espacio coge y suelta; Intro NO coge (queda libre para
- * abrir la tarjeta), pero sí suelta. Escape cancela.
+ * `KeyboardSensor` keys. Space picks up and drops; Enter does NOT pick up (it stays free
+ * to open the card) but does drop. Escape cancels.
  */
 export const DRAG_KEYBOARD_CODES: KeyboardCodes = {
   start: [KeyboardCode.Space],
@@ -42,7 +42,7 @@ export const DRAG_KEYBOARD_CODES: KeyboardCodes = {
 
 type Rect = { left: number; top: number; width: number; right: number };
 
-/** Columna más cercana a `refLeft` en la dirección pedida (`dir` = -1 izquierda, 1 derecha). */
+/** Column closest to `refLeft` in the given direction (`dir` = -1 left, 1 right). */
 function neighborColumn(
   columns: { rect: Rect }[],
   refLeft: number,
@@ -62,16 +62,16 @@ function neighborColumn(
 }
 
 /**
- * Coordenadas del teclado para el tablero.
+ * Keyboard coordinates for the board.
  *
- * - LISTA: `sortableKeyboardCoordinates` mezcla tarjetas y columnas y su propia primera
- *   tarjeta queda «a la derecha» (8 px de margen), así que la primera flecha no hacía
- *   nada; aquí la flecha salta directamente a la columna vecina.
- * - TARJETA con izquierda/derecha: para `sortableKeyboardCoordinates` la propia columna
- *   de la tarjeta queda «a la izquierda» (su borde está 8 px antes que el de la tarjeta),
- *   así que la flecha izquierda devolvía la tarjeta a su columna y nunca la movía. Aquí
- *   se salta a la columna vecina y, dentro de ella, a la tarjeta más cercana en vertical
- *   (o a la columna si está vacía). Arriba/abajo siguen con las de `@dnd-kit/sortable`.
+ * - LIST: `sortableKeyboardCoordinates` mixes cards and columns, and the list's own first
+ *   card counts as "to the right" (8 px margin), so the first arrow press did nothing;
+ *   here the arrow jumps straight to the neighbouring column.
+ * - CARD with left/right: for `sortableKeyboardCoordinates` the card's own column counts
+ *   as "to the left" (its edge is 8 px before the card's), so the left arrow put the card
+ *   back in its column and never moved it. Here it jumps to the neighbouring column and,
+ *   within it, to the vertically closest card (or the column itself if empty). Up/down
+ *   still use `@dnd-kit/sortable`'s coordinates.
  */
 export const boardKeyboardCoordinates: KeyboardCoordinateGetter = (
   event,
@@ -86,8 +86,7 @@ export const boardKeyboardCoordinates: KeyboardCoordinateGetter = (
     return sortableKeyboardCoordinates(event, args);
   }
   if (!right && !left) {
-    // Las listas solo se mueven en horizontal: arriba/abajo no hacen nada (y no
-    // desplazan la página).
+    // Lists only move horizontally: up/down do nothing (and do not scroll the page).
     if (event.code === KeyboardCode.Up || event.code === KeyboardCode.Down) {
       event.preventDefault();
     }
@@ -108,8 +107,8 @@ export const boardKeyboardCoordinates: KeyboardCoordinateGetter = (
     return target ? { x: target.rect.left, y: target.rect.top } : undefined;
   }
 
-  // Tarjeta: la referencia es el borde de SU columna (la que contiene su centro), no el
-  // de la tarjeta, para que la propia columna nunca cuente como vecina.
+  // Card: the reference is the edge of ITS column (the one containing its centre), not
+  // the card's, so its own column never counts as a neighbour.
   const centerX = collisionRect.left + collisionRect.width / 2;
   const own = columns.find(
     (c) => centerX >= c.rect.left && centerX < c.rect.right,
@@ -140,10 +139,10 @@ export const boardKeyboardCoordinates: KeyboardCoordinateGetter = (
 };
 
 /**
- * Coordenadas del teclado para el calendario: cada flecha lleva la pastilla a la celda
- * vecina (día anterior/siguiente, misma columna una semana antes/después). Las de
- * `@dnd-kit/sortable` no sirven aquí porque la pastilla no es un elemento ordenable
- * (no devuelven nada) y las de por defecto avanzan 25 px por pulsación.
+ * Keyboard coordinates for the calendar: each arrow moves the chip to the neighbouring
+ * cell (previous/next day, same column one week earlier/later). `@dnd-kit/sortable`'s
+ * don't work here because the chip is not a sortable item (they return nothing), and the
+ * defaults move 25 px per key press.
  */
 export const calendarKeyboardCoordinates: KeyboardCoordinateGetter = (
   event,
@@ -156,7 +155,7 @@ export const calendarKeyboardCoordinates: KeyboardCoordinateGetter = (
     [KeyboardCode.Up]: { x: 0, y: -1 },
   }[event.code];
   if (!dir) return undefined;
-  event.preventDefault(); // las flechas desplazarían la página
+  event.preventDefault(); // the arrows would scroll the page
   const { collisionRect, droppableContainers, droppableRects, over } = context;
   if (!collisionRect) return undefined;
 
@@ -164,7 +163,7 @@ export const calendarKeyboardCoordinates: KeyboardCoordinateGetter = (
     .getEnabled()
     .map((c) => droppableRects.get(c.id))
     .filter((r) => r !== undefined);
-  // Celda actual: la que está debajo o, si no hay, la que contiene la pastilla.
+  // Current cell: the one underneath or, failing that, the one containing the chip.
   const current =
     (over ? droppableRects.get(over.id) : undefined) ??
     cells.find(
@@ -180,7 +179,7 @@ export const calendarKeyboardCoordinates: KeyboardCoordinateGetter = (
   for (const r of cells) {
     const dx = r.left - current.left;
     const dy = r.top - current.top;
-    // Misma fila (para izquierda/derecha) o misma columna (para arriba/abajo).
+    // Same row (for left/right) or same column (for up/down).
     const aligned =
       dir.x !== 0
         ? Math.abs(dy) < current.height / 2
@@ -193,7 +192,7 @@ export const calendarKeyboardCoordinates: KeyboardCoordinateGetter = (
     }
   }
   if (!best) return undefined;
-  // Conserva el desplazamiento de la pastilla dentro de la celda.
+  // Keep the chip's offset within the cell.
   return {
     x: best.left + (collisionRect.left - current.left),
     y: best.top + (collisionRect.top - current.top),

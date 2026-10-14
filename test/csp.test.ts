@@ -3,52 +3,52 @@ import { NextRequest } from "next/server";
 import { buildContentSecurityPolicy, generateNonce } from "@/app/lib/csp";
 import { proxy, config } from "@/proxy";
 
-// La CSP es la última barrera ante un XSS: estos tests fijan las directivas que no se
-// pueden relajar sin decidirlo (ver docs/DECISIONES.md, 2026-09-24).
+// The CSP is the last barrier against XSS: these tests pin the directives that cannot be
+// relaxed without a deliberate decision (see docs/DECISIONES.md, 2026-09-24).
 describe("buildContentSecurityPolicy", () => {
   const prod = buildContentSecurityPolicy("abc123", false);
 
-  it("solo permite scripts propios con el nonce de la petición", () => {
+  it("only allows own scripts with the request's nonce", () => {
     expect(prod).toContain("script-src 'self' 'nonce-abc123' 'strict-dynamic'");
     expect(prod).not.toContain("'unsafe-inline' 'strict-dynamic'");
   });
 
-  it("no permite eval en producción, pero sí en desarrollo", () => {
+  it("does not allow eval in production, but does in development", () => {
     expect(prod).not.toContain("unsafe-eval");
     expect(buildContentSecurityPolicy("abc123", true)).toContain("'unsafe-eval'");
   });
 
-  it("en producción los estilos inline exigen nonce", () => {
+  it("in production inline styles require a nonce", () => {
     expect(prod).toContain("style-src-elem 'self' 'nonce-abc123'");
     expect(prod).not.toContain("style-src-elem 'self' 'unsafe-inline'");
   });
 
-  it("impide embeber la app, plugins y cambiar la base", () => {
+  it("prevents embedding the app, plugins and changing the base", () => {
     expect(prod).toContain("frame-ancestors 'none'");
     expect(prod).toContain("object-src 'none'");
     expect(prod).toContain("base-uri 'self'");
     expect(prod).toContain("form-action 'self'");
   });
 
-  it("no fuerza HTTPS en los recursos (instalaciones por http://IP)", () => {
+  it("does not force HTTPS on resources (installations over http://IP)", () => {
     expect(prod).not.toContain("upgrade-insecure-requests");
   });
 });
 
 describe("generateNonce", () => {
-  it("genera 128 bits en base64 y distinto en cada llamada", () => {
+  it("generates 128 bits in base64, different on every call", () => {
     const a = generateNonce();
     expect(atob(a)).toHaveLength(16);
     expect(generateNonce()).not.toBe(a);
   });
 });
 
-describe("proxy (CSP por petición)", () => {
-  // El matcher de Next es una expresión regular sobre la ruta.
+describe("proxy (per-request CSP)", () => {
+  // Next's matcher is a regular expression over the path.
   const matches = (path: string) =>
     config.matcher.some((m) => new RegExp(`^${m}$`).test(path));
 
-  it("pasa por las páginas y deja fuera /api, los estáticos y los .svg", () => {
+  it("runs on pages and leaves out /api, static files and .svg", () => {
     expect(matches("/")).toBe(true);
     expect(matches("/login")).toBe(true);
     expect(matches("/boards/abc")).toBe(true);
@@ -57,17 +57,17 @@ describe("proxy (CSP por petición)", () => {
     expect(matches("/logo.svg")).toBe(false);
   });
 
-  it("/login recibe la CSP con el mismo nonce que ve el layout", () => {
+  it("/login gets the CSP with the same nonce the layout sees", () => {
     const res = proxy(new NextRequest("http://localhost:3000/login"));
     const csp = res.headers.get("Content-Security-Policy") ?? "";
-    // NextResponse.next({ request }) reenvía así las cabeceras de la petición.
+    // This is how NextResponse.next({ request }) forwards the request headers.
     const nonce = res.headers.get("x-middleware-request-x-nonce");
     expect(nonce).toBeTruthy();
     expect(csp).toContain(`'nonce-${nonce}'`);
     expect(csp).toContain("frame-ancestors 'none'");
   });
 
-  it("/ con sesión recibe la CSP; sin sesión redirige a /login", () => {
+  it("/ with a session gets the CSP; without a session it redirects to /login", () => {
     const withSession = proxy(
       new NextRequest("http://localhost:3000/", { headers: { cookie: "session=x" } }),
     );

@@ -3,10 +3,12 @@
 import { useActionState } from "react";
 import { importBoard, type ImportState } from "@/app/lib/actions/boards";
 import { Button } from "@/app/components/ui/button";
+import { useI18n } from "@/app/i18n/client";
 
-// Importa un tablero desde un fichero JSON exportado. useActionState da feedback inline;
-// al importar con éxito, la acción redirige al tablero nuevo. Ver docs/operations.md.
+// Imports a board from an exported JSON file. useActionState gives inline feedback; on
+// success the action redirects to the new board. See docs/operations.md.
 export function ImportBoardForm() {
+  const { m } = useI18n();
   const [state, action, pending] = useActionState<ImportState, FormData>(
     importBoard,
     {},
@@ -19,14 +21,14 @@ export function ImportBoardForm() {
         name="file"
         accept="application/json,.json"
         required
-        aria-label="Fichero JSON del tablero a importar"
+        aria-label={m.boards.import.fileLabel}
         className="max-w-full text-sm text-ink-muted file:mr-2 file:rounded-lg file:border-0 file:bg-surface-2 file:px-3 file:py-1.5 file:text-sm file:text-ink hover:file:bg-border/40"
       />
       <Button type="submit" variant="subtle" disabled={pending}>
-        {pending ? "Importando…" : "Importar tablero"}
+        {pending ? m.boards.import.pending : m.boards.import.submit}
       </Button>
-      {/* role="alert" para que el lector de pantalla lo anuncie. Se retira mientras se
-          envía: así un segundo error idéntico se vuelve a insertar y se anuncia de nuevo. */}
+      {/* role="alert" so the screen reader announces it. It is removed while submitting,
+          so a second identical error is inserted again and announced again. */}
       {state.error && !pending && (
         <p
           role="alert"

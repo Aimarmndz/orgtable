@@ -1,31 +1,41 @@
 import "server-only";
 import { prisma } from "@/app/lib/prisma";
 import { notify } from "@/app/lib/notifications";
+import { i18nFor } from "@/app/i18n/server";
+import { fmt } from "@/app/i18n/format";
 
-// Recordatorios de vencimiento (Hito 11). Genera notificaciones para las tarjetas con
-// fecha de vencimiento que vencen en las próximas 24 h o vencieron hace poco, a las
-// personas que las tienen asignadas y siguen siendo miembros del tablero. Se invoca desde
-// un endpoint cron protegido (app/api/cron/reminders) que dispara un programador externo.
-// `now` se inyecta para poder testearlo. Ver docs/reminders.md y
+// Due-date reminders. Creates notifications for cards whose due date falls within the next
+// 24 h or passed recently, for the people assigned to them who are still board members. It
+// is called from a protected cron endpoint (app/api/cron/reminders) triggered by an
+// external scheduler. `now` is injected so it can be tested. See docs/reminders.md and
 // docs/decisions/0015-reminders-cron.md.
 //
-// Política de avisos:
-//  - «Vence pronto»: como mucho uno al día por tarjeta y persona.
-//  - «Tarea vencida»: uno solo en total, y solo si venció en los últimos
-//    OVERDUE_WINDOW_DAYS días. Sin ese tope, una tarjeta olvidada avisaría a diario para
-//    siempre y la pasada crecería sin límite.
+// Notification policy:
+//  - "Due soon": at most one per day per card and person.
+//  - "Overdue": a single one in total, and only if it fell due within the last
+//    OVERDUE_WINDOW_DAYS days. Without that cap, a forgotten card would notify every day
+//    forever and each run would grow without bound.
 //
-// Los días se cuentan en UTC: dueDate es una fecha de calendario («YYYY-MM-DD», que se
-// guarda como medianoche UTC), así que usar la zona del servidor desplazaría el día.
+// Days are counted in UTC: dueDate is a calendar date ("YYYY-MM-DD", stored as midnight
+// UTC), so using the server's time zone would shift the day.
+//
+// Each notification is written in the recipient's language (User.locale).
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const OVERDUE_WINDOW_DAYS = 7;
 
-// Fecha de calendario: se formatea en UTC para que salga el mismo día que se eligió.
-const dueFormatter = new Intl.DateTimeFormat("es-ES", {
-  dateStyle: "medium",
-  timeZone: "UTC",
-});
+// Calendar date: formatted in UTC so that it shows the same day that was picked. One
+// formatter per language, reused across the run.
+const dueFormatters = new Map<string, Intl.DateTimeFormat>();
+
+function formatDueDate(intl: string, date: Date): string {
+  let formatter = dueFormatters.get(intl);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat(intl, { dateStyle: "medium", timeZone: "UTC" });
+    dueFormatters.set(intl, formatter);
+  }
+  return formatter.format(date);
+}
 
 function utcDayStart(d: Date): Date {
   return new Date(
@@ -42,7 +52,7 @@ export async function generateDueReminders(
     todayStart.getTime() - OVERDUE_WINDOW_DAYS * DAY_MS,
   );
 
-  // Tarjetas con asignados que vencen hasta dentro de 24 h o vencieron dentro de la ventana.
+  // Cards with assignees due within the next 24 h or that fell due within the window.
   const cards = await prisma.card.findMany({
     where: {
       dueDate: { gte: overdueFloor, lte: soon },
@@ -58,7 +68,7 @@ export async function generateDueReminders(
           board: { select: { members: { select: { userId: true } } } },
         },
       },
-      assignees: { select: { userId: true } },
+      assignees: { select: { userId: true, user: { select: { locale: true } } } },
     },
   });
 
@@ -66,13 +76,13 @@ export async function generateDueReminders(
   for (const card of cards) {
     if (!card.dueDate) continue;
     const overdue = card.dueDate < todayStart;
-    // Pasa a «vencida» al empezar el día siguiente al del vencimiento. Cualquier aviso
-    // posterior a ese instante ya es el aviso de vencida.
+    // It becomes "overdue" when the day after the due date starts. Any notification after
+    // that instant is already the overdue one.
     const dedupSince = overdue
       ? new Date(utcDayStart(card.dueDate).getTime() + DAY_MS)
       : todayStart;
-    // Solo miembros actuales: una asignación huérfana (de alguien expulsado) no debe
-    // seguir enviando el título de la tarjeta.
+    // Current members only: an orphan assignment (of someone removed from the board) must
+    // not keep sending the card's title.
     const memberIds = new Set(card.list.board.members.map((m) => m.userId));
     for (const a of card.assignees) {
       if (!memberIds.has(a.userId)) continue;
@@ -87,13 +97,13 @@ export async function generateDueReminders(
       });
       if (already) continue;
 
+      const { m, intl } = i18nFor(a.user.locale);
+      const t = m.notifications.dueReminder;
       const ok = await notify({
         userId: a.userId,
         type: "due.reminder",
-        title: overdue
-          ? `Tarea vencida: «${card.title}»`
-          : `Vence pronto: «${card.title}»`,
-        body: `Vencimiento: ${dueFormatter.format(card.dueDate)}.`,
+        title: fmt(overdue ? t.overdueTitle : t.soonTitle, { card: card.title }),
+        body: fmt(t.body, { date: formatDueDate(intl, card.dueDate) }),
         boardId: card.list.boardId,
         cardId: card.id,
       });

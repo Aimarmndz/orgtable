@@ -1,39 +1,38 @@
-# ADR 0004 — Sin Redis en el MVP
+# ADR 0004 — No Redis in the MVP
 
-**Estado:** aceptada · **Fecha:** 2026-06-04
+**Status:** accepted · **Date:** 2026-06-04
 
-## Contexto
+## Context
 
-Muchas apps self-hosted incluyen Redis por defecto (sesiones, caché, colas). ¿Lo
-necesita orgtable en su primer hito?
+Many self-hosted apps include Redis by default (sessions, cache, queues). Does orgtable
+need it in its first release?
 
-## Decisión
+## Decision
 
-**No** incluir Redis en el MVP. El `docker-compose.yml` solo tiene `app` + `postgres`.
+**Do not** include Redis in the MVP. `docker-compose.yml` only has `app` + `postgres`.
 
-## Justificación
+## Rationale
 
-- **Sesiones**: son JWT stateless firmados con `jose` y guardados en una cookie
-  httpOnly. No hay almacén de sesiones que requiera Redis.
-- **Tiempo real**: el MVP no sincroniza en vivo entre usuarios, así que no hay
-  pub/sub.
-- **Caché de Next**: en una sola instancia, el standalone usa su caché en disco/memoria
-  sin necesidad de un store externo.
+- **Sessions**: they are stateless JWTs signed with `jose` and stored in an httpOnly
+  cookie. There is no session store that requires Redis.
+- **Realtime**: the MVP does not sync live between users, so there is no pub/sub.
+- **Next cache**: on a single instance, the standalone build uses its disk/memory cache
+  without needing an external store.
 
-Añadir Redis ahora sería complejidad muerta.
+Adding Redis now would be dead complexity.
 
-## Consecuencias
+## Consequences
 
-- La revocación inmediata de sesiones no es posible en el MVP (límite documentado en
+- Immediate session revocation is not possible in the MVP (limitation documented in
   `docs/authentication.md`).
 
-## Actualización (Hito 4)
+## Update (realtime feature)
 
-Al implementar el tiempo real y la revocación de sesiones, **Redis no entró**.
-Reconsideramos la suposición de esta ADR y elegimos reutilizar PostgreSQL:
+When realtime and session revocation were implemented, **Redis did not come in**. We
+reconsidered this ADR's assumption and chose to reuse PostgreSQL:
 
-- Pub/sub: bus en proceso + PostgreSQL `LISTEN/NOTIFY` opcional. Ver
+- Pub/sub: in-process bus + optional PostgreSQL `LISTEN/NOTIFY`. See
   [ADR 0007](./0007-pg-notify-over-redis.md).
-- Sesiones: tabla `Session` en PostgreSQL. Ver [ADR 0008](./0008-session-store.md).
+- Sessions: `Session` table in PostgreSQL. See [ADR 0008](./0008-session-store.md).
 
-`docker-compose.yml` sigue siendo solo `app` + `postgres`.
+`docker-compose.yml` is still only `app` + `postgres`.

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import { prisma } from "@/app/lib/prisma";
 import { createApiToken } from "@/app/lib/actions/tokens";
-import { resetDb, disconnect, seedUser, loginAs } from "./helpers";
+import { resetDb, disconnect, seedUser, loginAs, en } from "./helpers";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -19,27 +19,27 @@ afterAll(async () => {
   await disconnect();
 });
 
-describe("createApiToken — validación de permisos y caducidad (integración)", () => {
-  it("rechaza un scope desconocido sin crear nada", async () => {
+describe("createApiToken — permission and expiry validation (integration)", () => {
+  it("rejects an unknown scope without creating anything", async () => {
     const state = await createApiToken(
       {},
       tokenForm({ name: "script", scope: "readonly", expiry: "30" }),
     );
-    expect(state.error).toBe("Permisos no válidos.");
+    expect(state.error).toBe(en.errors.tokens.invalidScope);
     expect(state.token).toBeUndefined();
     expect(await prisma.apiToken.count()).toBe(0);
   });
 
-  it("rechaza una caducidad desconocida sin crear nada", async () => {
+  it("rejects an unknown expiry without creating anything", async () => {
     const state = await createApiToken(
       {},
       tokenForm({ name: "script", scope: "read", expiry: "7" }),
     );
-    expect(state.error).toBe("Caducidad no válida.");
+    expect(state.error).toBe(en.errors.tokens.invalidExpiry);
     expect(await prisma.apiToken.count()).toBe(0);
   });
 
-  it("tras un error devuelve lo elegido para no perderlo en el formulario", async () => {
+  it("after an error it returns what was chosen so the form does not lose it", async () => {
     const state = await createApiToken(
       {},
       tokenForm({ name: "script", scope: "read", expiry: "7" }),
@@ -47,13 +47,13 @@ describe("createApiToken — validación de permisos y caducidad (integración)"
     expect(state.values).toEqual({ name: "script", scope: "read", expiry: "7" });
   });
 
-  it("rechaza que falten permisos o caducidad (antes caía a escritura sin caducidad)", async () => {
+  it("rejects missing permissions or expiry (it used to fall back to write access without expiry)", async () => {
     const state = await createApiToken({}, tokenForm({ name: "script" }));
     expect(state.error).toBeDefined();
     expect(await prisma.apiToken.count()).toBe(0);
   });
 
-  it("guarda scope read y caducidad a 30 días", async () => {
+  it("stores the read scope and a 30-day expiry", async () => {
     const before = Date.now();
     const state = await createApiToken(
       {},
@@ -70,7 +70,7 @@ describe("createApiToken — validación de permisos y caducidad (integración)"
     expect(expires).toBeLessThanOrEqual(Date.now() + 30 * DAY_MS);
   });
 
-  it("«Nunca» (0) crea un token sin caducidad", async () => {
+  it("“Never” (0) creates a token without expiry", async () => {
     await createApiToken(
       {},
       tokenForm({ name: "script", scope: "full", expiry: "0" }),

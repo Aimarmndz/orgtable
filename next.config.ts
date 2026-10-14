@@ -1,18 +1,18 @@
 import type { NextConfig } from "next";
 
-// Cabeceras de seguridad aplicadas a todas las respuestas. La CSP de las páginas lleva un
-// nonce por petición y la pone proxy.ts (app/lib/csp.ts); aquí van las cabeceras fijas,
-// una CSP cerrada para /api, que solo sirve JSON, SSE y descargas, y otra para los .svg,
-// que proxy.ts no cubre. Ver docs/security.md.
+// Security headers applied to every response. The page CSP carries a per-request nonce
+// and is set by proxy.ts (app/lib/csp.ts); this file holds the static headers, a locked
+// down CSP for /api, which only serves JSON, SSE and downloads, and another one for .svg
+// files, which proxy.ts does not cover. See docs/security.md.
 const securityHeaders = [
-  // Anti-clickjacking: la app no se embebe en iframes.
+  // Anti-clickjacking: the app is never embedded in iframes.
   { key: "X-Frame-Options", value: "DENY" },
-  // Evita el MIME-sniffing (refuerza la descarga forzada de adjuntos).
+  // Prevents MIME sniffing (reinforces the forced download of attachments).
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  // HSTS: el navegador solo lo respeta si la respuesta llega por HTTPS, así que no
-  // afecta a instalaciones por http://IP:3000. Sin includeSubDomains: orgtable suele
-  // vivir en un subdominio de alguien y no debe imponer HTTPS a sus hermanos.
+  // HSTS: browsers only honour it over HTTPS, so it does not affect installations on
+  // http://IP:3000. No includeSubDomains: orgtable usually lives on someone's subdomain
+  // and must not force HTTPS on its siblings.
   { key: "Strict-Transport-Security", value: "max-age=31536000" },
   {
     key: "Permissions-Policy",
@@ -20,26 +20,26 @@ const securityHeaders = [
   },
 ];
 
-// Tamaño máximo del cuerpo de una petición a una Server Action. Next corta en 1 MB por
-// defecto, antes de ejecutar la acción, así que un adjunto de 3 MB fallaba con un error
-// genérico en vez de subir. Debe superar al mayor de los límites propios de las acciones:
-// MAX_ATTACHMENT_BYTES (10 MB, app/lib/storage.ts) y el import de tableros (5 MB,
-// app/lib/actions/boards.ts). El margen de 1 MB cubre la sobrecarga de multipart y deja
-// que un archivo algo mayor que 10 MB llegue a la acción y reciba su mensaje propio.
-// Es un límite global y Next lo aplica antes de autenticar: cualquiera puede enviar
-// 11 MB a una acción. test/next-config.test.ts comprueba que sigue por encima de 10 MB.
+// Maximum body size of a Server Action request. Next cuts off at 1 MB by default, before
+// running the action, so a 3 MB attachment failed with a generic error instead of
+// uploading. It must exceed the largest of the actions' own limits: MAX_ATTACHMENT_BYTES
+// (10 MB, app/lib/storage.ts) and board import (5 MB, app/lib/actions/boards.ts). The
+// 1 MB margin covers multipart overhead and lets a file slightly over 10 MB reach the
+// action and get its own error message.
+// It is a global limit and Next applies it before authentication: anyone can send 11 MB
+// to an action. test/next-config.test.ts checks that it stays above 10 MB.
 const ACTION_BODY_LIMIT_BYTES = 11 * 1024 * 1024;
 
 const nextConfig: NextConfig = {
-  // Genera .next/standalone (servidor Node mínimo) para empaquetar la imagen Docker
-  // de producción. Se ejecuta con `node server.js`. Ver Dockerfile y docs/docker.md.
+  // Produces .next/standalone (minimal Node server) to package the production Docker
+  // image. Run with `node server.js`. See Dockerfile and docs/docker.md.
   output: "standalone",
 
   experimental: {
     serverActions: { bodySizeLimit: ACTION_BODY_LIMIT_BYTES },
-    // proxy.ts también pasa por las rutas de página (donde llegan las Server Actions) y
-    // Next guarda su cuerpo en memoria hasta 10 MB; lo que pase de ahí llega TRUNCADO a
-    // la acción, sin error. Por eso va alineado con el límite de las acciones.
+    // proxy.ts also runs on page routes (where Server Actions arrive) and Next buffers
+    // their body in memory up to 10 MB; anything beyond that reaches the action
+    // TRUNCATED, with no error. That is why it matches the actions' limit.
     proxyClientMaxBodySize: ACTION_BODY_LIMIT_BYTES,
   },
 
@@ -55,9 +55,9 @@ const nextConfig: NextConfig = {
           },
         ],
       },
-      // Los .svg quedan fuera del matcher de proxy.ts (no reciben la CSP con nonce). Un SVG
-      // abierto directamente es un documento que puede ejecutar scripts en el origen de la
-      // app, así que se sirven con una CSP que solo permite sus estilos en línea.
+      // .svg files are outside proxy.ts's matcher (they do not get the nonce CSP). An SVG
+      // opened directly is a document that can run scripts on the app's origin, so they
+      // are served with a CSP that only allows their inline styles.
       {
         source: "/:file(.*\\.svg)",
         headers: [

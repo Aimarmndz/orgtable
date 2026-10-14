@@ -1,6 +1,6 @@
-// Límites de longitud compartidos por la UI y el servidor. Módulo sin dependencias a
-// propósito: los componentes de cliente importan de aquí y no de validators.ts, que
-// arrastraría zod al bundle del navegador (y usa Buffer, que allí no existe).
+// Length limits shared by the UI and the server. Deliberately dependency-free: Client
+// Components import from here rather than from validators.ts, which would drag zod into
+// the browser bundle (and uses Buffer, which does not exist there).
 
-// Límite de la descripción de una tarjeta, el mismo en la UI, la API y el import.
+// Maximum card description length, the same in the UI, the API and the import.
 export const CARD_DESCRIPTION_MAX = 5000;

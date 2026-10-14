@@ -13,10 +13,10 @@ import {
 } from "@/app/lib/actions/notifications";
 import { resetDb, disconnect, seedUser, loginAs } from "./helpers";
 
-// Regresión: al abrir una notificación con tablero no se refrescaba el router y el
-// contador de no leídas del layout se quedaba igual. Ahora las acciones marcan como
-// leída y llaman a refresh() de next/cache. El badge en sí solo se ve en el navegador;
-// aquí se comprueba el dato y que se pide el refresh.
+// Regression: opening a notification with a board did not refresh the router, and the
+// layout's unread counter stayed the same. Now the actions mark it as read and call
+// refresh() from next/cache. The badge itself is only visible in the browser; here the
+// data is checked, and that the refresh is requested.
 
 const refreshMock = vi.hoisted(() => vi.fn());
 vi.mock("next/cache", () => ({
@@ -27,7 +27,7 @@ vi.mock("next/cache", () => ({
 
 async function seedNotification(userId: string, boardId: string | null = null) {
   return prisma.notification.create({
-    data: { userId, type: "board.added", title: "Te añadieron", boardId },
+    data: { userId, type: "board.added", title: "You were added", boardId },
     select: { id: true },
   });
 }
@@ -41,10 +41,10 @@ afterAll(async () => {
   await disconnect();
 });
 
-describe("acciones de notificaciones", () => {
-  it("markNotificationRead marca la propia como leída y pide refresh", async () => {
+describe("notification actions", () => {
+  it("markNotificationRead marks your own as read and requests a refresh", async () => {
     const user = await seedUser();
-    const n = await seedNotification(user.id, "tablero-cualquiera");
+    const n = await seedNotification(user.id, "any-board");
     await loginAs(user.id);
 
     await markNotificationRead(n.id);
@@ -56,7 +56,7 @@ describe("acciones de notificaciones", () => {
     expect(refreshMock).toHaveBeenCalledTimes(1);
   });
 
-  it("markNotificationRead no toca las notificaciones de otra persona", async () => {
+  it("markNotificationRead does not touch someone else's notifications", async () => {
     const user = await seedUser();
     const other = await seedUser();
     const foreign = await seedNotification(other.id);
@@ -70,11 +70,11 @@ describe("acciones de notificaciones", () => {
     expect(after.read).toBe(false);
   });
 
-  it("markAllNotificationsRead marca todas las propias y pide refresh", async () => {
+  it("markAllNotificationsRead marks all of your own and requests a refresh", async () => {
     const user = await seedUser();
     const other = await seedUser();
     await seedNotification(user.id);
-    await seedNotification(user.id, "tablero-cualquiera");
+    await seedNotification(user.id, "any-board");
     await seedNotification(other.id);
     await loginAs(user.id);
 

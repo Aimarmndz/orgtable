@@ -2,27 +2,27 @@ import "server-only";
 import { prisma } from "@/app/lib/prisma";
 import { deleteAttachmentFile } from "@/app/lib/storage";
 
-// Borrado de tarjetas, listas y tableros JUNTO con los binarios de sus adjuntos. El
-// onDelete: Cascade del esquema borra las filas Attachment, pero no toca el disco: sin
-// esto, los ficheros que el usuario cree borrados se quedaban en /data/uploads para
-// siempre. Patrón común, dentro de una transacción: bloquear con `FOR UPDATE` las filas
-// padre, leer los storedName y borrar en BD; SOLO después del commit, borrar los ficheros.
-// Si la transacción falla no se toca el disco; si falla un unlink, la fila ya no existe y
-// deleteAttachmentFile lo registra sin lanzar. Ver docs/attachments.md.
+// Deletes cards, lists and boards TOGETHER with their attachment binaries. The schema's
+// onDelete: Cascade removes the Attachment rows but does not touch the disk: without this,
+// files the user believes deleted stayed in /data/uploads forever. Shared pattern, inside
+// a transaction: lock the parent rows with `FOR UPDATE`, read the storedNames and delete
+// in the DB; ONLY after the commit, delete the files. If the transaction fails the disk
+// is untouched; if an unlink fails, the row is already gone and deleteAttachmentFile logs
+// it without throwing. See docs/attachments.md.
 //
-// Por qué el bloqueo: en READ COMMITTED, una subida (uploadAttachment) que insertara su
-// fila entre el findMany y el delete no estaría en la lista leída, pero el delete
-// esperaría a su commit y la borraría en cascada: fichero huérfano y subida «correcta».
-// Insertar un Attachment toma FOR KEY SHARE sobre su Card (y crear una Card o una List
-// lo toma sobre su padre), que choca con FOR UPDATE. Así, con los padres bloqueados, una
-// subida en curso termina antes de que leamos (y su fichero entra en la lista), y una
-// posterior espera, falla por la FK tras el borrado y uploadAttachment borra su fichero.
+// Why the lock: under READ COMMITTED, an upload (uploadAttachment) inserting its row
+// between the findMany and the delete would not be in the list read, but the delete would
+// wait for its commit and cascade-delete it: orphaned file and a "successful" upload.
+// Inserting an Attachment takes FOR KEY SHARE on its Card (and creating a Card or a List
+// takes it on its parent), which conflicts with FOR UPDATE. So, with the parents locked,
+// an in-flight upload finishes before we read (and its file makes the list), and a later
+// one waits, fails on the FK after the delete, and uploadAttachment removes its file.
 
 async function removeFiles(storedNames: string[]): Promise<void> {
   await Promise.allSettled(storedNames.map((name) => deleteAttachmentFile(name)));
 }
 
-/** Borra una tarjeta y los ficheros de sus adjuntos. */
+/** Deletes a card and its attachment files. */
 export async function deleteCardWithAttachments(cardId: string): Promise<void> {
   const storedNames = await prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT 1 FROM "Card" WHERE id = ${cardId} FOR UPDATE`;
@@ -36,10 +36,10 @@ export async function deleteCardWithAttachments(cardId: string): Promise<void> {
   await removeFiles(storedNames);
 }
 
-/** Borra una lista (sus tarjetas caen en cascada) y los ficheros de sus adjuntos. */
+/** Deletes a list (its cards cascade) and their attachment files. */
 export async function deleteListWithAttachments(listId: string): Promise<void> {
   const storedNames = await prisma.$transaction(async (tx) => {
-    // Primero la lista (frena altas de tarjetas) y luego sus tarjetas (frena subidas).
+    // First the list (blocks new cards), then its cards (blocks uploads).
     await tx.$queryRaw`SELECT 1 FROM "List" WHERE id = ${listId} FOR UPDATE`;
     await tx.$queryRaw`SELECT 1 FROM "Card" WHERE "listId" = ${listId} FOR UPDATE`;
     const rows = await tx.attachment.findMany({
@@ -53,18 +53,18 @@ export async function deleteListWithAttachments(listId: string): Promise<void> {
 }
 
 /**
- * Borra un tablero y los ficheros de sus adjuntos. `ownerId` restringe el borrado al
- * dueño (lo usa la Server Action, que no comprueba el rol antes); la API ya autorizó y
- * pasa solo el id. Devuelve cuántos tableros se borraron (0 o 1).
+ * Deletes a board and its attachment files. `ownerId` restricts the deletion to the owner
+ * (used by the Server Action, which does not check the role beforehand); the API has
+ * already authorized and passes only the id. Returns how many boards were deleted (0 or 1).
  */
 export async function deleteBoardWithAttachments(where: {
   id: string;
   ownerId?: string;
 }): Promise<number> {
   const { count, storedNames } = await prisma.$transaction(async (tx) => {
-    // De arriba abajo: tablero (frena altas de listas), listas (frena altas de tarjetas)
-    // y tarjetas (frena subidas). Se bloquea aunque luego no sea el dueño: solo dura la
-    // transacción y deleteMany no borrará nada.
+    // Top down: board (blocks new lists), lists (blocks new cards) and cards (blocks
+    // uploads). Locks even if the caller turns out not to be the owner: it only lasts for
+    // the transaction and deleteMany will delete nothing.
     await tx.$queryRaw`SELECT 1 FROM "Board" WHERE id = ${where.id} FOR UPDATE`;
     await tx.$queryRaw`SELECT 1 FROM "List" WHERE "boardId" = ${where.id} FOR UPDATE`;
     await tx.$queryRaw`
@@ -77,7 +77,7 @@ export async function deleteBoardWithAttachments(where: {
     const deleted = await tx.board.deleteMany({ where });
     return {
       count: deleted.count,
-      // Si no se borró nada (no es el dueño), no se toca ningún fichero.
+      // If nothing was deleted (not the owner), no file is touched.
       storedNames: deleted.count > 0 ? rows.map((r) => r.storedName) : [],
     };
   });

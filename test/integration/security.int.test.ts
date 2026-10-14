@@ -16,11 +16,11 @@ afterAll(async () => {
   await disconnect();
 });
 
-// Helper del guard contra el IDOR de moveCard: una tarjeta solo "pertenece" a su propio
-// tablero. Este test prueba SOLO el helper; que moveCard lo use se comprueba ejecutando la
-// acción en cards-actions.int.test.ts.
-describe("seguridad: helper cardBelongsToBoard", () => {
-  it("cardBelongsToBoard es true solo para el tablero real de la tarjeta", async () => {
+// Helper of the guard against the moveCard IDOR: a card only "belongs" to its own board.
+// This test checks ONLY the helper; that moveCard uses it is checked by running the action
+// in cards-actions.int.test.ts.
+describe("security: cardBelongsToBoard helper", () => {
+  it("cardBelongsToBoard is only true for the card's actual board", async () => {
     const u1 = await seedUser();
     const u2 = await seedUser();
     const boardA = await seedBoard(u1.id, "A");
@@ -29,10 +29,10 @@ describe("seguridad: helper cardBelongsToBoard", () => {
     const cardA = await seedCard(listA.id);
 
     expect(await cardBelongsToBoard(cardA.id, boardA.id)).toBe(true);
-    // El intento de IDOR: reclamar la tarjeta de A desde el tablero B.
+    // The IDOR attempt: claiming board A's card from board B.
     expect(await cardBelongsToBoard(cardA.id, boardB.id)).toBe(false);
-    // Tarjeta inexistente.
-    expect(await cardBelongsToBoard("cminexistente000000000000", boardA.id)).toBe(
+    // A card that does not exist.
+    expect(await cardBelongsToBoard("cmmissing0000000000000000", boardA.id)).toBe(
       false,
     );
   });

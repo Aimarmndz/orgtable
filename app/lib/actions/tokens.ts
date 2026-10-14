@@ -11,6 +11,7 @@ import {
   apiTokenExpirySchema,
 } from "@/app/lib/validators";
 import { generateApiToken } from "@/app/lib/api/tokens";
+import { getI18n, issueMessage } from "@/app/i18n/server";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -20,16 +21,16 @@ const createTokenSchema = z.object({
   expiry: apiTokenExpirySchema,
 });
 
-// Gestión de los tokens de API propios (Hito 9). Crear devuelve el token EN CLARO una
-// sola vez (en el estado del formulario); revocar lo borra. La autorización es
-// implícita: todo va contra el usuario en sesión. Ver docs/api/public-api.md.
+// Management of one's own API tokens. Creating returns the token IN CLEAR only once (in the
+// form state); revoking deletes it. Authorisation is implicit: everything runs against the
+// signed-in user. See docs/api/public-api.md.
 
 export type CreateTokenState = {
   error?: string;
-  // Token en claro recién creado: se muestra una vez y no se vuelve a poder ver.
+  // Newly created token in clear: shown once and never again.
   token?: string;
   name?: string;
-  // Lo elegido, para rellenar de nuevo el formulario tras un error.
+  // What was chosen, to refill the form after an error.
   values?: { name: string; scope: string; expiry: string };
 };
 
@@ -43,8 +44,9 @@ export async function createApiToken(
   formData: FormData,
 ): Promise<CreateTokenState> {
   const user = await requireUser();
-  // Nombre, permisos y caducidad se validan juntos: un valor no reconocido es un error
-  // y no se crea nada (antes caía en silencio a escritura y sin caducidad).
+  const { m } = await getI18n();
+  // Name, scope and expiry are validated together: an unrecognised value is an error and
+  // nothing is created (it used to fall back silently to read-write and no expiry).
   const values = {
     name: formText(formData, "name"),
     scope: formText(formData, "scope"),
@@ -53,14 +55,15 @@ export async function createApiToken(
   const parsed = createTokenSchema.safeParse(values);
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
-    // Los enums de validators.ts no llevan mensaje propio (zod lo daría en inglés).
+    // The scope/expiry enums in validators.ts carry no message of their own: the field
+    // says which one failed.
     const field = issue?.path[0];
     const error =
       field === "scope"
-        ? "Permisos no válidos."
+        ? m.errors.tokens.invalidScope
         : field === "expiry"
-          ? "Caducidad no válida."
-          : (issue?.message ?? "Datos no válidos.");
+          ? m.errors.tokens.invalidExpiry
+          : issueMessage(m, issue);
     return { error, values };
   }
   const { name, scope } = parsed.data;
@@ -90,7 +93,7 @@ export async function createApiToken(
   return { token, name };
 }
 
-/** Revoca (borra) un token propio. El WHERE incluye el userId: nadie revoca el de otro. */
+/** Revokes (deletes) one's own token. The WHERE includes the userId: nobody revokes another's. */
 export async function revokeApiToken(formData: FormData): Promise<void> {
   const user = await requireUser();
   const id = String(formData.get("id"));

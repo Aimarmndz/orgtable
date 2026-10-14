@@ -1,58 +1,57 @@
-# ADR 0002 — Fractional indexing para el orden de listas y tarjetas
+# ADR 0002 — Fractional indexing for the order of lists and cards
 
-**Estado:** aceptada · **Fecha:** 2026-06-04
+**Status:** accepted · **Date:** 2026-06-04
 
-## Contexto
+## Context
 
-El núcleo de un tablero Kanban es reordenar listas y tarjetas con drag & drop. Cada
-movimiento debe persistirse de forma eficiente y soportar reordenamientos frecuentes
-sin degradarse.
+The core of a Kanban board is reordering lists and cards with drag & drop. Every move
+must be persisted efficiently and support frequent reordering without degrading.
 
-Opciones evaluadas para la columna de orden:
+Options evaluated for the ordering column:
 
-1. **Entero/float `position`** (p. ej. `0.5` entre `0` y `1`): se queda sin precisión
-   de coma flotante tras pocas inserciones repetidas en el mismo hueco, rompiendo el
-   orden de forma silenciosa. O bien obliga a reindexar muchas filas por movimiento.
-2. **LexoRank** (estilo Jira): robusto pero con lógica de rebalanceo compleja.
-3. **Fractional indexing** (librería `fractional-indexing` de Figma, ~1 KB).
+1. **Integer/float `position`** (e.g. `0.5` between `0` and `1`): runs out of
+   floating-point precision after a few repeated insertions into the same gap, silently
+   breaking the order. Or else it forces reindexing many rows per move.
+2. **LexoRank** (Jira style): robust but with complex rebalancing logic.
+3. **Fractional indexing** (Figma's `fractional-indexing` library, ~1 KB).
 
-## Decisión
+## Decision
 
-Usar **fractional indexing**. Las columnas `List.position` y `Card.position` son
-`String` (clave lexicográfica). Para insertar/mover entre dos vecinas A y B se calcula
-`generateKeyBetween(A.position, B.position)`; al final, `generateKeyBetween(last, null)`.
+Use **fractional indexing**. The `List.position` and `Card.position` columns are
+`String` (lexicographic key). To insert/move between two neighbors A and B, compute
+`generateKeyBetween(A.position, B.position)`; at the end, `generateKeyBetween(last, null)`.
 
-## Justificación
+## Rationale
 
-- **Un movimiento = un solo `UPDATE`** de la fila que se mueve. Nunca se tocan las
-  vecinas, así que no hay tormentas de escritura ni reindexado.
-- El orden es estable y se mantiene con una simple ordenación lexicográfica en SQL.
-- Mover una tarjeta entre listas es el mismo `UPDATE` cambiando `listId` y `position`.
+- **One move = a single `UPDATE`** of the row being moved. Neighbours are never touched,
+  so there are no write storms and no reindexing.
+- The order is stable and is kept with a simple lexicographic sort in SQL.
+- Moving a card between lists is the same `UPDATE`, changing `listId` and `position`.
 
-## Consecuencias
+## Consequences
 
-- Dos clientes concurrentes podrían generar la misma clave al mover al mismo punto
-  exacto. En el MVP (un solo usuario) no aplica; cuando llegue el tiempo real
-  (ver `docs/roadmap.md`) se regenerará la clave del "perdedor".
-- **Collation "C" obligatoria** (añadido 2026-09-24). Las claves (base62 `0-9A-Za-z`)
-  solo están bien ordenadas byte a byte. Con la collation por defecto de una BD glibc
-  (`en_US.utf8` en la imagen Debian de postgres, Ubuntu o servicios gestionados)
-  `ORDER BY position` deja `Zz` (lo que genera arrastrar al principio) después de `a0`:
-  la tarjeta reaparece al final al refrescar y `createCard`/`createList`/`addChecklist`/
-  `addChecklistItem`, que buscan el último con `ORDER BY position DESC`, generan claves
-  repetidas. También pasa sin arrastrar, solo con altas al final: tras `aZ` viene `aa`,
-  que esa collation coloca antes de `aB`…`aZ`, así que a partir del elemento 38 de una
-  lista, tablero, tarjeta o checklist se toma `aZ` como último y se repite `aa`. La migración
-  `20260924000000_position_collate_c` fija `TEXT COLLATE "C"` en `List`, `Card`,
-  `Checklist` y `ChecklistItem.position`. Prisma no modela la collation, así que el
-  esquema sigue diciendo `String` y no aparece deriva; cualquier columna de posición
-  nueva debe crearse con `COLLATE "C"` a mano en su migración. No se ordena en JS ni con
-  `localeCompare`: el orden lo da la BD.
-- La migración no reescribe valores. Las instalaciones que ya corrían sobre glibc pueden
-  tener claves repetidas; se detectan con
+- Two concurrent clients could generate the same key when moving to exactly the same spot.
+  In the MVP (a single user) this does not apply; when realtime arrives
+  (see `docs/roadmap.md`) the "loser's" key will be regenerated.
+- **Collation "C" is mandatory** (added 2026-09-24). The keys (base62 `0-9A-Za-z`) are
+  only correctly ordered byte by byte. With the default collation of a glibc database
+  (`en_US.utf8` in the Debian postgres image, Ubuntu or managed services)
+  `ORDER BY position` puts `Zz` (what dragging to the top generates) after `a0`: the card
+  reappears at the bottom on refresh, and `createCard`/`createList`/`addChecklist`/
+  `addChecklistItem`, which look for the last one with `ORDER BY position DESC`, generate
+  duplicate keys. It also happens without dragging, just by appending: after `aZ` comes
+  `aa`, which that collation places before `aB`…`aZ`, so from the 38th element of a list,
+  board, card or checklist onwards `aZ` is taken as the last one and `aa` is repeated. The
+  migration `20260924000000_position_collate_c` sets `TEXT COLLATE "C"` on `List`, `Card`,
+  `Checklist` and `ChecklistItem.position`. Prisma does not model the collation, so the
+  schema still says `String` and no drift shows up; any new position column must be
+  created with `COLLATE "C"` by hand in its migration. Sorting is not done in JS or with
+  `localeCompare`: the database provides the order.
+- The migration does not rewrite values. Installations that already ran on glibc may have
+  duplicate keys; they are detected with
   `SELECT "listId", position, count(*) FROM "Card" GROUP BY 1, 2 HAVING count(*) > 1`
-  y lo mismo con `"boardId"` en `"List"`, `"cardId"` en `"Checklist"` y `"checklistId"`
-  en `"ChecklistItem"`. Reasignarlas es decisión del propietario de
-  la instalación, con copia de seguridad previa (`scripts/backup.sh`).
+  and the same with `"boardId"` on `"List"`, `"cardId"` on `"Checklist"` and
+  `"checklistId"` on `"ChecklistItem"`. Reassigning them is up to the owner of the
+  installation, with a prior backup (`scripts/backup.sh`).
 
-Ver `docs/drag-and-drop.md` para el uso desde la UI.
+See `docs/drag-and-drop.md` for how the UI uses it.

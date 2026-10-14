@@ -9,15 +9,15 @@ import {
   getNotificationsForUser,
   getUnreadNotificationCount,
 } from "@/app/lib/queries";
-import { logout } from "@/app/lib/actions/auth";
 import { ThemeToggle } from "@/app/components/theme-toggle";
 import { SearchBox } from "@/app/components/search-box";
 import { NotificationsBell } from "@/app/components/notifications-bell";
-import { Button } from "@/app/components/ui/button";
+import { AccountMenu } from "@/app/components/account-menu";
+import { getI18n } from "@/app/i18n/server";
 
-// Todo el área autenticada depende de la sesión y de la base de datos: nunca se
-// prerenderiza en build (la consulta de setup ocurre antes del acceso a cookies, así
-// que hay que marcarlo explícitamente para que el build de Docker no toque la DB).
+// The whole signed-in area depends on the session and the database, so it is never
+// prerendered at build time. The setup query runs before any cookie access, so this must
+// be explicit or the Docker build would try to reach the DB.
 export const dynamic = "force-dynamic";
 
 export default async function AppLayout({
@@ -27,7 +27,8 @@ export default async function AppLayout({
 }) {
   if (!(await isSetupComplete())) redirect("/setup");
   const user = await requireUser();
-  const [config, notifications, unreadCount] = await Promise.all([
+  const [{ m }, config, notifications, unreadCount] = await Promise.all([
+    getI18n(),
     getInstanceConfig(),
     getNotificationsForUser(user.id),
     getUnreadNotificationCount(user.id),
@@ -40,17 +41,17 @@ export default async function AppLayout({
           <span className="grid size-7 shrink-0 place-items-center rounded-md bg-accent font-display text-sm font-extrabold text-accent-ink">
             o
           </span>
-          {/* title: el nombre admite 60 caracteres y en móvil se trunca. */}
+          {/* title: the name allows 60 characters and is truncated on mobile. */}
           <span
-            title={config?.instanceName ?? "orgtable"}
+            title={config?.instanceName ?? m.common.appName}
             className="truncate font-display font-bold tracking-tight"
           >
-            {config?.instanceName ?? "orgtable"}
+            {config?.instanceName ?? m.common.appName}
           </span>
         </Link>
 
-        {/* Búsqueda — centrada y solo en pantallas medianas hacia arriba; en móvil se
-            llega a /search desde el icono de la derecha. */}
+        {/* Search: centred, and only from medium screens up; on mobile /search is
+            reached from the icon on the right. */}
         <div className="mx-6 hidden max-w-sm flex-1 sm:block">
           <SearchBox />
         </div>
@@ -58,7 +59,7 @@ export default async function AppLayout({
         <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
           <Link
             href="/search"
-            aria-label="Buscar"
+            aria-label={m.nav.search.label}
             className="grid size-9 place-items-center rounded-lg text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink sm:hidden"
           >
             <svg
@@ -75,28 +76,6 @@ export default async function AppLayout({
               <path d="M21 21l-4.3-4.3" />
             </svg>
           </Link>
-          {user.role === "ADMIN" && (
-            <Link
-              href="/admin/users"
-              aria-label="Administración"
-              className="grid size-9 place-items-center rounded-lg text-sm font-medium text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink sm:flex sm:size-auto sm:px-3 sm:py-1.5"
-            >
-              {/* En móvil solo cabe el icono; el texto aparece desde sm. */}
-              <svg
-                className="size-[18px] sm:hidden"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-              </svg>
-              <span className="hidden sm:inline">Administración</span>
-            </Link>
-          )}
           <NotificationsBell
             notifications={notifications.map((n) => ({
               ...n,
@@ -104,34 +83,12 @@ export default async function AppLayout({
             }))}
             unreadCount={unreadCount}
           />
-          <Link
-            href="/settings"
-            aria-label="Ajustes"
-            className="grid size-9 place-items-center rounded-lg text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
-          >
-            <svg
-              className="size-[18px]"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <circle cx="12" cy="12" r="3" />
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-            </svg>
-          </Link>
           <ThemeToggle />
-          <span className="mx-2 hidden text-sm text-ink-muted sm:inline">
-            {user.email}
-          </span>
-          <form action={logout}>
-            <Button variant="ghost" type="submit">
-              Salir
-            </Button>
-          </form>
+          <AccountMenu
+            name={user.name}
+            email={user.email}
+            isAdmin={user.role === "ADMIN"}
+          />
         </div>
       </header>
       <main className="flex flex-1 flex-col overflow-hidden">{children}</main>

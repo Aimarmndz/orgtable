@@ -23,7 +23,7 @@ afterAll(async () => {
   await disconnect();
 });
 
-/** Tablero con propietario, un EDITOR, un VIEWER y un extraño, cada uno con su token. */
+/** Board with an owner, an EDITOR, a VIEWER and a stranger, each with their own token. */
 async function seedRoles() {
   const owner = await seedUser();
   const editor = await seedUser();
@@ -60,7 +60,7 @@ async function boardTitle(id: string) {
 }
 
 describe("API v1 — GET /boards/:id", () => {
-  it("200 a un miembro y 404 a un extraño", async () => {
+  it("200 for a member and 404 for a stranger", async () => {
     const { board, viewer, stranger } = await seedRoles();
     const ok = await getBoard(
       apiRequest("GET", `/api/v1/boards/${board.id}`, { token: viewer.token }),
@@ -78,21 +78,21 @@ describe("API v1 — GET /boards/:id", () => {
 });
 
 describe("API v1 — PATCH /boards/:id", () => {
-  it("200 al propietario", async () => {
+  it("200 for the owner", async () => {
     const { board, owner } = await seedRoles();
-    const res = await patch(board.id, owner.token, { title: "Renombrado" });
+    const res = await patch(board.id, owner.token, { title: "Renamed" });
     expect(res.status).toBe(200);
-    expect(await boardTitle(board.id)).toBe("Renombrado");
+    expect(await boardTitle(board.id)).toBe("Renamed");
   });
 
-  it("403 al EDITOR y 404 a un extraño, sin cambios", async () => {
+  it("403 for the EDITOR and 404 for a stranger, without changes", async () => {
     const { board, editor, stranger } = await seedRoles();
     expect((await patch(board.id, editor.token, { title: "X" })).status).toBe(403);
     expect((await patch(board.id, stranger.token, { title: "X" })).status).toBe(404);
     expect(await boardTitle(board.id)).toBe("Original");
   });
 
-  it("422 con título vacío o sin título", async () => {
+  it("422 with an empty or missing title", async () => {
     const { board, owner } = await seedRoles();
     expect((await patch(board.id, owner.token, { title: "   " })).status).toBe(422);
     expect((await patch(board.id, owner.token, {})).status).toBe(422);
@@ -101,14 +101,14 @@ describe("API v1 — PATCH /boards/:id", () => {
 });
 
 describe("API v1 — DELETE /boards/:id", () => {
-  it("403 al EDITOR y 404 a un extraño, sin borrar", async () => {
+  it("403 for the EDITOR and 404 for a stranger, without deleting", async () => {
     const { board, editor, stranger } = await seedRoles();
     expect((await del(board.id, editor.token)).status).toBe(403);
     expect((await del(board.id, stranger.token)).status).toBe(404);
     expect(await prisma.board.count()).toBe(1);
   });
 
-  it("200 al propietario y queda en la auditoría como board.deleted", async () => {
+  it("200 for the owner and recorded in the audit log as board.deleted", async () => {
     const { board, owner } = await seedRoles();
     const res = await del(board.id, owner.token);
     expect(res.status).toBe(200);

@@ -1,0 +1,233 @@
+{
+  "footer": {
+    "navLabel": "Información legal",
+    "privacy": "Privacidad",
+    "terms": "Condiciones",
+    "cookies": "Cookies",
+    "legalNotice": "Aviso legal",
+    "sourceCode": "Código fuente",
+    "createdBy": "Creado por <link>{author}</link>"
+  },
+  "layout": {
+    "goToBoards": "Ir a tus tableros",
+    "signIn": "Iniciar sesión"
+  },
+  "nav": {
+    "label": "Páginas legales",
+    "heading": "Legal",
+    "privacy": "Privacidad",
+    "terms": "Condiciones de uso",
+    "cookies": "Cookies",
+    "legalNotice": "Aviso legal"
+  },
+  "shared": {
+    "notProvided": "sin indicar por el operador",
+    "appliesTo": "Se aplica a esta instancia de orgtable.",
+    "appliesToNamed": "Se aplica a esta instancia de orgtable ({instance}).",
+    "lastUpdated": "Última actualización: {date}.",
+    "missingInfo": "El administrador de esta instancia todavía no ha indicado quién es el responsable ni cómo contactarle. Mientras falten esos datos, el registro abierto está desactivado.",
+    "operator": {
+      "controller": "Responsable",
+      "contact": "Contacto",
+      "taxId": "NIF",
+      "address": "Dirección",
+      "hosting": "Dónde se alojan los datos"
+    }
+  },
+  "privacy": {
+    "title": "Política de privacidad",
+    "metaDescription": "Qué datos guarda esta instancia de orgtable, para qué y cuánto tiempo.",
+    "summary": {
+      "heading": "En resumen",
+      "body": "Esta instancia guarda lo necesario para que tengas una cuenta y tus tableros funcionen. No hay anuncios, ni analíticas, ni cookies de seguimiento: solo cookies técnicas, la de la sesión y la del idioma. Puedes descargar o borrar tus datos tú mismo desde <link>Ajustes › Privacidad y datos</link>."
+    },
+    "controller": {
+      "heading": "Responsable del tratamiento",
+      "body": "El responsable es quien opera esta instancia, no el autor del software. orgtable es código abierto y cualquiera puede alojar el suyo: cada instancia tiene su propio responsable."
+    },
+    "data": {
+      "heading": "Qué datos se guardan y para qué",
+      "colData": "Dato",
+      "colPurpose": "Para qué",
+      "colBasis": "Base legal",
+      "account": {
+        "data": "Nombre, email, la contraseña cifrada con bcrypt (nunca en claro) y el idioma de la interfaz",
+        "purpose": "Tu cuenta: entrar, que te reconozcan en los tableros compartidos y ver la app en tu idioma",
+        "basis": "Ejecución del servicio que pides (art. 6.1.b RGPD)"
+      },
+      "acceptance": {
+        "data": "Fecha en la que aceptaste esta política y las condiciones",
+        "purpose": "Poder demostrar que las aceptaste al registrarte",
+        "basis": "Interés legítimo en poder acreditar que las aceptaste (art. 6.1.f)"
+      },
+      "content": {
+        "data": "Tus tableros, listas, tarjetas, etiquetas, checklists, comentarios, asignaciones y adjuntos",
+        "purpose": "El servicio en sí",
+        "basis": "Ejecución del servicio (art. 6.1.b)"
+      },
+      "notifications": {
+        "data": "Notificaciones dentro de la app",
+        "purpose": "Avisarte de cambios en tus tableros y de vencimientos",
+        "basis": "Ejecución del servicio (art. 6.1.b)"
+      },
+      "sessions": {
+        "data": "Sesiones: navegador (user-agent), fecha de inicio y de caducidad",
+        "purpose": "Mantenerte con la sesión iniciada y que puedas cerrarlas a distancia",
+        "basis": "Ejecución del servicio (art. 6.1.b)"
+      },
+      "tokens": {
+        "data": "Tokens de API: nombre, prefijo visible y su hash (nunca el token)",
+        "purpose": "Que uses la API con tus propios scripts",
+        "basis": "Ejecución del servicio (art. 6.1.b)"
+      },
+      "audit": {
+        "dataWithIp": "Registro de seguridad: inicios y cierres de sesión, intentos fallidos y cambios de cuentas y permisos, con la dirección IP",
+        "dataWithoutIp": "Registro de seguridad: inicios y cierres de sesión, intentos fallidos y cambios de cuentas y permisos (esta instancia no guarda la IP)",
+        "purpose": "Detectar accesos indebidos y abusos",
+        "basis": "Interés legítimo en mantener el servicio seguro (art. 6.1.f)"
+      },
+      "noProfiling": "No se usan tus datos para publicidad, no se elaboran perfiles ni se toman decisiones automatizadas sobre ti, y no se venden ni se ceden a nadie."
+    },
+    "retention": {
+      "heading": "Cuánto tiempo se guardan",
+      "account": "Tu cuenta y tu contenido: hasta que los borres o borres tu cuenta.",
+      "sessionLength": {
+        "one": "Una sesión dura {count} día.",
+        "other": "Una sesión dura {count} días."
+      },
+      "endedSessions": {
+        "one": "Las sesiones cerradas o caducadas se borran al cabo de {count} día.",
+        "other": "Las sesiones cerradas o caducadas se borran a los {count} días."
+      },
+      "notifications": {
+        "one": "Las notificaciones se borran al cabo de {count} día.",
+        "other": "Las notificaciones se borran a los {count} días."
+      },
+      "audit": {
+        "one": "El registro de seguridad se borra al cabo de {count} día.",
+        "other": "El registro de seguridad se borra a los {count} días."
+      },
+      "backupsDays": {
+        "one": "Copias de seguridad: se guardan {count} día. Lo que borres desaparece de las copias cuando caducan.",
+        "other": "Copias de seguridad: se guardan {count} días. Lo que borres desaparece de las copias cuando caducan."
+      },
+      "backupsNone": "Copias de seguridad: esta instancia no hace copias de seguridad.",
+      "backupsUnknown": "Copias de seguridad: {notProvided}"
+    },
+    "recipients": {
+      "heading": "Quién más puede ver tus datos",
+      "boardMembers": "<b>Las personas con las que compartes un tablero</b> ven tu nombre y tu email, y lo que escribes en ese tablero.",
+      "admin": "<b>Quien administra la instancia</b> ve la lista de cuentas (nombre, email, rol) y el registro de seguridad. No ve tu contraseña.",
+      "hosting": "<b>El proveedor de alojamiento</b> guarda los datos por cuenta del responsable, como encargado del tratamiento: {hosting}.",
+      "outsideEea": "Si los datos se alojan fuera del Espacio Económico Europeo, el responsable tiene que indicarlo arriba y aplicar las garantías del capítulo V del RGPD."
+    },
+    "cookies": {
+      "heading": "Cookies y almacenamiento del navegador",
+      "body": "Dos cookies técnicas: <code>session</code>, imprescindible para mantener la sesión iniciada, y <code>locale</code>, que recuerda el idioma que eliges. Tu preferencia de tema (claro u oscuro) se guarda en el almacenamiento local de tu navegador y no sale de él. Detalle en la <link>política de cookies</link>."
+    },
+    "rights": {
+      "heading": "Tus derechos",
+      "intro": "Puedes ejercerlos tú mismo, sin pedir permiso a nadie:",
+      "access": "<b>Acceso y portabilidad</b>: descarga todos tus datos en JSON desde <link>Ajustes › Privacidad y datos</link>.",
+      "rectification": "<b>Rectificación</b>: cambia tu nombre y tu email en <link>Ajustes › Perfil</link>.",
+      "erasure": "<b>Supresión</b>: borra tu cuenta desde <link>Ajustes › Privacidad y datos</link>. Se borran tu cuenta, los tableros que creaste (con sus tarjetas y adjuntos), tus comentarios y tus notificaciones. Los tableros de otras personas siguen, sin ti.",
+      "objection": "<b>Oposición y limitación</b>: escribe al contacto del responsable.",
+      "complaint": "Si crees que no se han respetado tus derechos, puedes reclamar ante la autoridad de protección de datos. En España es la <link>Agencia Española de Protección de Datos</link>."
+    },
+    "security": {
+      "heading": "Seguridad",
+      "body": "Las contraseñas se guardan con bcrypt, las sesiones se pueden revocar al momento y los tokens de API se guardan como hash. Los intentos de inicio de sesión tienen un límite para frenar ataques de fuerza bruta."
+    },
+    "changes": {
+      "heading": "Cambios en esta política",
+      "body": "Si cambian los datos del responsable, la fecha de «última actualización» de arriba cambia con ellos. Los cambios en lo que guarda el software se publican en su <link>código fuente</link>."
+    }
+  },
+  "terms": {
+    "title": "Condiciones de uso",
+    "metaDescription": "Condiciones para usar esta instancia de orgtable.",
+    "provider": {
+      "heading": "Quién presta el servicio",
+      "body": "Esta instancia de orgtable la opera {operator}. orgtable es un software de código abierto ({license}); su autor no presta este servicio ni responde de él, salvo que sea también quien opera la instancia."
+    },
+    "service": {
+      "heading": "El servicio",
+      "body": "Tableros Kanban para organizar trabajo, solo o en equipo. Crear una cuenta y usarla es gratis. Al registrarte aceptas estas condiciones y declaras haber leído la <link>política de privacidad</link>."
+    },
+    "account": {
+      "heading": "Tu cuenta",
+      "age": "Para registrarte necesitas tener al menos 14 años.",
+      "responsibility": "Eres responsable de lo que se haga con tu cuenta. Usa una contraseña que no uses en otro sitio y cierra las sesiones que no reconozcas desde los ajustes.",
+      "deletion": "Puedes borrar tu cuenta cuando quieras desde los ajustes."
+    },
+    "content": {
+      "heading": "Tu contenido",
+      "ownership": "Lo que escribes y subes sigue siendo tuyo. Solo lo guardamos y lo mostramos a las personas con las que compartes cada tablero, para que el servicio funcione.",
+      "prohibitedIntro": "No está permitido usar el servicio para:",
+      "illegal": "Publicar contenido ilegal o que vulnere derechos de terceros.",
+      "malware": "Subir malware o archivos para distribuirlos fuera del servicio.",
+      "spam": "Enviar spam o acosar a otras personas.",
+      "abuse": "Intentar acceder a cuentas o tableros ajenos, o sobrecargar el servicio a propósito.",
+      "enforcement": "Si se incumplen estas normas, el responsable puede retirar el contenido o suspender la cuenta. Cuando sea posible, te avisará antes y te explicará el motivo."
+    },
+    "availability": {
+      "heading": "Disponibilidad y garantías",
+      "body": "El servicio se ofrece gratis y «tal cual», sin garantía de disponibilidad continua ni de que no haya errores. Haz copias de lo importante: puedes exportar cada tablero y todos tus datos desde la aplicación. Nada de lo anterior limita los derechos que te reconoce la ley como persona usuaria."
+    },
+    "changes": {
+      "heading": "Cambios y fin del servicio",
+      "body": "Si las condiciones cambian de forma importante, o si el servicio va a cerrar, se avisará con antelación razonable para que puedas exportar tus datos."
+    },
+    "software": {
+      "heading": "El software",
+      "body": "orgtable se distribuye bajo la licencia {license}. Puedes consultar, descargar y modificar el código de esta instancia en su <link>repositorio</link>, y alojar tu propia instancia."
+    },
+    "contact": {
+      "heading": "Contacto",
+      "body": "Para cualquier duda sobre estas condiciones: {contact}."
+    }
+  },
+  "cookies": {
+    "title": "Política de cookies",
+    "metaDescription": "Qué guarda esta instancia de orgtable en tu navegador.",
+    "intro": "orgtable no usa cookies de publicidad, de analítica ni de terceros. Solo guarda en tu navegador lo imprescindible para funcionar, que no necesita tu consentimiento (art. 22.2 de la LSSI). Por eso no verás un aviso de cookies.",
+    "colName": "Nombre",
+    "colType": "Tipo",
+    "colPurpose": "Para qué",
+    "colDuration": "Duración",
+    "session": {
+      "type": "Cookie propia, HttpOnly",
+      "purpose": "Mantener tu sesión iniciada",
+      "duration": {
+        "one": "{count} día, o hasta que cierres sesión",
+        "other": "{count} días, o hasta que cierres sesión"
+      }
+    },
+    "locale": {
+      "type": "Cookie propia",
+      "purpose": "Recordar el idioma que eliges",
+      "duration": "Un año"
+    },
+    "theme": {
+      "type": "Almacenamiento local del navegador",
+      "purpose": "Recordar si prefieres el tema claro u oscuro",
+      "duration": "Hasta que lo borres desde tu navegador"
+    },
+    "outro": "Puedes borrarlas todas desde la configuración de tu navegador. Sin la cookie de sesión no podrás usar la aplicación con tu cuenta."
+  },
+  "notice": {
+    "title": "Aviso legal",
+    "metaDescription": "Datos de quien opera esta instancia de orgtable.",
+    "owner": {
+      "heading": "Titular"
+    },
+    "purpose": {
+      "heading": "Objeto",
+      "body": "Este sitio ofrece una instancia de orgtable, una aplicación de tableros Kanban. Las condiciones para usarla están en las <terms>condiciones de uso</terms> y el tratamiento de datos, en la <privacy>política de privacidad</privacy>."
+    },
+    "ip": {
+      "heading": "Propiedad intelectual",
+      "body": "El software orgtable es de código abierto y se distribuye con su propia licencia, enlazada en el pie de esta página. El contenido de los tableros pertenece a quien lo crea."
+    }
+  }
+}

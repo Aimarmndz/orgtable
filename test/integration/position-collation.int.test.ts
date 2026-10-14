@@ -18,22 +18,22 @@ import {
   loginAs,
 } from "./helpers";
 
-// Las claves de fractional indexing (base62: 0-9A-Za-z) solo están bien ordenadas byte a
-// byte. 'Zz' es la clave inmediatamente anterior a 'a0' (se genera al arrastrar al
-// principio), pero con una collation lingüística (en_US.utf8 sobre glibc, la imagen
-// Debian de postgres que usa el CI) queda DESPUÉS de 'a0l'. La migración
-// 20260924000000_position_collate_c fija COLLATE "C" en las cuatro columnas.
+// Fractional indexing keys (base62: 0-9A-Za-z) are only correctly ordered byte by byte.
+// 'Zz' is the key right before 'a0' (generated when dragging to the top), but with a
+// linguistic collation (en_US.utf8 on glibc, the Debian postgres image the CI uses) it
+// sorts AFTER 'a0l'. Migration 20260924000000_position_collate_c sets COLLATE "C" on the
+// four columns.
 //
-// En postgres alpine (musl, la BD de desarrollo) el orden ya era byte a byte, así que
-// las pruebas de comportamiento solo fallarían sin el arreglo en glibc; la primera
-// prueba comprueba la collation de las columnas y falla en cualquier servidor sin él.
+// On postgres alpine (musl, the development DB) the order was already byte by byte, so
+// the behaviour tests would only fail without the fix on glibc; the first test checks the
+// columns' collation and fails on any server without it.
 
 const KEYS = ["a0", "a0V", "a0l", "Zz"];
 const EXPECTED_ORDER = ["Zz", "a0", "a0V", "a0l"];
 
-// También falla sin arrastrar: las altas al final generan a0…a9, aA…aZ y luego 'aa', que
-// una collation lingüística ordena ANTES de 'aB'…'aZ'. Con 37 elementos (a0…aa) el
-// «último» según ORDER BY DESC sería 'aZ' y el alta 38 repetiría 'aa'.
+// It also fails without dragging: appending generates a0…a9, aA…aZ and then 'aa', which a
+// linguistic collation sorts BEFORE 'aB'…'aZ'. With 37 items (a0…aa) the "last" one by
+// ORDER BY DESC would be 'aZ' and the 38th insert would repeat 'aa'.
 function endKeys(count: number): string[] {
   const keys: string[] = [];
   let last: string | null = null;
@@ -52,8 +52,8 @@ afterAll(async () => {
   await disconnect();
 });
 
-describe("collation de las claves de posición (integración)", () => {
-  it("las columnas position usan la collation C", async () => {
+describe("collation of the position keys (integration)", () => {
+  it("the position columns use the C collation", async () => {
     const rows = await prisma.$queryRaw<
       { table_name: string; collation_name: string | null }[]
     >`SELECT table_name, collation_name FROM information_schema.columns
@@ -67,7 +67,7 @@ describe("collation de las claves de posición (integración)", () => {
     ]);
   });
 
-  it("las tarjetas se ordenan byte a byte y createCard no repite claves", async () => {
+  it("cards are sorted byte by byte and createCard does not repeat keys", async () => {
     const owner = await seedUser();
     const token = await seedApiToken(owner.id);
     const board = await seedBoard(owner.id);
@@ -82,7 +82,7 @@ describe("collation de las claves de posición (integración)", () => {
     const res = await createCard(
       apiRequest("POST", `/api/v1/lists/${list.id}/cards`, {
         token,
-        body: { title: "nueva" },
+        body: { title: "new" },
       }),
       ctx({ id: list.id }),
     );
@@ -92,20 +92,20 @@ describe("collation de las claves de posición (integración)", () => {
       where: { listId: list.id },
       select: { title: true, position: true },
     });
-    const created = cards.find((c) => c.title === "nueva");
-    // Comparación de strings de JS = orden por unidades UTF-16, igual que byte a byte en
-    // ASCII: la nueva clave debe ir detrás de la mayor real ('a0l').
+    const created = cards.find((c) => c.title === "new");
+    // JS string comparison = order by UTF-16 code units, the same as byte by byte in ASCII:
+    // the new key must come after the actual largest one ('a0l').
     expect(created && created.position > "a0l").toBe(true);
     expect(new Set(cards.map((c) => c.position)).size).toBe(cards.length);
 
     const after = await getBoardWithLists(board.id, owner.id);
     expect(after?.lists[0]?.cards.map((c) => c.title)).toEqual([
       ...EXPECTED_ORDER,
-      "nueva",
+      "new",
     ]);
   });
 
-  it("las listas se ordenan byte a byte y createList no repite claves", async () => {
+  it("lists are sorted byte by byte and createList does not repeat keys", async () => {
     const owner = await seedUser();
     const token = await seedApiToken(owner.id);
     const board = await seedBoard(owner.id);
@@ -119,7 +119,7 @@ describe("collation de las claves de posición (integración)", () => {
     const res = await createList(
       apiRequest("POST", `/api/v1/boards/${board.id}/lists`, {
         token,
-        body: { title: "nueva" },
+        body: { title: "new" },
       }),
       ctx({ id: board.id }),
     );
@@ -129,22 +129,22 @@ describe("collation de las claves de posición (integración)", () => {
       where: { boardId: board.id },
       select: { title: true, position: true },
     });
-    const created = lists.find((l) => l.title === "nueva");
+    const created = lists.find((l) => l.title === "new");
     expect(created && created.position > "a0l").toBe(true);
     expect(new Set(lists.map((l) => l.position)).size).toBe(lists.length);
 
     const after = await getBoardWithLists(board.id, owner.id);
-    expect(after?.lists.map((l) => l.title)).toEqual([...EXPECTED_ORDER, "nueva"]);
+    expect(after?.lists.map((l) => l.title)).toEqual([...EXPECTED_ORDER, "new"]);
   });
 
-  it("createChecklist y addChecklistItem no repiten claves tras 'aZ' → 'aa'", async () => {
+  it("createChecklist and addChecklistItem do not repeat keys after 'aZ' → 'aa'", async () => {
     expect(END_KEYS.slice(-2)).toEqual(["aZ", "aa"]);
     const owner = await seedUser();
     const board = await seedBoard(owner.id);
     const list = await seedList(board.id);
     const card = await seedCard(list.id);
-    // Las acciones de checklist no tienen ruta en la API pública: se llaman con la sesión
-    // del propietario del tablero.
+    // The checklist actions have no route in the public API: they are called with the board
+    // owner's session.
     await loginAs(owner.id);
     await prisma.checklist.createMany({
       data: END_KEYS.map((position) => ({ cardId: card.id, title: position, position })),
@@ -152,7 +152,7 @@ describe("collation de las claves de posición (integración)", () => {
 
     const fd = new FormData();
     fd.set("cardId", card.id);
-    fd.set("title", "nueva");
+    fd.set("title", "new");
     await createChecklist(fd);
 
     const checklists = await prisma.checklist.findMany({
@@ -160,12 +160,12 @@ describe("collation de las claves de posición (integración)", () => {
       select: { id: true, title: true, position: true },
     });
     expect(checklists).toHaveLength(END_KEYS.length + 1);
-    const created = checklists.find((c) => c.title === "nueva");
+    const created = checklists.find((c) => c.title === "new");
     expect(created && created.position > "aa").toBe(true);
     expect(new Set(checklists.map((c) => c.position)).size).toBe(checklists.length);
 
     const target = checklists.find((c) => c.title === "a0");
-    if (!target) throw new Error("falta la checklist sembrada 'a0'");
+    if (!target) throw new Error("the seeded checklist 'a0' is missing");
     await prisma.checklistItem.createMany({
       data: END_KEYS.map((position) => ({
         checklistId: target.id,
@@ -175,7 +175,7 @@ describe("collation de las claves de posición (integración)", () => {
     });
     const itemFd = new FormData();
     itemFd.set("checklistId", target.id);
-    itemFd.set("text", "nuevo");
+    itemFd.set("text", "new item");
     await addChecklistItem(itemFd);
 
     const items = await prisma.checklistItem.findMany({
@@ -183,7 +183,7 @@ describe("collation de las claves de posición (integración)", () => {
       select: { text: true, position: true },
     });
     expect(items).toHaveLength(END_KEYS.length + 1);
-    const createdItem = items.find((i) => i.text === "nuevo");
+    const createdItem = items.find((i) => i.text === "new item");
     expect(createdItem && createdItem.position > "aa").toBe(true);
     expect(new Set(items.map((i) => i.position)).size).toBe(items.length);
   });

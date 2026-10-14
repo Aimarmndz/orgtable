@@ -1,0 +1,169 @@
+{
+  "roles": {
+    "OWNER": "Propietario",
+    "EDITOR": "Editor",
+    "VIEWER": "Lector"
+  },
+  "confirm": {
+    "deletePrompt": "¿Borrar?",
+    "yes": "Sí",
+    "no": "No"
+  },
+  "index": {
+    "metaTitle": "Tus tableros",
+    "title": "Tus tableros",
+    "subtitle": "Organiza tu trabajo en listas y tarjetas.",
+    "newBoardName": "Nombre del nuevo tablero",
+    "createBoard": "Crear tablero",
+    "importToggle": "Importar un tablero desde JSON",
+    "emptyTitle": "Todavía no tienes tableros",
+    "emptyText": "Crea el primero con el campo de arriba y empieza a organizar tu trabajo en listas y tarjetas.",
+    "cardCount": { "one": "{count} tarjeta", "other": "{count} tarjetas" },
+    "sharedWith": {
+      "one": ", compartido con {count} persona: {names}",
+      "other": ", compartido con {count} personas: {names}"
+    },
+    "exportBoard": "Exportar tablero {title}",
+    "exportTitle": "Exportar a JSON",
+    "deleteBoard": "Borrar tablero {title}",
+    "confirmDeleteBoard": "Sí, borrar el tablero {title}"
+  },
+  "import": {
+    "fileLabel": "Fichero JSON del tablero a importar",
+    "submit": "Importar tablero",
+    "pending": "Importando…"
+  },
+  "board": {
+    "metaTitle": "Tablero",
+    "viewBoard": "Tablero",
+    "viewCalendar": "Calendario",
+    "members": "Miembros",
+    "viewMembers": "Ver miembros",
+    "moveListFailed": "No se pudo mover la lista. Inténtalo de nuevo.",
+    "moveCardFailed": "No se pudo mover la tarjeta. Inténtalo de nuevo."
+  },
+  "dnd": {
+    "instructions": "Pulsa Espacio para coger el elemento, las flechas para moverlo, Espacio para soltarlo y Escape para cancelar. Intro abre la tarjeta.",
+    "listName": "la lista «{title}»",
+    "cardName": "la tarjeta «{title}»",
+    "pickedUp": "Has cogido {item}.",
+    "over": "Sobre {target}.",
+    "outside": "Fuera de cualquier lista.",
+    "dropped": "Has soltado {item} sobre {target}.",
+    "droppedOutside": "Has soltado {item} fuera de cualquier lista; no se mueve.",
+    "cancelled": "Movimiento cancelado; {item} vuelve a su sitio."
+  },
+  "list": {
+    "roleDescription": "lista",
+    "delete": "Borrar lista {title}",
+    "confirmDelete": "Sí, borrar la lista {title} y todas sus tarjetas",
+    "keep": "No, conservar la lista",
+    "addPlaceholder": "+ Añadir lista",
+    "newName": "Nombre de la nueva lista"
+  },
+  "card": {
+    "roleDescription": "tarjeta",
+    "addPlaceholder": "+ Añadir tarjeta",
+    "newIn": "Nueva tarjeta en {list}",
+    "subtasks": "Subtareas: {done} de {total} completadas",
+    "overdue": ", vencida"
+  },
+  "filters": {
+    "button": "Filtrar",
+    "dialog": "Filtros",
+    "labels": "Etiquetas",
+    "noLabels": "Sin etiquetas.",
+    "assignees": "Asignados",
+    "due": "Vencimiento",
+    "dueAny": "Cualquiera",
+    "dueOverdue": "Vencidas",
+    "dueSet": "Con fecha",
+    "dueNone": "Sin fecha",
+    "clear": "Limpiar filtros"
+  },
+  "calendar": {
+    "instructions": "Pulsa Espacio para coger la tarjeta, las flechas para cambiar de día, Espacio para soltarla y Escape para cancelar. Intro abre la tarjeta.",
+    "pickedUp": "Has cogido la tarjeta «{title}».",
+    "over": "Sobre el {day}.",
+    "outside": "Fuera del calendario.",
+    "dropped": "Has soltado la tarjeta «{title}» en el {day}.",
+    "droppedOutside": "Has soltado la tarjeta «{title}» fuera del calendario; no cambia.",
+    "cancelled": "Movimiento cancelado; la tarjeta «{title}» sigue en su día.",
+    "previousMonth": "Mes anterior",
+    "nextMonth": "Mes siguiente",
+    "today": "Hoy",
+    "dueDateFailed": "No se pudo cambiar la fecha. Inténtalo de nuevo.",
+    "undated": {
+      "one": "{count} tarjeta sin fecha de vencimiento (no aparece en el calendario).",
+      "other": "{count} tarjetas sin fecha de vencimiento (no aparecen en el calendario)."
+    }
+  },
+  "members": {
+    "title": "Miembros",
+    "descriptionManage": "Invita a personas y elige qué pueden hacer en este tablero.",
+    "descriptionView": "Personas con acceso a este tablero.",
+    "email": "Email",
+    "emailPlaceholder": "persona@ejemplo.com",
+    "role": "Rol",
+    "invite": "Invitar",
+    "inviting": "Añadiendo…",
+    "roleOf": "Rol de {name}",
+    "remove": "Quitar a {name}"
+  },
+  "cardModal": {
+    "labels": "Etiquetas",
+    "labelToggleFailed": "No se pudo cambiar la etiqueta.",
+    "noBoardLabels": "Aún no hay etiquetas en este tablero.",
+    "noLabels": "Sin etiquetas.",
+    "labelColor": "Color {color}",
+    "colors": {
+      "green": "verde",
+      "lime": "lima",
+      "amber": "ámbar",
+      "red": "rojo",
+      "purple": "morado",
+      "blue": "azul",
+      "teal": "turquesa",
+      "pink": "rosa"
+    },
+    "newLabel": "Nueva etiqueta",
+    "newLabelName": "Nombre de la nueva etiqueta",
+    "add": "Añadir",
+    "assignees": "Asignados",
+    "unassign": "Quitar a {name}",
+    "nobodyAssigned": "Nadie asignado.",
+    "description": "Descripción",
+    "descriptionPlaceholder": "Añade más detalle…",
+    "noDescription": "Sin descripción.",
+    "dueDate": "Vencimiento",
+    "dueDateInline": "Vencimiento:",
+    "saveChanges": "Guardar cambios",
+    "checklists": "Checklists",
+    "checklistProgress": "· {done} de {total} completadas",
+    "deleteChecklist": "Eliminar",
+    "itemToggleFailed": "No se pudo actualizar el ítem.",
+    "markNotDone": "Marcar como pendiente",
+    "markDone": "Marcar como hecho",
+    "deleteItem": "Borrar ítem",
+    "addItemPlaceholder": "+ Añadir ítem",
+    "newItemIn": "Nuevo ítem en {checklist}",
+    "newChecklist": "Nueva checklist",
+    "newChecklistTitle": "Título de la nueva checklist",
+    "addChecklist": "Añadir checklist",
+    "attachments": "Adjuntos",
+    "noAttachments": "No hay adjuntos.",
+    "deleteAttachment": "Borrar adjunto {filename}",
+    "attachFile": "Archivo para adjuntar a la tarjeta",
+    "attach": "Adjuntar",
+    "uploading": "Subiendo…",
+    "comments": "Comentarios",
+    "noComments": "Sé el primero en comentar.",
+    "deleteComment": "Borrar comentario",
+    "commentPlaceholder": "Escribe un comentario…",
+    "newComment": "Nuevo comentario",
+    "comment": "Comentar",
+    "deleteCard": "Borrar tarjeta",
+    "deleteCardPrompt": "¿Borrar la tarjeta?",
+    "confirmDeleteCard": "Sí, borrar"
+  }
+}

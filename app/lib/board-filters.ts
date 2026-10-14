@@ -1,13 +1,13 @@
-// Filtros de tablero (Hito 12), lógica PURA y compartida cliente/servidor (sin
-// "server-only": el cliente la usa para ocultar tarjetas y se testea directamente). El
-// filtrado es solo de presentación; no cambia datos. Ver docs/filters.md.
+// Board filters: PURE logic shared by client and server (no "server-only": the client
+// uses it to hide cards and it is tested directly). Filtering is presentation only; it
+// does not change any data. See docs/filters.md.
 import type { CardDTO } from "@/app/lib/types";
 
 export type DueFilter = "any" | "overdue" | "due" | "none";
 
 export type BoardFilters = {
-  labelIds: string[]; // la tarjeta debe tener AL MENOS una de estas etiquetas
-  assigneeIds: string[]; // … y al menos uno de estos asignados
+  labelIds: string[]; // the card must have AT LEAST one of these labels
+  assigneeIds: string[]; // … and at least one of these assignees
   due: DueFilter;
 };
 
@@ -17,16 +17,16 @@ export const EMPTY_FILTERS: BoardFilters = {
   due: "any",
 };
 
-/** ¿Hay algún filtro activo? Si no, no se filtra nada (ni se desactiva el arrastre). */
+/** Is any filter active? If not, nothing is filtered (and dragging stays enabled). */
 export function filtersActive(f: BoardFilters): boolean {
   return f.labelIds.length > 0 || f.assigneeIds.length > 0 || f.due !== "any";
 }
 
 /**
- * ¿Está vencida? El `dueDate` representa un DÍA (se elige con `<input type="date">` y se
- * guarda a medianoche UTC), así que se compara su parte de fecha con el día LOCAL de
- * `now`, sin horas: la tarjeta que vence hoy no está vencida hasta mañana. Comparar el
- * instante con `Date.now()` la marcaba vencida desde las 00:00 UTC del mismo día.
+ * Is it overdue? `dueDate` represents a DAY (picked with `<input type="date">` and stored
+ * at midnight UTC), so its date part is compared with the LOCAL day of `now`, ignoring
+ * the time: a card due today is not overdue until tomorrow. Comparing the instant with
+ * `Date.now()` marked it overdue from 00:00 UTC on the same day.
  */
 export function isOverdue(dueDate: string, now: number): boolean {
   const today = new Date(now);
@@ -34,31 +34,40 @@ export function isOverdue(dueDate: string, now: number): boolean {
   return dueDate.slice(0, 10) < todayDay;
 }
 
-// Formateador de módulo (se crea una vez). `timeZone: "UTC"` porque el dueDate es una
-// fecha de calendario guardada a medianoche UTC: formatearla en la zona local mostraba
-// el día anterior al oeste de Greenwich y descuadraba la hidratación servidor/cliente.
-const dueDayFormat = new Intl.DateTimeFormat("es-ES", {
-  day: "numeric",
-  month: "short",
-  timeZone: "UTC",
-});
+// One formatter per language, created once (building an Intl.DateTimeFormat per card
+// is not free). `timeZone: "UTC"` because dueDate is a calendar date stored at midnight
+// UTC: formatting it in the local zone showed the previous day west of Greenwich and
+// broke server/client hydration.
+const dueDayFormats = new Map<string, Intl.DateTimeFormat>();
 
-/** Día de vencimiento corto para las tarjetas («24 sept»), igual en cualquier zona. */
-export function formatDueDay(dueDate: string): string {
-  return dueDayFormat.format(new Date(dueDate));
+/**
+ * Short due day for cards ("Sep 24", "24 sept"), the same in any time zone. `intl` is
+ * the language's BCP 47 tag (`useI18n().intl`).
+ */
+export function formatDueDay(dueDate: string, intl: string): string {
+  let format = dueDayFormats.get(intl);
+  if (!format) {
+    format = new Intl.DateTimeFormat(intl, {
+      day: "numeric",
+      month: "short",
+      timeZone: "UTC",
+    });
+    dueDayFormats.set(intl, format);
+  }
+  return format.format(new Date(dueDate));
 }
 
 function matchesDue(card: CardDTO, due: DueFilter, now: number): boolean {
   if (due === "any") return true;
   if (due === "none") return card.dueDate === null;
   if (!card.dueDate) return false;
-  if (due === "due") return true; // tiene vencimiento
+  if (due === "due") return true; // has a due date
   return isOverdue(card.dueDate, now);
 }
 
 /**
- * ¿La tarjeta pasa TODOS los filtros activos? Dentro de cada dimensión (etiquetas,
- * asignados) la lógica es OR (al menos una coincide); entre dimensiones es AND.
+ * Does the card pass ALL active filters? Within each dimension (labels, assignees) the
+ * logic is OR (at least one matches); across dimensions it is AND.
  */
 export function cardMatchesFilters(
   card: CardDTO,

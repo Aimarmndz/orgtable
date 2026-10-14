@@ -10,14 +10,18 @@ import { recordAudit } from "@/app/lib/audit";
 import { boardTitleSchema, boardImportSchema } from "@/app/lib/validators";
 import { positionAtEnd } from "@/app/lib/ordering";
 import { deleteBoardWithAttachments } from "@/app/lib/services/attachments";
+import { getI18n } from "@/app/i18n/server";
+import { fmt } from "@/app/i18n/format";
+
+const IMPORT_MAX_MB = 5;
 
 export async function createBoard(formData: FormData): Promise<void> {
   const user = await requireUser();
   const parsed = boardTitleSchema.safeParse(formData.get("title"));
   if (!parsed.success) return;
 
-  // El creador queda como dueño y, a la vez, como miembro OWNER del tablero (la
-  // autorización siempre se comprueba contra board_members).
+  // The creator is the owner and, at the same time, an OWNER member of the board
+  // (authorisation is always checked against board_members).
   const board = await prisma.board.create({
     data: {
       title: parsed.data,
@@ -53,37 +57,38 @@ export async function renameBoard(formData: FormData): Promise<void> {
 export type ImportState = { error?: string };
 
 /**
- * Importa un tablero desde el JSON que produce GET /api/boards/[id]/export. Crea un
- * tablero NUEVO del que el importador es propietario, regenerando ids y posiciones. No
- * incluye adjuntos (sus binarios no viajan en el export). Ver docs/operations.md.
+ * Imports a board from the JSON produced by GET /api/boards/[id]/export. Creates a NEW board
+ * owned by the importer, regenerating ids and positions. Attachments are not included
+ * (their binaries do not travel in the export). See docs/operations.md.
  */
 export async function importBoard(
   _prev: ImportState,
   formData: FormData,
 ): Promise<ImportState> {
   const user = await requireUser();
+  const { m } = await getI18n();
 
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
-    return { error: "Selecciona un archivo JSON." };
+    return { error: m.errors.boards.importNoFile };
   }
-  if (file.size > 5 * 1024 * 1024) {
-    return { error: "El archivo es demasiado grande (máx. 5 MB)." };
+  if (file.size > IMPORT_MAX_MB * 1024 * 1024) {
+    return { error: fmt(m.errors.boards.importTooLarge, { megabytes: IMPORT_MAX_MB }) };
   }
 
   let raw: unknown;
   try {
     raw = JSON.parse(await file.text());
   } catch {
-    return { error: "El archivo no es JSON válido." };
+    return { error: m.errors.boards.importInvalidJson };
   }
   const parsed = boardImportSchema.safeParse(raw);
   if (!parsed.success) {
-    return { error: "El archivo no tiene el formato de un tablero de orgtable." };
+    return { error: m.errors.boards.importInvalidFormat };
   }
 
   const b = parsed.data.board;
-  // Colores ya saneados por boardImportSchema: fuera de la paleta → null / "blue".
+  // Colours already sanitised by boardImportSchema: outside the palette → null / "blue".
   const background = b.background ?? null;
 
   let newBoardId = "";
@@ -99,7 +104,7 @@ export async function importBoard(
       });
       newBoardId = board.id;
 
-      // Etiquetas: una por nombre (se ignoran duplicados); color saneado en el esquema.
+      // Labels: one per name (duplicates are ignored); colour sanitised by the schema.
       const labelIdByName = new Map<string, string>();
       for (const lab of b.labels ?? []) {
         if (labelIdByName.has(lab.name)) continue;
@@ -130,7 +135,7 @@ export async function importBoard(
             },
           });
 
-          // Re-vincula etiquetas por nombre (sin duplicar).
+          // Re-link labels by name (without duplicates).
           const seenLabels = new Set<string>();
           for (const name of card.labels ?? []) {
             const labelId = labelIdByName.get(name);
@@ -184,8 +189,8 @@ export async function importBoard(
 export async function deleteBoard(formData: FormData): Promise<void> {
   const user = await requireUser();
   const boardId = String(formData.get("boardId"));
-  // Solo el dueño puede borrar el tablero (deleteMany no falla si no coincide). El
-  // servicio borra también los ficheros de los adjuntos.
+  // Only the owner can delete the board (deleteMany does not fail if nothing matches). The
+  // service also deletes the attachment files.
   const count = await deleteBoardWithAttachments({ id: boardId, ownerId: user.id });
   if (count > 0) {
     await recordAudit({
@@ -194,7 +199,7 @@ export async function deleteBoard(formData: FormData): Promise<void> {
       targetType: "board",
       targetId: boardId,
     });
-    // Avisa a las pestañas abiertas del tablero (SSE) para que dejen de mostrarlo.
+    // Tell the board's open tabs (SSE) so that they stop showing it.
     revalidateBoard(boardId);
   }
   revalidatePath("/boards");

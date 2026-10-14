@@ -18,19 +18,19 @@ import {
 import { ASSIGNABLE_BOARD_ROLES } from "@/app/lib/roles";
 
 describe("validators (zod)", () => {
-  it("boardTitleSchema recorta y exige 1..120 caracteres", () => {
-    expect(boardTitleSchema.parse("  Hola  ")).toBe("Hola");
+  it("boardTitleSchema trims and requires 1..120 characters", () => {
+    expect(boardTitleSchema.parse("  Hello  ")).toBe("Hello");
     expect(boardTitleSchema.safeParse("").success).toBe(false);
     expect(boardTitleSchema.safeParse("   ").success).toBe(false);
     expect(boardTitleSchema.safeParse("x".repeat(121)).success).toBe(false);
   });
 
-  it("apiCardCreateSchema exige título y admite campos opcionales", () => {
-    expect(apiCardCreateSchema.safeParse({ title: "Tarea" }).success).toBe(true);
+  it("apiCardCreateSchema requires a title and accepts optional fields", () => {
+    expect(apiCardCreateSchema.safeParse({ title: "Task" }).success).toBe(true);
     expect(
       apiCardCreateSchema.safeParse({
-        title: "Tarea",
-        description: "detalle",
+        title: "Task",
+        description: "details",
         dueDate: "2026-06-20",
       }).success,
     ).toBe(true);
@@ -38,22 +38,22 @@ describe("validators (zod)", () => {
     expect(apiCardCreateSchema.safeParse({}).success).toBe(false);
   });
 
-  it("apiCardUpdateSchema rechaza un objeto vacío (refine) y acepta campos sueltos", () => {
+  it("apiCardUpdateSchema rejects an empty object (refine) and accepts single fields", () => {
     expect(apiCardUpdateSchema.safeParse({}).success).toBe(false);
-    expect(apiCardUpdateSchema.safeParse({ title: "Nuevo" }).success).toBe(true);
+    expect(apiCardUpdateSchema.safeParse({ title: "New" }).success).toBe(true);
     expect(apiCardUpdateSchema.safeParse({ dueDate: null }).success).toBe(true);
     expect(
       apiCardUpdateSchema.safeParse({ description: null }).success,
     ).toBe(true);
   });
 
-  it("apiTokenNameSchema exige nombre no vacío", () => {
-    expect(apiTokenNameSchema.safeParse("Mi token").success).toBe(true);
+  it("apiTokenNameSchema requires a non-empty name", () => {
+    expect(apiTokenNameSchema.safeParse("My token").success).toBe(true);
     expect(apiTokenNameSchema.safeParse("   ").success).toBe(false);
     expect(apiTokenNameSchema.safeParse("x".repeat(61)).success).toBe(false);
   });
 
-  it("apiCardCreateSchema/apiCardUpdateSchema validan el formato de dueDate", () => {
+  it("apiCardCreateSchema/apiCardUpdateSchema validate the dueDate format", () => {
     for (const ok of ["2026-07-01", "2026-07-01T10:00:00Z", "2026-07-01T10:00:00+02:00"]) {
       expect(apiCardUpdateSchema.safeParse({ dueDate: ok }).success).toBe(true);
       expect(apiCardCreateSchema.safeParse({ title: "T", dueDate: ok }).success).toBe(true);
@@ -65,7 +65,7 @@ describe("validators (zod)", () => {
     expect(apiCardCreateSchema.safeParse({ title: "T", dueDate: null }).success).toBe(true);
   });
 
-  it("dueDateSchema y cardDetailsSchema (modal de tarjeta)", () => {
+  it("dueDateSchema and cardDetailsSchema (card modal)", () => {
     expect(dueDateSchema.safeParse("").success).toBe(true);
     expect(dueDateSchema.safeParse(null).success).toBe(true);
     expect(dueDateSchema.safeParse("2026-09-24").success).toBe(true);
@@ -79,48 +79,48 @@ describe("validators (zod)", () => {
     ).toBe(false);
   });
 
-  it("labelColorSchema cae a 'blue' fuera de la paleta (también claves del prototipo)", () => {
+  it("labelColorSchema falls back to 'blue' outside the palette (prototype keys too)", () => {
     expect(labelColorSchema.parse("red")).toBe("red");
     expect(labelColorSchema.parse("constructor")).toBe("blue");
     expect(labelColorSchema.parse("__proto__")).toBe("blue");
     expect(labelColorSchema.parse(undefined)).toBe("blue");
   });
 
-  it("addMemberSchema y assignableBoardRoleSchema no permiten asignar OWNER", () => {
+  it("addMemberSchema and assignableBoardRoleSchema do not allow assigning OWNER", () => {
     expect(assignableBoardRoleSchema.safeParse("OWNER").success).toBe(false);
     expect(assignableBoardRoleSchema.safeParse("EDITOR").success).toBe(true);
     expect(addMemberSchema.safeParse({ email: "a@b.es", role: "OWNER" }).success).toBe(false);
     expect(addMemberSchema.safeParse({ email: "a@b.es", role: "EDITOR" }).success).toBe(true);
-    // El esquema y la lista de la UI no deben divergir.
+    // The schema and the UI list must not diverge.
     expect([...assignableBoardRoleSchema.options].sort()).toEqual(
       [...ASSIGNABLE_BOARD_ROLES].sort(),
     );
   });
 
-  it("commentTextSchema recorta y exige 1..2000 caracteres", () => {
+  it("commentTextSchema trims and requires 1..2000 characters", () => {
     expect(commentTextSchema.safeParse("   ").success).toBe(false);
     expect(commentTextSchema.safeParse("x".repeat(2001)).success).toBe(false);
-    expect(commentTextSchema.parse("  hola  ")).toBe("hola");
+    expect(commentTextSchema.parse("  hello  ")).toBe("hello");
   });
 
-  it("boardImportSchema acepta el formato del export y rechaza lo que se sale de él", () => {
-    expect(boardImportSchema.safeParse({ board: { title: "Mínimo" } }).success).toBe(true);
+  it("boardImportSchema accepts the export format and rejects whatever falls outside it", () => {
+    expect(boardImportSchema.safeParse({ board: { title: "Minimal" } }).success).toBe(true);
     const full = {
       orgtable: { type: "board", version: 1 },
       board: {
-        title: "Completo",
+        title: "Complete",
         background: "teal",
-        labels: [{ name: "Urgente", color: "red" }],
+        labels: [{ name: "Urgent", color: "red" }],
         lists: [
           {
-            title: "Pendiente",
+            title: "To do",
             cards: [
               {
-                title: "Tarea",
-                description: "Detalle",
+                title: "Task",
+                description: "Details",
                 dueDate: "2026-07-01T00:00:00.000Z",
-                labels: ["Urgente"],
-                checklists: [{ title: "Pasos", items: [{ text: "Uno", done: false }] }],
+                labels: ["Urgent"],
+                checklists: [{ title: "Steps", items: [{ text: "One", done: false }] }],
               },
             ],
           },
@@ -154,21 +154,21 @@ describe("validators (zod)", () => {
     ).toBe(false);
   });
 
-  it("boardImportSchema sanea colores desconocidos en vez de rechazar el fichero", () => {
+  it("boardImportSchema sanitises unknown colours instead of rejecting the file", () => {
     const parsed = boardImportSchema.parse({
       board: {
         title: "X",
         background: "constructor",
-        labels: [{ name: "Rara", color: "toString" }],
+        labels: [{ name: "Odd", color: "toString" }],
       },
     });
     expect(parsed.board.background).toBeNull();
     expect(parsed.board.labels?.[0].color).toBe("blue");
   });
 
-  it("setupSchema y createUserSchema: longitud de contraseña y rol", () => {
+  it("setupSchema and createUserSchema: password length and role", () => {
     const user = { name: "Ana", email: "ana@example.com", role: "MEMBER" };
-    const setup = { instanceName: "Equipo", name: "Ana", email: "ana@example.com" };
+    const setup = { instanceName: "Team", name: "Ana", email: "ana@example.com" };
     for (const [password, ok] of [
       ["x".repeat(7), false],
       ["x".repeat(8), true],
@@ -183,16 +183,16 @@ describe("validators (zod)", () => {
     ).toBe(false);
   });
 
-  // bcrypt solo usa los primeros 72 bytes: por encima, dos contraseñas con el mismo prefijo
-  // serían equivalentes.
-  it("la contraseña no puede pasar de 72 bytes UTF-8", () => {
+  // bcrypt only uses the first 72 bytes: beyond that, two passwords with the same prefix
+  // would be equivalent.
+  it("the password cannot exceed 72 UTF-8 bytes", () => {
     const check = (password: string) =>
       resetPasswordSchema.safeParse({ userId: "u1", password }).success;
     expect(check("a".repeat(72))).toBe(true);
     expect(check("a".repeat(73))).toBe(false);
     expect(check("ñ".repeat(36))).toBe(true);
     expect(check("ñ".repeat(37))).toBe(false);
-    const setup = { instanceName: "Equipo", name: "Ana", email: "ana@example.com" };
+    const setup = { instanceName: "Team", name: "Ana", email: "ana@example.com" };
     expect(setupSchema.safeParse({ ...setup, password: "a".repeat(73) }).success).toBe(false);
   });
 });

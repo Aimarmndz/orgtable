@@ -1,130 +1,131 @@
-# API pública (REST v1)
+# Public API (REST v1)
 
-orgtable expone una API REST bajo `/api/v1` para automatizar tableros desde scripts u
-otras aplicaciones (Hito 9). La decisión de diseño está en
+orgtable exposes a REST API under `/api/v1` so you can automate boards from scripts or
+other applications. The design decision is recorded in
 [ADR 0013](../decisions/0013-api-tokens.md).
 
-## Autenticación
+## Authentication
 
-Las peticiones se autentican con un **token de acceso personal** en la cabecera
-`Authorization`:
+Requests are authenticated with a **personal access token** in the `Authorization`
+header:
 
 ```
 Authorization: Bearer orgt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
-- Crea y revoca tus tokens en **Ajustes** (`/settings`). El token completo se muestra
-  **una sola vez**; guárdalo bien. En la base de datos solo vive su hash SHA-256.
-- Un token actúa **como tú**: tiene tu mismo acceso a los tableros (mismo rol). El
-  servidor vuelve a comprobar el rol del tablero en cada petición.
-- **Alcance (scope)**: al crear el token eliges **Lectura y escritura** o **Solo lectura**.
-  Un token de solo lectura puede hacer `GET` pero recibe `403` en cualquier `POST`/`PATCH`/
-  `DELETE`.
-- **Caducidad**: opcionalmente el token caduca (30/90/365 días). Un token caducado se
-  rechaza con `401` (no se borra; lo verás marcado «Caducado» en Ajustes).
-- Revocar un token (borrarlo en Ajustes) lo invalida al instante.
+- Create and revoke your tokens in **Settings** (`/settings`). The full token is shown
+  **only once**, so store it safely. The database keeps only its SHA-256 hash.
+- A token acts **as you**: it has the same access to boards as you (same role). The
+  server checks the board role again on every request.
+- **Scope**: when you create the token you choose **Read and write** or **Read only**. A
+  read-only token can make `GET` requests but gets `403` on any `POST`/`PATCH`/`DELETE`.
+- **Expiry**: optionally, the token expires (30/90/365 days). An expired token is rejected
+  with `401` (it is not deleted; Settings shows it as expired).
+- Revoking a token (deleting it in Settings) invalidates it immediately.
 
-## Convenciones
+## Conventions
 
-- Cuerpos y respuestas en **JSON** (`Content-Type: application/json`).
-- Las fechas se devuelven en **ISO 8601** (UTC).
-- Errores con la forma `{ "error": "mensaje" }` y un código HTTP adecuado:
+- Request and response bodies are **JSON** (`Content-Type: application/json`).
+- Dates are returned in **ISO 8601** (UTC).
+- The API answers in **English only**, whatever the language of the account: it is meant
+  for programs.
+- Errors have the shape `{ "error": "message" }` and a suitable HTTP status:
 
-| Código | Significado |
-|--------|-------------|
-| `401` | Token ausente o no válido |
-| `403` | Autenticado, pero sin permiso (p. ej. editar siendo lector) |
-| `404` | No existe **o** no tienes acceso (no se revela cuál) |
-| `422` | Cuerpo no válido (validación) |
+| Status | Meaning |
+|--------|---------|
+| `401` | Missing or invalid token |
+| `403` | Authenticated, but not allowed (for example, editing as a viewer) |
+| `404` | Does not exist **or** you have no access (the API does not say which) |
+| `422` | Invalid body (validation) |
 
-> Que un recurso ajeno devuelva `404` (y no `403`) es intencionado: la API no revela la
-> existencia de tableros a los que no perteneces.
+> Returning `404` (not `403`) for someone else's resource is intentional: the API does not
+> reveal that boards you do not belong to exist.
 
 ## Endpoints
 
-### Tableros
+### Boards
 
-| Método | Ruta | Permiso | Descripción |
-|--------|------|---------|-------------|
-| `GET` | `/api/v1/boards` | miembro | Tus tableros (resumen) |
-| `POST` | `/api/v1/boards` | — | Crea un tablero (quedas como propietario) |
-| `GET` | `/api/v1/boards/:id` | miembro | El tablero con sus listas y tarjetas |
-| `PATCH` | `/api/v1/boards/:id` | propietario | Renombra el tablero |
-| `DELETE` | `/api/v1/boards/:id` | propietario | Borra el tablero |
+| Method | Path | Permission | Description |
+|--------|------|------------|-------------|
+| `GET` | `/api/v1/boards` | member | Your boards (summary) |
+| `POST` | `/api/v1/boards` | — | Creates a board (you become its owner) |
+| `GET` | `/api/v1/boards/:id` | member | The board with its lists and cards |
+| `PATCH` | `/api/v1/boards/:id` | owner | Renames the board |
+| `DELETE` | `/api/v1/boards/:id` | owner | Deletes the board |
 
-### Listas
+### Lists
 
-| Método | Ruta | Permiso | Descripción |
-|--------|------|---------|-------------|
-| `GET` | `/api/v1/boards/:id/lists` | miembro | Listas del tablero, en orden |
-| `POST` | `/api/v1/boards/:id/lists` | editor | Crea una lista al final |
+| Method | Path | Permission | Description |
+|--------|------|------------|-------------|
+| `GET` | `/api/v1/boards/:id/lists` | member | The board's lists, in order |
+| `POST` | `/api/v1/boards/:id/lists` | editor | Creates a list at the end |
 
-### Tarjetas
+### Cards
 
-| Método | Ruta | Permiso | Descripción |
-|--------|------|---------|-------------|
-| `GET` | `/api/v1/lists/:id/cards` | miembro | Tarjetas de la lista, en orden |
-| `POST` | `/api/v1/lists/:id/cards` | editor | Crea una tarjeta al final |
-| `GET` | `/api/v1/cards/:id` | miembro | Detalle de una tarjeta |
-| `PATCH` | `/api/v1/cards/:id` | editor | Actualiza título, descripción o vencimiento |
-| `DELETE` | `/api/v1/cards/:id` | editor | Borra la tarjeta |
+| Method | Path | Permission | Description |
+|--------|------|------------|-------------|
+| `GET` | `/api/v1/lists/:id/cards` | member | The list's cards, in order |
+| `POST` | `/api/v1/lists/:id/cards` | editor | Creates a card at the end |
+| `GET` | `/api/v1/cards/:id` | member | A card's details |
+| `PATCH` | `/api/v1/cards/:id` | editor | Updates the title, description or due date |
+| `DELETE` | `/api/v1/cards/:id` | editor | Deletes the card |
 
-**Cuerpos:**
+**Bodies:**
 
-- Crear tablero / lista: `{ "title": "…" }`.
-- Crear tarjeta: `{ "title": "…", "description"?: string|null, "dueDate"?: "YYYY-MM-DD"|null }`.
-- Actualizar tarjeta (`PATCH`): cualquiera de `title`, `description`, `dueDate` (al menos
-  uno).
-- `description`: como máximo 5000 caracteres.
-- `dueDate`: `"YYYY-MM-DD"` (se guarda a medianoche UTC) o una fecha-hora ISO 8601 con
-  zona (`"2026-07-01T09:00:00Z"`, `"2026-07-01T09:00:00+02:00"`). `null` quita el
-  vencimiento. Cualquier otro valor, incluida la cadena vacía `""` o una fecha imposible
-  como `"2026-02-31"`, da `422` y no cambia nada.
+- Create a board / list: `{ "title": "…" }`.
+- Create a card: `{ "title": "…", "description"?: string|null, "dueDate"?: "YYYY-MM-DD"|null }`.
+- Update a card (`PATCH`): any of `title`, `description`, `dueDate` (at least one).
+- `description`: at most 5000 characters.
+- `dueDate`: `"YYYY-MM-DD"` (stored at midnight UTC) or an ISO 8601 date-time with a time
+  zone (`"2026-07-01T09:00:00Z"`, `"2026-07-01T09:00:00+02:00"`). `null` removes the due
+  date. Any other value, including the empty string `""` or an impossible date such as
+  `"2026-02-31"`, returns `422` and changes nothing.
 
-## Ejemplos
+## Examples
 
 ```bash
 TOKEN="orgt_…"
-BASE="https://tu-instancia/api/v1"
+BASE="https://your-instance/api/v1"
 
-# Listar tableros
+# List boards
 curl -H "Authorization: Bearer $TOKEN" "$BASE/boards"
 
-# Crear un tablero
+# Create a board
 curl -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
      -d '{"title":"Sprint 12"}' "$BASE/boards"
 
-# Crear una lista en un tablero
+# Create a list on a board
 curl -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-     -d '{"title":"En progreso"}' "$BASE/boards/<boardId>/lists"
+     -d '{"title":"In progress"}' "$BASE/boards/<boardId>/lists"
 
-# Crear una tarjeta con vencimiento
+# Create a card with a due date
 curl -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-     -d '{"title":"Revisar PR","dueDate":"2026-07-01"}' "$BASE/lists/<listId>/cards"
+     -d '{"title":"Review PR","dueDate":"2026-07-01"}' "$BASE/lists/<listId>/cards"
 
-# Editar una tarjeta
+# Edit a card
 curl -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-     -d '{"title":"Revisado","dueDate":null}' "$BASE/cards/<cardId>"
+     -d '{"title":"Reviewed","dueDate":null}' "$BASE/cards/<cardId>"
 ```
 
-## Tiempo real
+## Real time
 
-Las mutaciones por API publican los mismos eventos que las de la interfaz, así que los
-navegadores con el tablero abierto ven los cambios en vivo (ver
-[docs/realtime.md](../realtime.md)).
+API mutations publish the same events as the interface, so browsers with the board open
+see the changes live (see [docs/realtime.md](../realtime.md)).
 
-## Implementación
+## Implementation
 
-- Autenticación y autorización: `app/lib/api/auth.ts` (Bearer → usuario, rol por tablero).
-- Generación/hash de tokens: `app/lib/api/tokens.ts`. Respuestas: `app/lib/api/respond.ts`.
-- Serialización JSON: `app/lib/api/serialize.ts`.
-- Rutas: `app/api/v1/**`. Gestión de tokens: `/settings` (`app/(app)/settings`).
+- Authentication and authorization: `app/lib/api/auth.ts` (Bearer → user, role per board).
+- Token generation and hashing: `app/lib/api/tokens.ts`. Responses: `app/lib/api/respond.ts`
+  (validation errors use the shared zod schemas, whose message keys are resolved to
+  English there).
+- JSON serialization: `app/lib/api/serialize.ts`.
+- Routes: `app/api/v1/**`. Token management: `/settings` (`app/(app)/settings`).
 
-## Límites y evolución
+## Limits and future work
 
-- Los tokens soportan **scope** (solo lectura) y **caducidad** (Hito 13); aún no hay scope
-  por tablero.
-- La superficie cubre tableros, listas y tarjetas; checklists, etiquetas, adjuntos y
-  miembros quedan como ampliación (backlog). Añadir un recurso es un route handler más que
-  reutiliza `authenticateApiToken` + `apiBoardRole` + `isReadOnly`.
-- **Rate limiting** de la API y una referencia **OpenAPI** quedan en el backlog.
+- Tokens support a **scope** (read only) and an **expiry date**; there is no per-board
+  scope yet.
+- The API covers boards, lists and cards. Checklists, labels, attachments and members are
+  future work. Adding a resource means one more route handler that reuses
+  `authenticateApiToken` + `apiBoardRole` + `isReadOnly`.
+- API **rate limiting** and an **OpenAPI** reference are also future work.

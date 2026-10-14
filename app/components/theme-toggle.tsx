@@ -1,9 +1,13 @@
 "use client";
 
-// Alterna el tema claro/oscuro añadiendo la clase `dark` en <html> y persiste la
-// elección en localStorage. No necesita estado de React: los dos iconos se muestran
-// según la clase `dark` vía CSS (`dark:block` / `dark:hidden`).
+import { useI18n } from "@/app/i18n/client";
+
+// Toggles the light/dark theme by adding the `dark` class to <html> and saves the choice
+// in localStorage. No React state needed: CSS shows one icon or the other from the `dark`
+// class (`dark:block` / `dark:hidden`).
 export function ThemeToggle() {
+  const { m } = useI18n();
+
   function toggle() {
     const next = !document.documentElement.classList.contains("dark");
     document.documentElement.classList.toggle("dark", next);
@@ -14,7 +18,7 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={toggle}
-      aria-label="Cambiar entre tema claro y oscuro"
+      aria-label={m.nav.theme.toggle}
       className="grid size-9 place-items-center rounded-lg text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
     >
       <svg

@@ -1,89 +1,88 @@
-# Adjuntos en tarjetas
+# Card attachments
 
-Cada tarjeta puede tener archivos adjuntos (hasta **10 MB** por archivo). El binario se
-guarda en **disco**; en la base de datos solo viven los metadatos (nombre original,
-nombre en disco, tipo MIME, tamaño).
+Each card can have file attachments (up to **10 MB** per file). The binary is stored on
+**disk**; only the metadata (original name, stored name, MIME type, size) lives in the
+database.
 
-El límite de 10 MB es `MAX_ATTACHMENT_BYTES` en `app/lib/storage.ts`. La subida viaja
-en el cuerpo de una Server Action, cuyo tamaño máximo lo fija `serverActions.bodySizeLimit`
-en `next.config.ts`: ese valor tiene que quedar algo por encima de los 10 MB (el
-`FormData` añade cabeceras), o Next rechazará el archivo antes de llegar a la validación.
+The 10 MB limit is `MAX_ATTACHMENT_BYTES` in `app/lib/storage.ts`. The upload travels in
+the body of a Server Action, whose maximum size is set by `serverActions.bodySizeLimit` in
+`next.config.ts`: that value must stay somewhat above 10 MB (the `FormData` adds headers),
+or Next rejects the file before it reaches validation.
 
-## Almacenamiento
+## Storage
 
-Los ficheros se guardan en el directorio que indique `ORGTABLE_UPLOAD_DIR`:
+Files are stored in the directory given by `ORGTABLE_UPLOAD_DIR`:
 
-- **Producción (Docker):** `/data/uploads`, un **volumen persistente** (`uploads`)
-  declarado en `docker-compose.yml`. Sobrevive a recreaciones del contenedor y se
-  incluye en la estrategia de copias de seguridad (ver
-  [`docs/operations.md`](./operations.md)).
-- **Desarrollo local:** si no se define la variable, se usa `./uploads` (ignorado por
-  git).
+- **Production (Docker):** `/data/uploads`, a **persistent volume** (`uploads`) declared
+  in `docker-compose.yml`. It survives container re-creation and is part of the backup
+  strategy (see [`docs/operations.md`](./operations.md)).
+- **Local development:** if the variable is not set, `./uploads` is used (ignored by git).
 
-Cada archivo se guarda con un **nombre aleatorio** (`crypto.randomUUID()` + extensión
-saneada). El nombre original que ve el usuario se conserva aparte en la base de datos.
-Las rutas se construyen con `path.basename`, lo que neutraliza cualquier intento de
-*path traversal*. La decisión de usar disco local (y no S3) está en
+Each file is stored under a **random name** (`crypto.randomUUID()` + a sanitized
+extension). The original name the user sees is kept separately in the database. Paths
+are built with `path.basename`, which neutralizes any *path traversal* attempt. The
+decision to use local disk (rather than S3) is in
 [ADR 0010](./decisions/0010-local-file-storage.md).
 
-## Subida, descarga y borrado
+## Upload, download and deletion
 
-| Operación | Quién | Cómo |
+| Operation | Who | How |
 | --- | --- | --- |
-| Subir | EDITOR / OWNER | Server Action `uploadAttachment` (recibe el `File` por `FormData`). Valida tamaño y guarda en disco. |
-| Descargar | Cualquier miembro | Route Handler `GET /api/attachments/[id]`. |
-| Borrar | EDITOR / OWNER | Server Action `deleteAttachment` (borra fila y fichero). |
+| Upload | EDITOR / OWNER | Server Action `uploadAttachment` (receives the `File` through `FormData`). Validates the size and writes to disk. |
+| Download | Any member | Route Handler `GET /api/attachments/[id]`. |
+| Delete | EDITOR / OWNER | Server Action `deleteAttachment` (deletes the row and the file). |
 
-### Borrado en cascada y ficheros
+### Cascading deletes and files
 
-Borrar una tarjeta, una lista o un tablero (desde la interfaz o con `DELETE` en la API
-v1) borra en cascada sus filas `Attachment`, pero la base de datos no toca el disco. Por
-eso esos borrados pasan por [`app/lib/services/attachments.ts`](../app/lib/services/attachments.ts):
-lee los nombres en disco y borra en la base de datos dentro de una transacción y, **solo
-después del commit**, borra los ficheros. Si la transacción falla, no se toca el disco.
+Deleting a card, a list or a board (from the interface or with `DELETE` in the v1 API)
+cascades to its `Attachment` rows, but the database does not touch the disk. That is why
+these deletions go through
+[`app/lib/services/attachments.ts`](../app/lib/services/attachments.ts): it reads the
+stored names and deletes in the database inside a transaction and, **only after the
+commit**, deletes the files. If the transaction fails, the disk is left untouched.
 
-Antes de leer, la transacción bloquea con `FOR UPDATE` las filas padre (tablero, sus
-listas y sus tarjetas, según lo que se borre). Sin ese bloqueo, una subida que se
-confirmara entre la lectura y el borrado desaparecía en cascada con su fichero fuera de
-la lista: huérfano en disco y subida respondida como correcta. Con él, una subida en
-curso termina antes de la lectura (su fichero se borra con los demás) y una posterior
-falla por la clave ajena, así que `uploadAttachment` borra su fichero y relanza el
+Before reading, the transaction locks the parent rows with `FOR UPDATE` (the board, its
+lists and its cards, depending on what is deleted). Without that lock, an upload committed
+between the read and the delete would disappear in the cascade while its file was missing
+from the list: an orphan on disk and an upload reported as successful. With the lock, an
+in-flight upload finishes before the read (its file is deleted with the rest) and a later
+one fails on the foreign key, so `uploadAttachment` deletes its file and rethrows the
 error.
 
-`deleteAttachmentFile` nunca lanza: que el fichero ya no exista (`ENOENT`) es normal y
-se ignora; cualquier otro error (permisos, volumen de solo lectura…) se registra con
-`console.error` (`[storage] no se pudo borrar el adjunto`) porque deja un fichero
-huérfano que hay que borrar a mano. Si falla el alta de la fila tras guardar el fichero
-en una subida, el fichero se borra y el error se relanza.
+`deleteAttachmentFile` never throws: a file that no longer exists (`ENOENT`) is normal and
+ignored; any other error (permissions, read-only volume…) is logged with `console.error`
+(prefix `[storage]`) because it leaves an orphan file that must be deleted by hand. If
+creating the row fails after an upload has written the file, the file is deleted and the
+error is rethrown.
 
-Los ficheros que quedaron huérfanos antes de este cambio siguen en el volumen; no hay
-barrido automático.
+Files orphaned before this behavior was introduced remain on the volume; there is no
+automatic sweep.
 
-Piezas:
+Components:
 
-- [`app/lib/storage.ts`](../app/lib/storage.ts) — guardar/leer/borrar en disco y el
-  límite de tamaño.
-- [`app/lib/services/attachments.ts`](../app/lib/services/attachments.ts) — borrado de
-  tarjetas, listas y tableros junto con sus ficheros.
+- [`app/lib/storage.ts`](../app/lib/storage.ts) — save/read/delete on disk and the size
+  limit.
+- [`app/lib/services/attachments.ts`](../app/lib/services/attachments.ts) — deleting
+  cards, lists and boards together with their files.
 - [`app/lib/actions/attachments.ts`](../app/lib/actions/attachments.ts) — Server Actions
-  con autorización por rol.
-- [`app/api/attachments/[id]/route.ts`](../app/api/attachments/[id]/route.ts) — descarga
-  con autorización.
-- El modal de tarjeta (`card-modal.tsx`) muestra la lista, el botón de subir (editores)
-  y el de borrar; la tarjeta muestra un contador de adjuntos.
+  with role-based authorization.
+- [`app/api/attachments/[id]/route.ts`](../app/api/attachments/[id]/route.ts) — authorized
+  download.
+- The card modal (`card-modal.tsx`) shows the list, the upload button (editors) and the
+  delete button; the card face shows an attachment count.
 
-## Por qué la descarga pasa por un route handler
+## Why downloads go through a route handler
 
-Los adjuntos son **privados**: solo los miembros del tablero deben poder verlos. Por eso
-no se sirven desde `/public` (que sería accesible por URL sin autenticar), sino desde un
-route handler que comprueba **sesión válida + membresía** antes de devolver el binario,
-con `Content-Disposition: attachment` y `Cache-Control: private, no-store`.
+Attachments are **private**: only board members should see them. So they are not served
+from `/public` (reachable by URL without authentication) but from a route handler that
+checks **a valid session + membership** before returning the binary, with
+`Content-Disposition: attachment` and `Cache-Control: private, no-store`.
 
-Respuestas:
+Responses:
 
-| Código | Cuándo |
+| Code | When |
 | --- | --- |
-| `200` | Miembro del tablero y el fichero está en disco. |
-| `401` | Sin sesión válida. |
-| `404` | El adjunto no existe **o** no eres miembro del tablero (mismo cuerpo en ambos casos, para no revelar qué ids existen, como la API v1). También si la fila existe pero el fichero no está en disco; esto se registra con `console.warn` porque indica una inconsistencia. |
-| `500` | Cualquier otro error al leer el fichero (permisos, E/S del volumen); se registra con `console.error`. |
+| `200` | Board member and the file is on disk. |
+| `401` | No valid session. |
+| `404` | The attachment does not exist **or** you are not a board member (same body in both cases, so it does not reveal which ids exist, like the v1 API). Also when the row exists but the file is missing from disk; this is logged with `console.warn` because it indicates an inconsistency. |
+| `500` | Any other error reading the file (permissions, volume I/O); logged with `console.error`. |

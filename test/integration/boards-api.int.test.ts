@@ -17,32 +17,32 @@ afterAll(async () => {
   await disconnect();
 });
 
-describe("API v1 — tableros (integración)", () => {
-  it("401 sin token", async () => {
+describe("API v1 — boards (integration)", () => {
+  it("401 without a token", async () => {
     const res = await listBoards(apiRequest("GET", "/api/v1/boards"));
     expect(res.status).toBe(401);
   });
 
-  it("401 con un token inexistente", async () => {
+  it("401 with a token that does not exist", async () => {
     const res = await listBoards(
-      apiRequest("GET", "/api/v1/boards", { token: "orgt_inexistente" }),
+      apiRequest("GET", "/api/v1/boards", { token: "orgt_missing" }),
     );
     expect(res.status).toBe(401);
   });
 
-  it("POST crea un tablero y deja al usuario como OWNER", async () => {
+  it("POST creates a board and makes the user its OWNER", async () => {
     const user = await seedUser();
     const token = await seedApiToken(user.id);
 
     const res = await createBoard(
       apiRequest("POST", "/api/v1/boards", {
         token,
-        body: { title: "Mi tablero" },
+        body: { title: "My board" },
       }),
     );
     expect(res.status).toBe(201);
     const body = await res.json();
-    expect(body.title).toBe("Mi tablero");
+    expect(body.title).toBe("My board");
 
     const member = await prisma.boardMember.findUnique({
       where: { boardId_userId: { boardId: body.id, userId: user.id } },
@@ -50,7 +50,7 @@ describe("API v1 — tableros (integración)", () => {
     expect(member?.role).toBe("OWNER");
   });
 
-  it("POST con título vacío → 422 (validación)", async () => {
+  it("POST with an empty title → 422 (validation)", async () => {
     const user = await seedUser();
     const token = await seedApiToken(user.id);
     const res = await createBoard(
@@ -59,12 +59,12 @@ describe("API v1 — tableros (integración)", () => {
     expect(res.status).toBe(422);
   });
 
-  it("GET solo devuelve los tableros accesibles por el usuario del token", async () => {
+  it("GET only returns the boards the token's user can access", async () => {
     const a = await seedUser();
     const b = await seedUser();
     const tokenA = await seedApiToken(a.id);
-    await seedBoard(a.id, "De A");
-    await seedBoard(b.id, "De B (ajeno)");
+    await seedBoard(a.id, "A's");
+    await seedBoard(b.id, "B's (not theirs)");
 
     const res = await listBoards(
       apiRequest("GET", "/api/v1/boards", { token: tokenA }),
@@ -72,7 +72,7 @@ describe("API v1 — tableros (integración)", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.boards.map((x: { title: string }) => x.title)).toEqual([
-      "De A",
+      "A's",
     ]);
   });
 });

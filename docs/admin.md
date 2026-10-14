@@ -1,44 +1,46 @@
-# Administración de usuarios
+# User administration
 
-orgtable no tiene registro abierto: las cuentas las crea el **administrador** de la
-instancia desde `/admin/users`. El primer administrador es quien completa el
-asistente de configuración inicial (ver [`docs/setup-wizard.md`](./setup-wizard.md)).
+By default, accounts are created by the instance **administrator** in `/admin/users`. If
+the administrator opens **sign-up** in `/admin/instance`, anyone can create a `MEMBER`
+account at `/register` (see [privacy.md](./privacy.md)). The first administrator is
+whoever completes the initial setup wizard (see
+[`docs/setup-wizard.md`](./setup-wizard.md)).
 
-Solo los usuarios con rol global `ADMIN` ven el enlace **Administración** en la
-cabecera y pueden entrar a `/admin/users`. La ruta está protegida por
-`requireAdmin()` en el servidor (ver [`docs/authorization.md`](./authorization.md)).
+Administration has three tabs: **Users** (`/admin/users`), **Instance**
+(`/admin/instance`: name, open or closed sign-up and the operator's legal details) and
+**Audit** (`/admin/audit`). Only users with the global `ADMIN` role see the
+**Administration** link in the account menu and can access it. The route is protected by
+`requireAdmin()` on the server (see [`docs/authorization.md`](./authorization.md)).
 
-## Qué puede hacer el administrador
+## What the administrator can do
 
-- **Crear cuentas**: nombre, email, contraseña inicial y rol global
-  (`MEMBER` o `ADMIN`). El usuario podrá iniciar sesión con esa contraseña.
-- **Cambiar el rol global** de cualquier otra cuenta (promover a admin o degradar).
-- **Restablecer la contraseña** de cualquier cuenta (teclea una nueva). Además cierra
-  todas las sesiones del usuario y **borra todos sus tokens de API**: es la acción a
-  usar si una cuenta puede estar comprometida. El usuario tendrá que crear tokens
-  nuevos en `/settings`.
-- **Cerrar sesiones** de una cuenta: revoca sus sesiones del navegador, pero **no** sus
-  tokens de API.
-- **Borrar cuentas** (sus sesiones y tokens se borran en cascada).
+- **Create accounts**: name, email, initial password and global role (`MEMBER` or
+  `ADMIN`). The user can sign in with that password.
+- **Change the global role** of any other account (promote to admin or demote).
+- **Reset the password** of any account (by typing a new one). It also closes all the
+  user's sessions and **deletes all their API tokens**: use it when an account may be
+  compromised. The user will have to create new tokens in `/settings`.
+- **Sign out** an account: revokes its browser sessions, but **not** its API tokens.
+- **Delete accounts** (their sessions and tokens are deleted in cascade).
 
-## Salvaguardas
+## Safeguards
 
-Para evitar dejar la instancia sin administración o perder datos por accidente:
+To avoid leaving the instance without an administrator or losing data by accident:
 
-- **No puedes cambiar tu propio rol** ni **borrar tu propia cuenta**. Esto evita que
-  el único administrador se quede sin acceso. Para traspasar la administración,
-  promueve antes a otra persona a `ADMIN`.
-- **No se puede borrar un usuario que es propietario de tableros**: borrarlo
-  arrastraría sus tableros (y todo su contenido) en cascada. El administrador debe
-  transferir o borrar esos tableros primero. La acción se bloquea con un aviso.
+- **You cannot change your own role** or **delete your own account from this page**.
+  This stops the only administrator from locking themselves out. To hand over
+  administration, promote someone else to `ADMIN` first. Each person can still delete
+  their own account from *Settings › Privacy and data*, except the last `ADMIN` account.
+- **A user who owns boards cannot be deleted**: deleting them would cascade to their
+  boards and all their content. The administrator must transfer or delete those boards
+  first. The action is blocked with a warning.
 
-## Notas de implementación
+## Implementation notes
 
-- Acciones de servidor: [`app/lib/actions/admin.ts`](../app/lib/actions/admin.ts).
-- El alta de usuario usa `useActionState` para dar feedback inline y limpiar el
-  formulario al crear.
-- Las acciones por fila (cambiar rol, restablecer contraseña, borrar) devuelven su
-  resultado mediante una redirección con query (`?ok=…` / `?error=…`) que la página
-  traduce a un aviso. Así no hace falta un componente cliente con estado por cada
-  fila de la tabla.
-- Las contraseñas se almacenan con bcrypt (ver [`docs/authentication.md`](./authentication.md)).
+- Server Actions: [`app/lib/actions/admin.ts`](../app/lib/actions/admin.ts).
+- Creating a user uses `useActionState` to give inline feedback and clear the form on
+  success.
+- Per-row actions (change role, reset password, delete) return their result through a
+  redirect with a query string (`?ok=…` / `?error=…`) that the page turns into a notice.
+  This avoids a stateful Client Component for every table row.
+- Passwords are stored with bcrypt (see [`docs/authentication.md`](./authentication.md)).

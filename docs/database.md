@@ -1,43 +1,44 @@
-# Capa de datos
+# Data layer
 
-Esta guía documenta cómo orgtable habla con PostgreSQL: el ORM (Prisma 7), la
-configuración específica de esta versión, los modelos del esquema y la estrategia
-de ordenación que hace posible el drag & drop.
+This guide documents how orgtable talks to PostgreSQL: the ORM (Prisma 7), the
+configuration specific to this version, the schema models and the ordering strategy that
+makes drag and drop possible.
 
-El stack es **Next.js 16 + Prisma 7 + PostgreSQL**. Si vienes de proyectos con
-Prisma 5/6, presta atención: **Prisma 7 introduce cambios importantes** en cómo se
-configura la conexión y el motor de consultas. Las secciones siguientes explican
-qué cambió y por qué el código tiene la forma que tiene.
+The stack is **Next.js 16 + Prisma 7 + PostgreSQL**. If you come from projects on Prisma
+5/6, pay attention: **Prisma 7 introduces significant changes** in how the connection and
+the query engine are configured. The sections below explain what changed and why the code
+looks the way it does.
 
-Decisiones de arquitectura relacionadas:
+Related architecture decisions:
 
-- [`docs/decisions/0001-prisma.md`](decisions/0001-prisma.md) — por qué Prisma y
-  cómo lo configuramos en la versión 7.
-- [`docs/decisions/0002-fractional-indexing.md`](decisions/0002-fractional-indexing.md)
-  — por qué usamos fractional indexing para ordenar listas y tarjetas.
+- [`docs/decisions/0001-prisma.md`](decisions/0001-prisma.md): why Prisma, and how it is
+  configured in version 7.
+- [`docs/decisions/0002-fractional-indexing.md`](decisions/0002-fractional-indexing.md):
+  why lists and cards are ordered with fractional indexing.
 
 ---
 
-## Archivos clave
+## Key files
 
-| Archivo | Rol |
+| File | Role |
 | --- | --- |
-| `prisma/schema.prisma` | Definición de modelos, enums, índices y relaciones. |
-| `prisma.config.ts` | Configuración del CLI de Prisma 7 (Migrate). |
-| `app/lib/prisma.ts` | Cliente de runtime (`PrismaClient` con driver adapter). |
+| `prisma/schema.prisma` | Models, enums, indexes and relations. |
+| `prisma/migrations/` | Versioned SQL migrations. |
+| `prisma.config.ts` | Prisma 7 CLI configuration (Migrate). |
+| `app/lib/prisma.ts` | Runtime client (`PrismaClient` with a driver adapter). |
 
 ---
 
-## Prisma 7: lo que cambia respecto a versiones anteriores
+## Prisma 7: what changed from earlier versions
 
-Prisma 7.8 reorganiza dónde vive la URL de conexión y cómo se conecta el cliente.
-Estos cuatro hechos son la base de toda la capa de datos. **No los copies de
-tutoriales antiguos**, porque la mayoría describe Prisma 5/6.
+Prisma 7 reorganizes where the connection URL lives and how the client connects. These
+four facts are the basis of the whole data layer. **Do not copy them from old tutorials**:
+most of them describe Prisma 5/6.
 
-### 1. La `url` ya no va en `schema.prisma`
+### 1. The `url` no longer goes in `schema.prisma`
 
-En versiones anteriores el bloque `datasource` llevaba `url = env("DATABASE_URL")`.
-En Prisma 7 eso ya **no está permitido**. El esquema solo declara el proveedor:
+In earlier versions the `datasource` block had `url = env("DATABASE_URL")`. Prisma 7 **no
+longer allows** this. The schema only declares the provider:
 
 ```prisma
 datasource db {
@@ -45,9 +46,9 @@ datasource db {
 }
 ```
 
-La URL que necesita el **CLI de Migrate** (para `migrate dev`, `migrate deploy`,
-etc.) se define ahora en `prisma.config.ts`, en el campo `datasource.url`, usando el
-helper `env()` que exporta `prisma/config`:
+The URL that the **Migrate CLI** needs (for `migrate dev`, `migrate deploy`, etc.) is now
+defined in `prisma.config.ts`, in the `datasource.url` field, using the `env()` helper
+exported by `prisma/config`:
 
 ```ts
 // prisma.config.ts
@@ -62,66 +63,70 @@ export default defineConfig({
 });
 ```
 
-### 2. Prisma 7 no carga `.env` automáticamente
+### 2. Prisma 7 does not load `.env` automatically
 
-Las versiones antiguas leían `.env` por arte de magia. Prisma 7 ya no lo hace, así
-que `prisma.config.ts` lo carga a mano usando **`process.loadEnvFile()`**, una API
-nativa de Node (disponible desde 20.12+). **No usamos la dependencia `dotenv`**:
+Older versions read `.env` implicitly. Prisma 7 no longer does, so `prisma.config.ts`
+loads it by hand with **`process.loadEnvFile()`**, a native Node API (available since
+20.12). **The project does not use the `dotenv` dependency**:
 
 ```ts
 // prisma.config.ts
 try {
   process.loadEnvFile(path.join(process.cwd(), ".env"));
 } catch {
-  // .env ausente: las variables ya vienen del entorno (p. ej. docker-compose).
+  // No .env: the variables already come from the environment (e.g. docker-compose).
 }
 ```
 
-El `try/catch` es deliberado: en CI y en producción no existe un `.env` (las
-variables se inyectan por el entorno), y el bloque simplemente lo ignora.
+The `try/catch` is deliberate: in CI and in production there is no `.env` (variables are
+injected by the environment), and the block simply skips it.
 
-### 3. El query engine es WASM, no un binario de Rust
+### 3. The query engine is WASM, not a Rust binary
 
-Históricamente Prisma embebía un motor de consultas en **binario Rust**, lo que
-obligaba a declarar `binaryTargets` en el generator y a copiar engines a la imagen
-Docker según la plataforma. En Prisma 7 **el query engine es WASM** y la conexión
-directa a la base de datos en runtime se hace mediante un **driver adapter**.
+Historically Prisma embedded a query engine as a **Rust binary**, which meant declaring
+`binaryTargets` in the generator and copying engines into the Docker image for each
+platform. In Prisma 7 **the query engine is WASM**, and the runtime connection to the
+database goes through a **driver adapter**.
 
-Aquí usamos `@prisma/adapter-pg` (clase `PrismaPg`) sobre el driver `pg`
-(node-postgres). El `PrismaClient` se instancia pasándole el adapter:
+orgtable uses `@prisma/adapter-pg` (the `PrismaPg` class) on top of the `pg` driver
+(node-postgres). The `PrismaClient` is created with the adapter:
 
 ```ts
-// app/lib/prisma.ts
+// app/lib/prisma.ts (abridged)
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
 function createPrismaClient() {
   const url = process.env.DATABASE_URL;
-  // Sin DATABASE_URL, el adapter caería en silencio a los valores por defecto de libpq
-  // (PGHOST/localhost…). Durante `next build` no se exige: el build no usa la BD.
+  // Without DATABASE_URL the adapter would silently fall back to the libpq defaults
+  // (PGHOST/localhost…). It is not required during `next build`, which does not use the DB.
   if (!url && process.env.NEXT_PHASE !== "phase-production-build") {
-    throw new Error(
-      "DATABASE_URL no está configurado. Define la cadena de conexión a PostgreSQL.",
-    );
+    throw new Error(/* DATABASE_URL is not configured */);
   }
-  const adapter = new PrismaPg({ connectionString: url });
+  const adapter = new PrismaPg(buildPoolConfig(url), {
+    onPoolError: (err) => console.error(/* … */ err.message),
+  });
   return new PrismaClient({ adapter });
 }
 ```
 
-La guarda de `DATABASE_URL` es un control de seguridad (ver
-[security.md](./security.md)); si cambias esta función, mantenla. El código real está
-en [`app/lib/prisma.ts`](../app/lib/prisma.ts).
+- The `DATABASE_URL` guard is a security control (see [security.md](./security.md)); if
+  you change this function, keep it.
+- `buildPoolConfig` sets a 5-second `connectionTimeoutMillis` (with the `pg` default of 0,
+  a request that finds no free connection waits forever; Prisma 7 no longer applies the
+  5-second `connect_timeout` that Prisma 6 had) and an explicit 10-second
+  `idleTimeoutMillis`. `test/integration/prisma-pool.int.test.ts` checks both.
+- `onPoolError` logs failures of idle connections (Postgres restarted, network cut). It
+  logs only the message, never the connection string, which contains the password.
 
-Consecuencia práctica: **no hace falta `binaryTargets`** en el generator ni copiar
-engines binarios al contenedor. La imagen Docker queda más simple y portable.
+The real code is in [`app/lib/prisma.ts`](../app/lib/prisma.ts).
 
-### 4. El cliente es un singleton en `globalThis`
+Practical consequence: **no `binaryTargets`** in the generator and no engine binaries to
+copy into the container. The Docker image is simpler and more portable.
 
-En desarrollo, Next.js recarga los módulos en caliente (HMR). Si cada recarga
-creara un `PrismaClient` nuevo, se abrirían conexiones sin cerrar hasta **agotar el
-pool de PostgreSQL**. Para evitarlo, guardamos la instancia en `globalThis` y la
-reutilizamos:
+### 4. The client is a singleton on `globalThis`
+
+The client is stored on `globalThis` and reused, **in development and in production**:
 
 ```ts
 // app/lib/prisma.ts
@@ -131,42 +136,52 @@ const globalForPrisma = globalThis as unknown as {
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
-}
+globalForPrisma.prisma = prisma;
 ```
 
-En producción el cliente se crea una sola vez (no se cachea en `globalThis`, no hace
-falta). Nota: `app/lib/prisma.ts` empieza con `import "server-only"`, de modo que
-este módulo nunca pueda colarse en un bundle de cliente.
+- In development, Next.js hot-reloads modules (HMR). If every reload created a new
+  `PrismaClient`, connections would pile up until the **PostgreSQL pool is exhausted**.
+- In production, Turbopack evaluates the module once per layer (route handlers on one
+  side, RSC/SSR on the other). Without `globalThis` there would be two pools and twice the
+  connections to Postgres. `realtime/bus.ts` and `rate-limit.ts` use the same pattern.
+
+`app/lib/prisma.ts` starts with `import "server-only"`, so this module can never end up in
+a client bundle.
 
 ---
 
-## Modelos
+## Models
 
-El esquema vive en `prisma/schema.prisma`. Tabla resumen:
+The schema lives in `prisma/schema.prisma`. Summary:
 
-| Modelo | Representa | Por qué existe |
+| Model | Represents | Why it exists |
 | --- | --- | --- |
-| `InstanceConfig` | Configuración global de la instancia (fila única). | Guarda el nombre de la instancia y, sobre todo, `setupCompletedAt`: la fuente de verdad de "ya configurada". |
-| `User` | Una cuenta de usuario. | Autenticación y propiedad de tableros. |
-| `Board` | Un tablero (un proyecto/espacio). | Contenedor de listas, etiquetas y miembros. |
-| `List` | Una columna dentro de un tablero. | Agrupa tarjetas; ordenable por drag & drop. |
-| `Card` | Una tarjeta dentro de una lista. | Unidad de trabajo; ordenable y movible entre listas. |
-| `Label` | Una etiqueta de color de un tablero. | Clasificación visual de tarjetas. |
-| `CardLabel` | Unión muchos-a-muchos entre `Card` y `Label`. | Permite que una tarjeta tenga varias etiquetas y viceversa. |
-| `BoardMember` | Membresía de un usuario en un tablero con un rol. | Punto único de autorización por tablero. |
+| `InstanceConfig` | Global instance configuration (single row). | Instance name, `setupCompletedAt` (the source of truth for "already configured"), open sign-up and the operator's legal details. |
+| `User` | A user account. | Authentication, board ownership, interface language (`locale`). |
+| `Session` | A browser session. | Lets sessions be revoked immediately (see [authentication.md](./authentication.md)). |
+| `Board` | A board (a project or space). | Container for lists, labels and members. |
+| `List` | A column within a board. | Groups cards; ordered by drag and drop. |
+| `Card` | A card within a list. | Unit of work; ordered and movable between lists. |
+| `Label` | A colored label of a board. | Visual classification of cards. |
+| `CardLabel` | Many-to-many join between `Card` and `Label`. | A card can have several labels and vice versa. |
+| `Checklist` / `ChecklistItem` | Checklists of a card and their items. | Sub-tasks with progress. |
+| `Attachment` | A file attached to a card. | Metadata; the file itself is on disk (see [attachments.md](./attachments.md)). |
+| `CardAssignee` | Many-to-many join between `Card` and `User`. | Card assignees (board members only). |
+| `Comment` | A comment on a card. | Flat discussion thread. |
+| `BoardMember` | A user's membership in a board, with a role. | Single point of per-board authorization. |
+| `Notification` | An in-app notification for a user. | Notification bell, deep-links to boards and cards. |
+| `ApiToken` | A personal API token (hashed). | Public REST API access, with scope and optional expiry. |
+| `AuditLog` | A security/operations event. | Audit log in `/admin/audit`, with limited retention. |
 
 ### `InstanceConfig`
 
-Una **fila única** con `id` fijo (`"singleton"`). Modela la configuración de toda la
-instancia self-hosted.
+A **single row** with a fixed `id` (`"singleton"`). It models the configuration of the
+whole self-hosted instance.
 
-El campo clave es **`setupCompletedAt` (DateTime opcional)**: es la **fuente de
-verdad de "la instancia ya está configurada"**. Mientras sea `null`, el **setup
-wizard** (`/setup`) está activo y guía la configuración inicial; en cuanto se rellena
-con una fecha, el wizard queda cerrado. Toda la lógica de arranque debe consultar
-este campo, no inferir el estado de otra parte.
+The key field is **`setupCompletedAt` (optional DateTime)**: it is the **source of truth
+for "the instance is configured"**. While it is `null`, the **setup wizard** (`/setup`) is
+active and guides the initial configuration; once it holds a date, the wizard is closed.
+All startup logic must check this field, not infer the state from somewhere else.
 
 ```prisma
 model InstanceConfig {
@@ -174,126 +189,143 @@ model InstanceConfig {
   instanceName     String
   setupCompletedAt DateTime?
   createdAt        DateTime  @default(now())
+  registrationOpen Boolean   @default(false)
+  // … operator's legal details (operatorName, operatorEmail, …), legalUpdatedAt
 }
 ```
 
+`registrationOpen` turns on open sign-up at `/register` (closed by default). The
+`operator*` fields hold the legal details of **whoever runs the instance**, shown on the
+`/legal/*` pages; see [privacy.md](./privacy.md).
+
 ### `User`
 
-Cuenta de usuario. `email` es único, `passwordHash` guarda la contraseña ya
-hasheada (nunca en claro) y `role` usa el enum `Role` (`ADMIN` | `MEMBER`,
-por defecto `MEMBER`). Relaciona con los `Board` que posee (`boards`) y con sus
-`memberships` (las filas `BoardMember`).
+A user account. `email` is unique, `passwordHash` stores the already-hashed password
+(never in plain text) and `role` uses the `Role` enum (`ADMIN` | `MEMBER`, default
+`MEMBER`). `termsAcceptedAt` records when someone accepted the policy at sign-up (null for
+accounts created by the admin or the wizard). `locale` is the interface language the
+person chose (null until they pick one, in which case the browser decides). It relates to
+the `Board`s the user owns (`boards`), their `memberships` (`BoardMember` rows), sessions,
+notifications, API tokens, assigned cards and comments.
 
 ### `Board`
 
-Un tablero. Tiene un `owner` (relación a `User`, con `onDelete: Cascade`: borrar el
-usuario borra sus tableros) y campos de presentación opcionales (`description`,
-`background`). Agrupa `lists`, `labels` y `members`. Lleva `@@index([ownerId])` para
-listar rápido los tableros de un usuario.
+A board. It has an `owner` (relation to `User`, with `onDelete: Cascade`: deleting the
+user deletes their boards) and optional presentation fields (`description`, `background`).
+It groups `lists`, `labels` and `members`. It has `@@index([ownerId])` to list a user's
+boards quickly.
 
 ### `List`
 
-Columna de un tablero. Pertenece a un `board` (cascade) y se ordena por la columna
-**`position` (string)** — fractional indexing, ver más abajo. Indexada por
+A column of a board. It belongs to a `board` (cascade) and is ordered by the
+**`position` (string)** column, using fractional indexing (see below). Indexed by
 `boardId`.
 
 ### `Card`
 
-Tarjeta dentro de una lista. Pertenece a una `list` (cascade), tiene `description` y
-`dueDate` opcionales, y se ordena por **`position` (string)**. El índice
-`@@index([listId, position])` permite leer las tarjetas de una lista **ya ordenadas**
-de forma eficiente. Las etiquetas se acceden vía la relación `labels` (a través de
-`CardLabel`).
+A card within a list. It belongs to a `list` (cascade), has optional `description` and
+`dueDate`, and is ordered by **`position` (string)**. The
+`@@index([listId, position])` index reads the cards of a list **already sorted**. Labels
+are reached through the `labels` relation (via `CardLabel`); it also has checklists,
+attachments, assignees and comments.
 
 ### `Label`
 
-Etiqueta de color, definida **a nivel de tablero** (pertenece a un `board`, cascade).
-Tiene `name` y `color`. Indexada por `boardId`.
+A colored label, defined **at board level** (it belongs to a `board`, cascade). It has a
+`name` and a `color`. Indexed by `boardId`.
 
 ### `CardLabel`
 
-Tabla de unión **muchos-a-muchos** entre `Card` y `Label`. Su clave primaria es
-compuesta (`@@id([cardId, labelId])`), lo que impide duplicar la misma etiqueta en
-la misma tarjeta. Ambas relaciones son cascade. Índice adicional por `labelId`.
+**Many-to-many** join table between `Card` and `Label`. Its primary key is composite
+(`@@id([cardId, labelId])`), which prevents adding the same label twice to the same card.
+Both relations cascade. Extra index on `labelId`.
 
 ### `BoardMember`
 
-Membresía de un usuario en un tablero, con un `role` (enum `BoardRole`:
-`OWNER` | `EDITOR` | `VIEWER`, por defecto `EDITOR`). Clave primaria compuesta
-(`@@id([boardId, userId])`).
+A user's membership in a board, with a `role` (enum `BoardRole`: `OWNER` | `EDITOR` |
+`VIEWER`, default `EDITOR`). Composite primary key (`@@id([boardId, userId])`).
 
-Aunque el **MVP es de un solo usuario**, `BoardMember` (igual que `Label` y
-`CardLabel`) **se crea desde ya**. La razón es deliberada: la **autorización de cada
-Server Action pasa por esta tabla desde el principio**, de modo que al llegar el hito
-multiusuario no haya que re-migrar el esquema ni reescribir la capa de permisos.
+`BoardMember` existed in the schema from the first migration, before multi-user support
+shipped. This was deliberate: **every Server Action has been authorized through this
+table from the start**, so adding multi-user support did not require re-migrating the
+schema or rewriting the permission layer.
 
 ---
 
-## Ordenación para drag & drop: fractional indexing
+## Ordering for drag and drop: fractional indexing
 
-Las columnas `position` de `List` y `Card` **no son enteros ni floats**: son
-**claves string lexicográficas** generadas con la librería
-[`fractional-indexing`](https://github.com/rocicorp/fractional-indexing) (la técnica
-que popularizó Figma).
+The `position` columns of `List`, `Card`, `Checklist` and `ChecklistItem` are **neither
+integers nor floats**: they are **lexicographic string keys** generated with the
+[`fractional-indexing`](https://github.com/rocicorp/fractional-indexing) library (the
+technique popularized by Figma).
 
-La idea: la posición de cada fila es una cadena que se ordena alfabéticamente. Para
-insertar o mover una fila entre dos vecinas, se genera una clave **intermedia** entre
-la anterior y la siguiente con `generateKeyBetween(prev, next)`:
+The idea: each row's position is a string that sorts alphabetically. To insert or move a
+row between two neighbours, an **intermediate** key between the previous and the next one
+is generated with `generateKeyBetween(prev, next)`:
 
 ```ts
 import { generateKeyBetween } from "fractional-indexing";
 
-// Insertar entre dos tarjetas existentes:
+// Insert between two existing cards:
 const position = generateKeyBetween(prevCard.position, nextCard.position);
 
-// Al principio de la lista (sin vecino previo):
+// At the start of the list (no previous neighbour):
 const first = generateKeyBetween(null, firstCard.position);
 
-// Al final (sin vecino siguiente):
+// At the end (no next neighbour):
 const last = generateKeyBetween(lastCard.position, null);
 ```
 
-**Por qué es mejor que un entero/float de posición:**
+**Why this beats an integer or float position:**
 
-- **Mover una fila actualiza SOLO esa fila.** Con un entero de posición (0, 1, 2…),
-  insertar en medio obliga a re-numerar todos los vecinos: muchas escrituras y
-  contención. Con fractional indexing basta un único `UPDATE`.
-- **Sin reindexados ni colisiones.** Siempre existe una clave entre dos claves
-  distintas, así que no hay que reservar huecos ni "compactar" periódicamente como
-  ocurre cuando un float se queda sin precisión entre dos valores muy juntos.
-- **Amigable con la concurrencia.** Como cada movimiento toca una sola fila, dos
-  usuarios moviendo tarjetas distintas casi nunca chocan.
+- **Moving a row updates ONLY that row.** With an integer position (0, 1, 2…), inserting
+  in the middle means renumbering all the neighbours: many writes and contention. With
+  fractional indexing a single `UPDATE` is enough.
+- **No reindexing and no collisions.** There is always a key between two different keys,
+  so there is no need to reserve gaps or "compact" periodically, as happens when a float
+  runs out of precision between two very close values.
+- **Concurrency-friendly.** Since each move touches a single row, two users moving
+  different cards almost never collide.
 
-El índice `@@index([listId, position])` de `Card` aprovecha esto para devolver las
-tarjetas de una lista ya ordenadas sin un sort adicional en memoria.
+In the database these columns are `TEXT COLLATE "C"` (byte-by-byte order). With the
+default glibc collation, `'Zz'` would sort after `'a0'`. Prisma does not model collations;
+the `20260924000000_position_collate_c` migration sets it.
 
-Ver [`docs/decisions/0002-fractional-indexing.md`](decisions/0002-fractional-indexing.md)
-para el razonamiento completo.
+The `@@index([listId, position])` index on `Card` uses this to return the cards of a list
+already sorted, without an extra in-memory sort.
+
+See [`docs/decisions/0002-fractional-indexing.md`](decisions/0002-fractional-indexing.md)
+for the full reasoning, and [`docs/drag-and-drop.md`](./drag-and-drop.md) for the client
+side.
 
 ---
 
-## Comandos
+## Commands
 
-Generar el cliente de Prisma (tras cambiar el esquema):
+Generate the Prisma client (after changing the schema):
 
 ```bash
 pnpm exec prisma generate
 ```
 
-Crear y aplicar una migración en **desarrollo** (genera el SQL y lo aplica a tu base
-local):
+Create and apply a migration in **development** (generates the SQL and applies it to your
+local database):
 
 ```bash
-pnpm exec prisma migrate dev --name <nombre>
+pnpm exec prisma migrate dev --name <name>
 ```
 
-Aplicar migraciones pendientes en **producción** / al arrancar el contenedor (no
-genera nada nuevo, solo aplica lo ya versionado):
+Apply pending migrations in **production** or when the container starts (generates
+nothing new, it only applies what is already versioned):
 
 ```bash
 pnpm exec prisma migrate deploy
 ```
 
-En **producción las migraciones las aplica el entrypoint del contenedor**: el
-arranque ejecuta `prisma migrate deploy` antes de levantar la app, de modo que el
-esquema esté siempre al día sin pasos manuales.
+In **production the container entrypoint applies the migrations**: startup runs
+`prisma migrate deploy` before starting the app, so the schema is always up to date with
+no manual steps.
+
+> After a migration, restart `pnpm dev`: regenerating the Prisma client while the dev
+> server is running leaves it with a stale client (errors such as
+> `findMany of undefined`).

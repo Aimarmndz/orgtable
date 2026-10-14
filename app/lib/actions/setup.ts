@@ -10,9 +10,10 @@ import {
   completeInstanceSetup,
   type SetupOutcome,
 } from "@/app/lib/services/setup";
+import { getI18n, issueMessage } from "@/app/i18n/server";
 
-// `values` devuelve lo tecleado (nunca la contraseña) para repintar el formulario tras un
-// error: React 19 resetea los formularios no controlados después de la acción.
+// `values` returns what was typed (never the password) to repaint the form after an error:
+// React 19 resets uncontrolled forms after the action.
 export type SetupState = {
   error?: string;
   values?: { instanceName: string; name: string; email: string };
@@ -22,11 +23,12 @@ export async function completeSetup(
   _prev: SetupState,
   formData: FormData,
 ): Promise<SetupState> {
-  // Con el setup ya hecho se corta aquí, antes de validar y de gastar ~200 ms de bcrypt:
-  // el ID de la acción sigue en el bundle de /setup y se puede invocar a mano. redirect()
-  // lanza NEXT_REDIRECT, así que va fuera de cualquier try/catch. La comprobación
-  // definitiva sigue dentro de la transacción (completeInstanceSetup).
+  // With setup already done it stops here, before validating and spending ~200 ms of
+  // bcrypt: the action ID is still in the /setup bundle and can be invoked by hand.
+  // redirect() throws NEXT_REDIRECT, so it stays outside any try/catch. The definitive check
+  // is still inside the transaction (completeInstanceSetup).
   if (await isSetupComplete()) redirect("/login");
+  const { m } = await getI18n();
 
   const text = (key: string) => {
     const v = formData.get(key);
@@ -46,7 +48,7 @@ export async function completeSetup(
   });
   if (!parsed.success) {
     return {
-      error: parsed.error.issues[0]?.message ?? "Datos no válidos.",
+      error: issueMessage(m, parsed.error.issues[0]),
       values,
     };
   }
@@ -58,18 +60,18 @@ export async function completeSetup(
   try {
     outcome = await completeInstanceSetup({ instanceName, name, email, passwordHash });
   } catch (e) {
-    // BD caída, migraciones sin aplicar, email duplicado…: el usuario ve un mensaje
-    // genérico, pero la causa queda en el log (sin FormData ni email).
-    console.error("[setup] fallo al completar la configuración", describeSetupError(e));
+    // Database down, migrations not applied, duplicate email…: the user sees a generic
+    // message, but the cause goes to the log (without FormData or email).
+    console.error("[setup] could not complete the setup", describeSetupError(e));
     outcome = { ok: false, reason: "ERROR" };
   }
 
-  // redirect() se llama FUERA del try/catch: lanza una excepción interna de Next
-  // (NEXT_REDIRECT) que no debe ser capturada por el catch de arriba.
+  // redirect() is called OUTSIDE the try/catch: it throws an internal Next exception
+  // (NEXT_REDIRECT) that must not be caught by the catch above.
   if (!outcome.ok) {
     if (outcome.reason === "ALREADY_SETUP") redirect("/login");
     return {
-      error: "No se pudo completar la configuración. Inténtalo de nuevo.",
+      error: m.errors.setup.failed,
       values,
     };
   }
@@ -83,8 +85,8 @@ export async function completeSetup(
   redirect("/boards");
 }
 
-// Código y campos de Prisma (p. ej. P2002 en `email`) y mensaje, que no incluye los
-// valores enviados salvo en errores de validación, donde solo se deja el tipo.
+// Prisma code and fields (e.g. P2002 on `email`) and message, which does not include the
+// submitted values except in validation errors, where only the type is kept.
 function describeSetupError(e: unknown): Record<string, unknown> {
   if (!(e instanceof Error)) return { error: String(e).slice(0, 200) };
   const code = "code" in e ? e.code : undefined;

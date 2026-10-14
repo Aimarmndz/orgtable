@@ -1,15 +1,15 @@
 import "server-only";
 import { prisma } from "@/app/lib/prisma";
 
-// Ciclo de vida común de los streams SSE (tablero y notificaciones). Vive aparte para
-// que las dos rutas compartan la misma limpieza: antes cada una tenía su copia y ambas
-// dejaban el intervalo y la suscripción colgados si `enqueue` fallaba. Ver docs/realtime.md.
+// Shared lifecycle of the SSE streams (board and notifications). Kept separate so both
+// routes share the same cleanup: each used to have its own copy and both left the interval
+// and the subscription dangling when `enqueue` failed. See docs/realtime.md.
 
-/** Latido para proxies y, a la vez, momento en que se revalida el acceso. */
+/** Heartbeat for proxies and, at the same time, when access is checked again. */
 export const HEARTBEAT_MS = 25_000;
 /**
- * Vida máxima de una conexión. Al cerrarla, EventSource reconecta y la ruta vuelve a
- * autorizar desde cero con la cookie (verifySession), no solo con la sesión guardada.
+ * Maximum lifetime of a connection. When it closes, EventSource reconnects and the route
+ * authorizes from scratch with the cookie (verifySession), not just the stored session.
  */
 export const MAX_STREAM_MS = 15 * 60_000;
 
@@ -17,13 +17,14 @@ const SSE_HEADERS = {
   "Content-Type": "text/event-stream; charset=utf-8",
   "Cache-Control": "no-cache, no-transform",
   Connection: "keep-alive",
-  // Desactiva el buffering de nginx para que los eventos lleguen al instante.
+  // Disables nginx buffering so events arrive at once.
   "X-Accel-Buffering": "no",
 } as const;
 
 /**
- * true si la sesión sigue activa (ni revocada ni caducada). Se consulta directamente la
- * tabla porque fuera de la petición inicial no hay cookies: verifySession no sirve aquí.
+ * true if the session is still active (neither revoked nor expired). Queries the table
+ * directly because there are no cookies outside the initial request: verifySession does
+ * not work here.
  */
 export async function isSessionActive(sessionId: string): Promise<boolean> {
   const session = await prisma.session.findUnique({
@@ -39,17 +40,18 @@ export async function isSessionActive(sessionId: string): Promise<boolean> {
 
 export function createSseResponse(opts: {
   signal: AbortSignal;
-  /** Etiqueta para los logs (sin datos personales), p. ej. "tablero". */
+  /** Label for the logs (no personal data), e.g. "board". */
   label: string;
-  /** Se suscribe al bus y devuelve cómo cancelar la suscripción. */
+  /** Subscribes to the bus and returns how to unsubscribe. */
   subscribe: (send: (chunk: string) => void) => () => void;
-  /** Se llama en cada latido; si devuelve false, el stream se cierra. */
+  /** Called on every heartbeat; when it returns false, the stream closes. */
   isStillAuthorized: () => Promise<boolean>;
 }): Response {
   const { signal, label, subscribe, isStillAuthorized } = opts;
 
-  // El cliente pudo irse mientras se autorizaba (los await previos): si el abort ya
-  // ocurrió, el listener de "abort" nunca se dispararía y la suscripción quedaría viva.
+  // The client may have left during authorization (the earlier awaits): if the abort
+  // already happened, the "abort" listener would never fire and the subscription would
+  // stay alive.
   if (signal.aborted) return new Response(null, { status: 204 });
 
   const encoder = new TextEncoder();
@@ -60,8 +62,8 @@ export function createSseResponse(opts: {
   let unsubscribe: (() => void) | undefined;
   let controllerRef: ReadableStreamDefaultController<Uint8Array> | undefined;
 
-  // Idempotente: la llaman el abort, cancel(), un enqueue fallido, la revalidación y la
-  // vida máxima; cualquiera puede llegar primero.
+  // Idempotent: called by the abort, cancel(), a failed enqueue, the access check and the
+  // maximum lifetime; any of them may come first.
   const cleanup = () => {
     if (cleaned) return;
     cleaned = true;
@@ -71,9 +73,9 @@ export function createSseResponse(opts: {
     try {
       controllerRef?.close();
     } catch (err) {
-      // Tras cancel() o un error del stream, close() lanza: ya no hay nada que cerrar.
+      // After cancel() or a stream error, close() throws: there is nothing left to close.
       if (!(err instanceof TypeError)) {
-        console.error(`[realtime] error al cerrar el stream SSE de ${label}`, err);
+        console.error(`[realtime] error closing the ${label} SSE stream`, err);
       }
     }
   };
@@ -83,7 +85,7 @@ export function createSseResponse(opts: {
     try {
       controllerRef.enqueue(encoder.encode(chunk));
     } catch {
-      // El consumidor ya no lee (stream cerrado o cancelado): se libera todo.
+      // The consumer no longer reads (stream closed or cancelled): release everything.
       cleanup();
     }
   };
@@ -96,9 +98,9 @@ export function createSseResponse(opts: {
         if (!ok) cleanup();
       })
       .catch((err: unknown) => {
-        // Sin poder comprobar el acceso no se sigue emitiendo: el cliente reconecta y
-        // la ruta vuelve a autorizar.
-        console.error(`[realtime] no se pudo revalidar el acceso al stream de ${label}`, err);
+        // Without being able to check access, emitting stops: the client reconnects and
+        // the route authorizes again.
+        console.error(`[realtime] could not recheck access to the ${label} stream`, err);
         cleanup();
       })
       .finally(() => {
@@ -109,7 +111,7 @@ export function createSseResponse(opts: {
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
       controllerRef = controller;
-      // Comentario inicial: abre el stream y fija el intervalo de reconexión del cliente.
+      // Initial comment: opens the stream and sets the client's reconnect interval.
       send(": connected\n\n");
       send("retry: 3000\n\n");
 

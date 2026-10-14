@@ -2,9 +2,9 @@ import { verifySession } from "@/app/lib/dal";
 import { prisma } from "@/app/lib/prisma";
 import { readAttachmentFile } from "@/app/lib/storage";
 
-// Sirve el binario de un adjunto con autorización (Hito 5). No usamos /public porque
-// los adjuntos son privados: cualquier miembro del tablero puede descargarlos, nadie
-// más. Ver docs/attachments.md.
+// Serves an attachment's file, with authorization. Not under /public because
+// attachments are private: any board member can download them, nobody else. See
+// docs/attachments.md.
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -18,8 +18,8 @@ export async function GET(
   const session = await verifySession();
   if (!session) return new Response("Unauthorized", { status: 401 });
 
-  // Una sola consulta acotada por membresía: un adjunto que no existe y uno de un tablero
-  // ajeno dan el MISMO 404, para no revelar qué ids existen (igual que la API v1).
+  // A single query scoped by membership: a missing attachment and one from someone else's
+  // board give the SAME 404, so as not to reveal which ids exist (like API v1).
   const attachment = await prisma.attachment.findFirst({
     where: {
       id,
@@ -40,15 +40,15 @@ export async function GET(
   } catch (err) {
     const code = isErrnoException(err) ? err.code : undefined;
     if (code === "ENOENT") {
-      // La fila existe pero el fichero no: inconsistencia entre BD y volumen.
-      console.warn("[attachments] fichero no encontrado en disco", {
+      // The row exists but the file does not: database and volume are out of sync.
+      console.warn("[attachments] file not found on disk", {
         id,
         storedName: attachment.storedName,
       });
       return new Response("Not found", { status: 404 });
     }
-    // Permisos, E/S del volumen…: es un fallo del servidor, no un «no existe».
-    console.error("[attachments] no se pudo leer el adjunto", {
+    // Permissions, volume I/O…: a server failure, not a "does not exist".
+    console.error("[attachments] could not read the attachment", {
       id,
       storedName: attachment.storedName,
       code,
@@ -57,7 +57,7 @@ export async function GET(
     return new Response("Internal Server Error", { status: 500 });
   }
 
-  // filename* (RFC 5987) preserva nombres con acentos o espacios.
+  // filename* (RFC 5987) preserves names with accents or spaces.
   const disposition = `attachment; filename*=UTF-8''${encodeURIComponent(
     attachment.filename,
   )}`;

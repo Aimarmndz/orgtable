@@ -1,12 +1,12 @@
-// Stub de `next/headers` para los tests de integración. Fuera de Next no hay petición,
-// así que cookies y cabeceras viven en un almacén MUTABLE a nivel de módulo:
-//  - `cookies()` se comporta como el store de Next (`get`/`set`/`delete`/`has`), de modo
-//    que createSession() escribe la cookie y verifySession()/requireUser() la leen. Así
-//    se pueden probar las Server Actions con sesión (helper `loginAs` en
+// `next/headers` stub for the integration tests. Outside Next there is no request, so
+// cookies and headers live in a MUTABLE module-level store:
+//  - `cookies()` behaves like Next's store (`get`/`set`/`delete`/`has`), so
+//    createSession() writes the cookie and verifySession()/requireUser() read it. This
+//    makes it possible to test Server Actions with a session (the `loginAs` helper in
 //    test/integration/helpers.ts).
-//  - `headers()` devuelve las cabeceras inyectadas con `__setHeaders` (p. ej.
-//    X-Forwarded-For para el rate limit del login).
-// Los helpers `__*` solo existen en el stub; `resetDb()` los limpia antes de cada test.
+//  - `headers()` returns the headers injected with `__setHeaders` (e.g.
+//    X-Forwarded-For for the login rate limit).
+// The `__*` helpers only exist in the stub; `resetDb()` clears them before each test.
 
 type StoredCookie = {
   name: string;
@@ -37,26 +37,26 @@ export async function cookies() {
   };
 }
 
-/** Sustituye las cabeceras de la "petición" en curso. */
+/** Replaces the headers of the current "request". */
 export function __setHeaders(init: Record<string, string>): void {
   requestHeaders = new Headers(init);
 }
 
 /**
- * Vacía solo las cookies. Va separado de `__clearHeaders` porque `loginAs` lo llama y
- * debe conservar las cabeceras inyectadas antes (X-Forwarded-Proto decide el Secure de la
- * cookie de sesión y X-Forwarded-For la IP del rate limit).
+ * Clears only the cookies. Kept separate from `__clearHeaders` because `loginAs` calls it
+ * and must keep the headers injected earlier (X-Forwarded-Proto decides the session
+ * cookie's Secure flag and X-Forwarded-For the rate-limit IP).
  */
 export function __clearCookies(): void {
   cookieJar.clear();
 }
 
-/** Vacía las cabeceras inyectadas con `__setHeaders`. */
+/** Clears the headers injected with `__setHeaders`. */
 export function __clearHeaders(): void {
   requestHeaders = new Headers();
 }
 
-/** Opciones con las que se guardó una cookie (secure, httpOnly…), para aserciones. */
+/** Options a cookie was stored with (secure, httpOnly…), for assertions. */
 export function __getCookieOptions(
   name: string,
 ): Record<string, unknown> | undefined {

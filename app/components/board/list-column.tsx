@@ -12,6 +12,8 @@ import { deleteList } from "@/app/lib/actions/lists";
 import { CardItem } from "./card-item";
 import { AddCardForm } from "./add-card-form";
 import { useBoardPerms } from "./board-perms";
+import { useI18n } from "@/app/i18n/client";
+import { fmt } from "@/app/i18n/format";
 
 export function ListColumn({
   list,
@@ -22,15 +24,16 @@ export function ListColumn({
   onOpenCard: (cardId: string) => void;
   sortingDisabled?: boolean;
 }) {
+  const { m } = useI18n();
   const { canEdit } = useBoardPerms();
-  // Borrar una lista se lleva todas sus tarjetas (cascada) y no se puede deshacer: el ✕
-  // pide una segunda confirmación en línea («¿Borrar? Sí / No») en vez de borrar al
-  // primer clic, que además cae junto al asa de arrastre.
+  // Deleting a list takes all its cards with it (cascade) and cannot be undone: the ✕
+  // asks for a second inline confirmation ("Delete? Yes / No") instead of deleting on
+  // the first click, which also lands right next to the drag handle.
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  // Al cancelar, el formulario se desmonta con el foco dentro; sin devolverlo al ✕
-  // caería al <body> y quien usa teclado perdería su sitio en el tablero (mismo patrón
-  // que DeleteBoardButton). Solo tras cancelar: al montar el tablero cada columna
-  // tiene su ✕ y ninguno debe robar el foco.
+  // On cancel the form unmounts with focus inside; without moving focus back to the ✕
+  // it would fall to <body> and keyboard users would lose their place on the board (same
+  // pattern as DeleteBoardButton). Only after cancelling: when the board mounts every
+  // column has its ✕ and none of them should steal focus.
   const deleteTriggerRef = useRef<HTMLButtonElement>(null);
   const restoreFocus = useRef(false);
 
@@ -56,8 +59,8 @@ export function ListColumn({
     id: list.id,
     data: { type: "list" },
     disabled: !canEdit || sortingDisabled,
-    // dnd-kit anuncia por defecto «sortable» (en inglés).
-    attributes: { roleDescription: "lista" },
+    // dnd-kit announces "sortable" by default.
+    attributes: { roleDescription: m.boards.list.roleDescription },
   });
 
   const style = {
@@ -91,7 +94,7 @@ export function ListColumn({
               action={deleteList}
               onKeyDown={(e) => {
                 if (e.key === "Escape") {
-                  // Que el Escape no llegue a otros manejadores del tablero.
+                  // Keep the Escape from reaching other board handlers.
                   e.stopPropagation();
                   cancelDelete();
                 }
@@ -99,24 +102,24 @@ export function ListColumn({
               className="flex items-center gap-1 text-xs font-medium"
             >
               <input type="hidden" name="listId" value={list.id} />
-              <span className="text-ink-muted">¿Borrar?</span>
+              <span className="text-ink-muted">{m.boards.confirm.deletePrompt}</span>
               <button
                 type="submit"
                 className="rounded px-1.5 py-0.5 text-danger transition-colors hover:bg-danger/10"
-                // Sin cifra: con filtros activos `list.cards` solo trae las visibles, pero
-                // el borrado se lleva en cascada también las ocultas.
-                aria-label={`Sí, borrar la lista ${list.title} y todas sus tarjetas`}
+                // No count: with active filters `list.cards` only holds the visible ones,
+                // but the cascade also deletes the hidden ones.
+                aria-label={fmt(m.boards.list.confirmDelete, { title: list.title })}
               >
-                Sí
+                {m.boards.confirm.yes}
               </button>
               <button
                 type="button"
                 autoFocus
                 onClick={cancelDelete}
                 className="rounded px-1.5 py-0.5 text-ink-muted transition-colors hover:bg-black/5 hover:text-ink dark:hover:bg-white/10"
-                aria-label="No, conservar la lista"
+                aria-label={m.boards.list.keep}
               >
-                No
+                {m.boards.confirm.no}
               </button>
             </form>
           ) : (
@@ -125,7 +128,7 @@ export function ListColumn({
               type="button"
               onClick={() => setConfirmingDelete(true)}
               className="grid size-6 place-items-center rounded text-ink-muted transition-colors hover:bg-black/5 hover:text-danger dark:hover:bg-white/10"
-              aria-label={`Borrar lista ${list.title}`}
+              aria-label={fmt(m.boards.list.delete, { title: list.title })}
             >
               ✕
             </button>

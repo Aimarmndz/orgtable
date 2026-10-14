@@ -27,8 +27,8 @@ afterAll(async () => {
   await disconnect();
 });
 
-describe("API v1 — scope y caducidad de tokens (integración)", () => {
-  it("un token de solo lectura puede LEER pero no ESCRIBIR (403)", async () => {
+describe("API v1 — token scope and expiry (integration)", () => {
+  it("a read-only token can READ but not WRITE (403)", async () => {
     const user = await seedUser();
     const token = await seedApiToken(user.id, { scope: "read" });
 
@@ -43,7 +43,7 @@ describe("API v1 — scope y caducidad de tokens (integración)", () => {
     expect(write.status).toBe(403);
   });
 
-  it("un token con scope completo sí puede escribir", async () => {
+  it("a token with full scope can write", async () => {
     const user = await seedUser();
     const token = await seedApiToken(user.id, { scope: "full" });
     const res = await createBoard(
@@ -52,10 +52,10 @@ describe("API v1 — scope y caducidad de tokens (integración)", () => {
     expect(res.status).toBe(201);
   });
 
-  it("un token caducado se rechaza (401)", async () => {
+  it("an expired token is rejected (401)", async () => {
     const user = await seedUser();
     const token = await seedApiToken(user.id, {
-      expiresAt: new Date(Date.now() - 1000), // ya caducó
+      expiresAt: new Date(Date.now() - 1000), // already expired
     });
     const res = await listBoards(
       apiRequest("GET", "/api/v1/boards", { token }),
@@ -64,7 +64,7 @@ describe("API v1 — scope y caducidad de tokens (integración)", () => {
   });
 });
 
-// Foto de todo lo que podría cambiar un handler de escritura.
+// Snapshot of everything a write handler could change.
 async function snapshot() {
   const [boards, lists, cards] = await Promise.all([
     prisma.board.findMany({ orderBy: { id: "asc" }, select: { id: true, title: true } }),
@@ -79,14 +79,14 @@ async function snapshot() {
 
 type Ids = { boardId: string; listId: string; cardId: string };
 
-// Cada handler de escritura, con un cuerpo VÁLIDO: el 403 debe venir del scope, no de la
-// validación.
+// Every write handler, with a VALID body: the 403 must come from the scope, not from
+// validation.
 const WRITE_HANDLERS: [string, (token: string, ids: Ids) => Promise<Response>][] = [
   [
     "PATCH /boards/:id",
     (token, { boardId }) =>
       patchBoard(
-        apiRequest("PATCH", `/api/v1/boards/${boardId}`, { token, body: { title: "Nuevo" } }),
+        apiRequest("PATCH", `/api/v1/boards/${boardId}`, { token, body: { title: "New" } }),
         ctx({ id: boardId }),
       ),
   ],
@@ -118,7 +118,7 @@ const WRITE_HANDLERS: [string, (token: string, ids: Ids) => Promise<Response>][]
     "PATCH /cards/:id",
     (token, { cardId }) =>
       patchCard(
-        apiRequest("PATCH", `/api/v1/cards/${cardId}`, { token, body: { title: "Nueva" } }),
+        apiRequest("PATCH", `/api/v1/cards/${cardId}`, { token, body: { title: "New" } }),
         ctx({ id: cardId }),
       ),
   ],
@@ -132,8 +132,8 @@ const WRITE_HANDLERS: [string, (token: string, ids: Ids) => Promise<Response>][]
   ],
 ];
 
-describe("API v1 — un token de solo lectura no escribe en ningún handler", () => {
-  it.each(WRITE_HANDLERS)("%s da 403 y la BD no cambia", async (_name, call) => {
+describe("API v1 — a read-only token writes through no handler", () => {
+  it.each(WRITE_HANDLERS)("%s gives 403 and the DB does not change", async (_name, call) => {
     const owner = await seedUser();
     const token = await seedApiToken(owner.id, { scope: "read" });
     const board = await seedBoard(owner.id);

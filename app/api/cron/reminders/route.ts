@@ -1,39 +1,22 @@
-import { timingSafeEqual } from "node:crypto";
 import { generateDueReminders } from "@/app/lib/services/reminders";
-import { apiError, apiOk } from "@/app/lib/api/respond";
+import { apiOk } from "@/app/lib/api/respond";
+import { rejectUnauthorizedCron } from "@/app/lib/api/cron";
 
-// Endpoint de recordatorios de vencimiento (Hito 11). Pensado para que lo dispare un
-// programador EXTERNO (cron del sistema, `docker compose` con un sidecar, GitHub Actions
-// schedule, etc.), no un timer en proceso — coherente con no añadir infraestructura
-// (ADR 0004). Se protege con un secreto compartido en `Authorization: Bearer <CRON_SECRET>`.
+// Due-date reminders endpoint. Meant to be triggered by an EXTERNAL scheduler (system
+// cron, a `docker compose` sidecar, a GitHub Actions schedule, etc.), not an in-process
+// timer, in line with not adding infrastructure (ADR 0004). Protected by a shared secret
+// in `Authorization: Bearer <CRON_SECRET>`.
 //
-//   curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://tu-instancia/api/cron/reminders
+//   curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://your-instance/api/cron/reminders
 //
-// Ver docs/reminders.md y docs/decisions/0015-reminders-cron.md.
+// See docs/reminders.md and docs/decisions/0015-reminders-cron.md.
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-// Comparación en tiempo constante para no filtrar el secreto por el tiempo de respuesta.
-function secretMatches(provided: string, expected: string): boolean {
-  const a = Buffer.from(provided);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length) return false;
-  return timingSafeEqual(a, b);
-}
-
 export async function POST(request: Request): Promise<Response> {
-  const expected = process.env.CRON_SECRET;
-  if (!expected) {
-    // Mensaje genérico: no revelamos detalles de configuración al cliente.
-    return apiError(503, "Servicio no disponible.");
-  }
-
-  const header = request.headers.get("authorization") ?? "";
-  const provided = header.startsWith("Bearer ") ? header.slice(7) : "";
-  if (!provided || !secretMatches(provided, expected)) {
-    return apiError(401, "Secreto de cron no válido.");
-  }
+  const rejected = rejectUnauthorizedCron(request);
+  if (rejected) return rejected;
 
   const result = await generateDueReminders(new Date());
   return apiOk(result);

@@ -1,32 +1,32 @@
 import { isIP } from "node:net";
 
-// Obtención de la IP del cliente para el rate limit del login y la auditoría. Sin
-// next/headers para poder probarla con tests unitarios; la usa clientIp() en
-// app/lib/audit.ts. Ver docs/decisions/0009-in-memory-rate-limit.md.
+// Client IP for the sign-in rate limit and the audit log. No next/headers so it can be
+// unit-tested; clientIp() in app/lib/audit.ts uses it. See
+// docs/decisions/0009-in-memory-rate-limit.md.
 //
-// X-Forwarded-For la controla el cliente: cada proxy AÑADE la IP que ve al final de la
-// lista, pero lo que venía antes lo escribió quien hizo la petición. Además, Next solo
-// rellena la cabecera si no viene (`??=`), así que con la app expuesta sin proxy el
-// cliente decide la cabecera entera. Por eso solo se confía en ella si se declaran los
-// proxies de confianza que hay delante (TRUSTED_PROXY_HOPS) y se toma el valor que puso
-// el más externo de ellos, contando desde la derecha.
+// The client controls X-Forwarded-For: each proxy APPENDS the IP it sees, but whatever
+// came before was written by the requester. Also, Next only fills the header when it is
+// absent (`??=`), so with the app exposed without a proxy the client decides the whole
+// header. Hence it is only trusted when the trusted proxies in front are declared
+// (TRUSTED_PROXY_HOPS), taking the value set by the outermost of them, counting from the
+// right.
 
 /**
- * Número de proxies de confianza delante de la app. Vacío o sin definir = 0 (no se usa
- * X-Forwarded-For). Un valor que no sea un entero >= 0 es un error de configuración.
+ * Number of trusted proxies in front of the app. Empty or unset = 0 (X-Forwarded-For is
+ * not used). A value that is not an integer >= 0 is a configuration error.
  */
 export function parseTrustedProxyHops(raw: string | undefined): number {
   if (raw === undefined || raw.trim() === "") return 0;
   const value = raw.trim();
   if (!/^\d+$/.test(value)) {
     throw new Error(
-      `TRUSTED_PROXY_HOPS debe ser un entero >= 0 (recibido: "${value.slice(0, 20)}").`,
+      `TRUSTED_PROXY_HOPS must be an integer >= 0 (got: "${value.slice(0, 20)}").`,
     );
   }
   return Number(value);
 }
 
-/** Por qué no se obtuvo IP aunque hay proxies de confianza declarados. */
+/** Why no IP was obtained even though trusted proxies are declared. */
 export type ClientIpProblem = "missing-header" | "too-few-values" | "not-an-ip";
 
 export type ClientIpResult =
@@ -34,11 +34,11 @@ export type ClientIpResult =
   | { ip: null; problem: ClientIpProblem | null };
 
 /**
- * IP del cliente según X-Forwarded-For y el número de proxies de confianza (`hops`).
- * Con hops = N toma el N-ésimo valor contando desde la derecha: el que añadió el proxy
- * de confianza más externo. Sin IP si hops es 0 (sin problema: es la configuración por
- * defecto), si la cabecera no llega, si tiene menos valores que N (la petición no pasó
- * por todos los proxies) o si el valor no es una IP. Función pura.
+ * Client IP from X-Forwarded-For and the number of trusted proxies (`hops`). With
+ * hops = N it takes the N-th value from the right: the one appended by the outermost
+ * trusted proxy. No IP when hops is 0 (not a problem: it is the default), when the header
+ * is missing, when it has fewer than N values (the request did not go through every
+ * proxy) or when the value is not an IP. Pure function.
  */
 export function resolveClientIp(xff: string | null, hops: number): ClientIpResult {
   if (hops <= 0) return { ip: null, problem: null };
@@ -50,10 +50,10 @@ export function resolveClientIp(xff: string | null, hops: number): ClientIpResul
 }
 
 /**
- * Algunos proxies (Azure Application Gateway, IIS ARR) escriben la IP con el puerto de
- * origen: `1.2.3.4:5678` o `[2001:db8::1]:443`. Sin quitarlo, isIP lo rechaza y el login
- * se queda sin límite por IP; y usarlo tal cual daría una clave distinta por conexión.
- * No se corta a ciegas por el último `:`, porque partiría una IPv6 sin corchetes.
+ * Some proxies (Azure Application Gateway, IIS ARR) write the IP with the source port:
+ * `1.2.3.4:5678` or `[2001:db8::1]:443`. Without stripping it, isIP rejects it and sign-in
+ * loses its per-IP limit; using it as is would give a different key per connection. It
+ * is not blindly cut at the last `:`, which would split an IPv6 without brackets.
  */
 function normalizeIp(value: string): string | null {
   if (isIP(value)) return value;
@@ -65,20 +65,20 @@ function normalizeIp(value: string): string | null {
 }
 
 const PROBLEM_DETAIL: Record<ClientIpProblem, string> = {
-  "missing-header": "la petición no trae X-Forwarded-For",
-  "too-few-values": "X-Forwarded-For trae menos valores que proxies declarados",
-  "not-an-ip": "el valor de X-Forwarded-For que corresponde no es una IP",
+  "missing-header": "the request has no X-Forwarded-For",
+  "too-few-values": "X-Forwarded-For has fewer values than declared proxies",
+  "not-an-ip": "the matching X-Forwarded-For value is not an IP",
 };
 
-// Un aviso por motivo y proceso: basta para que el operador lo vea en el log sin
-// repetirlo en cada login.
+// One warning per reason and process: enough for the operator to see it in the log
+// without repeating it on every sign-in.
 const warnedProblems = new Set<ClientIpProblem>();
 
 /**
- * Como resolveClientIp, pero avisa en el log (una vez por motivo y proceso) cuando hay
- * proxies declarados y no se obtiene IP: el login se queda sin límite por IP y la
- * auditoría sin IP, y sin el aviso el operador creería tenerlos activos. El aviso no
- * incluye la cabecera ni ninguna IP (son datos personales).
+ * Like resolveClientIp, but warns in the log (once per reason and process) when proxies
+ * are declared and no IP is obtained: sign-in loses its per-IP limit and the audit log its
+ * IP, and without the warning the operator would believe both are active. The warning
+ * includes neither the header nor any IP (they are personal data).
  */
 export function pickClientIp(xff: string | null, hops: number): string | null {
   const { ip, problem } = resolveClientIp(xff, hops);
@@ -86,9 +86,9 @@ export function pickClientIp(xff: string | null, hops: number): string | null {
     warnedProblems.add(problem);
     const values = xff ? xff.split(",").length : 0;
     console.warn(
-      `[client-ip] TRUSTED_PROXY_HOPS=${hops} pero ${PROBLEM_DETAIL[problem]} ` +
-        `(${values} valores): el login no tiene límite por IP y la auditoría no guarda ` +
-        `la IP. Revisa la configuración del proxy. Solo se avisa una vez por motivo y proceso.`,
+      `[client-ip] TRUSTED_PROXY_HOPS=${hops} but ${PROBLEM_DETAIL[problem]} ` +
+        `(${values} values): sign-in has no per-IP limit and the audit log does not store ` +
+        `the IP. Check the proxy configuration. Warned only once per reason and process.`,
     );
   }
   return ip;
