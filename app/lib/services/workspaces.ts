@@ -525,6 +525,8 @@ export async function resetEmployeePassword(input: {
       data: { revokedAt: new Date() },
     }),
     prisma.apiToken.deleteMany({ where: { userId: input.userId } }),
+    // A pending invitation (perhaps sent to a mistyped address) stops working too.
+    prisma.accountToken.deleteMany({ where: { userId: input.userId } }),
   ]);
   return { ok: true };
 }
@@ -658,4 +660,25 @@ export async function soleOwnedOrganizations(
     if (others > 0 && owners === 0) blocking.push(w.name);
   }
   return blocking;
+}
+
+/**
+ * Changes a person's handle: the address of their personal workspace (/<handle>/<board>).
+ * Same rules as any workspace address; old links with the previous handle stop working
+ * (links with a board's id keep working).
+ */
+export async function updatePersonalHandle(
+  userId: string,
+  rawSlug: string,
+): Promise<{ ok: true; slug: string } | { ok: false; error: SlugError }> {
+  const slug = rawSlug.trim().toLowerCase();
+  const problem = workspaceSlugProblem(slug);
+  if (problem) return { ok: false, error: problem === "format" ? "slug_format" : "slug_reserved" };
+  try {
+    await prisma.workspace.update({ where: { personalOwnerId: userId }, data: { slug } });
+    return { ok: true, slug };
+  } catch (e) {
+    if (isUniqueViolation(e)) return { ok: false, error: "slug_taken" };
+    throw e;
+  }
 }

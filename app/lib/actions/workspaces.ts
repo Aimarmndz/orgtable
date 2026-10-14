@@ -20,6 +20,7 @@ import {
   removeMember,
   resetEmployeePassword,
   updateWorkspace,
+  updatePersonalHandle,
   type MemberError,
   type SlugError,
 } from "@/app/lib/services/workspaces";
@@ -39,6 +40,9 @@ import { fmt } from "@/app/i18n/format";
 const ORG_LIMIT = 5;
 const EMPLOYEE_LIMIT = 50;
 const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
+const INVITES_PER_ORG_DAY = 100;
+const INVITES_GLOBAL_DAY = 1000;
 
 export type WorkspaceFormState = {
   error?: string;
@@ -176,9 +180,10 @@ export async function createEmployeeAction(
     email: text(formData, "email", 254),
     role: text(formData, "role", 10),
   };
-    // With email, the person chooses their own password from an invitation link and nobody
-  // else ever knows it: the account starts with a random one that is never shown. Without
-  // email, the organization sets an initial password and hands it over.
+  // With email, the person chooses their own password from an invitation link: the account
+  // starts with a random one that is never shown (the organization can still set a new one
+  // later, as with any account it creates). Without email, the organization sets an initial
+  // password and hands it over.
   const invite = isMailEnabled();
   const parsed = createEmployeeSchema.safeParse({
     ...values,
@@ -187,6 +192,16 @@ export async function createEmployeeAction(
   if (!parsed.success)
     return { error: issueMessage(m, parsed.error.issues[0]), values };
 
+  // Invitations send email to addresses someone typed: besides the per-person limit, a cap
+  // per organization and for the whole instance per day, so the service cannot be used to
+  // flood inboxes.
+  if (
+    invite &&
+    (!rateLimit(`invites:org:${workspaceId}`, INVITES_PER_ORG_DAY, DAY_MS).ok ||
+      !rateLimit("invites:global", INVITES_GLOBAL_DAY, DAY_MS).ok)
+  ) {
+    return { error: m.errors.workspaces.rateLimited, values };
+  }
   if (!rateLimit(`employees:${user.id}`, EMPLOYEE_LIMIT, HOUR_MS).ok) {
     return { error: m.errors.workspaces.rateLimited, values };
   }
@@ -325,4 +340,19 @@ export async function deleteOrganizationAction(
   });
   revalidatePath("/boards");
   redirect("/boards");
+}
+
+/** Changes the person's handle (/<handle>, their personal boards' address). */
+export async function updateHandleAction(
+  _prev: WorkspaceFormState,
+  formData: FormData,
+): Promise<WorkspaceFormState> {
+  const user = await requireUser();
+  const { m } = await getI18n();
+  const values = { slug: text(formData, "slug", 39) };
+  const result = await updatePersonalHandle(user.id, values.slug);
+  if (!result.ok) return { error: slugErrorMessage(m, result.error), values };
+  revalidatePath("/boards");
+  revalidatePath("/settings");
+  return { message: m.workspaces.handle.saved, values: { slug: result.slug } };
 }

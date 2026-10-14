@@ -147,6 +147,8 @@ export async function consumeAccountToken(
   password: string,
 ): Promise<ConsumeResult> {
   if (!token) return { ok: false, error: "invalid" };
+  // Cheap check first: bcrypt is expensive and must not run for made-up tokens.
+  if (!(await peekAccountToken(token))) return { ok: false, error: "invalid" };
   const passwordHash = await hashPassword(password);
   const tokenHash = hashToken(token);
   const result = await prisma.$transaction(async (tx) => {

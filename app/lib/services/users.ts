@@ -108,6 +108,7 @@ export async function resetPasswordAndRevokeAccess(
       data: { revokedAt: new Date() },
     }),
     prisma.apiToken.deleteMany({ where: { userId } }),
+    prisma.accountToken.deleteMany({ where: { userId } }),
   ]);
   // The user may have been deleted between the check and the transaction.
   if (updated.count === 0) return { ok: false, error: "not_found" };

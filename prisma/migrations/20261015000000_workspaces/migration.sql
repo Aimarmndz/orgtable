@@ -1,6 +1,6 @@
 -- Workspaces: every board lives in one, and its URL is /<workspace slug>/<board slug>.
 -- Existing data is moved without loss: each user gets a PERSONAL workspace (slug from the
--- email's local part, made unique) and each board goes to its owner's workspace with a
+-- name, made unique) and each board goes to its owner's workspace with a
 -- slug from its title (unique in that workspace). See docs/workspaces.md.
 
 -- CreateEnum
@@ -73,7 +73,10 @@ DECLARE
   ws TEXT;
 BEGIN
   FOR u IN SELECT "id", "email", "name" FROM "User" ORDER BY "createdAt", "id" LOOP
-    base := pg_temp.orgtable_slug(split_part(u."email", '@', 1), 33);
+    -- From the name, never the email (shared URLs must not reveal addresses); the email's
+    -- local part only when the name has no usable letters.
+    base := pg_temp.orgtable_slug(u."name", 33);
+    IF length(base) < 3 THEN base := pg_temp.orgtable_slug(split_part(u."email", '@', 1), 33); END IF;
     IF length(base) < 3 THEN base := trim(BOTH '-' FROM base || '-user'); END IF;
     IF length(base) < 3 THEN base := 'user'; END IF;
     cand := base;

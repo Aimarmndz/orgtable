@@ -7,6 +7,7 @@ import {
   deleteOrganizationAction,
   resetEmployeePasswordAction,
   updateWorkspaceAction,
+  updateHandleAction,
   type WorkspaceFormState,
 } from "@/app/lib/actions/workspaces";
 import { Button } from "@/app/components/ui/button";
@@ -352,6 +353,45 @@ export function DeleteOrganizationForm({
       <Button type="submit" variant="dangerSolid" disabled={pending} className="min-h-10">
         {t.deleteSubmit}
       </Button>
+    </form>
+  );
+}
+
+/** The person's handle: the address of their personal boards. */
+export function HandleForm({ slug, host }: { slug: string; host: string }) {
+  const [state, action, pending] = useActionState<WorkspaceFormState, FormData>(
+    updateHandleAction,
+    {},
+  );
+  const { m } = useI18n();
+  const t = m.workspaces.handle;
+  return (
+    <form action={action} className="space-y-3 border-t border-border pt-5">
+      <label className="block text-sm">
+        <span className="font-medium">{t.label}</span>
+        <span className="mt-1.5 flex h-[38px] max-w-md overflow-hidden rounded-lg border border-border bg-surface focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/25">
+          <span className="flex items-center border-r border-border bg-surface-2 px-2.5 font-mono text-xs text-ink-muted">
+            {host}/
+          </span>
+          <input
+            name="slug"
+            required
+            minLength={3}
+            maxLength={39}
+            autoCapitalize="none"
+            spellCheck={false}
+            defaultValue={state.values?.slug ?? slug}
+            className="min-w-0 flex-1 bg-transparent px-2.5 font-mono text-sm text-ink outline-none"
+          />
+        </span>
+        <span className="mt-1.5 block text-xs text-ink-muted">{t.hint}</span>
+      </label>
+      <Feedback state={state} pending={pending} />
+      <div className="flex justify-end">
+        <Button type="submit" variant="outline" disabled={pending}>
+          {t.save}
+        </Button>
+      </div>
     </form>
   );
 }

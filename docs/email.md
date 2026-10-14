@@ -26,7 +26,7 @@ a phosphor terminal line) with a plain-text version (`app/lib/mail/templates.ts`
 - **Reset your password** (`/forgot-password`): a link valid for 60 minutes.
 - **Your password was changed**: after a reset, so the owner notices if it was not them.
 - **Invitation** (an organization creates an account): a link valid for 7 days to choose the
-  password. The account starts with a random password nobody knows.
+  password. The account starts with a random password nobody knows; the organization can still set a new one later (it controls the accounts it creates).
 
 ## Links
 

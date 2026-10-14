@@ -46,13 +46,15 @@ export default async function LoginPage({
               {m.auth.login.accountDeleted}
             </p>
           )}
-                    {/* After choosing a password from an emailed link (actions/password.ts). */}
+          {/* After choosing a password from an emailed link (actions/password.ts). */}
           {(password === "reset" || password === "set") && (
             <p
               role="status"
               className="mb-6 w-full max-w-sm rounded-lg border border-success/25 bg-success/10 px-3 py-2 text-sm text-success"
             >
-              {password === "reset" ? m.auth.login.passwordReset : m.auth.login.passwordSet}
+              {password === "reset"
+                ? m.auth.login.passwordReset
+                : m.auth.login.passwordSet}
             </p>
           )}
           <LoginForm />

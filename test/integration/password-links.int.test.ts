@@ -54,6 +54,13 @@ function form(fields: Record<string, string>): FormData {
   return fd;
 }
 
+/** Emails are sent without making the request wait: give them a moment to arrive. */
+async function waitForMail(count: number): Promise<void> {
+  for (let i = 0; i < 100 && memoryOutbox.length < count; i++) {
+    await new Promise((r) => setTimeout(r, 20));
+  }
+}
+
 /** The token in the last email's link. */
 function lastToken(): string {
   const mail = memoryOutbox.at(-1);
@@ -89,6 +96,7 @@ describe("forgot your password", () => {
 
     await seedUser({ email: "ana@test.local", name: "Ana" });
     const known = await forgotPassword({}, form({ email: "ANA@test.local" }));
+    await waitForMail(1);
     expect(known).toEqual({ sent: true, email: "ANA@test.local" });
     expect(memoryOutbox).toHaveLength(1);
     expect(memoryOutbox[0]).toMatchObject({
@@ -105,6 +113,7 @@ describe("forgot your password", () => {
     await loginAs(user.id);
     await seedApiToken(user.id);
     await forgotPassword({}, form({ email: "ana@test.local" }));
+    await waitForMail(1);
     const token = lastToken();
     // Only the hash is stored.
     expect(
@@ -136,6 +145,7 @@ describe("forgot your password", () => {
   it("an expired link does not work", async () => {
     await seedUser({ email: "ana@test.local" });
     await forgotPassword({}, form({ email: "ana@test.local" }));
+    await waitForMail(1);
     const token = lastToken();
     await prisma.accountToken.updateMany({
       data: { expiresAt: new Date(Date.now() - 1000) },
@@ -148,8 +158,10 @@ describe("forgot your password", () => {
   it("asking again replaces the previous link", async () => {
     await seedUser({ email: "ana@test.local" });
     await forgotPassword({}, form({ email: "ana@test.local" }));
+    await waitForMail(1);
     const first = lastToken();
     await forgotPassword({}, form({ email: "ana@test.local" }));
+    await waitForMail(2);
     expect(await reset(first, "brand-new-password")).toEqual({
       error: en.auth.reset.invalid,
     });
@@ -164,6 +176,7 @@ describe("forgot your password", () => {
       await forgotPassword({}, form({ email: "ana@test.local" }));
     const blocked = await forgotPassword({}, form({ email: "ana@test.local" }));
     expect(blocked.error).toBeTruthy();
+    await waitForMail(3);
     expect(memoryOutbox).toHaveLength(3);
   });
 
@@ -179,6 +192,7 @@ describe("forgot your password", () => {
       name: '<img src=x onerror="alert(1)">',
     });
     await forgotPassword({}, form({ email: "evil@test.local" }));
+    await waitForMail(1);
     const html = memoryOutbox[0].html;
     expect(html).not.toContain("<img src=x");
     expect(html).toContain("&lt;img src=x onerror=&quot;alert(1)&quot;&gt;");
@@ -216,5 +230,52 @@ describe("employee invitations", () => {
     );
     // Setting the first password is not announced as a "password changed".
     expect(memoryOutbox.at(-1)?.subject).not.toBe(en.emails.changed.subject);
+  });
+});
+
+describe("emailed links stop working when the password changes another way", () => {
+  it("an organization setting the password by hand cancels the pending invitation", async () => {
+    const owner = await seedUser({ name: "Owner" });
+    const org = await seedOrganization(owner.id, "acme");
+    await loginAs(owner.id);
+    await createEmployeeAction(
+      {},
+      form({ workspaceId: org.id, name: "Typo", email: "typo@test.local", role: "MEMBER" }),
+    );
+    const token = lastToken();
+    const typo = await prisma.user.findUniqueOrThrow({ where: { email: "typo@test.local" } });
+    const { resetEmployeePassword } = await import("@/app/lib/services/workspaces");
+    expect(
+      await resetEmployeePassword({
+        workspaceId: org.id,
+        actorId: owner.id,
+        userId: typo.id,
+        password: "set-by-hand-1",
+      }),
+    ).toEqual({ ok: true });
+    expect(await reset(token, "taken-over-1")).toEqual({ error: en.auth.reset.invalid });
+  });
+});
+
+describe("invitation emails", () => {
+  it("do not carry links or domains typed into names", async () => {
+    const owner = await seedUser({ name: "Visit evil.example now" });
+    const org = await prisma.workspace.create({
+      data: {
+        slug: "phish",
+        name: "Win at https://evil.example/login",
+        kind: "ORGANIZATION",
+        members: { create: { userId: owner.id, role: "OWNER" } },
+      },
+    });
+    await loginAs(owner.id);
+    await createEmployeeAction(
+      {},
+      form({ workspaceId: org.id, name: "Go to www.evil.example", email: "victim@test.local", role: "MEMBER" }),
+    );
+    const mail = memoryOutbox.at(-1);
+    expect(mail?.html).not.toContain("evil.example");
+    expect(mail?.text).not.toContain("evil.example");
+    expect(mail?.subject).not.toContain("evil.example");
   });
 });

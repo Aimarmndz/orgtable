@@ -33,6 +33,21 @@ export function escapeHtml(text: string): string {
     .replaceAll("'", "&#39;");
 }
 
+/**
+ * A name typed by someone else (an organization, the person who invited) as it appears in
+ * an email: anything that looks like a link or a domain is taken out, so the service cannot
+ * be used to send people to other sites in its name.
+ */
+export function plainName(text: string): string {
+  return text
+    .replace(/[a-z][a-z0-9+.-]*:\/\/\S*/gi, " ")
+    .replace(/\bwww\.\S*/gi, " ")
+    .replace(/\b[\w-]+(?:\.[\w-]+)*\.[a-z]{2,}\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 60);
+}
+
 export type RetroEmail = {
   lang: string;
   subject: string;
@@ -167,18 +182,21 @@ export function inviteEmail(
 ): RenderedEmail {
   const t = c.m.emails.invite;
   const host = new URL(c.baseUrl).host;
+  // Typed by whoever registered the organization: no links or domains in the email.
+  const organization = plainName(c.organization) || c.organizationSlug;
+  const inviter = plainName(c.inviter) || organization;
   return renderRetroEmail({
     lang: c.lang,
-    subject: fmt(t.subject, { organization: c.organization }),
-    preheader: fmt(t.preheader, { organization: c.organization }),
-    kicker: `ORGTABLE · ${c.organization.toUpperCase()}`,
+    subject: fmt(t.subject, { organization }),
+    preheader: fmt(t.preheader, { organization }),
+    kicker: `ORGTABLE · ${organization.toUpperCase()}`,
     windowTitle: "WELCOME.TXT",
-    title: fmt(t.title, { organization: c.organization }),
+    title: fmt(t.title, { organization }),
     paragraphs: [
       fmt(t.body, {
-        name: c.name,
-        inviter: c.inviter,
-        organization: c.organization,
+        name: plainName(c.name),
+        inviter,
+        organization,
         role: c.role,
       }),
       fmt(t.address, { address: `${host}/${c.organizationSlug}` }),
@@ -188,8 +206,8 @@ export function inviteEmail(
       fmt(t.expires, { days: c.days }),
       fmt(t.yourEmail, { email: c.email }),
     ],
-    note: fmt(t.ownership, { organization: c.organization }),
-    footer: fmt(t.footer, { organization: c.organization }),
+    note: fmt(t.ownership, { organization }),
+    footer: fmt(t.footer, { organization }),
     legal: legal(c),
   });
 }

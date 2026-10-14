@@ -852,3 +852,18 @@ describe("the instance administrator cannot orphan an organization", () => {
     expect(await deleteUserAccount(owner.id)).toEqual({ ok: false, error: "sole_owner" });
   });
 });
+
+describe("personal handles", () => {
+  it("can be changed with the same rules as any address", async () => {
+    const { updatePersonalHandle } = await import("@/app/lib/services/workspaces");
+    const ana = await seedUser({ name: "Ana" });
+    const other = await seedUser({ name: "Other" });
+    await seedOrganization(other.id, "acme");
+    expect(await updatePersonalHandle(ana.id, "Ana-Lopez")).toEqual({ ok: true, slug: "ana-lopez" });
+    expect(await updatePersonalHandle(ana.id, "admin")).toEqual({ ok: false, error: "slug_reserved" });
+    expect(await updatePersonalHandle(ana.id, "acme")).toEqual({ ok: false, error: "slug_taken" });
+    expect(await updatePersonalHandle(ana.id, "a")).toEqual({ ok: false, error: "slug_format" });
+    const board = await seedBoard(ana.id, "Diary");
+    expect(await findBoardByPath("ana-lopez", "diary")).toMatchObject({ id: board.id });
+  });
+});

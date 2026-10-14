@@ -66,7 +66,7 @@
     "passwordReset": "Contraseña cambiada. Se han cerrado sus sesiones y sus tokens de la API.",
     "invited": "Cuenta creada. Hemos enviado a {email} un enlace para elegir su contraseña (vale 7 días).",
     "inviteFailed": "La cuenta se ha creado, pero no se ha podido enviar el correo de invitación. Ponle una contraseña inicial abajo y dásela.",
-    "createTextInvite": "Le enviamos a la persona un enlace para que elija su propia contraseña: nadie más la conoce. La cuenta es de la persona; esta organización puede restablecer su contraseña o expulsarla.",
+    "createTextInvite": "Le enviamos a la persona un enlace para que elija su propia contraseña. La cuenta es de la persona; esta organización puede restablecer su contraseña o expulsarla.",
     "createInvite": "Crear y enviar invitación",
     "subtitle": "Las personas de {name} y lo que puede hacer cada una.",
     "createButton": "Crear cuenta de empleado",
@@ -125,5 +125,11 @@
       "one": "Se borra su {count} tablero con sus listas, tarjetas y adjuntos. Las cuentas de los empleados se quedan, sin la organización. No se puede deshacer.",
       "other": "Se borran sus {count} tableros con sus listas, tarjetas y adjuntos. Las cuentas de los empleados se quedan, sin la organización. No se puede deshacer."
     }
+  },
+  "handle": {
+    "label": "Tu dirección",
+    "hint": "Aquí viven tus tableros personales. Si la cambias, los enlaces con la dirección anterior dejan de funcionar.",
+    "save": "Cambiar dirección",
+    "saved": "Dirección cambiada."
   }
 }

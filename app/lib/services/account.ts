@@ -36,10 +36,11 @@ export async function updateOwnProfile(
   }
 
   try {
-    await prisma.user.update({
-      where: { id: userId },
-      data: { name: input.name, email },
-    });
+    // A new address invalidates the emailed links sent to the old one.
+    await prisma.$transaction([
+      prisma.user.update({ where: { id: userId }, data: { name: input.name, email } }),
+      ...(emailChanged ? [prisma.accountToken.deleteMany({ where: { userId } })] : []),
+    ]);
   } catch (e) {
     if (isUniqueViolation(e)) return { ok: false, error: "email_taken" };
     throw e;
@@ -78,6 +79,8 @@ export async function changeOwnPassword(
       where: { userId, revokedAt: null, id: { not: input.keepSessionId } },
       data: { revokedAt: new Date() },
     }),
+    // Pending emailed links (reset, invitation) stop working with the new password.
+    prisma.accountToken.deleteMany({ where: { userId } }),
   ]);
   return { ok: true, revokedSessions: revoked.count };
 }

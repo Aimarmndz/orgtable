@@ -66,7 +66,7 @@
     "passwordReset": "Password changed. Their open sessions and API tokens were closed.",
     "invited": "Account created. We emailed {email} a link to choose their password (valid for 7 days).",
     "inviteFailed": "The account was created, but the invitation email could not be sent. Set an initial password for them below and hand it over.",
-    "createTextInvite": "We email the person a link to choose their own password: nobody else ever knows it. The account belongs to the person; this organization can reset its password or remove it.",
+    "createTextInvite": "We email the person a link to choose their own password. The account belongs to the person; this organization can reset its password or remove it.",
     "createInvite": "Create and send invitation",
     "subtitle": "The people of {name} and what each one can do.",
     "createButton": "Create employee account",
@@ -125,5 +125,11 @@
       "one": "Deletes its {count} board with its lists, cards and attachments. Employee accounts stay, without the organization. This cannot be undone.",
       "other": "Deletes its {count} boards with their lists, cards and attachments. Employee accounts stay, without the organization. This cannot be undone."
     }
+  },
+  "handle": {
+    "label": "Your address",
+    "hint": "Your personal boards live here. If you change it, old links with the previous address stop working.",
+    "save": "Change address",
+    "saved": "Address changed."
   }
 }

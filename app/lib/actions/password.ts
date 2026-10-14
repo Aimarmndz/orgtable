@@ -24,7 +24,9 @@ export type PasswordFormState = {
 // Per address and per IP, an hour. Few, because each one sends an email to someone.
 const EMAIL_LIMIT = 3;
 const IP_LIMIT = 10;
-const GLOBAL_LIMIT = 200;
+const GLOBAL_LIMIT = 2000;
+// Setting a password from a link runs bcrypt: limited per IP so nobody can burn CPU.
+const RESET_IP_LIMIT = 20;
 const WINDOW_MS = 60 * 60 * 1000;
 
 function text(formData: FormData, key: string, max: number): string {
@@ -66,7 +68,11 @@ export async function forgotPassword(
     };
   }
 
-  await requestPasswordReset(parsed.data.email);
+  // Not awaited: the answer takes the same time whether the address has an account or not
+  // (an existing one also waits for the database and the SMTP server).
+  void requestPasswordReset(parsed.data.email).catch((err: unknown) =>
+    console.error("[password] reset request failed", err instanceof Error ? err.message : err),
+  );
   await recordAudit({ action: "auth.password_reset_requested", ip });
   return { sent: true, email: parsed.data.email };
 }
@@ -76,7 +82,17 @@ export async function resetPasswordWithToken(
   _prev: PasswordFormState,
   formData: FormData,
 ): Promise<PasswordFormState> {
-  const { m } = await getI18n();
+  const { m, intl } = await getI18n();
+  const ip = await clientIp();
+  const limits = [
+    ...(ip ? [rateLimit(`reset:ip:${ip}`, RESET_IP_LIMIT, WINDOW_MS)] : []),
+    rateLimit("reset:global", GLOBAL_LIMIT, WINDOW_MS),
+  ];
+  const blocked = limits.find((l) => !l.ok);
+  if (blocked) {
+    const minutes = Math.ceil(blocked.retryAfterSec / 60);
+    return { error: plural(intl, m.errors.register.rateLimited, minutes, { minutes }) };
+  }
   const parsed = newPasswordSchema.safeParse({
     token: text(formData, "token", 200),
     password: formData.get("password"),
