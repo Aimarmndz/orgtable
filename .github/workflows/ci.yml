@@ -5,7 +5,7 @@ on:
     branches: [main]
   pull_request:
 
-# Si llegan pushes seguidos al mismo ref, cancela la ejecución anterior.
+# If several pushes arrive for the same ref, cancel the previous run.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -14,8 +14,8 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
-    # PostgreSQL efímero para los tests de integración. La base de datos se llama
-    # `orgtable_test` (el guardia de los tests exige que acabe en `_test`).
+    # Ephemeral PostgreSQL for the integration tests. The database is called
+    # `orgtable_test` (the test guard requires the name to end in `_test`).
     services:
       postgres:
         image: postgres:17
@@ -32,21 +32,21 @@ jobs:
           --health-retries 10
 
     env:
-      # Apunta al Postgres de servicio. El build no se conecta (rutas dinámicas); los
-      # tests de integración sí, y `prisma migrate deploy` crea el esquema ahí.
+      # Points at the service Postgres. The build does not connect (dynamic routes); the
+      # integration tests do, and `prisma migrate deploy` creates the schema there.
       DATABASE_URL: postgresql://orgtable:orgtable@localhost:5432/orgtable_test
 
     steps:
       - uses: actions/checkout@v5
 
-      # shellcheck viene instalado en ubuntu-latest. Los scripts de operación tocan datos
-      # de producción (backups, restauración), así que un error de shell no puede pasar.
+      # shellcheck ships with ubuntu-latest. The ops scripts touch production data
+      # (backups, restore), so a shell error must not slip through.
       - name: Shellcheck
         run: shellcheck scripts/*.sh install.sh docker-entrypoint.sh
 
-      # El contenedor app solo recibe las variables listadas en `environment:`. Si alguna
-      # se cae del compose, la función que depende de ella deja de funcionar en Docker sin
-      # ningún error (p. ej. sin CRON_SECRET los recordatorios responden siempre 503).
+      # The app container only receives the variables listed under `environment:`. If one
+      # is dropped from the compose file, the feature that depends on it silently stops
+      # working in Docker (e.g. without CRON_SECRET reminders always answer 503).
       - name: Check compose passes env vars to app
         run: |
           config="$(CRON_SECRET=probe TRUSTED_PROXY_HOPS=7 ORGTABLE_TIMEZONE=Europe/Madrid \
@@ -58,10 +58,10 @@ jobs:
           grep -q 'ORGTABLE_AUDIT_RETENTION_DAYS: "45"' <<<"$config"
           grep -q 'ORGTABLE_SOURCE_URL: https://example.org/fork' <<<"$config"
 
-      # La licencia vigente es AGPL-3.0-or-later con un término de atribución (sección
-      # 7(b)) al final de LICENSE (ver docs/DECISIONES.md, 2026-10-14). Falla si
-      # package.json y LICENSE dejan de coincidir, si se pierde el término de atribución o
-      # si reaparecen restos de la licencia propietaria fuera del registro histórico.
+      # The current license is AGPL-3.0-or-later with an attribution term (section 7(b))
+      # at the end of LICENSE (see docs/DECISIONES.md, 2026-10-14). Fails if package.json
+      # and LICENSE stop matching, if the attribution term is lost, or if leftovers of
+      # the proprietary license reappear outside the historical record.
       - name: Check license
         run: |
           grep -q '"license": "AGPL-3.0-or-later"' package.json
@@ -71,11 +71,11 @@ jobs:
           if git grep -n -E 'MARA-KASSA|UNLICENSED|[Tt]odos los derechos reservados' -- \
             ':!docs/decisions/0005-agpl.md' ':!docs/decisions/0016-licencia-propietaria.md' \
             ':!docs/DECISIONES.md' ':!.github/workflows/ci.yml' ':!CLAUDE.md'; then
-            echo "Quedan restos de la licencia anterior (la vigente es la de LICENSE)." >&2
+            echo "Leftovers of the previous license remain (the current one is in LICENSE)." >&2
             exit 1
           fi
 
-      # Instala la versión de pnpm fijada en `packageManager` (package.json).
+      # Installs the pnpm version pinned in `packageManager` (package.json).
       - uses: pnpm/action-setup@v4
 
       - uses: actions/setup-node@v5
@@ -86,7 +86,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # Falla si hay vulnerabilidades altas o críticas en las dependencias de producción.
+      # Fails on high or critical vulnerabilities in production dependencies.
       - name: Audit dependencies
         run: pnpm audit --prod --audit-level high
 

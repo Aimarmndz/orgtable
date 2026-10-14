@@ -1,14 +1,14 @@
-# Solo estos paquetes pueden ejecutar scripts de instalación (pnpm 11 bloquea el
-# resto). Prisma necesita descargar el schema-engine que usa `migrate deploy`.
+# Only these packages may run install scripts (pnpm 11 blocks the rest). Prisma needs
+# to download the schema-engine used by `migrate deploy`.
 allowBuilds:
   '@prisma/engines': true
   prisma: true
   sharp: false
   unrs-resolver: false
 
-# Fuerza versiones parcheadas de dependencias transitivas con avisos de seguridad,
-# siempre dentro de la misma versión mayor. Revisar al subir next, prisma o
-# eslint-config-next: si ya traen la versión corregida, se quita la línea.
+# Force patched versions of transitive dependencies with security advisories, always
+# within the same major version. Review when bumping next, prisma or
+# eslint-config-next: if they already ship the fixed version, drop the line.
 overrides:
   brace-expansion@>=3.0.0 <5.0.9: ^5.0.12
   browserslist@<4.28.7: ^4.28.7
@@ -18,8 +18,8 @@ overrides:
 
 auditConfig:
   ignoreGhsas:
-    # deepmerge-ts <8 (vía @prisma/config): desbordamiento de pila al fusionar grafos
-    # recursivos. Solo fusiona la configuración local de prisma.config.ts, que no es
-    # entrada de usuario. El parche exige deepmerge-ts 8 (mayor); se quita al subir a
-    # un prisma que lo incluya. Ver docs/DECISIONES.md (2026-09-24).
+    # deepmerge-ts <8 (via @prisma/config): stack overflow when merging recursive
+    # graphs. It only merges the local prisma.config.ts config, which is not user input.
+    # The fix requires deepmerge-ts 8 (major); remove this once on a prisma that ships
+    # it. See docs/DECISIONES.md (2026-09-24).
     - GHSA-ggr8-5vv4-36mx

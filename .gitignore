@@ -20,11 +20,11 @@
 # production
 /build
 
-# adjuntos subidos en desarrollo (en producción es un volumen Docker)
+# attachments uploaded in development (a Docker volume in production)
 /uploads
 /data
 
-# backups locales de la base de datos
+# local database backups
 /backups
 *.sql.gz
 
@@ -38,14 +38,14 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files: se ignoran los reales (contienen secretos), pero se versiona la plantilla
+# env files: the real ones are ignored (they hold secrets), the template is versioned
 .env*
 !.env.example
 
 # vercel
 .vercel
 
-# herramientas de desarrollo locales (skills de Claude Code, no parte del proyecto)
+# local development tooling (Claude Code skills, not part of the project)
 .claude/
 .agents/
 skills-lock.json

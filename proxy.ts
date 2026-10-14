@@ -2,19 +2,19 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { buildContentSecurityPolicy, generateNonce } from "@/app/lib/csp";
 
-// En Next.js 16 el middleware se llama `proxy` (runtime Node.js). Hace dos cosas:
+// In Next.js 16 middleware is called `proxy` (Node.js runtime). It does two things:
 //
-// 1. Chequeo de auth OPTIMISTA: solo comprueba si EXISTE la cookie de sesión, sin
-//    validarla criptográficamente (eso lo hace el DAL en app/lib/dal.ts, en cada
-//    layout/página protegida). Evita renderizar rutas privadas a quien claramente no ha
-//    iniciado sesión. Ver docs/authentication.md.
-// 2. Content-Security-Policy con un nonce por petición (app/lib/csp.ts). Va en la
-//    petición (Next extrae el nonce para sus scripts; el layout raíz lo lee de
-//    `x-nonce` para el script del tema) y en la respuesta (la aplica el navegador).
+// 1. OPTIMISTIC auth check: it only checks whether the session cookie EXISTS, without
+//    validating it cryptographically (the DAL in app/lib/dal.ts does that on every
+//    protected layout/page). It avoids rendering private routes for someone who is
+//    clearly not signed in. See docs/authentication.md.
+// 2. Content-Security-Policy with a per-request nonce (app/lib/csp.ts). It is set on the
+//    request (Next extracts the nonce for its scripts; the root layout reads it from
+//    `x-nonce` for the theme script) and on the response (enforced by the browser).
 
-// /register comprueba él mismo si el registro está abierto; /legal se lee sin sesión
-// (la política de privacidad tiene que poder leerse ANTES de crear la cuenta). Los
-// buscadores leen /robots.txt sin cookie.
+// /register checks by itself whether sign-up is open; /legal is readable without a
+// session (the privacy policy must be readable BEFORE creating an account). Search
+// engines read /robots.txt without a cookie.
 const PUBLIC_PATHS = ["/login", "/setup", "/register", "/legal", "/robots.txt"];
 
 export function proxy(request: NextRequest) {
@@ -43,6 +43,6 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Excluye rutas de API (su CSP va en next.config.ts), assets estáticos e imágenes.
+  // Excludes API routes (their CSP is in next.config.ts), static assets and images.
   matcher: ["/((?!api|_next/static|_next/image|favicon.ico|.*\\.svg$).*)"],
 };

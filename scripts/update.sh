@@ -1,27 +1,27 @@
 #!/usr/bin/env bash
-# Actualiza orgtable a la última versión y la relanza.
+# Updates orgtable to the latest version and restarts it.
 #
-# La imagen se construye localmente (no se publica en un registro), así que el flujo es
-# "copia de seguridad + traer cambios + reconstruir". Las migraciones de base de datos se
-# aplican SOLAS al arrancar (docker-entrypoint.sh ejecuta `prisma migrate deploy`), por
-# eso la copia se hace antes: si una migración sale mal, hay desde dónde volver. Un
-# `docker compose up -d --build` lanzado a mano NO pasa por aquí ni hace esa copia.
-# Ver docs/operations.md.
+# The image is built locally (it is not published to a registry), so the flow is
+# "backup + pull changes + rebuild". Database migrations are applied AUTOMATICALLY on
+# start (docker-entrypoint.sh runs `prisma migrate deploy`), which is why the backup
+# comes first: if a migration goes wrong, there is something to roll back to. A manual
+# `docker compose up -d --build` does NOT go through here and takes no backup.
+# See docs/operations.md.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-echo "→ Asegurando que PostgreSQL está en marcha para la copia previa"
+echo "→ Making sure PostgreSQL is running for the pre-update backup"
 docker compose up -d --wait postgres
 
-echo "→ Copia de seguridad previa a la actualización"
-# Con set -e, si la copia falla la actualización se aborta sin tocar nada.
+echo "→ Pre-update backup"
+# With set -e, if the backup fails the update aborts without touching anything.
 scripts/backup.sh
 
-echo "→ Trayendo cambios (git pull)"
+echo "→ Pulling changes (git pull)"
 git pull --ff-only
 
-echo "→ Reconstruyendo e iniciando los contenedores"
+echo "→ Rebuilding and starting the containers"
 docker compose up -d --build
 
-echo "✓ orgtable actualizado. Las migraciones pendientes se aplican en el arranque."
+echo "✓ orgtable updated. Pending migrations are applied on start."

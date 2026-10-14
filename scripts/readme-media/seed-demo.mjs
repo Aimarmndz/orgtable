@@ -1,20 +1,20 @@
-// Siembra la BD de demo (orgtable_demo) con datos de ejemplo para las capturas del README.
-// Personas ficticias con emails @example.com (dominio reservado). Ver README.md de esta
-// carpeta. Uso: DATABASE_URL=…/orgtable_demo DEMO_PASSWORD=… node seed-demo.mjs
+// Seeds the demo DB (orgtable_demo) with sample data for the README screenshots.
+// Fictional people with @example.com emails (reserved domain). See README.md in this
+// folder. Usage: DATABASE_URL=…/orgtable_demo DEMO_PASSWORD=… node seed-demo.mjs
 import { createRequire } from "node:module";
 import { randomUUID } from "node:crypto";
 
-// pg, bcryptjs y fractional-indexing salen de las dependencias del propio proyecto.
+// pg, bcryptjs and fractional-indexing come from the project's own dependencies.
 const require = createRequire(new URL("../../package.json", import.meta.url));
 const pg = require("pg");
 const bcrypt = require("bcryptjs");
 const { generateNKeysBetween } = require("fractional-indexing");
 
 const url = process.env.DATABASE_URL;
-// TRUNCATE de todas las tablas: solo se permite contra la BD de demo.
-if (!url?.endsWith("/orgtable_demo")) throw new Error("Solo contra orgtable_demo");
+// TRUNCATEs every table: only allowed against the demo DB.
+if (!url?.endsWith("/orgtable_demo")) throw new Error("Only against orgtable_demo");
 const password = process.env.DEMO_PASSWORD;
-if (!password) throw new Error("Falta DEMO_PASSWORD");
+if (!password) throw new Error("DEMO_PASSWORD is missing");
 
 const db = new pg.Client({ connectionString: url });
 await db.connect();
@@ -28,8 +28,8 @@ await q(`TRUNCATE ${tables.map((t) => `"${t}"`).join(", ")} CASCADE`);
 
 await q(`INSERT INTO "InstanceConfig" (id, "instanceName", "setupCompletedAt", "registrationOpen",
   "operatorName", "operatorEmail", "hostingDescription", "backupRetentionDays", "legalUpdatedAt")
-  VALUES ('singleton', 'orgtable', now(), true, 'Operador de ejemplo', 'privacidad@example.com',
-  'un servidor en la Unión Europea', 14, now())`);
+  VALUES ('singleton', 'orgtable', now(), true, 'Example operator', 'privacy@example.com',
+  'a server in the European Union', 14, now())`);
 
 const hash = await bcrypt.hash(password, 12);
 const people = {
@@ -97,71 +97,71 @@ async function board({ title, background, owner, members, labels, lists }) {
 const { lucia, marcos, ana, diego } = people;
 
 await board({
-  title: "Lanzamiento de la web",
+  title: "Website launch",
   background: "rose",
   owner: lucia,
   members: [[marcos, "EDITOR"], [ana, "EDITOR"], [diego, "VIEWER"]],
-  labels: [["Diseño", "purple"], ["Desarrollo", "blue"], ["Contenido", "amber"], ["Urgente", "red"], ["SEO", "teal"]],
+  labels: [["Design", "purple"], ["Development", "blue"], ["Content", "amber"], ["Urgent", "red"], ["SEO", "teal"]],
   lists: [
     { title: "Ideas", cards: [
-      { title: "Blog con casos de clientes", labels: ["Contenido"] },
-      { title: "Modo oscuro en la landing", labels: ["Diseño"] },
-      { title: "Newsletter mensual", labels: ["Contenido"], assignees: [ana] },
+      { title: "Blog with customer stories", labels: ["Content"] },
+      { title: "Dark mode on the landing page", labels: ["Design"] },
+      { title: "Monthly newsletter", labels: ["Content"], assignees: [ana] },
     ] },
-    { title: "Por hacer", cards: [
-      { title: "Textos de la página de precios", labels: ["Contenido"], due: 3, assignees: [ana],
-        description: "Tres planes, tono cercano. Revisar con Lucía antes del viernes." },
-      { title: "Meta descripciones de cada página", labels: ["SEO"], due: 6, assignees: [marcos] },
-      { title: "Formulario de contacto con validación", labels: ["Desarrollo"], assignees: [marcos],
-        checklist: { title: "Pasos", items: [["Validar en el servidor", false], ["Mensajes de error accesibles", false], ["Prueba en móvil", false]] } },
+    { title: "To do", cards: [
+      { title: "Pricing page copy", labels: ["Content"], due: 3, assignees: [ana],
+        description: "Three plans, friendly tone. Review with Lucía before Friday." },
+      { title: "Meta descriptions for every page", labels: ["SEO"], due: 6, assignees: [marcos] },
+      { title: "Contact form with validation", labels: ["Development"], assignees: [marcos],
+        checklist: { title: "Steps", items: [["Validate on the server", false], ["Accessible error messages", false], ["Test on mobile", false]] } },
     ] },
-    { title: "En curso", cards: [
-      { title: "Maquetar la home", labels: ["Desarrollo", "Diseño"], due: 1, assignees: [marcos, lucia],
-        description: "Hero, tres bloques de beneficios y testimonios. Mobile-first.",
-        checklist: { title: "Secciones", items: [["Hero", true], ["Beneficios", true], ["Testimonios", false], ["Pie", false]] },
-        comments: [[lucia, "El hero ya está en staging, ¿lo revisas?", 5], [marcos, "Visto, ajusto el espaciado en móvil.", 2]] },
-      { title: "Fotos del equipo", labels: ["Diseño"], due: 2, assignees: [ana] },
+    { title: "In progress", cards: [
+      { title: "Build the home page", labels: ["Development", "Design"], due: 1, assignees: [marcos, lucia],
+        description: "Hero, three benefit blocks and testimonials. Mobile-first.",
+        checklist: { title: "Sections", items: [["Hero", true], ["Benefits", true], ["Testimonials", false], ["Footer", false]] },
+        comments: [[lucia, "The hero is on staging now, can you take a look?", 5], [marcos, "Seen it, tweaking the spacing on mobile.", 2]] },
+      { title: "Team photos", labels: ["Design"], due: 2, assignees: [ana] },
     ] },
-    { title: "Revisión", cards: [
-      { title: "Paleta y tipografías", labels: ["Diseño"], assignees: [lucia],
-        checklist: { title: "Checklist", items: [["Contraste AA", true], ["Tema oscuro", true]] } },
-      { title: "Sitemap y robots.txt", labels: ["SEO", "Desarrollo"], due: -1, assignees: [marcos] },
+    { title: "Review", cards: [
+      { title: "Palette and typography", labels: ["Design"], assignees: [lucia],
+        checklist: { title: "Checklist", items: [["AA contrast", true], ["Dark theme", true]] } },
+      { title: "Sitemap and robots.txt", labels: ["SEO", "Development"], due: -1, assignees: [marcos] },
     ] },
-    { title: "Hecho", cards: [
-      { title: "Comprar el dominio", labels: ["Urgente"] },
-      { title: "Wireframes", labels: ["Diseño"], assignees: [lucia, ana] },
+    { title: "Done", cards: [
+      { title: "Buy the domain", labels: ["Urgent"] },
+      { title: "Wireframes", labels: ["Design"], assignees: [lucia, ana] },
     ] },
   ],
 });
 
 await board({
-  title: "Mudanza de oficina", background: "teal", owner: lucia, members: [[diego, "EDITOR"]],
-  labels: [["Proveedores", "amber"], ["IT", "blue"]],
+  title: "Office move", background: "teal", owner: lucia, members: [[diego, "EDITOR"]],
+  labels: [["Suppliers", "amber"], ["IT", "blue"]],
   lists: [
-    { title: "Por hacer", cards: [{ title: "Pedir presupuesto de la mudanza", labels: ["Proveedores"], due: 9 }] },
-    { title: "En curso", cards: [{ title: "Contratar fibra en la nueva oficina", labels: ["IT"], assignees: [diego] }] },
-    { title: "Hecho", cards: [{ title: "Firmar el contrato de alquiler" }] },
+    { title: "To do", cards: [{ title: "Get a quote for the move", labels: ["Suppliers"], due: 9 }] },
+    { title: "In progress", cards: [{ title: "Set up fibre at the new office", labels: ["IT"], assignees: [diego] }] },
+    { title: "Done", cards: [{ title: "Sign the lease" }] },
   ],
 });
 
 await board({
-  title: "Contenido del cuarto trimestre", background: "amber", owner: ana, members: [[lucia, "EDITOR"]],
-  labels: [["Vídeo", "pink"], ["Artículo", "green"]],
+  title: "Q4 content", background: "amber", owner: ana, members: [[lucia, "EDITOR"]],
+  labels: [["Video", "pink"], ["Article", "green"]],
   lists: [
-    { title: "Borradores", cards: [{ title: "Guía de primeros pasos", labels: ["Artículo"], assignees: [ana] }] },
-    { title: "Publicado", cards: [{ title: "Vídeo de presentación", labels: ["Vídeo"] }] },
+    { title: "Drafts", cards: [{ title: "Getting started guide", labels: ["Article"], assignees: [ana] }] },
+    { title: "Published", cards: [{ title: "Product intro video", labels: ["Video"] }] },
   ],
 });
 
 await board({
   title: "Personal", background: "green", owner: lucia, members: [], labels: [],
-  lists: [{ title: "Esta semana", cards: [{ title: "Renovar el pasaporte", due: 4 }, { title: "Reservar el dentista" }] }],
+  lists: [{ title: "This week", cards: [{ title: "Renew passport", due: 4 }, { title: "Book the dentist" }] }],
 });
 
 await q(`INSERT INTO "Notification" (id,"userId",type,title,body,read,"createdAt") VALUES
-  ($1,$2,'card.assigned','Marcos te asignó «Maquetar la home»','Lanzamiento de la web',false, now() - interval '2 hours'),
-  ($3,$2,'comment.added','Nuevo comentario en «Maquetar la home»','Marcos: Visto, ajusto el espaciado en móvil.',false, now() - interval '1 hour')`,
+  ($1,$2,'card.assigned','You were assigned “Build the home page”','On the board “Website launch”.',false, now() - interval '2 hours'),
+  ($3,$2,'comment.added','New comment on “Build the home page”','Seen it, tweaking the spacing on mobile.',false, now() - interval '1 hour')`,
   [id(), lucia.id, id()]);
 
-console.log("Demo sembrada:", Object.values(people).map((p) => p.email).join(", "));
+console.log("Demo seeded:", Object.values(people).map((p) => p.email).join(", "));
 await db.end();

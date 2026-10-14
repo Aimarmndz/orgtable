@@ -1,6 +1,6 @@
-# orgtable — orquestación de producción. La imagen `app` se construye localmente.
-# Las variables vienen de .env (lo genera install.sh con secretos aleatorios).
-# Ver docs/installation.md y docs/docker.md.
+# orgtable — production orchestration. The `app` image is built locally.
+# Variables come from .env (install.sh generates it with random secrets).
+# See docs/installation.md and docs/docker.md.
 
 services:
   postgres:
@@ -19,7 +19,7 @@ services:
       retries: 10
     networks:
       - orgtable
-    # Postgres NO se expone al host: solo es accesible desde la red interna.
+    # Postgres is NOT exposed to the host: it is only reachable from the internal network.
 
   app:
     build:
@@ -33,34 +33,34 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       SESSION_SECRET: ${SESSION_SECRET}
       NODE_ENV: production
-      # Directorio de adjuntos (volumen persistente). Ver docs/attachments.md.
+      # Attachments directory (persistent volume). See docs/attachments.md.
       ORGTABLE_UPLOAD_DIR: ${ORGTABLE_UPLOAD_DIR:-/data/uploads}
-      # Tiempo real entre varias réplicas (0 = en proceso). Ver docs/realtime.md.
+      # Real time across several replicas (0 = in-process). See docs/realtime.md.
       ORGTABLE_REALTIME_PG_NOTIFY: ${ORGTABLE_REALTIME_PG_NOTIFY:-0}
-      # Secreto del endpoint de recordatorios. Vacío = endpoint desactivado (503). El
-      # contenedor solo ve las variables listadas aquí: sin esta línea, el CRON_SECRET del
-      # .env no llegaría a la app. Ver docs/reminders.md.
+      # Secret for the reminders endpoint. Empty = endpoint disabled (503). The container
+      # only sees the variables listed here: without this line, the CRON_SECRET in .env
+      # would never reach the app. See docs/reminders.md.
       CRON_SECRET: ${CRON_SECRET:-}
-      # Proxies de confianza delante de la app (0 = se ignora X-Forwarded-For y el límite
-      # de login va por email). Ver docs/self-hosting.md.
+      # Trusted proxies in front of the app (0 = X-Forwarded-For is ignored and the login
+      # rate limit is per email). See docs/self-hosting.md.
       TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-0}
-      # Zona horaria de las fechas que formatea el servidor. Ver docs/installation.md.
+      # Time zone for dates formatted by the server. See docs/installation.md.
       ORGTABLE_TIMEZONE: ${ORGTABLE_TIMEZONE:-Atlantic/Canary}
-      # Días que se guarda el registro de auditoría antes de que POST /api/cron/maintenance
-      # lo borre. Vacío = 90. Ver docs/privacy.md.
+      # Days the audit log is kept before POST /api/cron/maintenance deletes it.
+      # Empty = 90. See docs/privacy.md.
       ORGTABLE_AUDIT_RETENTION_DAYS: ${ORGTABLE_AUDIT_RETENTION_DAYS:-}
-      # Enlace «Código fuente» de la app (sección 13 de la AGPL). Vacío = el repositorio
-      # original; si despliegas una versión modificada, pon aquí tu fork.
+      # The app's "Source code" link (AGPL section 13). Empty = the original repository;
+      # if you deploy a modified version, put your fork here.
       ORGTABLE_SOURCE_URL: ${ORGTABLE_SOURCE_URL:-}
     volumes:
       - uploads:/data/uploads
     ports:
-      # APP_PORT admite también «127.0.0.1:3000» para publicar la app solo en local
-      # (detrás de un proxy inverso). Ver docs/self-hosting.md.
+      # APP_PORT also accepts "127.0.0.1:3000" to publish the app on localhost only
+      # (behind a reverse proxy). See docs/self-hosting.md.
       - "${APP_PORT:-3000}:3000"
     healthcheck:
-      # 127.0.0.1 (no "localhost"): dentro del contenedor localhost resuelve a IPv6
-      # ::1, pero el servidor standalone escucha en IPv4 0.0.0.0.
+      # 127.0.0.1 (not "localhost"): inside the container localhost resolves to IPv6
+      # ::1, but the standalone server listens on IPv4 0.0.0.0.
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health || exit 1"]
       interval: 10s
       timeout: 5s

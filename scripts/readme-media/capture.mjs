@@ -1,19 +1,19 @@
-// Capturas y fotogramas para el README. Guarda PNG en $OUT/readme/ y fotogramas de GIF en
-// $OUT/frames/<nombre>/NNNN.png con un frames.json de duraciones. Ver README.md de esta
-// carpeta.
+// Screenshots and frames for the README. Saves PNGs to $OUT/readme/ and GIF frames to
+// $OUT/frames/<name>/NNNN.png with a frames.json of durations. See README.md in this
+// folder.
 //
 //   BASE=http://localhost:3051 DEMO_PASSWORD=… OUT=/tmp/orgtable-media \
-//   CHROME=/ruta/al/navegador node capture.mjs
+//   CHROME=/path/to/browser node capture.mjs
 import { chromium } from "playwright-core";
 import { mkdirSync, writeFileSync, rmSync } from "node:fs";
 
 const BASE = process.env.BASE ?? "http://localhost:3051";
 const pw = process.env.DEMO_PASSWORD;
-if (!pw) throw new Error("Falta DEMO_PASSWORD (la misma que se usó en seed-demo.mjs)");
+if (!pw) throw new Error("DEMO_PASSWORD is missing (the same one used for seed-demo.mjs)");
 const HERE = (process.env.OUT ?? "/tmp/orgtable-media").replace(/\/?$/, "/");
 mkdirSync(HERE + "readme", { recursive: true });
 
-// Cualquier Chromium (Chrome, Brave, Edge…). Sin CHROME, el que instale Playwright.
+// Any Chromium (Chrome, Brave, Edge…). Without CHROME, the one Playwright installs.
 const browser = await chromium.launch(
   process.env.CHROME ? { executablePath: process.env.CHROME } : {},
 );
@@ -23,7 +23,8 @@ async function open({ width = 1280, height = 800, dark = false, user = "lucia@ex
     viewport: { width, height },
     deviceScaleFactor: 2,
     colorScheme: dark ? "dark" : "light",
-    locale: "es-ES",
+    // English UI: the users have no saved language, so the browser's locale decides.
+    locale: "en-US",
     timezoneId: "Atlantic/Canary",
   });
   const page = await ctx.newPage();
@@ -42,7 +43,7 @@ async function gotoBoard(page, title) {
 
 const shot = (page, name) => page.screenshot({ path: `${HERE}readme/${name}.png` });
 
-/** Graba fotogramas mientras `act` se ejecuta. */
+/** Records frames while `act` runs. */
 async function record(page, name, act, { every = 70 } = {}) {
   const dir = `${HERE}frames/${name}/`;
   rmSync(dir, { recursive: true, force: true });
@@ -72,16 +73,16 @@ const center = async (loc) => {
   return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
 };
 
-// --- 1. Tablero en claro y GIF principal (arrastrar + abrir tarjeta) ---------------------
+// --- 1. Light board and main GIF (drag + open a card) -----------------------------------
 {
   const { ctx, page } = await open();
-  await gotoBoard(page, "Lanzamiento de la web");
+  await gotoBoard(page, "Website launch");
   await shot(page, "board-light");
 
   await record(page, "hero", async (grab) => {
     await grab(1200);
-    const card = page.getByText("Fotos del equipo", { exact: true });
-    const target = page.getByText("Sitemap y robots.txt", { exact: true });
+    const card = page.getByText("Team photos", { exact: true });
+    const target = page.getByText("Sitemap and robots.txt", { exact: true });
     const from = await center(card);
     const tgt = await center(target);
     await page.mouse.move(from.x, from.y);
@@ -95,8 +96,8 @@ const center = async (loc) => {
     await page.waitForTimeout(350);
     await grab(1100);
 
-    // Abrir el detalle de una tarjeta.
-    const open = await center(page.getByText("Maquetar la home", { exact: true }));
+    // Open a card's detail.
+    const open = await center(page.getByText("Build the home page", { exact: true }));
     await smoothMove(page, grab, { x: tgt.x, y: tgt.y + 34 }, open, 8);
     await page.mouse.click(open.x, open.y);
     for (let i = 0; i < 4; i++) { await page.waitForTimeout(70); await grab(70); }
@@ -108,16 +109,16 @@ const center = async (loc) => {
   await ctx.close();
 }
 
-// --- 2. Detalle de tarjeta, calendario y filtros en claro --------------------------------
+// --- 2. Card detail, calendar and filters in light mode ----------------------------------
 {
   const { ctx, page } = await open();
-  await gotoBoard(page, "Lanzamiento de la web");
-  await page.getByText("Maquetar la home", { exact: true }).click();
+  await gotoBoard(page, "Website launch");
+  await page.getByText("Build the home page", { exact: true }).click();
   await page.waitForTimeout(600);
   await shot(page, "card-light");
   await page.keyboard.press("Escape");
   await page.waitForTimeout(300);
-  const cal = page.getByRole("button", { name: /Calendario/ }).or(page.getByRole("tab", { name: /Calendario/ }));
+  const cal = page.getByRole("button", { name: /Calendar/ }).or(page.getByRole("tab", { name: /Calendar/ }));
   await cal.first().click();
   await page.waitForTimeout(600);
   await shot(page, "calendar-light");
@@ -130,29 +131,29 @@ const center = async (loc) => {
   await ctx.close();
 }
 
-// --- 3. Tablero en oscuro y en móvil ------------------------------------------------------
+// --- 3. Board in dark mode and on mobile ---------------------------------------------------
 {
   const { ctx, page } = await open({ dark: true });
-  await gotoBoard(page, "Lanzamiento de la web");
+  await gotoBoard(page, "Website launch");
   await shot(page, "board-dark");
-  await page.getByText("Maquetar la home", { exact: true }).click();
+  await page.getByText("Build the home page", { exact: true }).click();
   await page.waitForTimeout(600);
   await shot(page, "card-dark");
   await ctx.close();
 }
 {
   const { ctx, page } = await open({ width: 390, height: 844 });
-  await gotoBoard(page, "Lanzamiento de la web");
+  await gotoBoard(page, "Website launch");
   await shot(page, "board-mobile");
   await ctx.close();
 }
 
-// --- 4. Tiempo real: dos personas en el mismo tablero ------------------------------------
+// --- 4. Real time: two people on the same board -------------------------------------------
 {
   const a = await open({ width: 900, height: 640 });
   const b = await open({ width: 900, height: 640, user: "marcos@example.com" });
-  await gotoBoard(a.page, "Lanzamiento de la web");
-  await gotoBoard(b.page, "Lanzamiento de la web");
+  await gotoBoard(a.page, "Website launch");
+  await gotoBoard(b.page, "Website launch");
   for (const p of [a.page, b.page]) await p.mouse.wheel(0, 0);
   const dirA = `${HERE}frames/realtime-a/`, dirB = `${HERE}frames/realtime-b/`;
   for (const d of [dirA, dirB]) { rmSync(d, { recursive: true, force: true }); mkdirSync(d, { recursive: true }); }
@@ -167,8 +168,8 @@ const center = async (loc) => {
     frames.push({ id, ms });
   };
   await grab(1200);
-  const card = a.page.getByText("Newsletter mensual", { exact: true });
-  const target = a.page.getByText("Textos de la página de precios", { exact: true });
+  const card = a.page.getByText("Monthly newsletter", { exact: true });
+  const target = a.page.getByText("Pricing page copy", { exact: true });
   const from = await center(card);
   const tgt = await center(target);
   await a.page.mouse.move(from.x, from.y);
@@ -188,4 +189,4 @@ const center = async (loc) => {
 }
 
 await browser.close();
-console.log("capturas listas");
+console.log("screenshots ready");

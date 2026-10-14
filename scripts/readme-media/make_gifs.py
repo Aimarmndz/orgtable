@@ -1,8 +1,8 @@
-"""Monta los GIF del README (y pasa las capturas a WebP) a partir de capture.mjs.
+"""Builds the README GIFs (and converts the screenshots to WebP) from capture.mjs output.
 
-Una paleta común para todos los fotogramas (sacada de un mosaico de varios) evita el
-parpadeo de color entre fotogramas; sin tramado (dither) para que los bloques planos de
-la interfaz no se llenen de ruido y el fichero pese menos.
+A single palette shared by every frame (taken from a mosaic of several) avoids colour
+flicker between frames; no dithering, so the flat UI blocks do not fill up with noise
+and the file stays smaller.
 """
 import json
 import os
@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 from PIL import Image
 
-# Misma carpeta OUT que capture.mjs. Los GIF se escriben en OUT/gifs.
+# Same OUT folder as capture.mjs. GIFs are written to OUT/gifs.
 HERE = Path(os.environ.get("OUT", "/tmp/orgtable-media"))
 OUT = HERE / "gifs"
 OUT.mkdir(exist_ok=True)
@@ -37,7 +37,7 @@ def save_gif(frames, durations, path, colors=128):
         optimize=True,
         disposal=1,
     )
-    print(f"{path.name}: {len(frames)} fotogramas, {path.stat().st_size / 1e6:.2f} MB")
+    print(f"{path.name}: {len(frames)} frames, {path.stat().st_size / 1e6:.2f} MB")
 
 
 def hero(width=960):
@@ -70,7 +70,7 @@ def realtime(width=960):
 
 
 def screens():
-    """PNG de capture.mjs a WebP: 1600 px de ancho (780 la de móvil)."""
+    """capture.mjs PNGs to WebP: 1600 px wide (780 for the mobile one)."""
     for png in sorted((HERE / "readme").glob("*.png")):
         im = Image.open(png).convert("RGB")
         width = 780 if png.stem == "board-mobile" else 1600

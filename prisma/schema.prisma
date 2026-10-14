@@ -1,42 +1,42 @@
-// orgtable — esquema de base de datos (Prisma + PostgreSQL)
-// Documentado en docs/database.md. Decisiones: docs/decisions/0001-prisma.md,
+// orgtable — database schema (Prisma + PostgreSQL)
+// Documented in docs/database.md. Decisions: docs/decisions/0001-prisma.md,
 // 0002-fractional-indexing.md.
 
 generator client {
   provider = "prisma-client-js"
 }
 
-// En Prisma 7 la `url` ya NO va aquí: se define en prisma.config.ts (para el CLI de
-// Migrate) y en runtime el PrismaClient se conecta mediante el driver adapter
-// @prisma/adapter-pg (ver app/lib/prisma.ts). El query engine es WASM, no binario,
-// por lo que no hace falta `binaryTargets` ni copiar engines a la imagen Docker.
+// In Prisma 7 the `url` NO longer goes here: it is defined in prisma.config.ts (for the
+// Migrate CLI) and at runtime PrismaClient connects through the @prisma/adapter-pg
+// driver adapter (see app/lib/prisma.ts). The query engine is WASM, not a binary, so
+// there is no need for `binaryTargets` or copying engines into the Docker image.
 datasource db {
   provider = "postgresql"
 }
 
-// Configuración global de la instancia. Es una fila única (id fijo "singleton").
-// `setupCompletedAt` no-nulo es la fuente de verdad de "la instancia ya está
-// configurada"; mientras sea null, el setup wizard (/setup) está activo.
+// Instance-wide settings. A single row (fixed id "singleton").
+// A non-null `setupCompletedAt` is the source of truth for "the instance is already
+// set up"; while it is null, the setup wizard (/setup) is active.
 model InstanceConfig {
   id               String    @id @default("singleton")
   instanceName     String
   setupCompletedAt DateTime?
   createdAt        DateTime  @default(now())
-  // Registro abierto: cualquiera puede crearse una cuenta en /register. Cerrado por
-  // defecto (instancia privada, el admin da de alta). Solo se puede abrir si están el
-  // responsable y el contacto de privacidad, que necesita la política de privacidad.
+  // Open sign-up: anyone can create an account at /register. Closed by default (private
+  // instance, the admin creates accounts). It can only be opened once the controller and
+  // the privacy contact are set, because the privacy policy needs them.
   registrationOpen Boolean   @default(false)
-  // Datos legales de QUIEN OPERA esta instancia (no del autor del software). Salen en
-  // /legal/*. Todos opcionales: sin ellos las páginas legales lo dicen en vez de
-  // inventar nada. Ver docs/privacy.md.
+  // Legal details of WHOEVER OPERATES this instance (not the software's author). Shown
+  // on /legal/*. All optional: without them the legal pages say so instead of making
+  // anything up. See docs/privacy.md.
   operatorName        String?
   operatorEmail       String?
   operatorLegalId     String?
   operatorAddress     String?
   hostingDescription  String?
   backupRetentionDays Int?
-  // Fecha de la última edición de los datos legales: es la «última actualización» que
-  // muestran las páginas legales.
+  // Date the legal details were last edited: it is the "last updated" date shown on the
+  // legal pages.
   legalUpdatedAt      DateTime?
 }
 
@@ -57,8 +57,8 @@ model User {
   passwordHash String
   name         String
   role         Role          @default(MEMBER)
-  // Cuándo aceptó la política de privacidad y las condiciones al registrarse (/register).
-  // Null en las cuentas que crea el admin o el asistente inicial.
+  // When the person accepted the privacy policy and terms on sign-up (/register).
+  // Null for accounts created by the admin or by the setup wizard.
   termsAcceptedAt DateTime?
   // Interface language chosen by the person ("en", "es"…; see locales/index.ts). Null
   // until they pick one: then the browser decides. Notifications for them are written in
@@ -76,11 +76,11 @@ model User {
   comments      Comment[]
 }
 
-// Sesión de servidor (Hito 4). La cookie sigue siendo un JWT firmado, pero ahora
-// lleva el id de ESTA fila (sid). El DAL valida el JWT y además comprueba que la
-// sesión existe, no está revocada y no ha expirado: así la revocación es INMEDIATA
-// (cerrar sesión, restablecer contraseña por el admin, "cerrar en todos los
-// dispositivos"). Ver docs/authentication.md y docs/decisions/0008-session-store.md.
+// Server-side session. The cookie is still a signed JWT, but it carries the id of THIS
+// row (sid). The DAL validates the JWT and also checks that the session exists, is not
+// revoked and has not expired: this makes revocation IMMEDIATE (sign out, password reset
+// by the admin, "sign out on all devices"). See docs/authentication.md and
+// docs/decisions/0008-session-store.md.
 model Session {
   id        String    @id @default(cuid())
   userId    String
@@ -114,12 +114,12 @@ model List {
   boardId   String
   board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
   title     String
-  // Clave de ordenación por fractional indexing (string lexicográfico).
-  // Mover una lista actualiza SOLO su propia fila. Ver docs/drag-and-drop.md.
-  // En la BD la columna es TEXT COLLATE "C" (orden byte a byte), igual que
-  // Card/Checklist/ChecklistItem.position: con la collation por defecto (glibc) 'Zz'
-  // quedaría después de 'a0'. Prisma no modela la collation; la fija la migración
-  // 20260924000000_position_collate_c. Ver ADR 0002.
+  // Fractional indexing sort key (lexicographic string).
+  // Moving a list updates ONLY its own row. See docs/drag-and-drop.md.
+  // In the DB the column is TEXT COLLATE "C" (byte order), like
+  // Card/Checklist/ChecklistItem.position: with the default (glibc) collation 'Zz' would
+  // sort after 'a0'. Prisma does not model collations; the
+  // 20260924000000_position_collate_c migration sets it. See ADR 0002.
   position  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -134,7 +134,7 @@ model Card {
   list        List        @relation(fields: [listId], references: [id], onDelete: Cascade)
   title       String
   description String?
-  // Clave de ordenación por fractional indexing (ver List.position).
+  // Fractional indexing sort key (see List.position).
   position    String
   dueDate     DateTime?
   createdAt   DateTime    @default(now())
@@ -148,10 +148,9 @@ model Card {
   @@index([listId, position])
 }
 
-// Adjuntos de una tarjeta (Hito 5). El binario se guarda en disco (volumen
-// configurable, ver app/lib/storage.ts); aquí solo viven los metadatos. `storedName`
-// es el nombre aleatorio del fichero en disco; `filename` es el nombre original que ve
-// el usuario. Ver docs/attachments.md.
+// Card attachments. The binary is stored on disk (configurable volume, see
+// app/lib/storage.ts); only the metadata lives here. `storedName` is the random file
+// name on disk; `filename` is the original name the user sees. See docs/attachments.md.
 model Attachment {
   id         String   @id @default(cuid())
   cardId     String
@@ -176,7 +175,7 @@ model Label {
   @@index([boardId])
 }
 
-// Tabla de unión muchos-a-muchos entre Card y Label.
+// Many-to-many join table between Card and Label.
 model CardLabel {
   cardId  String
   card    Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)
@@ -187,8 +186,8 @@ model CardLabel {
   @@index([labelId])
 }
 
-// Listas de comprobación dentro de una tarjeta (Hito 2). Una tarjeta puede tener
-// varias checklists; cada una con varios ítems marcables.
+// Checklists inside a card. A card can have several checklists, each with several
+// checkable items.
 model Checklist {
   id        String          @id @default(cuid())
   cardId    String
@@ -213,13 +212,10 @@ model ChecklistItem {
   @@index([checklistId])
 }
 
-// Membresía de un usuario en un tablero. Se crea ya en el MVP (single-user) para
-// que la autorización de cada Server Action pase por aquí desde el principio y no
-// haya que re-migrar al llegar el hito multiusuario.
-// Registro de auditoría (Hito 5). Una fila por evento relevante de seguridad u
-// operación (login, alta/baja de usuario, cambios de rol, borrado de tablero...). El
-// usuario es opcional y con onDelete: SetNull para conservar el historial aunque la
-// cuenta se borre. Ver app/lib/audit.ts y docs/operations.md.
+// Audit log. One row per relevant security or operations event (login, user created or
+// removed, role changes, board deletion...). The user is optional, with
+// onDelete: SetNull, so the history is kept even if the account is deleted. See
+// app/lib/audit.ts and docs/operations.md.
 model AuditLog {
   id         String   @id @default(cuid())
   userId     String?
@@ -235,6 +231,9 @@ model AuditLog {
   @@index([userId])
 }
 
+// A user's membership in a board. It already existed in the single-user MVP so that
+// every Server Action's authorization went through it from the start, with no
+// re-migration needed when multi-user support arrived.
 model BoardMember {
   boardId String
   board   Board     @relation(fields: [boardId], references: [id], onDelete: Cascade)
@@ -247,12 +246,13 @@ model BoardMember {
   @@index([userId])
 }
 
-// Notificaciones in-app por usuario (Hito 8). El texto se precalcula en español al
-// crearlas (no se guarda un payload estructurado: la app es monolingüe y así el render
-// es trivial). `boardId` es una referencia SUAVE (string, sin FK): si el tablero se
-// borra, la notificación sobrevive y el enlace simplemente no resuelve. La entrega en
-// vivo va por el bus pub/sub (canal por usuario). Ver app/lib/notifications.ts,
-// docs/notifications.md y docs/decisions/0012-notifications.md.
+// Per-user in-app notifications. The text is rendered when the notification is created,
+// in the recipient's language (User.locale), instead of storing a structured payload,
+// which keeps rendering trivial. `boardId` is a SOFT reference (string, no FK): if the
+// board is deleted, the notification survives and the link simply does not resolve.
+// Live delivery goes through the pub/sub bus (per-user channel). See
+// app/lib/notifications.ts, docs/notifications.md and
+// docs/decisions/0012-notifications.md.
 model Notification {
   id        String   @id @default(cuid())
   userId    String
@@ -261,8 +261,8 @@ model Notification {
   title     String
   body      String?
   boardId   String?
-  // Referencia suave a la tarjeta (sin FK): permite el deep-link `?card=` y deduplicar
-  // los recordatorios de vencimiento (Hito 11).
+  // Soft reference to the card (no FK): enables the `?card=` deep link and deduplicating
+  // due-date reminders.
   cardId    String?
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
@@ -271,11 +271,11 @@ model Notification {
   @@index([userId, read])
 }
 
-// Token de acceso personal para la API pública (Hito 9). NUNCA se guarda el token en
-// claro: solo su hash SHA-256 (`tokenHash`, único) y un `prefix` visible para que el
-// usuario lo reconozca en la lista. El token completo se muestra UNA sola vez al
-// crearlo. La petición a /api/v1/* lo manda en `Authorization: Bearer <token>` y se
-// resuelve por hash. Ver app/lib/api/tokens.ts, docs/api/public-api.md y
+// Personal access token for the public API. The token is NEVER stored in plain text:
+// only its SHA-256 hash (`tokenHash`, unique) and a visible `prefix` so the user can
+// recognise it in the list. The full token is shown ONLY ONCE, when it is created.
+// Requests to /api/v1/* send it as `Authorization: Bearer <token>` and it is looked up
+// by hash. See app/lib/api/tokens.ts, docs/api/public-api.md and
 // docs/decisions/0013-api-tokens.md.
 model ApiToken {
   id         String    @id @default(cuid())
@@ -284,9 +284,9 @@ model ApiToken {
   name       String
   tokenHash  String    @unique
   prefix     String
-  // Alcance del token (Hito 13): "full" (lectura+escritura) o "read" (solo lectura).
+  // Token scope: "full" (read+write) or "read" (read-only).
   scope      String    @default("full")
-  // Caducidad opcional (Hito 13): si está y ya pasó, el token deja de valer.
+  // Optional expiry: if set and already past, the token stops working.
   expiresAt  DateTime?
   lastUsedAt DateTime?
   createdAt  DateTime  @default(now())
@@ -294,10 +294,9 @@ model ApiToken {
   @@index([userId])
 }
 
-// Asignación de una tarjeta a un miembro del tablero (Hito 10). Tabla de unión: una
-// persona puede tener varias tarjetas y una tarjeta varios asignados. La autorización
-// (que el asignado sea miembro del tablero) la garantiza la Server Action. Ver
-// docs/card-collaboration.md.
+// Assignment of a card to a board member. Join table: a person can have several cards
+// and a card several assignees. Authorization (the assignee must be a board member) is
+// enforced by the Server Action. See docs/card-collaboration.md.
 model CardAssignee {
   cardId String
   card   Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)
@@ -308,8 +307,8 @@ model CardAssignee {
   @@index([userId])
 }
 
-// Comentario en una tarjeta (Hito 10). Hilo simple, sin anidación. Se borra en cascada
-// con la tarjeta o con el autor. Ver docs/card-collaboration.md.
+// Comment on a card. Flat thread, no nesting. Deleted in cascade with the card or the
+// author. See docs/card-collaboration.md.
 model Comment {
   id        String   @id @default(cuid())
   cardId    String

@@ -2,13 +2,13 @@ import { defineConfig } from "vitest/config";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
-// Configuración de los tests unitarios (Vitest): sin base de datos ni red. Qué cubren
-// y qué no es lógica pura está en docs/testing.md, para no mantenerlo en dos sitios.
+// Unit test config (Vitest): no database and no network. What they cover and what is
+// not pure logic is described in docs/testing.md, to keep it in a single place.
 //
-// Dos alias necesarios para ejecutar módulos de la app fuera de Next:
-//  - `server-only`: algunos módulos lo importan como marca de "solo servidor"; en los
-//    tests no aplica, así que se resuelve a un stub vacío.
-//  - `@/…`: el mismo alias que usa la app (tsconfig `@/* -> ./*`).
+// Two aliases needed to run app modules outside Next:
+//  - `server-only`: some modules import it as a "server only" marker; it does not apply
+//    in tests, so it resolves to an empty stub.
+//  - `@/…`: the same alias the app uses (tsconfig `@/* -> ./*`).
 const root = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
@@ -24,7 +24,7 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["test/**/*.test.ts"],
-    // Los tests de integración (DB real) tienen su propia config: vitest.integration.config.ts.
+    // Integration tests (real DB) have their own config: vitest.integration.config.ts.
     exclude: ["test/integration/**", "node_modules/**"],
   },
 });
