@@ -1,50 +1,50 @@
-# Sistema de diseño
+# Design system
 
-Este documento describe el sistema visual de **orgtable**: su estética, los tokens de
-color, el tema oscuro, las paletas de contenido y los componentes de interfaz
-reutilizables. Es un resumen operativo; las decisiones de diseño completas viven en
-[`DESIGN.md`](../DESIGN.md) y [`PRODUCT.md`](../PRODUCT.md).
+This document describes **orgtable**'s visual system: its aesthetic, the color tokens,
+the dark theme, the content palettes and the reusable UI components. It is an operational
+summary; the full design decisions live in [`DESIGN.md`](../DESIGN.md) and
+[`PRODUCT.md`](../PRODUCT.md).
 
 ---
 
-## Estética y principios
+## Aesthetic and principles
 
-orgtable es un **clon de Trello self-hosted** (tableros → listas →
-tarjetas con arrastrar y soltar). El producto debe sentirse tan fluido y familiar como
-Trello, pero que sea tuyo. La marca es **familiar, colorida y directa**; alegre sin ser
-infantil. La voz es concreta y en español.
+orgtable is a **self-hosted Kanban board app** (boards → lists → cards with drag and
+drop). It should feel as fluid and familiar as Trello, while being yours. The aesthetic is
+**warm editorial**: warm neutrals (sand, paper, espresso) with a single **terracotta**
+accent.
 
-El principio central es:
+The core principle is:
 
-> **El color vive en el contenido; el cromo es neutro.**
+> **Color lives in the content; the chrome is neutral.**
 
-Los fondos de tablero y las etiquetas llevan el color (estrategia *committed*); la
-interfaz base —barras, paneles, tarjetas, formularios— se mantiene neutra (estrategia
-*restrained*). El tablero es el héroe: cabeceras y navegación se apartan para que mande el
-contenido.
+Board backgrounds and labels carry the color, in a muted and cohesive palette; the base
+interface (bars, panels, cards, forms) stays neutral and warm (a *restrained* strategy).
+The board is the hero: headers and navigation step aside so the content leads.
 
-**Anti-referencias** (lo que evitamos): UI corporativa gris sin vida, dashboards SaaS
-genéricos con gradientes decorativos y eyebrows en mayúsculas, y el "look hecho por IA"
-(grises lavados sobre casi-blancos, bordes laterales de color como acento, sombras difusas
-pegadas a bordes de 1px).
+**Anti-references** (what we avoid): lifeless gray corporate UI, generic SaaS dashboards
+with decorative gradients and uppercase eyebrows, and the "AI-made look" (washed-out grays
+on near-whites, colored side borders used as accents, diffuse shadows stuck to 1px
+borders).
 
-### Accesibilidad
+### Accessibility
 
-- **Contraste AA**: el texto de cuerpo cumple ≥4.5:1 (los tokens `--ink` e `--ink-muted`
-  están calibrados para ello en ambos temas).
-- Las **etiquetas de color nunca son el único indicador**: siempre llevan nombre/texto.
-- **Tema claro y oscuro** con selector persistente.
-- **`prefers-reduced-motion`** se respeta globalmente en `globals.css` (ver
+- **AA contrast**: body text meets ≥4.5:1 (the `--ink` and `--ink-muted` tokens are
+  calibrated for it in both themes; `test/contrast.test.ts` checks the tokens in
+  `app/globals.css`).
+- **Color labels are never the only indicator**: they always carry a name or text.
+- **Light and dark themes** with a persistent picker.
+- **`prefers-reduced-motion`** is respected globally in `globals.css` (see
   [Motion](#motion)).
 
 ---
 
-## Tokens semánticos (OKLCH)
+## Semantic tokens (OKLCH)
 
-Los tokens se definen en [`app/globals.css`](../app/globals.css) con **OKLCH** (mejor
-control perceptual de luminosidad y croma que RGB/HSL). Se exponen a Tailwind 4 mediante
-`@theme inline`, que mapea cada variable CSS a una `--color-*` utilizable como
-`bg-surface`, `text-ink`, `border-border`, etc.
+Tokens are defined in [`app/globals.css`](../app/globals.css) in **OKLCH** (better
+perceptual control of lightness and chroma than RGB/HSL). They are exposed to Tailwind 4
+through `@theme inline`, which maps each CSS variable to a `--color-*` usable as
+`bg-surface`, `text-ink`, `border-border`, and so on.
 
 ```css
 @theme inline {
@@ -60,57 +60,72 @@ control perceptual de luminosidad y croma que RGB/HSL). Se exponen a Tailwind 4 
   --color-accent-ink: var(--accent-ink);
   --color-danger: var(--danger);
   --color-success: var(--success);
-  /* … fuentes … */
+  --font-sans: var(--font-figtree);
+  --font-display: var(--font-bricolage);
+  --font-mono: var(--font-geist-mono);
 }
 ```
 
-### Neutros (cromo)
+### Neutrals (chrome)
 
-| Token | Claro | Oscuro | Uso |
+| Token | Light | Dark | Use |
 |-------|-------|--------|-----|
-| `--bg` | `0.975 0.004 255` | `0.17 0.012 260` | Fondo de la app |
-| `--surface` | `1 0 0` | `0.255 0.014 260` | Tarjetas, paneles, modales |
-| `--surface-2` | `0.96 0.005 255` | `0.3 0.015 260` | Inputs, hovers, fondos secundarios |
-| `--column` | `0.955 0.006 255` | `0.205 0.013 260` | Columnas del tablero |
-| `--ink` | `0.22 0.02 260` | `0.96 0.01 260` | Texto principal (≥4.5:1) |
-| `--ink-muted` | `0.46 0.02 260` | `0.72 0.015 260` | Texto secundario (≥4.5:1) |
-| `--border` | `0.9 0.006 255` | `0.34 0.015 260` | Bordes y divisores sutiles |
+| `--bg` | `0.965 0.013 74` | `0.205 0.012 52` | App background (sand / warm charcoal) |
+| `--surface` | `0.992 0.005 80` | `0.25 0.014 52` | Cards, panels, modals (paper) |
+| `--surface-2` | `0.94 0.015 74` | `0.3 0.016 52` | Inputs, hovers, secondary backgrounds |
+| `--column` | `0.95 0.014 72` | `0.23 0.013 52` | Board columns |
+| `--ink` | `0.27 0.022 52` | `0.95 0.012 75` | Main text (≥4.5:1) |
+| `--ink-muted` | `0.49 0.026 55` | `0.73 0.02 68` | Secondary text (≥4.5:1) |
+| `--border` | `0.88 0.016 72` | `0.36 0.016 55` | Subtle borders and dividers |
 
-### Acento e intención
+### Accent and intent
 
-| Token | Claro | Oscuro | Uso |
+| Token | Light | Dark | Use |
 |-------|-------|--------|-----|
-| `--accent` | `0.55 0.17 255` | `0.68 0.15 255` | Acción primaria, foco, selección |
-| `--accent-hover` | `0.5 0.17 255` | `0.74 0.15 255` | Hover del acento |
-| `--accent-ink` | `1 0 0` | `0.17 0.02 260` | Texto sobre acento |
-| `--danger` | `0.55 0.2 25` | `0.7 0.17 25` | Borrar, error |
-| `--success` | `0.6 0.15 150` | `0.72 0.14 150` | Confirmaciones, progreso |
+| `--accent` | `0.49 0.13 40` | `0.68 0.115 45` | Primary action, focus, selection (terracotta) |
+| `--accent-hover` | `0.44 0.13 40` | `0.74 0.115 45` | Accent hover |
+| `--accent-ink` | `0.99 0.01 80` | `0.2 0.02 50` | Text on accent |
+| `--danger` | `0.52 0.18 28` | `0.71 0.16 30` | Delete, error |
+| `--success` | `0.48 0.1 145` | `0.72 0.1 150` | Confirmations, progress |
 
-> Todos los valores son `oklch(L C H)`. Cada token tiene su par claro/oscuro: el tema lo
-> selecciona reasignando las variables bajo `:root` o `.dark`.
+> All values are `oklch(L C H)`. Every token has a light/dark pair: the theme picks one by
+> reassigning the variables under `:root` or `.dark`. `--danger` and `--success` are dark
+> enough to keep 4.5:1 on their own 10–15 % tinted backgrounds too (alerts, overdue badge).
 
 ---
 
-## Tema oscuro
+## Typography
 
-El tema oscuro funciona **por clase**: una clase `.dark` en `<html>` que reasigna todas
-las variables de color. La activación a nivel de Tailwind se declara con
-`@custom-variant`:
+All fonts are **SIL OFL 1.1** (Google Fonts), loaded with `next/font/google` in
+[`app/layout.tsx`](../app/layout.tsx). Next downloads them at build time and serves them
+from the app itself, so there are no requests to Google at runtime.
+
+- **Bricolage Grotesque** (`--font-display`, `font-display` utility): headings and brand.
+- **Figtree** (`--font-sans`): interface and body text.
+- **Geist Mono** (`--font-mono`): tabular numbers, metadata and counters.
+
+---
+
+## Dark theme
+
+The dark theme is **class-based**: a `.dark` class on `<html>` reassigns every color
+variable. Tailwind activation is declared with `@custom-variant`:
 
 ```css
 @custom-variant dark (&:where(.dark, .dark *));
 ```
 
-Esto hace que utilidades como `dark:block` o `dark:hidden` se apliquen cuando el elemento
-está dentro de un árbol con la clase `.dark`, en lugar de depender de
-`prefers-color-scheme`. Así el usuario puede **forzar** un tema independientemente de la
-preferencia del sistema.
+This makes utilities such as `dark:block` or `dark:hidden` apply when the element is
+inside a tree with the `.dark` class, instead of depending on `prefers-color-scheme`. That
+way the user can **force** a theme regardless of the system preference.
 
-### Toggle persistente
+### Persistent choice
 
-El componente [`ThemeToggle`](../app/components/theme-toggle.tsx) alterna la clase y
-persiste la elección en `localStorage`. No necesita estado de React: los dos iconos
-(sol/luna) se muestran por CSS según la clase `.dark` (`dark:block` / `dark:hidden`).
+The [`ThemeToggle`](../app/components/theme-toggle.tsx) component toggles the class and
+stores the choice in `localStorage`. It needs no React state: the two icons (sun/moon) are
+shown through CSS based on the `.dark` class (`dark:block` / `dark:hidden`). Settings ›
+Appearance offers the same choice with a third option, "system", which removes the stored
+value and follows the device.
 
 ```tsx
 function toggle() {
@@ -120,13 +135,13 @@ function toggle() {
 }
 ```
 
-### Script anti-parpadeo (anti-FOUC)
+### Anti-flash script (anti-FOUC)
 
-Si el tema se aplicara desde React tras la hidratación, habría un **flash** del tema
-incorrecto en la primera pintura. Para evitarlo,
-[`app/layout.tsx`](../app/layout.tsx) inyecta un script **inline en `<head>`** que se
-ejecuta antes del primer paint: lee `localStorage`, cae a `prefers-color-scheme` si no hay
-preferencia guardada y añade la clase `.dark` si procede.
+If the theme were applied from React after hydration, the wrong theme would **flash** on
+first paint. To avoid it, [`app/layout.tsx`](../app/layout.tsx) injects an **inline script
+in `<head>`** (with the CSP nonce) that runs before the first paint: it reads
+`localStorage`, falls back to `prefers-color-scheme` when no preference is stored, and adds
+the `.dark` class when needed.
 
 ```js
 (function(){
@@ -140,97 +155,94 @@ preferencia guardada y añade la clase `.dark` si procede.
 })();
 ```
 
-El `<html>` lleva `suppressHydrationWarning` porque el script muta la clase antes de que
-React hidrate, lo que de otro modo provocaría un aviso de discordancia.
-
-La fuente es **Geist Sans** (con Geist Mono para detalles técnicos), cargada vía
-`next/font` y expuesta como `--font-geist-sans` / `--font-geist-mono`.
+`<html>` has `suppressHydrationWarning` because the script changes the class before React
+hydrates, which would otherwise trigger a mismatch warning.
 
 ---
 
-## Paletas de contenido
+## Content palettes
 
-Definidas en [`app/lib/colors.ts`](../app/lib/colors.ts). Son colores del **contenido**
-(no del cromo): vibrantes y con luminosidad lo bastante baja para que el **texto blanco**
-encima sea legible (≥4.5:1).
+Defined in [`app/lib/colors.ts`](../app/lib/colors.ts). These are **content** colors (not
+chrome): muted editorial tones (clay, olive, plum, ochre, brick, slate) with lightness low
+enough for **white text** on top to stay legible (≥4.5:1).
 
-### Color de tablero — `BOARD_COLORS`
+### Board color: `BOARD_COLORS`
 
-Seis hues para los fondos de tablero:
+Six hues for board backgrounds:
 
 ```ts
 export const BOARD_COLORS = {
-  blue:   "oklch(0.55 0.13 255)",
-  green:  "oklch(0.56 0.12 155)",
-  purple: "oklch(0.52 0.15 300)",
-  amber:  "oklch(0.62 0.13 70)",
-  rose:   "oklch(0.57 0.16 8)",
-  teal:   "oklch(0.56 0.09 195)",
+  blue: "oklch(0.5 0.07 248)",
+  green: "oklch(0.5 0.07 150)",
+  purple: "oklch(0.48 0.09 330)",
+  amber: "oklch(0.54 0.09 62)",
+  rose: "oklch(0.52 0.12 33)",
+  teal: "oklch(0.5 0.06 200)",
 } as const;
 ```
 
-Helpers asociados:
+Related helpers:
 
-- `pickBoardColor(seed)` — color **determinista** a partir de un id (hash simple), para
-  asignar un color estable al crear un tablero sin color explícito.
-- `boardBackgroundFor({ id, background })` — usa el color elegido o, si no hay, uno estable
-  según el `id`.
+- `pickBoardColor(seed)`: a **deterministic** color from an id (simple hash), used to give
+  a stable color to a board created without an explicit color.
+- `boardBackgroundFor({ id, background })`: uses the chosen color or, if there is none, a
+  stable one based on the `id`.
 
-### Color de etiqueta — `LABEL_COLORS`
+### Label color: `LABEL_COLORS`
 
-Ocho colores para las etiquetas (todas con L ~0.55–0.64 → texto blanco legible):
+Eight colors for labels (all with L ≈ 0.52–0.57 → legible white text):
 
 ```ts
 export const LABEL_COLORS = {
-  green:  "oklch(0.6 0.14 150)",
-  lime:   "oklch(0.62 0.14 130)",
-  amber:  "oklch(0.64 0.13 70)",
-  red:    "oklch(0.58 0.2 25)",
-  purple: "oklch(0.55 0.16 300)",
-  blue:   "oklch(0.58 0.15 255)",
-  teal:   "oklch(0.58 0.1 195)",
-  pink:   "oklch(0.6 0.18 350)",
+  green: "oklch(0.53 0.09 150)",
+  lime: "oklch(0.56 0.1 128)",
+  amber: "oklch(0.56 0.1 65)",
+  red: "oklch(0.53 0.15 30)",
+  purple: "oklch(0.5 0.11 330)",
+  blue: "oklch(0.52 0.09 250)",
+  teal: "oklch(0.52 0.07 200)",
+  pink: "oklch(0.55 0.12 350)",
 } as const;
 ```
 
-`labelBackground(color)` devuelve el color de fondo de una pastilla (con *fallback* a
-`blue`). Las claves se exponen como `LABEL_COLOR_KEYS` para pintar el selector de color al
-crear una etiqueta (ver [`docs/card-detail.md`](./card-detail.md)).
+`labelBackground(color)` returns the background color of a label pill (falling back to
+`blue`). The keys are exposed as `LABEL_COLOR_KEYS` to draw the color picker when creating
+a label (see [`docs/card-detail.md`](./card-detail.md)).
 
 ---
 
-## Componentes de interfaz
+## UI components
 
-Un vocabulario reducido y consistente. Los radios siguen la escala de `DESIGN.md`
-(inputs/botones/tarjetas 8px, columnas/paneles 12px, modal 16px, pastillas radio completo).
+A small, consistent vocabulary. Radii follow the scale in `DESIGN.md` (inputs, buttons and
+cards 8px; columns and panels 12px; modal 16px; pills fully rounded).
 
 ### Button
 
-[`app/components/ui/button.tsx`](../app/components/ui/button.tsx) — botón presentacional
-(sin `"use client"`, válido en componentes de servidor y cliente) con cuatro variantes:
+[`app/components/ui/button.tsx`](../app/components/ui/button.tsx): a presentational button
+(no `"use client"`, valid in both server and client components) with four variants:
 
-| Variante | Estilo |
+| Variant | Style |
 |----------|--------|
 | `primary` | `bg-accent text-accent-ink hover:bg-accent-hover` |
 | `ghost` | `text-ink-muted hover:bg-surface-2 hover:text-ink` |
 | `danger` | `text-danger hover:bg-danger/10` |
 | `subtle` | `bg-surface-2 text-ink hover:bg-border` |
 
-Base común: `rounded-lg`, `px-4 py-2`, `text-sm font-medium`, `transition-colors`, anillo
-de foco `focus-visible:outline-accent` y estado `disabled` (`opacity-60`,
-`pointer-events-none`).
+Shared base: `rounded-lg`, `px-4 py-2`, `text-sm font-medium`, `transition` with a slight
+press (`active:translate-y-px`), focus ring `focus-visible:outline-accent` and a `disabled`
+state (`opacity-60`, `pointer-events-none`).
 
 ```tsx
-<Button>Guardar</Button>                 {/* primary por defecto */}
-<Button variant="subtle">Añadir</Button>
-<Button variant="danger">Borrar</Button>
+<Button>Save</Button>                 {/* primary by default */}
+<Button variant="subtle">Add</Button>
+<Button variant="danger">Delete</Button>
 ```
 
-### Input y Textarea
+### Input and Textarea
 
-[`app/components/ui/input.tsx`](../app/components/ui/input.tsx) exporta `Input` y
-`Textarea` con estilos idénticos: fondo `--surface`, borde `--border`, texto `--ink`,
-placeholder atenuado y foco con borde de acento + anillo
+[`app/components/ui/input.tsx`](../app/components/ui/input.tsx) exports `Input` and
+`Textarea` with identical styles: `--surface` background, `--border` border, `--ink` text,
+a muted placeholder, and focus shown with an accent border plus a ring
 (`focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/25`).
 
 ```tsx
@@ -242,12 +254,12 @@ placeholder atenuado y foco con borde de acento + anillo
 
 ## Motion
 
-Transiciones de **150–250 ms** con `ease-out`. La motion comunica estado (hover, apertura
-de modal, entrada de tarjeta), nunca decora. En `globals.css` viven los keyframes
-`overlay-in` (fade del backdrop) y `dialog-in` (fade + leve `translateY`/`scale`), usados
-por el modal de detalle.
+Transitions of **150–250 ms** with `ease-out`. Motion communicates state (hover, modal
+opening, a card entering), never decorates. `globals.css` holds the `overlay-in` (backdrop
+fade) and `dialog-in` (fade plus a slight `translateY`/`scale`) keyframes used by the
+detail modal.
 
-La preferencia de movimiento reducido se respeta globalmente:
+The reduced-motion preference is respected globally:
 
 ```css
 @media (prefers-reduced-motion: reduce) {
@@ -259,10 +271,10 @@ La preferencia de movimiento reducido se respeta globalmente:
 }
 ```
 
-Además, las scrollbars se afinan en punteros finos (`scrollbar-width: thin`) porque las
-columnas del tablero scrollean a menudo.
+Scrollbars are also slimmed on fine pointers (`scrollbar-width: thin`) because board
+columns scroll often.
 
 ---
 
-Ver también: [`DESIGN.md`](../DESIGN.md) · [`PRODUCT.md`](../PRODUCT.md) ·
+See also: [`DESIGN.md`](../DESIGN.md) · [`PRODUCT.md`](../PRODUCT.md) ·
 [`docs/card-detail.md`](./card-detail.md).

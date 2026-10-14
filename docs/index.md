@@ -1,70 +1,68 @@
-# Documentación de orgtable
+# orgtable documentation
 
-orgtable es una aplicación de tableros Kanban de código abierto (AGPL-3.0-or-later) y
-autoalojable, una alternativa a Trello, construida con Next.js 16, Prisma 7 y PostgreSQL.
+orgtable is an open-source (AGPL-3.0-or-later), self-hosted Kanban board app, a Trello
+alternative, built with Next.js 16, Prisma 7 and PostgreSQL.
 
-Esta documentación está orientada tanto a quien quiere **auto-hospedar** la app como a
-quien quiere **contribuir** al código.
+This documentation is for both people who want to **self-host** the app and people who
+want to **contribute** to the code.
 
-## Para auto-hospedar
+## Self-hosting
 
-- [**Instalación**](./installation.md) — el instalador de un comando y la instalación manual.
-- [**Asistente de configuración inicial**](./setup-wizard.md) — qué ocurre en el primer arranque.
-- [**Self-hosting**](./self-hosting.md) — operar en producción: backups, actualizaciones, reverse proxy/TLS.
-- [**Privacidad, registro abierto y RGPD**](./privacy.md) — datos legales de tu instancia, plazos de conservación, derechos y la lista para abrir una instancia pública.
+- [**Installation**](./installation.md) — the one-command installer and the manual installation.
+- [**Setup wizard**](./setup-wizard.md) — what happens on first start.
+- [**Self-hosting**](./self-hosting.md) — running in production: backups, updates, reverse proxy and TLS.
+- [**Privacy, open sign-up and GDPR**](./privacy.md) — your instance's legal details, retention periods, user rights and the checklist for opening a public instance.
 
-## Para contribuir
+## Contributing
 
-- [**Arquitectura**](./architecture.md) — visión general del sistema y la estructura del código.
-- [**Base de datos**](./database.md) — el esquema, Prisma 7 y la estrategia de ordenación.
-- [**Autenticación**](./authentication.md) — sesiones JWT, el DAL y la protección de rutas.
-- [**Autorización y roles**](./authorization.md) — roles de tablero, permisos y dónde se aplican.
-- [**Administración**](./admin.md) — usuarios, ajustes de la instancia (registro y datos legales) y auditoría.
-- [**Operación y seguridad**](./operations.md) — rate limiting, auditoría, backups y actualizaciones.
-- [**Seguridad (postura y auditoría)**](./security.md) — modelo de amenazas, hallazgos y controles.
-- [**Arrastrar y soltar**](./drag-and-drop.md) — `@dnd-kit` y fractional indexing.
-- [**Tiempo real**](./realtime.md) — sincronización en vivo con SSE y el bus pub/sub.
-- [**Notificaciones**](./notifications.md) — avisos in-app por usuario sobre el mismo bus.
-- [**Detalle de tarjeta**](./card-detail.md) — modal, etiquetas, fechas y checklists.
-- [**Colaboración en la tarjeta**](./card-collaboration.md) — asignados y comentarios.
-- [**Búsqueda**](./search.md) — búsqueda global de tableros y tarjetas, acotada por acceso.
-- [**Filtros de tablero**](./filters.md) — acotar las tarjetas visibles por etiqueta, asignado y vencimiento.
-- [**Vista de calendario**](./calendar.md) — las tarjetas con vencimiento en una rejilla mensual.
-- [**Recordatorios de vencimiento**](./reminders.md) — el cron de avisos y el arrastre para reprogramar.
-- [**Adjuntos**](./attachments.md) — archivos en tarjetas, almacenamiento y descarga autorizada.
-- [**Sistema de diseño**](./design-system.md) — tokens OKLCH, tema claro/oscuro, componentes.
-- [**Docker**](./docker.md) — la imagen multi-stage y la orquestación.
-- [**API de Server Actions**](./api/server-actions.md) — catálogo de mutaciones del servidor.
-- [**API pública (REST v1)**](./api/public-api.md) — automatizar tableros con tokens de acceso.
-- [**Contribuir**](./contributing.md) — entorno de desarrollo y convenciones.
-- [**Tests e integración continua**](./testing.md) — Vitest y el workflow de GitHub Actions.
+- [**Architecture**](./architecture.md) — system overview and code structure.
+- [**Database**](./database.md) — the schema, Prisma 7 and the ordering strategy.
+- [**Authentication**](./authentication.md) — JWT sessions, the DAL and route protection.
+- [**Authorization and roles**](./authorization.md) — board roles, permissions and where they are enforced.
+- [**Administration**](./admin.md) — users, instance settings (sign-up and legal details) and the audit log.
+- [**Operations**](./operations.md) — rate limiting, audit log, backups, updates and scheduled tasks.
+- [**Security (posture and audit)**](./security.md) — threat model, findings and controls.
+- [**Drag and drop**](./drag-and-drop.md) — `@dnd-kit` and fractional indexing.
+- [**Real time**](./realtime.md) — live sync with SSE and the pub/sub bus.
+- [**Notifications**](./notifications.md) — per-user in-app notifications on the same bus.
+- [**Card details**](./card-detail.md) — the card modal, labels, due dates and checklists.
+- [**Card collaboration**](./card-collaboration.md) — assignees and comments.
+- [**Search**](./search.md) — global search across boards and cards, scoped by access.
+- [**Board filters**](./filters.md) — narrow the visible cards by label, assignee and due date.
+- [**Calendar view**](./calendar.md) — cards with a due date on a monthly grid.
+- [**Due-date reminders**](./reminders.md) — the reminder cron job and drag to reschedule.
+- [**Attachments**](./attachments.md) — files on cards, storage and authorized download.
+- [**Design system**](./design-system.md) — OKLCH tokens, light and dark themes, components.
+- [**Translations**](../locales/README.md) — how the interface languages work and how to add one.
+- [**Docker**](./docker.md) — the multi-stage image and the orchestration.
+- [**Server Actions API**](./api/server-actions.md) — catalog of server mutations.
+- [**Public API (REST v1)**](./api/public-api.md) — automate boards with access tokens.
+- [**Contributing**](./contributing.md) — development environment and conventions.
+- [**Tests and continuous integration**](./testing.md) — Vitest and the GitHub Actions workflow.
 
-## Decisiones de arquitectura (ADRs)
+## Decisions
 
-Las decisiones técnicas importantes y su porqué están registradas en
-[`decisions/`](./decisions/):
+Technical decisions and their rationale are recorded in the
+[decision log](./DECISIONES.md), newest first. The earlier architecture decision records
+(ADRs) are in [`decisions/`](./decisions/):
 
-- [0001 — Prisma como ORM](./decisions/0001-prisma.md)
-- [0002 — Fractional indexing para el orden](./decisions/0002-fractional-indexing.md)
-- [0003 — Credenciales de BD en `.env`](./decisions/0003-db-creds-in-env.md)
-- [0004 — Sin Redis en el MVP](./decisions/0004-no-redis-mvp.md)
-- [0005 — Licencia inicial AGPL-3.0 (histórica)](./decisions/0005-agpl.md)
-- [0006 — Autorización por rol con guardas explícitas](./decisions/0006-rbac-explicit-guards.md)
-- [0007 — PostgreSQL LISTEN/NOTIFY en lugar de Redis](./decisions/0007-pg-notify-over-redis.md)
-- [0008 — Almacén de sesiones en servidor](./decisions/0008-session-store.md)
-- [0009 — Rate limiting en memoria](./decisions/0009-in-memory-rate-limit.md)
-- [0010 — Adjuntos en disco local](./decisions/0010-local-file-storage.md)
-- [0011 — Búsqueda con ILIKE acotada en el servidor](./decisions/0011-search-ilike-scoped.md)
-- [0012 — Notificaciones in-app sobre el bus pub/sub](./decisions/0012-notifications.md)
-- [0013 — API pública con tokens personales hasheados](./decisions/0013-api-tokens.md)
-- [0014 — Modelo de colaboración en la tarjeta (asignados y comentarios)](./decisions/0014-card-collaboration.md)
-- [0015 — Recordatorios por endpoint cron externo](./decisions/0015-reminders-cron.md)
-- [0016 — Licencia propietaria (histórica; la vigente es AGPL-3.0-or-later, ver `DECISIONES.md`)](./decisions/0016-licencia-propietaria.md)
+- [0001 — Prisma as the ORM](./decisions/0001-prisma.md)
+- [0002 — Fractional indexing for ordering](./decisions/0002-fractional-indexing.md)
+- [0003 — Database credentials in `.env`](./decisions/0003-db-creds-in-env.md)
+- [0004 — No Redis in the MVP](./decisions/0004-no-redis-mvp.md)
+- [0005 — Initial AGPL-3.0 license (historical)](./decisions/0005-agpl.md)
+- [0006 — Role-based authorization with explicit guards](./decisions/0006-rbac-explicit-guards.md)
+- [0007 — PostgreSQL LISTEN/NOTIFY instead of Redis](./decisions/0007-pg-notify-over-redis.md)
+- [0008 — Server-side session store](./decisions/0008-session-store.md)
+- [0009 — In-memory rate limiting](./decisions/0009-in-memory-rate-limit.md)
+- [0010 — Attachments on local disk](./decisions/0010-local-file-storage.md)
+- [0011 — Search with ILIKE, scoped on the server](./decisions/0011-search-ilike-scoped.md)
+- [0012 — In-app notifications over the pub/sub bus](./decisions/0012-notifications.md)
+- [0013 — Public API with hashed personal tokens](./decisions/0013-api-tokens.md)
+- [0014 — Card collaboration model (assignees and comments)](./decisions/0014-card-collaboration.md)
+- [0015 — Reminders through an external cron endpoint](./decisions/0015-reminders-cron.md)
+- [0016 — Proprietary license (historical; the current license is AGPL-3.0-or-later, see the decision log)](./decisions/0016-licencia-propietaria.md)
 
-## Hoja de ruta
+## Roadmap
 
-El alcance de cada versión está en la [hoja de ruta](./roadmap.md).
-
-> Algunos documentos (arquitectura, autenticación, arrastrar y soltar, API) se irán
-> completando conforme se construye la interfaz; esta documentación crece en paralelo
-> al código.
+What has shipped and what is planned is in the [roadmap](./roadmap.md).

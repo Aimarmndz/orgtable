@@ -1,75 +1,76 @@
-# Recordatorios de vencimiento
+# Due-date reminders
 
-El Hito 11 avisa a quien tiene una tarjeta asignada cuando **vence pronto** (en las
-próximas 24 h) o **acaba de vencer**. La decisión técnica está en
+orgtable notifies the people assigned to a card when it is **due soon** (within the next
+24 h) or has **just become overdue**. The technical decision is in
 [ADR 0015](./decisions/0015-reminders-cron.md).
 
-## Cómo funciona
+## How it works
 
-- Un endpoint `POST /api/cron/reminders` ejecuta la pasada. Genera notificaciones in-app
-  (`due.reminder`) para cada asignado de cada tarjeta en ventana, con **deep-link** a la
-  tarjeta. Se puede invocar varias veces sin duplicar avisos:
-  - **Vence pronto** (vence hoy o en las próximas 24 h): como mucho un aviso al día por
-    tarjeta y persona.
-  - **Tarea vencida**: un **único** aviso tras vencer, y solo si venció en los **últimos 7
-    días**. Una tarjeta olvidada hace meses no avisa cada día ni engorda la pasada.
-- Solo se avisa a los asignados que **siguen siendo miembros** del tablero (expulsar a
-  alguien borra sus asignaciones; ver [docs/card-collaboration.md](./card-collaboration.md)).
-- **Los días se cuentan en UTC**, no en la zona del servidor: `dueDate` es una fecha de
-  calendario (`YYYY-MM-DD`) guardada a medianoche UTC. Una tarjeta pasa a «vencida» al
-  empezar el día UTC siguiente al de su vencimiento, y la fecha del aviso se formatea en
-  UTC (`es-ES`) para que coincida con la elegida.
-- La lógica vive en `app/lib/services/reminders.ts` (`generateDueReminders`).
+- An endpoint, `POST /api/cron/reminders`, runs the pass. It creates in-app notifications
+  (`due.reminder`) for each assignee of each card in the window, with a **deep-link** to
+  the card. It can be called several times without duplicating notices:
+  - **Due soon** (due today or within the next 24 h): at most one notice per day per card
+    and person.
+  - **Overdue**: a **single** notice after the due date, and only if it became overdue in
+    the **last 7 days**. A card forgotten months ago does not notify every day or bloat
+    the pass.
+- Only assignees who **are still board members** are notified (removing someone deletes
+  their assignments; see [docs/card-collaboration.md](./card-collaboration.md)).
+- **Days are counted in UTC**, not in the server's time zone: `dueDate` is a calendar date
+  (`YYYY-MM-DD`) stored at midnight UTC. A card becomes overdue when the UTC day after its
+  due date begins, and the date in the notice is formatted in UTC so it matches the date
+  that was picked.
+- The logic lives in `app/lib/services/reminders.ts` (`generateDueReminders`).
 
-## Activación
+## Enabling it
 
-1. Define un secreto en el entorno (desactivado si no existe):
+1. Set a secret in the environment (disabled if it is missing):
 
    ```bash
    CRON_SECRET=$(openssl rand -hex 32)
    ```
 
-   En Docker, añádelo al `.env` que lee `docker compose` y recrea el contenedor para que
-   lo reciba (un `restart` no relee el entorno):
+   With Docker, add it to the `.env` read by `docker compose` and re-create the container
+   so it picks it up (a `restart` does not re-read the environment):
 
    ```bash
    docker compose up -d
    ```
 
-2. Programa una llamada periódica (p. ej. diaria) desde un **cron externo**, enviando el
-   secreto como Bearer:
+2. Schedule a periodic call (e.g. daily) from an **external cron**, sending the secret as
+   a Bearer token:
 
    ```bash
    curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" \
-        https://tu-instancia/api/cron/reminders
+        https://your-instance/api/cron/reminders
    ```
 
-   Ejemplo de crontab (cada día a las 8:00):
+   Example crontab entry (every day at 8:00):
 
    ```cron
-   0 8 * * * curl -fsS -X POST -H "Authorization: Bearer XXXX" https://tu-instancia/api/cron/reminders
+   0 8 * * * curl -fsS -X POST -H "Authorization: Bearer XXXX" https://your-instance/api/cron/reminders
    ```
 
-Respuestas: `200 {"created":N,"scanned":M}` si todo va bien (`created` solo cuenta las
-notificaciones que se guardaron de verdad; `scanned`, las tarjetas en ventana); `401` si
-el secreto no casa; `503` si `CRON_SECRET` no está definido. Los tres casos están
-cubiertos en `test/integration/cron-reminders.int.test.ts`.
+Responses: `200 {"created":N,"scanned":M}` on success (`created` only counts the
+notifications that were actually saved; `scanned`, the cards in the window); `401` if the
+secret does not match; `503` if `CRON_SECRET` is not set. All three cases are covered in
+`test/integration/cron-reminders.int.test.ts`.
 
-## Seguridad
+## Security
 
-- El secreto se compara en **tiempo constante** (`crypto.timingSafeEqual`) para no filtrar
-  información por el tiempo de respuesta.
-- El endpoint no expone datos: solo dispara la generación de notificaciones.
+- The secret is compared in **constant time** (`crypto.timingSafeEqual`) so response
+  timing leaks nothing.
+- The endpoint exposes no data: it only triggers notification generation.
 
-## Reprogramar desde el calendario
+## Rescheduling from the calendar
 
-Como complemento (mismo hito), en la **vista de calendario** puedes **arrastrar** una
-tarjeta a otro día para cambiar su vencimiento (si tienes permiso de edición). Usa una
-acción enfocada `setCardDueDate` que solo toca la fecha. Ver
-[`docs/calendar.md`](./calendar.md).
+As a complement, in the **calendar view** you can **drag** a card to another day to
+change its due date (with edit permission). It uses a focused `setCardDueDate` action
+that only touches the date. See [`docs/calendar.md`](./calendar.md).
 
-## Límites y evolución (backlog)
+## Limits and possible improvements (backlog)
 
-- **Email / Web Push**: hoy los recordatorios son in-app. Encajarían como otro consumidor
-  de `notify()` (SMTP opcional por variables de entorno), sin cambiar este diseño.
-- **Preferencias por usuario** (qué avisar y por dónde): ampliación natural.
+- **Email / Web Push**: reminders are in-app today. They would fit as another consumer of
+  `notify()` (optional SMTP through environment variables), without changing this design.
+- **Per-user preferences** (what to notify and through which channel): a natural
+  extension.

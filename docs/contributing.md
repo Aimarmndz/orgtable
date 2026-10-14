@@ -1,42 +1,42 @@
-# Guía de contribución
+# Contributing guide
 
-¡Gracias por tu interés en contribuir a **orgtable**! Esta guía te ayuda a
-levantar el proyecto en local y a aportar código sin sorpresas.
+Thanks for your interest in contributing to **orgtable**! This guide helps you run the
+project locally and contribute code without surprises.
 
-orgtable es un clon de Trello self-hosted construido con **Next.js 16**,
-**Prisma 7**, **PostgreSQL**, **Tailwind 4** y **TypeScript**.
+orgtable is a self-hosted Trello alternative built with **Next.js 16**, **Prisma 7**,
+**PostgreSQL**, **Tailwind 4** and **TypeScript**.
 
 ---
 
-## Requisitos
+## Requirements
 
-- **Node.js 22+** (recomendado). Algunas dependencias del proyecto requieren una
-  versión reciente de Node, así que no uses versiones por debajo de la 22.
-- **Docker**, para levantar una base de datos PostgreSQL local sin tener que
-  instalar Postgres en tu máquina.
-- **pnpm** 11 (se activa con `corepack enable`; la versión exacta está fijada en
-  `packageManager` de `package.json`). No uses npm ni yarn: el lockfile es
+- **Node.js 22+**. Some dependencies need a recent Node version, so do not use anything
+  older than 22.
+- **Docker**, to run a local PostgreSQL database without installing Postgres on your
+  machine.
+- **pnpm** 11 (enable it with `corepack enable`; the exact version is pinned in the
+  `packageManager` field of `package.json`). Do not use npm or yarn: the lockfile is
   `pnpm-lock.yaml`.
 
 ---
 
-## Levantar el entorno de desarrollo
+## Setting up the development environment
 
-Sigue estos pasos en orden.
+Follow these steps in order.
 
-### 1. Clonar e instalar dependencias
+### 1. Clone and install dependencies
 
 ```bash
-git clone <url-del-repositorio> orgtable
+git clone https://github.com/Aimarmndz/orgtable.git
 cd orgtable
 pnpm install
 ```
 
-### 2. Levantar PostgreSQL con Docker
+### 2. Start PostgreSQL with Docker
 
-Arranca un contenedor de Postgres para desarrollo. Usamos el puerto **5433** en
-el host (mapeado al 5432 del contenedor) para no chocar con un Postgres local
-que ya estés ejecutando en el 5432:
+Start a Postgres container for development. We use port **5433** on the host (mapped to
+5432 in the container) so it does not clash with a local Postgres you may already be
+running on 5432:
 
 ```bash
 docker run -d --name orgtable-dev-pg \
@@ -47,129 +47,133 @@ docker run -d --name orgtable-dev-pg \
   postgres:17-alpine
 ```
 
-Para parar y arrancar el contenedor más adelante:
+To stop and start the container later:
 
 ```bash
 docker stop orgtable-dev-pg
 docker start orgtable-dev-pg
 ```
 
-### 3. Crear el archivo `.env`
+### 3. Create the `.env` file
 
-Copia la plantilla y ajústala para apuntar al Postgres que acabas de levantar:
+Copy the template and point it at the Postgres you just started:
 
 ```bash
 cp .env.example .env
 ```
 
-Edita `.env` para que `DATABASE_URL` use el puerto **5433** y el usuario,
-contraseña y base de datos del contenedor, y define un `SESSION_SECRET`:
+Edit `.env` so that `DATABASE_URL` uses port **5433** and the container's user, password
+and database, and set a `SESSION_SECRET`:
 
 ```dotenv
 DATABASE_URL="postgresql://orgtable:devpass@localhost:5433/orgtable"
-SESSION_SECRET="un-secreto-cualquiera-para-desarrollo"
+SESSION_SECRET="any-secret-for-development"
 ```
 
-> `SESSION_SECRET` es obligatorio y debe tener **al menos 16 caracteres**: con uno más
-> corto la app no puede crear sesiones y el login (y el asistente inicial) fallan.
-> Genera uno con `openssl rand -hex 32`.
+> `SESSION_SECRET` is required and must be **at least 16 characters** long: with a shorter
+> one the app cannot create sessions, and sign-in (and the setup wizard) fail. Generate
+> one with `openssl rand -hex 32`.
 
-### 4. Aplicar migraciones y generar el cliente Prisma
+The other variables are optional; they are all described in
+[`installation.md`](./installation.md#environment-variables).
+
+### 4. Apply migrations and generate the Prisma client
 
 ```bash
 pnpm exec prisma migrate dev
 pnpm exec prisma generate
 ```
 
-- `prisma migrate dev` aplica las migraciones existentes a tu base de datos.
-- `prisma generate` genera el cliente de Prisma que usa la aplicación.
+- `prisma migrate dev` applies the existing migrations to your database.
+- `prisma generate` generates the Prisma client the app uses.
 
-### 5. Arrancar el servidor de desarrollo
+### 5. Start the development server
 
 ```bash
 pnpm dev
 ```
 
-Abre **http://localhost:3000** en tu navegador. La primera vez te recibirá el
-asistente de configuración inicial (`/setup`).
+Open **http://localhost:3000** in your browser. The first time, the setup wizard
+(`/setup`) greets you.
 
 ---
 
-## Scripts disponibles
+## Available scripts
 
-Definidos en `package.json`:
+Defined in `package.json`:
 
-- **`pnpm dev`** — Arranca el servidor de desarrollo de Next.js (`next dev`)
-  con recarga en caliente.
-- **`pnpm build`** — Compila la aplicación para producción (`next build`).
-- **`pnpm start`** — Sirve la build de producción (`next start`). Requiere
-  haber ejecutado antes `pnpm build`.
-- **`pnpm lint`** — Ejecuta ESLint sobre el proyecto (`eslint`).
+- **`pnpm dev`** — starts the Next.js development server (`next dev`) with hot reload.
+- **`pnpm build`** — builds the app for production (`next build`).
+- **`pnpm start`** — serves the production build (`next start`). Run `pnpm build` first.
+- **`pnpm lint`** — runs ESLint on the project (`eslint`).
+- **`pnpm typecheck`** — type check (`tsc --noEmit`).
+- **`pnpm test`** — unit tests with Vitest (no database). `pnpm test:watch` runs them in
+  watch mode.
+- **`pnpm test:integration`** — integration tests against a real PostgreSQL database
+  whose name ends in `_test`. See [`testing.md`](./testing.md).
 
 ---
 
-## Trabajar con la base de datos
+## Working with the database
 
-El esquema vive en **`prisma/schema.prisma`**. Cualquier cambio en los modelos
-pasa por una migración.
+The schema lives in **`prisma/schema.prisma`**. Every change to the models goes through
+a migration.
 
-### Crear una migración
+### Creating a migration
 
-Tras editar `prisma/schema.prisma`, genera y aplica una nueva migración con un
-nombre descriptivo:
+After editing `prisma/schema.prisma`, generate and apply a new migration with a
+descriptive name:
 
 ```bash
-pnpm exec prisma migrate dev --name <nombre-descriptivo>
+pnpm exec prisma migrate dev --name <descriptive-name>
 ```
 
-Esto crea los ficheros de migración, los aplica a tu base de datos y regenera el
-cliente automáticamente.
+This creates the migration files, applies them to your database and regenerates the
+client automatically. Restart `pnpm dev` afterwards: a running dev server keeps the old
+client.
 
-### Regenerar el cliente manualmente
+### Regenerating the client manually
 
-Si necesitas regenerar el cliente de Prisma sin crear una migración:
+If you need to regenerate the Prisma client without creating a migration:
 
 ```bash
 pnpm exec prisma generate
 ```
 
-Para más detalle sobre el modelo de datos, las decisiones de diseño y el uso de
-*fractional indexing* para el orden de listas y tarjetas, consulta
-[`docs/database.md`](./database.md).
+For more on the data model, the design decisions and the use of *fractional indexing*
+to order lists and cards, see [`database.md`](./database.md).
 
-> Nota: en Prisma 7 la `url` de la base de datos **no** vive en
-> `schema.prisma`. El CLI de Migrate la toma de `prisma.config.ts` y, en
-> runtime, el `PrismaClient` se conecta mediante el driver adapter
-> `@prisma/adapter-pg` (ver `app/lib/prisma.ts`).
+> Note: in Prisma 7 the database `url` does **not** live in `schema.prisma`. The Migrate
+> CLI reads it from `prisma.config.ts` and, at runtime, `PrismaClient` connects through
+> the `@prisma/adapter-pg` driver adapter (see `app/lib/prisma.ts`).
 
 ---
 
-## Avisos de Next.js 16 (MUY IMPORTANTE)
+## Next.js 16 caveats (VERY IMPORTANT)
 
-> **Esta no es la versión de Next.js que conoces.** Como advierte
-> [`AGENTS.md`](../AGENTS.md), esta versión introduce *breaking changes*: APIs,
-> convenciones y estructura de ficheros pueden diferir de lo que tienes
-> memorizado. **Antes de escribir código, lee la guía correspondiente en
-> `node_modules/next/dist/docs/`** y atiende a los avisos de deprecación.
+> **This is not the Next.js you know.** As [`AGENTS.md`](../AGENTS.md) warns, this version
+> introduces *breaking changes*: APIs, conventions and file structure may differ from what
+> you remember. **Before writing code, read the relevant guide in
+> `node_modules/next/dist/docs/`** and pay attention to deprecation notices.
 
-Los cambios más relevantes que debes tener en cuenta:
+The most relevant changes to keep in mind:
 
-- **APIs asíncronas.** `params`, `searchParams`, `cookies()` y `headers()` son
-  **asíncronos**: hay que usar `await`.
+- **Asynchronous APIs.** `params`, `searchParams`, `cookies()` and `headers()` are
+  **asynchronous**: you must `await` them.
 
   ```ts
-  // Página con params asíncronos
+  // Page with asynchronous params
   export default async function Page({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
     // ...
   }
 
-  // cookies() / headers() también
+  // cookies() / headers() too
   const cookieStore = await cookies();
   ```
 
-- **El middleware ahora es `proxy.ts`.** El antiguo `middleware.ts` ya no se usa;
-  el fichero se llama **`proxy.ts`** y exporta una función `proxy`:
+- **The middleware is now `proxy.ts`.** The old `middleware.ts` is no longer used; the
+  file is called **`proxy.ts`** and exports a `proxy` function:
 
   ```ts
   import type { NextRequest } from "next/server";
@@ -181,53 +185,76 @@ Los cambios más relevantes que debes tener en cuenta:
   export const config = { matcher: ["/((?!_next/static).*)"] };
   ```
 
-  Se ejecuta en runtime **Node.js**.
+  It runs on the **Node.js** runtime.
 
-- **Mutaciones con Server Actions.** Las mutaciones (crear/editar/mover
-  tarjetas, etc.) se implementan con **Server Actions** marcadas con
-  `'use server'`.
+- **Mutations with Server Actions.** Mutations (creating, editing or moving cards, etc.)
+  are implemented as **Server Actions** marked with `'use server'`.
 
-- **`revalidateTag` lleva 2 argumentos.** Ahora se invoca como
-  `revalidateTag(tag, 'max')`. Para escenarios de *read-your-writes* existe la
-  nueva función `updateTag()`.
+- **`revalidateTag` takes 2 arguments.** It is now called as `revalidateTag(tag, 'max')`.
+  For *read-your-writes* scenarios there is the new `updateTag()` function.
 
-Cuando dudes sobre cualquiera de estas APIs, la fuente de verdad es
-`node_modules/next/dist/docs/`, no tu memoria ni ejemplos de internet.
+When in doubt about any of these APIs, the source of truth is
+`node_modules/next/dist/docs/`, not your memory or examples from the internet.
 
 ---
 
-## Convenciones de código
+## Code conventions
 
-- **TypeScript estricto.** El proyecto usa tipado estricto; evita `any` y
-  resuelve los errores del compilador en lugar de silenciarlos.
-- **`import "server-only"`.** Todo el código de servidor que toca secretos o la
-  base de datos debe importar `server-only` para garantizar que nunca acabe en
-  el bundle del cliente.
-- **Client vs Server Components.** Los componentes interactivos (drag & drop,
-  modales, formularios con estado) son **Client Components** (`'use client'`).
-  Todo lo demás son **Server Components** por defecto.
-- **Antes de abrir un PR**, ejecuta:
+- **Language.** Code, comments, documentation and commit messages are in English.
+  Technical decisions are recorded in [`DECISIONES.md`](./DECISIONES.md) (newest first,
+  in English; the file name is kept).
+- **No hard-coded interface text.** Every visible string goes through the message
+  catalogs in `locales/` (see [Translations](#translations)).
+- **Strict TypeScript.** The project uses strict typing; avoid `any` and fix compiler
+  errors instead of silencing them.
+- **`import "server-only"`.** All server code that touches secrets or the database must
+  import `server-only` so it never ends up in the client bundle.
+- **Client vs Server Components.** Interactive components (drag and drop, dialogs,
+  stateful forms) are **Client Components** (`'use client'`). Everything else is a
+  **Server Component** by default.
+- **Before opening a PR**, run the same checks as CI:
 
   ```bash
   pnpm lint
+  pnpm typecheck
+  pnpm test
   pnpm build
   ```
 
-  Ambos deben pasar sin errores.
+  All of them must pass. If you changed database code, also run
+  `pnpm test:integration` (see [`testing.md`](./testing.md)).
 
 ---
 
-## Licencia
+## Translations
 
-orgtable es software libre bajo la **GNU AGPL-3.0-or-later** con un término adicional de
-atribución (sección 7(b)): ver [`LICENSE`](../LICENSE). Tus aportaciones se publican bajo
-esa misma licencia (*inbound = outbound*): no cedes la titularidad y no hay que firmar
-ningún acuerdo aparte.
+The interface is available in English (the default and reference language) and Spanish.
+Messages live in JSON files, one folder per language (`locales/<code>/<area>.json`), so
+you can translate without knowing the code.
 
-Cada commit lleva una línea `Signed-off-by` ([DCO](https://developercertificate.org/)):
-con ella certificas que tienes derecho a aportar ese código bajo la licencia del
-proyecto. Se añade sola con `git commit -s`.
+- To fix a translation, edit the JSON file of that language.
+- To add a language, copy `locales/en/`, translate it and register it with one line in
+  `locales/index.ts`.
+- `pnpm test` checks that every language has the same keys, placeholders and plural
+  forms as English.
+
+The full guide is in [`locales/README.md`](../locales/README.md).
 
 ---
 
-Resumen: clona el repo, levanta Postgres con Docker en el puerto 5433, configura `.env`, aplica las migraciones de Prisma y arranca con `pnpm dev`, recordando que Next.js 16 trae *breaking changes* documentados en `node_modules/next/dist/docs/`.
+## License
+
+orgtable is free software under the **GNU AGPL-3.0-or-later** with an additional
+attribution term (section 7(b)): see [`LICENSE`](../LICENSE). Your contributions are
+published under the same license (*inbound = outbound*): you keep your copyright and do
+not need to sign a separate agreement.
+
+Every commit carries a `Signed-off-by` line ([DCO](https://developercertificate.org/)):
+with it you certify that you have the right to contribute that code under the project's
+license. `git commit -s` adds it for you.
+
+---
+
+In short: clone the repo, start Postgres with Docker on port 5433, set up `.env`, apply
+the Prisma migrations and run `pnpm dev`, keeping in mind that Next.js 16 brings
+*breaking changes* documented in `node_modules/next/dist/docs/`.

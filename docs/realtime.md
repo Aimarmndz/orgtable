@@ -1,137 +1,135 @@
-# Sincronización en vivo (tiempo real)
+# Live sync (real time)
 
-Cuando varias personas tienen el mismo tablero abierto, los cambios de una aparecen
-en la pantalla de las demás **sin recargar**. orgtable lo consigue con
-**Server-Sent Events (SSE)** y un bus de publicación/suscripción en el servidor.
+When several people have the same board open, changes made by one of them appear on the
+others' screens **without reloading**. orgtable does this with **Server-Sent Events
+(SSE)** and a publish/subscribe bus on the server.
 
-> El mismo bus tiene dos tipos de canal: **por tablero** (`board:<id>`, esta página) y
-> **por usuario** (`user:<id>`), que usan las notificaciones del Hito 8. El patrón es
-> idéntico (publicar un "ping" → SSE → `router.refresh()`); ver
-> [docs/notifications.md](./notifications.md).
+> The same bus has two kinds of channel: **per board** (`board:<id>`, this page) and **per
+> user** (`user:<id>`), used by notifications. The pattern is identical (publish a "ping" →
+> SSE → `router.refresh()`); see [docs/notifications.md](./notifications.md).
 
-## Cómo funciona, de punta a punta
+## How it works, end to end
 
 ```
-Persona A mueve una tarjeta
+Person A moves a card
    │
    ▼
 Server Action (moveCard)  ──►  revalidateBoard(boardId)
    │                                │
-   │                                ├─► revalidatePath(`/board/${id}`)   (para quien recargue)
-   │                                └─► publishBoardEvent(boardId)        (bus en proceso)
+   │                                ├─► revalidatePath(`/board/${id}`)   (for anyone who reloads)
+   │                                └─► publishBoardEvent(boardId)        (in-process bus)
    │                                          │
    ▼                                          ▼
                               ┌──────────────────────────────┐
-                              │  Bus de eventos (EventEmitter) │
+                              │  Event bus (EventEmitter)      │
                               └──────────────────────────────┘
-                                           │  (un suscriptor por conexión SSE)
+                                           │  (one subscriber per SSE connection)
                                            ▼
-   Persona B  ◄── event: change ──  GET /api/boards/[id]/stream  (ReadableStream SSE)
+   Person B  ◄── event: change ──  GET /api/boards/[id]/stream  (SSE ReadableStream)
    │
    ▼
-EventSource recibe "change"  ──►  router.refresh()  ──►  el servidor vuelve a
-renderizar /board/[id]  ──►  BoardView se resincroniza con los datos nuevos.
+EventSource receives "change"  ──►  router.refresh()  ──►  the server re-renders
+/board/[id]  ──►  BoardView resyncs with the new data.
 ```
 
-Piezas:
+Parts:
 
-| Archivo | Rol |
+| File | Role |
 | --- | --- |
-| [`app/lib/realtime/bus.ts`](../app/lib/realtime/bus.ts) | El bus pub/sub: `publishBoardEvent` y `subscribeBoard`. |
-| [`app/lib/realtime/notify.ts`](../app/lib/realtime/notify.ts) | `revalidateBoard`: revalida la ruta **y** publica el evento. Lo llaman todas las mutaciones. |
-| [`app/api/boards/[id]/stream/route.ts`](../app/api/boards/[id]/stream/route.ts) | El endpoint SSE: autoriza, se suscribe al bus y emite eventos al navegador. |
-| [`app/lib/realtime/sse.ts`](../app/lib/realtime/sse.ts) | Ciclo de vida común de los streams SSE: latido, revalidación del acceso, vida máxima y limpieza. |
-| [`app/components/board/board-realtime.tsx`](../app/components/board/board-realtime.tsx) | Cliente: abre el `EventSource` y hace `router.refresh()` al recibir un evento o al reconectar. |
-| [`app/lib/realtime/reconnect.ts`](../app/lib/realtime/reconnect.ts) | `keepEventSourceOpen`: refresca en cada reapertura salvo la primera y, si queda `CLOSED`, comprueba el estado (`probeStatus`) y recrea el `EventSource` con backoff. `scheduleRefresh`: debounce compartido de los refrescos. |
+| [`app/lib/realtime/bus.ts`](../app/lib/realtime/bus.ts) | The pub/sub bus: `publishBoardEvent` and `subscribeBoard`. |
+| [`app/lib/realtime/notify.ts`](../app/lib/realtime/notify.ts) | `revalidateBoard`: revalidates the route **and** publishes the event. Every mutation calls it. |
+| [`app/api/boards/[id]/stream/route.ts`](../app/api/boards/[id]/stream/route.ts) | The SSE endpoint: authorizes, subscribes to the bus and sends events to the browser. |
+| [`app/lib/realtime/sse.ts`](../app/lib/realtime/sse.ts) | Shared lifecycle of the SSE streams: heartbeat, access revalidation, maximum lifetime and cleanup. |
+| [`app/components/board/board-realtime.tsx`](../app/components/board/board-realtime.tsx) | Client: opens the `EventSource` and calls `router.refresh()` when an event arrives or on reconnect. |
+| [`app/lib/realtime/reconnect.ts`](../app/lib/realtime/reconnect.ts) | `keepEventSourceOpen`: refreshes on every reopen except the first and, if the stream ends up `CLOSED`, checks the status (`probeStatus`) and recreates the `EventSource` with backoff. `scheduleRefresh`: shared debounce for refreshes. |
 
-## Por qué SSE (y no WebSockets)
+## Why SSE (and not WebSockets)
 
-El flujo de orgtable es **servidor → cliente** (avisar de "algo cambió"). No hace falta
-un canal bidireccional: las mutaciones siguen yendo por Server Actions sobre HTTP. SSE
-es más simple que WebSockets, viaja sobre HTTP normal (atraviesa proxies sin upgrade),
-y el navegador **reconecta solo** con `EventSource`. El evento solo dice "este tablero
-cambió"; el cliente recarga los datos con `router.refresh()`, así que el payload es
-mínimo y lo que se pinta sale siempre de la base de datos.
+orgtable's flow is **server → client** (announcing that "something changed"). There is no
+need for a bidirectional channel: mutations still go through Server Actions over HTTP. SSE
+is simpler than WebSockets, runs over plain HTTP (it goes through proxies without an
+upgrade), and the browser **reconnects by itself** with `EventSource`. The event only says
+"this board changed"; the client reloads the data with `router.refresh()`, so the payload
+is minimal and what is drawn always comes from the database.
 
-Límite conocido: el servidor **no guarda ni reenvía** eventos (no hay `Last-Event-ID`).
-Lo que cambie mientras la conexión está caída (suspensión del portátil, reinicio del
-servidor, corte de red) no llega como evento. Para no quedarse con datos viejos, el
-cliente hace `router.refresh()` **cada vez que el `EventSource` se reabre** (todas menos
-la primera, en la que la página acaba de renderizarse).
+Known limitation: the server **does not store or replay** events (there is no
+`Last-Event-ID`). Whatever changes while the connection is down (laptop sleep, server
+restart, network outage) does not arrive as an event. To avoid stale data, the client
+calls `router.refresh()` **every time the `EventSource` reopens** (all times except the
+first, when the page has just been rendered).
 
-`EventSource` solo reintenta por su cuenta si la conexión se corta; si el servidor
-responde algo que no es un 200 (401/403 por sesión o acceso revocados, o el 502 de un
-proxy TLS mientras `scripts/update.sh` reinicia la app), queda en `CLOSED` para
-siempre. De eso se encarga `keepEventSourceOpen` (`app/lib/realtime/reconnect.ts`), que
-usan tanto el tablero como la campana de notificaciones:
+`EventSource` only retries on its own if the connection drops; if the server answers with
+anything other than 200 (401/403 because the session or access was revoked, or the 502 of
+a TLS proxy while `scripts/update.sh` restarts the app), it stays `CLOSED` for good.
+`keepEventSourceOpen` (`app/lib/realtime/reconnect.ts`) handles that, and both the board
+and the notification bell use it:
 
-1. Como `EventSource` no expone el estado HTTP, `probeStatus(url)` lo pregunta con un
-   `GET` al mismo endpoint que se aborta en cuanto llegan las cabeceras (con un 200 el
-   stream se abre y se cierra al momento).
-2. Solo con **401/403** se llama a `onAccessDenied`, que pide un refresh con
-   `scheduleRefresh` para que la página redirija a `/login` o `/boards` (el desmontaje
-   cancela el reintento).
-3. Ante un **5xx, un error de red o un fallo de la propia comprobación** no se refresca:
-   solo se crea un `EventSource` nuevo con backoff exponencial de 3 s a 30 s. Al
-   reabrirse, `onReconnect` resincroniza con el servidor ya sano y el backoff se
-   reinicia.
-4. La comprobación tiene un plazo de 10 s (`PROBE_TIMEOUT_MS`): si el proxy retiene la
-   conexión o el servidor no llega a responder, se aborta y se reintenta como ante un
-   error de red. Desmontar el componente también la aborta.
+1. Since `EventSource` does not expose the HTTP status, `probeStatus(url)` asks for it with
+   a `GET` to the same endpoint that is aborted as soon as the headers arrive (with a 200
+   the stream opens and closes right away).
+2. Only on **401/403** is `onAccessDenied` called; it requests a refresh through
+   `scheduleRefresh` so the page redirects to `/login` or `/boards` (unmounting cancels
+   the retry).
+3. On a **5xx, a network error or a failure of the check itself**, there is no refresh:
+   only a new `EventSource` is created with exponential backoff from 3 s to 30 s. Once it
+   reopens, `onReconnect` resyncs with the now-healthy server and the backoff resets.
+4. The check has a 10 s deadline (`PROBE_TIMEOUT_MS`): if the proxy holds the connection
+   or the server never answers, it is aborted and retried as on a network error.
+   Unmounting the component also aborts it.
 
-Por qué no se refresca a ciegas: en Next 16, si la petición RSC de un
-`router.refresh()` recibe una respuesta no OK o falla por red, el router hace una
-navegación completa. Con el 502 del proxy o un 500 pasajero de la BD, la pestaña
-acabaría en la página de error y se perdería lo que no se hubiera guardado.
+Why not refresh blindly: in Next 16, if the RSC request of a `router.refresh()` gets a
+non-OK response or fails at the network level, the router performs a full navigation.
+With the proxy's 502 or a transient database 500, the tab would end up on the error page
+and lose anything not yet saved.
 
-Todos los refrescos del tiempo real (eventos, reconexiones y acceso denegado) pasan por
-`scheduleRefresh`, un debounce de 200 ms **compartido** por el tablero y la campana: en
-`/board/[id]` los dos streams caen y vuelven a la vez, y un solo `router.refresh()`
-repinta ambos.
+All real-time refreshes (events, reconnects and access denied) go through
+`scheduleRefresh`, a 200 ms debounce **shared** by the board and the bell: on
+`/board/[id]` both streams drop and come back at the same time, and a single
+`router.refresh()` repaints both.
 
-## El bus: en proceso por defecto, Postgres opcional
+## The bus: in process by default, Postgres optional
 
-Por defecto el bus es un **EventEmitter en memoria**. En el despliegue estándar de
-orgtable (un único contenedor de app, ver `docker-compose.yml`) las Server Actions y el
-endpoint SSE viven en el **mismo proceso Node**, así que un evento publicado llega a los
-suscriptores directamente. Cero infraestructura extra.
+By default the bus is an **in-memory EventEmitter**. In orgtable's standard deployment (a
+single app container, see `docker-compose.yml`) the Server Actions and the SSE endpoint
+live in the **same Node process**, so a published event reaches the subscribers directly.
+No extra infrastructure.
 
-Para despliegues **multi-instancia** (varias réplicas de la app tras un balanceador),
-un evento publicado en una réplica no llegaría a los clientes conectados a otra. Para
-eso hay un puente opcional sobre **PostgreSQL `LISTEN/NOTIFY`** —no Redis, porque ya
-dependemos de Postgres (ver [ADR 0007](./decisions/0007-pg-notify-over-redis.md)):
+For **multi-instance** deployments (several app replicas behind a load balancer), an event
+published on one replica would not reach clients connected to another. For that there is
+an optional bridge over **PostgreSQL `LISTEN/NOTIFY`**, not Redis, because Postgres is
+already a dependency (see [ADR 0007](./decisions/0007-pg-notify-over-redis.md)):
 
-- Se activa con `ORGTABLE_REALTIME_PG_NOTIFY=1`.
-- Cada instancia hace `LISTEN orgtable_realtime` con un cliente `pg` dedicado.
-- `publishBoardEvent` emite localmente **y** hace `pg_notify` con el id de la instancia
-  de origen. Las demás instancias reciben la notificación y la reemiten en su bus local;
-  la de origen la ignora (ya la emitió en el acto), evitando duplicados.
-- El payload de cada `NOTIFY` se valida con zod (`parseBridgePayload`: `kind`, `id`,
-  `origin`); cualquiera con acceso a la BD puede escribir en el canal, así que un
-  payload inválido se descarta con un aviso en el log (solo su longitud, no el contenido).
-- Mientras el puente arranca, `publishBoardEvent` espera a que termine en vez de
-  descartar el evento.
-- Si el puente falla, nunca rompe una mutación: el modo en proceso sigue funcionando. El
-  fallo se registra, la conexión fallida se cierra (para no ir abriendo conexiones hasta
-  agotar las de Postgres) y se reintenta con backoff exponencial de 1 s a 30 s, con un
-  único temporizador y solo mientras quede algún suscriptor.
+- Enable it with `ORGTABLE_REALTIME_PG_NOTIFY=1`.
+- Each instance runs `LISTEN orgtable_realtime` with a dedicated `pg` client.
+- `publishBoardEvent` emits locally **and** calls `pg_notify` with the id of the origin
+  instance. The other instances receive the notification and re-emit it on their local
+  bus; the origin ignores it (it already emitted it), which avoids duplicates.
+- The payload of each `NOTIFY` is validated with zod (`parseBridgePayload`: `kind`, `id`,
+  `origin`); anyone with database access can write to the channel, so an invalid payload
+  is discarded with a log warning (only its length, not its content).
+- While the bridge is starting, `publishBoardEvent` waits for it to finish instead of
+  dropping the event.
+- If the bridge fails, it never breaks a mutation: the in-process mode keeps working. The
+  failure is logged, the failed connection is closed (so connections do not pile up until
+  Postgres runs out of them) and it is retried with exponential backoff from 1 s to 30 s,
+  with a single timer and only while there is at least one subscriber.
 
-## Autorización y robustez
+## Authorization and robustness
 
-- El endpoint SSE exige **sesión válida + ser miembro** del tablero antes de abrir el
-  stream (responde 401/403, no redirige, porque es una conexión de datos).
-- Envía un latido (`: ping`) cada 25 s para mantener viva la conexión a través de
-  proxies, y `X-Accel-Buffering: no` para desactivar el buffering de nginx.
-- **La autorización se revalida en cada latido**: si la sesión se revocó o caducó (ADR
-  0008) o la persona dejó de ser miembro del tablero, el stream se cierra. Como mucho
-  recibe eventos durante 25 s más. Si la consulta a la BD falla, también se cierra (el
-  cliente reconecta y se autoriza de nuevo).
-- **Vida máxima de 15 min**: pasado ese tiempo el servidor cierra el stream y el
-  `EventSource` reconecta, lo que vuelve a autorizar desde cero con la cookie. Como toda
-  reconexión, provoca un `router.refresh()` en el cliente.
-- La limpieza (cancelar la suscripción y el latido, cerrar el stream) es idempotente y
-  se dispara desde el abort de la petición, desde `cancel()` del stream, al fallar un
-  `enqueue`, al perder el acceso o al llegar a la vida máxima. Si la petición llega ya
-  abortada (el cliente se fue mientras se autorizaba), se responde 204 sin suscribirse.
-  Los tests de `test/integration/realtime.int.test.ts` comprueban que no quedan
-  listeners en el bus ni temporizadores.
+- The SSE endpoint requires a **valid session and board membership** before opening the
+  stream (it answers 401/403 and does not redirect, because it is a data connection).
+- It sends a heartbeat (`: ping`) every 25 s to keep the connection alive through proxies,
+  and `X-Accel-Buffering: no` to disable nginx buffering.
+- **Authorization is revalidated on every heartbeat**: if the session was revoked or
+  expired (ADR 0008) or the person is no longer a board member, the stream closes. At most
+  they receive events for 25 more seconds. If the database query fails, it also closes
+  (the client reconnects and is authorized again).
+- **Maximum lifetime of 15 min**: after that the server closes the stream and the
+  `EventSource` reconnects, which re-authorizes from scratch with the cookie. Like every
+  reconnect, it triggers a `router.refresh()` on the client.
+- Cleanup (cancelling the subscription and the heartbeat, closing the stream) is
+  idempotent and is triggered by the request abort, by the stream's `cancel()`, by a failed
+  `enqueue`, by losing access or by reaching the maximum lifetime. If the request arrives
+  already aborted (the client left while it was being authorized), the endpoint answers
+  204 without subscribing. The tests in `test/integration/realtime.int.test.ts` check that
+  no listeners or timers are left on the bus.

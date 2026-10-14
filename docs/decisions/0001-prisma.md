@@ -1,39 +1,38 @@
-# ADR 0001 — Prisma como ORM
+# ADR 0001 — Prisma as the ORM
 
-**Estado:** aceptada · **Fecha:** 2026-06-04
+**Status:** accepted · **Date:** 2026-06-04
 
-## Contexto
+## Context
 
-orgtable necesita una capa de acceso a datos sobre PostgreSQL que sea cómoda para
-contribuidores, con migraciones versionadas y buena integración con TypeScript y
-Next.js 16 (empaquetado en Docker con `output: standalone`).
+orgtable needs a data access layer on top of PostgreSQL that is comfortable for
+contributors, with versioned migrations and good integration with TypeScript and
+Next.js 16 (packaged in Docker with `output: standalone`).
 
-Se evaluaron **Prisma** y **Drizzle ORM**.
+**Prisma** and **Drizzle ORM** were evaluated.
 
-## Decisión
+## Decision
 
-Usar **Prisma 7** con el driver adapter `@prisma/adapter-pg` sobre `pg` (node-postgres).
+Use **Prisma 7** with the `@prisma/adapter-pg` driver adapter on top of `pg` (node-postgres).
 
-## Justificación
+## Rationale
 
-- Prisma es el ORM más popular del ecosistema, con la mejor experiencia "out of the
-  box" para quien no domina SQL: esquema declarativo, tipos generados y migraciones
-  guiadas (`migrate dev`). Esto baja la barrera de entrada para contribuidores.
-- Prisma 7 cambió su arquitectura de forma favorable para self-hosting:
-  - El **query engine es WASM** (no un binario de Rust), así que el cliente se
-    empaqueta limpio en la imagen Docker sin copiar engines por plataforma.
-  - La conexión directa se hace con un **driver adapter** (`PrismaPg`), lo que da
-    control explícito sobre el pool de `pg`.
-- Las migraciones (`prisma migrate deploy`) son idempotentes y encajan con el
-  arranque del contenedor.
+- Prisma is the most popular ORM in the ecosystem, with the best out-of-the-box
+  experience for people who are not fluent in SQL: declarative schema, generated types and
+  guided migrations (`migrate dev`). This lowers the entry barrier for contributors.
+- Prisma 7 changed its architecture in a way that favors self-hosting:
+  - The **query engine is WASM** (not a Rust binary), so the client is packaged cleanly
+    into the Docker image without copying per-platform engines.
+  - The direct connection goes through a **driver adapter** (`PrismaPg`), which gives
+    explicit control over the `pg` pool.
+- Migrations (`prisma migrate deploy`) are idempotent and fit the container start-up.
 
-## Consecuencias
+## Consequences
 
-- La URL de conexión ya **no** vive en `schema.prisma` (Prisma 7 lo prohíbe): va en
-  `prisma.config.ts` para el CLI, y en runtime se pasa vía el adapter.
-- `prisma.config.ts` debe cargar `.env` manualmente (`process.loadEnvFile()`), porque
-  Prisma 7 ya no lo hace automáticamente.
-- Trade-off aceptado: Drizzle generaría imágenes algo más pequeñas y SQL más
-  transparente, pero Prisma gana en DX para el público objetivo del proyecto.
+- The connection URL **no longer** lives in `schema.prisma` (Prisma 7 forbids it): it goes
+  in `prisma.config.ts` for the CLI, and at runtime it is passed through the adapter.
+- `prisma.config.ts` must load `.env` by hand (`process.loadEnvFile()`), because Prisma 7
+  no longer does it automatically.
+- Accepted trade-off: Drizzle would produce somewhat smaller images and more transparent
+  SQL, but Prisma wins on DX for the project's target audience.
 
-Ver `docs/database.md` para el detalle de la implementación.
+See `docs/database.md` for the implementation details.

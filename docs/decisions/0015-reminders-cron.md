@@ -1,47 +1,47 @@
-# ADR 0015 — Recordatorios por endpoint cron externo (sin scheduler en proceso)
+# ADR 0015 — Reminders through an external cron endpoint (no in-process scheduler)
 
-**Estado:** aceptada · **Fecha:** 2026-06-07 · **Relacionada:** [ADR 0004](./0004-no-redis-mvp.md), [ADR 0012](./0012-notifications.md)
+**Status:** accepted · **Date:** 2026-06-07 · **Related:** [ADR 0004](./0004-no-redis-mvp.md), [ADR 0012](./0012-notifications.md)
 
-> **Modificado el 2026-09-24:** la política de avisos (día contado en UTC, un único aviso
-> de vencida y ventana de 7 días) sustituye a la «idempotencia por día» descrita abajo.
-> Ver [`docs/reminders.md`](../reminders.md) y [`docs/DECISIONES.md`](../DECISIONES.md).
+> **Amended on 2026-09-24:** the reminder policy (day counted in UTC, a single overdue
+> reminder and a 7-day window) replaces the "once per day idempotency" described below.
+> See [`docs/reminders.md`](../reminders.md) and [`docs/DECISIONES.md`](../DECISIONES.md).
 
-## Contexto
+## Context
 
-El Hito 11 añade **recordatorios de vencimiento**: avisar a los asignados de una tarjeta
-cuando vence pronto o ya venció. Eso requiere ejecutar trabajo **de forma periódica**.
+The reminders feature adds **due-date reminders**: notifying a card's assignees when it is
+due soon or already overdue. That requires running work **periodically**.
 
-## Decisión
+## Decision
 
-- Un **endpoint** `POST /api/cron/reminders` que ejecuta la pasada de recordatorios, lo
-  **dispara un programador externo** (cron del sistema, un sidecar en `docker compose`, un
-  `schedule` de GitHub Actions, un cron de la plataforma…), no un timer dentro del proceso
-  de la app.
-- Se protege con un **secreto compartido** en `Authorization: Bearer <CRON_SECRET>`,
-  comparado en **tiempo constante** (`crypto.timingSafeEqual`). Si `CRON_SECRET` no está
-  definido, el endpoint responde `503` (desactivado).
-- La lógica vive en un **servicio testeable** (`generateDueReminders(now)`), con `now`
-  inyectado. Es **idempotente por día**: no repite el aviso de la misma tarjeta a la misma
-  persona el mismo día (dedup por `(userId, cardId, type, createdAt >= inicio-de-hoy)`,
-  usando la referencia suave `Notification.cardId`).
+- An **endpoint** `POST /api/cron/reminders` that runs the reminder pass, **triggered by an
+  external scheduler** (system cron, a sidecar in `docker compose`, a GitHub Actions
+  `schedule`, the platform's cron...), not a timer inside the app process.
+- It is protected with a **shared secret** in `Authorization: Bearer <CRON_SECRET>`,
+  compared in **constant time** (`crypto.timingSafeEqual`). If `CRON_SECRET` is not set,
+  the endpoint answers `503` (disabled).
+- The logic lives in a **testable service** (`generateDueReminders(now)`), with `now`
+  injected. It is **idempotent per day**: it does not repeat the reminder for the same
+  card to the same person on the same day (dedup by
+  `(userId, cardId, type, createdAt >= start-of-today)`, using the soft reference
+  `Notification.cardId`).
 
-## Justificación
+## Rationale
 
-- **Cero infraestructura nueva** (coherente con ADR 0004): no añadimos una cola de
-  trabajos ni un proceso planificador. Una app self-hosted ya suele tener cron disponible.
-- **Sin estado en proceso**: un timer `setInterval` no sobrevive a reinicios ni se coordina
-  entre réplicas; un endpoint disparado desde fuera es trivial de operar y de hacer
-  idempotente.
-- **Reutiliza `notify()`** ([ADR 0012](./0012-notifications.md)): los recordatorios son un
-  emisor más de notificaciones in-app; si en el futuro se añade email/Web Push, llegarán
-  por el mismo camino.
+- **Zero new infrastructure** (consistent with ADR 0004): we do not add a job queue or a
+  scheduler process. A self-hosted app usually has cron available already.
+- **No in-process state**: a `setInterval` timer does not survive restarts nor coordinate
+  across replicas; an endpoint triggered from outside is trivial to operate and to make
+  idempotent.
+- **Reuses `notify()`** ([ADR 0012](./0012-notifications.md)): reminders are one more
+  emitter of in-app notifications; if email/Web Push is added in the future, they will
+  travel the same path.
 
-## Consecuencias
+## Consequences
 
-- Hay que configurar un cron externo (documentado en `docs/reminders.md`); si no se
-  configura, simplemente no hay recordatorios (el resto de la app no se ve afectada).
-- La frecuencia la decide quien opera la instancia (p. ej. una vez al día). La dedup diaria
-  evita el spam aunque se invoque varias veces.
-- **Email y preferencias por usuario** quedan como ampliación (backlog): encajan como otro
-  consumidor de `notify()` y un modelo de preferencias, sin cambiar este diseño.
-- Documentado en [`docs/reminders.md`](../reminders.md).
+- An external cron has to be configured (documented in `docs/reminders.md`); if it is not
+  configured, there are simply no reminders (the rest of the app is not affected).
+- The frequency is decided by whoever operates the instance (e.g. once a day). The daily
+  dedup avoids spam even if it is invoked several times.
+- **Email and per-user preferences** are left as an extension (backlog): they fit as
+  another consumer of `notify()` plus a preferences model, without changing this design.
+- Documented in [`docs/reminders.md`](../reminders.md).

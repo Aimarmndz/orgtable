@@ -1,26 +1,26 @@
-# Infraestructura Docker
+# Docker infrastructure
 
-Esta guía explica cómo está construida la infraestructura de contenedores de **orgtable** y por qué cada decisión está donde está. Está pensada para contribuidores que quieran **entender o modificar** la imagen y la orquestación. La infraestructura ya está construida y verificada funcionando end-to-end.
+This guide explains how the **orgtable** container infrastructure is built and why each decision is where it is. It is meant for contributors who want to **understand or modify** the image and the orchestration. The infrastructure is in place and verified working end to end.
 
-El stack se compone de:
+The stack is made of:
 
-| Pieza | Archivo | Rol |
+| Piece | File | Role |
 | --- | --- | --- |
-| Imagen de la app | `Dockerfile` | Build multi-stage que produce la imagen de producción de Next.js. |
-| Orquestación | `docker-compose.yml` | Levanta PostgreSQL + la app, con red interna y healthchecks. |
-| Arranque del contenedor | `docker-entrypoint.sh` | Aplica migraciones de Prisma y arranca el servidor. |
-| Contexto de build | `.dockerignore` | Excluye lo que no debe entrar en la imagen (incluidos los secretos). |
-| Salida de Next | `next.config.ts` | `output: "standalone"` empaqueta un servidor Node mínimo. |
+| App image | `Dockerfile` | Multi-stage build that produces the Next.js production image. |
+| Orchestration | `docker-compose.yml` | Starts PostgreSQL + the app, with an internal network and healthchecks. |
+| Container start-up | `docker-entrypoint.sh` | Applies the Prisma migrations and starts the server. |
+| Build context | `.dockerignore` | Excludes what must not end up in the image (secrets included). |
+| Next output | `next.config.ts` | `output: "standalone"` packages a minimal Node server. |
 
-Para instalar y ejecutar en un servidor real consulta [`installation.md`](./installation.md). Para el esquema de datos y las migraciones consulta [`database.md`](./database.md).
+To install and run it on a real server, see [`installation.md`](./installation.md). For the data schema and migrations, see [`database.md`](./database.md).
 
 ---
 
-## El `Dockerfile` (multi-stage)
+## The `Dockerfile` (multi-stage)
 
-El `Dockerfile` tiene tres stages: `deps`, `builder` y `runner`. La idea es construir con todas las herramientas disponibles pero enviar a producción solo lo imprescindible.
+The `Dockerfile` has three stages: `deps`, `builder` and `runner`. The idea is to build with every tool available but ship only what is essential to production.
 
-### Stage `deps` — instalación de dependencias
+### `deps` stage: installing dependencies
 
 ```dockerfile
 FROM base AS deps
@@ -29,11 +29,11 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 ```
 
-Se hace `pnpm install --frozen-lockfile` (pnpm llega por Corepack, en un stage `base`) sobre `node:22-alpine`. **El uso de Alpine aquí es deliberado, no estético.**
+It runs `pnpm install --frozen-lockfile` (pnpm comes from Corepack, in a `base` stage) on `node:22-alpine`. **Using Alpine here is deliberate, not cosmetic.**
 
-Alpine Linux usa **musl libc** (no glibc). Prisma descarga *engines nativos* durante la instalación, y uno de ellos es el **schema-engine** que utiliza `migrate deploy`. Al instalar dentro de Alpine, ese binario se descarga para la plataforma **`linux-musl`**, que es exactamente la que tendrá el contenedor final (también Alpine). Si las dependencias se instalaran sobre una imagen basada en glibc (p. ej. `node:22` Debian), el engine quedaría compilado para glibc y fallaría en el `runner` de Alpine. Mantener Alpine de punta a punta garantiza que el engine coincida con el sistema donde se ejecuta.
+Alpine Linux uses **musl libc** (not glibc). Prisma downloads *native engines* during installation, one of which is the **schema engine** used by `migrate deploy`. Installing inside Alpine downloads that binary for the **`linux-musl`** platform, which is exactly what the final container (also Alpine) runs. If the dependencies were installed on a glibc-based image (e.g. Debian `node:22`), the engine would be built for glibc and would fail in the Alpine `runner`. Keeping Alpine end to end guarantees that the engine matches the system it runs on.
 
-### Stage `builder` — generación de Prisma Client y build de Next
+### `builder` stage: generating Prisma Client and building Next
 
 ```dockerfile
 FROM base AS builder
@@ -45,16 +45,16 @@ RUN pnpm exec prisma generate
 RUN pnpm build
 ```
 
-Reutiliza los `node_modules` ya instalados en `deps`, copia el código y hace dos cosas: genera el Prisma Client y construye la app.
+It reuses the `node_modules` installed in `deps`, copies the code and does two things: generates the Prisma Client and builds the app.
 
-El detalle clave es la **`DATABASE_URL` ficticia** definida *antes* de `prisma generate`:
+The key detail is the **dummy `DATABASE_URL`** defined *before* `prisma generate`:
 
-- **Prisma 7 exige resolver `DATABASE_URL` al cargar `prisma.config.ts`.** Si la variable falta, la carga de la configuración lanza un error y `prisma generate` / `pnpm build` ni siquiera arrancan.
-- Sin embargo, **ni `generate` ni el build se conectan realmente a la base de datos**. `generate` solo produce el cliente (query engine WASM, sin binario), y las páginas de la app son **dinámicas** (dependen de la sesión/auth), por lo que no consultan la BD durante el build. Es decir, la URL solo necesita *existir y ser sintácticamente válida*; nunca se abre una conexión a `localhost:5432`.
+- **Prisma 7 must resolve `DATABASE_URL` when loading `prisma.config.ts`.** If the variable is missing, loading the configuration throws and `prisma generate` / `pnpm build` do not even start.
+- However, **neither `generate` nor the build actually connects to the database**. `generate` only produces the client (WASM query engine, no binary), and the app pages are **dynamic** (they depend on the session), so they do not query the database during the build. The URL only needs to *exist and be syntactically valid*; no connection to `localhost:5432` is ever opened.
 
-Tras esto, `pnpm build` produce `.next/standalone` gracias a `output: "standalone"` (ver [`next.config.ts`](../next.config.ts)).
+After this, `pnpm build` produces `.next/standalone` thanks to `output: "standalone"` (see [`next.config.ts`](../next.config.ts)).
 
-### Stage `runner` — imagen final de producción
+### `runner` stage: the final production image
 
 ```dockerfile
 FROM node:22-alpine AS runner
@@ -81,65 +81,65 @@ ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["node", "server.js"]
 ```
 
-Puntos importantes del `runner`:
+Key points of the `runner`:
 
-- **`node:22-alpine`** otra vez, para que el schema-engine de Prisma (descargado en `deps` para `linux-musl`) sea compatible con el sistema en runtime.
-- **`apk add --no-cache openssl`**: el schema-engine de Prisma necesita `openssl` para ejecutar `migrate deploy`. Alpine no lo trae por defecto, así que se instala explícitamente.
-- **Usuario sin privilegios `nextjs` (non-root)**: se crea el grupo `nodejs` y el usuario `nextjs` y se cambia a ese usuario con `USER nextjs`. La app nunca corre como root.
-- **El código es de solo lectura para la app**: `/app` sigue siendo de `root`, así que el proceso no puede reescribir `server.js`, `.next` ni `node_modules`. Solo son escribibles `.next/cache` (caché de Next) y `/data/uploads` (adjuntos). No se hace `chown -R /app`: además de dejar el código escribible, duplicaría `node_modules` en una capa nueva de cientos de MB.
-- **Se copian los artefactos de producción**: `.next/standalone` (el servidor Node mínimo), `.next/static`, `public`, y además `prisma/`, `prisma.config.ts` y `package.json` (necesarios para las migraciones).
+- **`node:22-alpine`** again, so the Prisma schema engine (downloaded in `deps` for `linux-musl`) is compatible with the runtime system.
+- **`apk add --no-cache openssl`**: the Prisma schema engine needs `openssl` to run `migrate deploy`. Alpine does not ship it by default, so it is installed explicitly.
+- **Unprivileged `nextjs` user (non-root)**: the `nodejs` group and `nextjs` user are created and the image switches to that user with `USER nextjs`. The app never runs as root.
+- **The code is read-only for the app**: `/app` stays owned by `root`, so the process cannot rewrite `server.js`, `.next` or `node_modules`. Only `.next/cache` (Next cache) and `/data/uploads` (attachments) are writable. There is no `chown -R /app`: besides making the code writable, it would duplicate `node_modules` in a new layer of hundreds of MB.
+- **The production artefacts are copied**: `.next/standalone` (the minimal Node server), `.next/static`, `public`, plus `prisma/`, `prisma.config.ts` and `package.json` (needed for the migrations).
 
-#### Por qué se copia el `node_modules` **completo**
+#### Why the **whole** `node_modules` is copied
 
-Esta es la parte menos obvia. En el `runner` se copia **todo** `node_modules` desde el `builder`, no solo `prisma` y `@prisma`:
+This is the least obvious part. The `runner` copies **all** of `node_modules` from the `builder`, not just `prisma` and `@prisma`:
 
 ```dockerfile
 COPY --from=builder /app/node_modules ./node_modules
 ```
 
-El motivo es el **CLI de Prisma**. En el arranque, el entrypoint ejecuta `prisma migrate deploy`, y ese CLI depende de **dependencias transitivas hoisteadas** —por ejemplo **`effect`**, que es usada por `@prisma/config`—. El trazado de dependencias de `output: "standalone"` **solo incluye lo que importa la propia aplicación**, no lo que importa el CLI de Prisma. Por tanto, si copiáramos solo `prisma`/`@prisma`, al CLI le faltarían piezas como `effect` y `migrate deploy` fallaría. Copiar el árbol completo garantiza que tanto la app como el CLI tengan todo lo que necesitan.
+The reason is the **Prisma CLI**. At start-up the entrypoint runs `prisma migrate deploy`, and that CLI depends on **hoisted transitive dependencies**, for example **`effect`**, which `@prisma/config` uses. The dependency tracing of `output: "standalone"` **only includes what the app itself imports**, not what the Prisma CLI imports. If only `prisma`/`@prisma` were copied, the CLI would be missing pieces such as `effect` and `migrate deploy` would fail. Copying the whole tree guarantees that both the app and the CLI have everything they need.
 
-> **Mejora pendiente.** Copiar `node_modules` completo infla la imagen. A futuro se puede añadir un stage `prod-deps` que haga `pnpm install --prod --frozen-lockfile` y copiar solo ese árbol al `runner`, reduciendo el tamaño final. Queda anotado como optimización.
+> **Possible improvement.** Copying the whole `node_modules` inflates the image. A `prod-deps` stage could run `pnpm install --prod --frozen-lockfile` and copy only that tree into the `runner`, reducing the final size.
 
-### Entrypoint y comando
+### Entrypoint and command
 
 ```dockerfile
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["node", "server.js"]
 ```
 
-El `ENTRYPOINT` ejecuta el script de arranque (migraciones) y, al final, este hace `exec` del `CMD`, que arranca el servidor standalone (`node server.js`).
+The `ENTRYPOINT` runs the start-up script (migrations), which finally `exec`s the `CMD` that starts the standalone server (`node server.js`).
 
 ---
 
-## `docker-entrypoint.sh` — migraciones idempotentes
+## `docker-entrypoint.sh`: idempotent migrations
 
 ```sh
 #!/bin/sh
 set -e
 
-echo "[orgtable] Aplicando migraciones de la base de datos..."
+echo "[orgtable] Applying database migrations..."
 node node_modules/prisma/build/index.js migrate deploy
 
-echo "[orgtable] Arrancando el servidor..."
+echo "[orgtable] Starting the server..."
 exec "$@"
 ```
 
-En cada arranque del contenedor `app`:
+Every time the `app` container starts:
 
-1. **Aplica las migraciones pendientes** con `prisma migrate deploy`. Esta operación es **idempotente**: solo ejecuta las migraciones que aún no se han aplicado, comparando con el historial registrado en la BD. Arrancar el contenedor muchas veces no reaplica migraciones ya presentes.
-2. El CLI se invoca por **ruta directa** (`node node_modules/prisma/build/index.js`) en lugar de `npx`, para **no depender de los symlinks de `.bin`** (que pueden no estar presentes según cómo se haya copiado/hoisteado `node_modules`).
-3. `exec "$@"` reemplaza el proceso del script por el del `CMD` (`node server.js`), de modo que el servidor de Next pasa a ser PID 1 y recibe correctamente las señales del contenedor.
+1. **It applies pending migrations** with `prisma migrate deploy`. This is **idempotent**: it only runs the migrations that have not been applied yet, comparing against the history recorded in the database. Starting the container many times never reapplies existing migrations.
+2. The CLI is invoked by its **direct path** (`node node_modules/prisma/build/index.js`) instead of `npx`, so it **does not depend on the `.bin` symlinks** (which may be missing depending on how `node_modules` was copied or hoisted).
+3. `exec "$@"` replaces the script process with the `CMD` (`node server.js`), so the Next server becomes PID 1 and receives the container signals correctly.
 
-Más contexto sobre el esquema y el flujo de migraciones en [`database.md`](./database.md).
+More on the schema and the migration flow in [`database.md`](./database.md).
 
 ---
 
-## `docker-compose.yml` — orquestación
+## `docker-compose.yml`: orchestration
 
-Define dos servicios (`postgres` y `app`), dos volúmenes (`pgdata` para la base de datos y `uploads` para los adjuntos) y una red bridge interna (`orgtable`).
+It defines two services (`postgres` and `app`), two volumes (`pgdata` for the database and `uploads` for attachments) and an internal bridge network (`orgtable`).
 
-### Servicio `postgres`
+### `postgres` service
 
 ```yaml
 postgres:
@@ -160,11 +160,11 @@ postgres:
     - orgtable
 ```
 
-- **`postgres:17-alpine`** con persistencia en el volumen **`pgdata`** (los datos sobreviven a recreaciones del contenedor).
-- **Healthcheck con `pg_isready`**: marca el servicio como `healthy` solo cuando la BD acepta conexiones. Esto es lo que permite a `app` esperar correctamente (ver más abajo).
-- **No expone ningún puerto al host.** PostgreSQL solo es accesible desde la red interna `orgtable`, no desde fuera del host. **Es una decisión de seguridad**: la base de datos no debe estar publicada en la máquina anfitriona; solo la app necesita hablar con ella, y lo hace por la red de Docker.
+- **`postgres:17-alpine`** with persistence in the **`pgdata`** volume (data survives container re-creation).
+- **Healthcheck with `pg_isready`**: marks the service `healthy` only when the database accepts connections. This is what lets `app` wait correctly (see below).
+- **It exposes no port to the host.** PostgreSQL is only reachable from the internal `orgtable` network, never from outside the host. **This is a security decision**: the database must not be published on the host machine; only the app needs to talk to it, and it does so over the Docker network.
 
-### Servicio `app`
+### `app` service
 
 ```yaml
 app:
@@ -184,6 +184,8 @@ app:
     CRON_SECRET: ${CRON_SECRET:-}
     TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-0}
     ORGTABLE_TIMEZONE: ${ORGTABLE_TIMEZONE:-Atlantic/Canary}
+    ORGTABLE_AUDIT_RETENTION_DAYS: ${ORGTABLE_AUDIT_RETENTION_DAYS:-}
+    ORGTABLE_SOURCE_URL: ${ORGTABLE_SOURCE_URL:-}
   volumes:
     - uploads:/data/uploads
   ports:
@@ -198,91 +200,91 @@ app:
     - orgtable
 ```
 
-- **Build local** desde el `Dockerfile` del repo (`context: .`). La imagen se construye en el servidor del usuario, no se descarga de un registry.
-- **`depends_on` con `condition: service_healthy`**: la app **no arranca hasta que PostgreSQL está `healthy`**. Así, cuando el entrypoint ejecute `migrate deploy`, la BD ya está aceptando conexiones.
-- **Solo recibe las variables de `environment:`**, no todo el `.env`. Si una variable nueva no se añade aquí, la app no la ve dentro del contenedor (el CI lo comprueba para las opcionales). Qué hace cada una: [tabla de variables de `installation.md`](./installation.md#variables-de-entorno).
-- **Volumen `uploads`** montado en `/data/uploads`: los adjuntos sobreviven a recreaciones del contenedor.
-- **Publica el puerto** `${APP_PORT:-3000}:3000` (configurable vía `APP_PORT`, por defecto `3000`, en todas las interfaces). Con `APP_PORT=127.0.0.1:3000` solo se publica en local, que es lo que conviene detrás de un proxy inverso ([self-hosting.md](./self-hosting.md#https-y-dominio-reverse-proxy)). Es el único servicio expuesto al host.
-- **Healthcheck con `wget`** contra `http://127.0.0.1:3000/api/health`.
+- **Local build** from the repository `Dockerfile` (`context: .`). The image is built on the user's server, not pulled from a registry.
+- **`depends_on` with `condition: service_healthy`**: the app **does not start until PostgreSQL is `healthy`**. So when the entrypoint runs `migrate deploy`, the database is already accepting connections.
+- **It only receives the variables under `environment:`**, not the whole `.env`. If a new variable is not added here, the app does not see it inside the container (CI checks this for the optional ones). What each one does: [variables table in `installation.md`](./installation.md#environment-variables).
+- **`uploads` volume** mounted at `/data/uploads`: attachments survive container re-creation.
+- **Publishes the port** `${APP_PORT:-3000}:3000` (configurable with `APP_PORT`, `3000` by default, on every interface). With `APP_PORT=127.0.0.1:3000` it is only published on localhost, which is what you want behind a reverse proxy ([self-hosting.md](./self-hosting.md#https-and-domain-reverse-proxy)). It is the only service exposed to the host.
+- **Healthcheck with `wget`** against `http://127.0.0.1:3000/api/health`.
 
-#### Por qué `127.0.0.1` y no `localhost` en el healthcheck
+#### Why `127.0.0.1` and not `localhost` in the healthcheck
 
-Este detalle estaba roto y se corrigió: **se usa `127.0.0.1` explícitamente, no `localhost`.**
+This detail used to be broken and was fixed: **`127.0.0.1` is used explicitly, not `localhost`.**
 
-Dentro del contenedor, **`localhost` resuelve a la dirección IPv6 `::1`**, mientras que el servidor standalone de Next escucha en **IPv4 `0.0.0.0`** (fijado con `HOSTNAME=0.0.0.0` en el `Dockerfile`). Con `localhost`, el `wget` intentaba conectar por IPv6 a un servidor que no escuchaba ahí y el healthcheck devolvía **"Connection refused"**, marcando el contenedor como `unhealthy` aunque la app funcionara. Forzar `127.0.0.1` (IPv4) hace que el chequeo apunte exactamente a donde el servidor está escuchando.
+Inside the container, **`localhost` resolves to the IPv6 address `::1`**, while the Next standalone server listens on **IPv4 `0.0.0.0`** (set with `HOSTNAME=0.0.0.0` in the `Dockerfile`). With `localhost`, `wget` tried to connect over IPv6 to a server that was not listening there, and the healthcheck returned **"Connection refused"**, marking the container `unhealthy` even though the app worked. Forcing `127.0.0.1` (IPv4) points the check exactly where the server listens.
 
-- **`start_period: 20s`**: da un margen al arranque inicial. El contenedor primero aplica migraciones y luego levanta el servidor, así que durante los primeros segundos el endpoint todavía no responde; `start_period` evita que esos fallos iniciales cuenten como `unhealthy`.
+- **`start_period: 20s`**: gives the initial start-up some slack. The container first applies migrations and then starts the server, so for the first few seconds the endpoint does not answer yet; `start_period` keeps those early failures from counting as `unhealthy`.
 
-### Sin Redis
+### No Redis
 
-El stack **no incluye Redis**. Es una decisión consciente para el MVP, documentada en [`docs/decisions/0004-no-redis-mvp.md`](./decisions/0004-no-redis-mvp.md).
+The stack **does not include Redis**. This is a conscious decision, documented in [`docs/decisions/0004-no-redis-mvp.md`](./decisions/0004-no-redis-mvp.md).
 
 ---
 
-## `.dockerignore` — qué NO entra en la imagen
+## `.dockerignore`: what does NOT go into the image
 
-El `.dockerignore` reduce el contexto de build y, sobre todo, evita filtrar secretos:
+The `.dockerignore` shrinks the build context and, above all, keeps secrets from leaking:
 
-| Patrón | Motivo |
+| Pattern | Reason |
 | --- | --- |
-| `node_modules` | Se reinstala dentro de la imagen (`pnpm install --frozen-lockfile`); no se envía el del host. |
-| `.next` | Artefacto de build, se regenera dentro del contenedor. |
-| `.git`, `.gitignore` | Historial y metadatos innecesarios en la imagen. |
-| `.env`, `.env.*` | **CRÍTICO: los secretos nunca deben acabar en la imagen.** |
-| `!.env.example` | Excepción: el ejemplo sin secretos sí se conserva. |
-| `docs`, `*.md`, `.claude`, `.agents`, `skills-lock.json` | Documentación y tooling de desarrollo, irrelevantes en runtime. |
-| `backups`, `**/*.sql.gz`, `**/*.tar.gz`, `uploads`, `data`, `**/*.pem` | Copias de seguridad (con datos personales), adjuntos de desarrollo y claves: `COPY . .` los metería en el builder y en su caché. |
-| `coverage`, `test`, `scripts`, `install.sh` | Tests y scripts que se ejecutan en el host; la imagen no los usa. |
-| `npm-debug.log*`, `*.tsbuildinfo` | Logs y temporales. |
+| `node_modules` | Reinstalled inside the image (`pnpm install --frozen-lockfile`); the host copy is not sent. |
+| `.next` | Build artefact, regenerated inside the container. |
+| `.git`, `.gitignore` | History and metadata not needed in the image. |
+| `.env`, `.env.*` | **CRITICAL: secrets must never end up in the image.** |
+| `!.env.example` | Exception: the example without secrets is kept. |
+| `docs`, `*.md`, `.claude`, `.agents`, `skills-lock.json` | Documentation and development tooling, irrelevant at runtime. |
+| `backups`, `**/*.sql.gz`, `**/*.tar.gz`, `uploads`, `data`, `**/*.pem` | Backups (with personal data), development attachments and keys: `COPY . .` would put them in the builder and its cache. |
+| `coverage`, `test`, `scripts`, `install.sh` | Tests and scripts that run on the host; the image does not use them. |
+| `npm-debug.log*`, `*.tsbuildinfo` | Logs and temporary files. |
 
-El punto más importante es el de los **archivos `.env*`**: las credenciales (`DATABASE_URL`, `SESSION_SECRET`, etc.) **se inyectan por entorno en runtime** (vía `docker-compose.yml` / `.env` del host), nunca se hornean dentro de la imagen. La única excepción es `.env.example`, que es una plantilla sin valores reales. Esto está alineado con [`docs/decisions/0003-db-creds-in-env.md`](./decisions/0003-db-creds-in-env.md).
+The most important point is the **`.env*` files**: credentials (`DATABASE_URL`, `SESSION_SECRET`, etc.) **are injected through the environment at runtime** (via `docker-compose.yml` / the host `.env`), never baked into the image. The only exception is `.env.example`, a template with no real values. This follows [`docs/decisions/0003-db-creds-in-env.md`](./decisions/0003-db-creds-in-env.md).
 
 ---
 
-## Construir y ejecutar localmente
+## Building and running locally
 
-Necesitas Docker y Docker Compose, y un archivo `.env` con las variables requeridas (lo genera `install.sh`; ver [`installation.md`](./installation.md)).
+You need Docker and Docker Compose, and a `.env` file with the required variables (`install.sh` generates it; see [`installation.md`](./installation.md)).
 
-Construir las imágenes:
+Build the images:
 
 ```bash
 docker compose build
 ```
 
-Levantar el stack en segundo plano:
+Start the stack in the background:
 
 ```bash
 docker compose up -d
 ```
 
-Comprobar el estado y los logs:
+Check the status and the logs:
 
 ```bash
 docker compose ps
 docker compose logs -f app
 ```
 
-Cuando ambos servicios aparezcan como `healthy`, la app estará disponible en `http://localhost:${APP_PORT:-3000}`.
+When both services show as `healthy`, the app is available at `http://localhost:${APP_PORT:-3000}`.
 
-Parar el stack:
+Stop the stack:
 
 ```bash
 docker compose down
 ```
 
-(`docker compose down -v` eliminaría también los volúmenes `pgdata` y `uploads` y, con ellos, **todos los datos y todos los adjuntos**.)
+(`docker compose down -v` would also delete the `pgdata` and `uploads` volumes and, with them, **all the data and all the attachments**.)
 
 ---
 
-## Cómo fluye el arranque
+## Start-up flow
 
-El orden de arranque está coordinado por el healthcheck de Postgres y el entrypoint de la app:
+The start-up order is coordinated by the Postgres healthcheck and the app entrypoint:
 
-1. **`postgres` arranca** y, cuando `pg_isready` responde, queda marcado como **`healthy`**.
-2. **`app` arranca** (estaba esperando por `depends_on: condition: service_healthy`). Su `ENTRYPOINT` ejecuta `docker-entrypoint.sh`.
-3. **El entrypoint aplica las migraciones** con `prisma migrate deploy` (idempotente: solo las que falten).
-4. **El servidor arranca** vía `exec node server.js`, escuchando en IPv4 `0.0.0.0:3000`.
-5. **El healthcheck pasa**: `wget` a `http://127.0.0.1:3000/api/health` responde correctamente y `app` queda marcado como **`healthy`**. `start_period` cubre el tiempo de migraciones + arranque.
+1. **`postgres` starts** and, once `pg_isready` answers, is marked **`healthy`**.
+2. **`app` starts** (it was waiting on `depends_on: condition: service_healthy`). Its `ENTRYPOINT` runs `docker-entrypoint.sh`.
+3. **The entrypoint applies the migrations** with `prisma migrate deploy` (idempotent: only the missing ones).
+4. **The server starts** via `exec node server.js`, listening on IPv4 `0.0.0.0:3000`.
+5. **The healthcheck passes**: `wget` to `http://127.0.0.1:3000/api/health` answers and `app` is marked **`healthy`**. `start_period` covers the time for migrations + start-up.
 
 ```
 postgres (pg_isready) ──healthy──▶ app entrypoint (migrate deploy) ──▶ node server.js ──▶ /api/health OK ──▶ app healthy
@@ -290,4 +292,4 @@ postgres (pg_isready) ──healthy──▶ app entrypoint (migrate deploy) ─
 
 ---
 
-**Resumen:** un build multi-stage sobre Alpine empaqueta el standalone de Next con el `node_modules` completo para que el CLI de Prisma migre la BD en el arranque, mientras Compose coordina Postgres (privado, con healthcheck) y la app (migra y arranca) inyectando los secretos solo en runtime.
+**Summary:** a multi-stage Alpine build packages the Next standalone server with the whole `node_modules`, so the Prisma CLI can migrate the database at start-up, while Compose coordinates Postgres (private, with a healthcheck) and the app (migrates and starts), injecting secrets only at runtime.

@@ -1,47 +1,48 @@
-# ADR 0012 — Notificaciones in-app sobre el bus pub/sub (sin email ni cola)
+# ADR 0012 — In-app notifications over the pub/sub bus (no email or queue)
 
-**Estado:** aceptada · **Fecha:** 2026-06-07 · **Relacionada:** [ADR 0007](./0007-pg-notify-over-redis.md), [ADR 0004](./0004-no-redis-mvp.md)
+**Status:** accepted · **Date:** 2026-06-07 · **Related:** [ADR 0007](./0007-pg-notify-over-redis.md), [ADR 0004](./0004-no-redis-mvp.md)
 
-## Contexto
+## Context
 
-El Hito 8 añade notificaciones de eventos relevantes para una persona (te han añadido a
-un tablero, te han cambiado el rol, te han quitado). Hay que decidir **dónde se
-entregan** (in-app, email, push del navegador), **cómo se entregan en vivo** y **cómo se
-guardan**.
+The notifications feature adds notifications for events that matter to a person (you
+were added to a board, your role changed, you were removed). We need to decide **where
+they are delivered** (in-app, email, browser push), **how they are delivered live** and
+**how they are stored**.
 
-## Decisión
+## Decision
 
-- **Solo in-app**, por ahora: una campana en la barra superior con contador de no
-  leídas y un desplegable. Sin email ni Web Push.
-- **Persistencia** en una tabla `Notification` por usuario, con el **texto ya calculado
-  en español** (no un payload estructurado): la app es monolingüe y así el render es
-  trivial. `boardId` es una referencia **suave** (string sin FK).
-- **Entrega en vivo reutilizando el bus de tiempo real** del Hito 4
-  ([ADR 0007](./0007-pg-notify-over-redis.md)): se añade un canal **por usuario**
-  (`user:<id>`) junto al canal por tablero (`board:<id>`). `notify()` escribe la fila y
-  publica un "ping"; un stream SSE (`/api/notifications/stream`) lo reenvía y el cliente
-  hace `router.refresh()`.
-- **Best-effort**, como la auditoría: si crear la notificación o publicar falla, la
-  mutación que la origina (añadir miembro, etc.) no se ve afectada.
+- **In-app only**, for now: a bell in the top bar with an unread counter and a dropdown.
+  No email or Web Push.
+- **Persistence** in a per-user `Notification` table, with the **text already rendered in
+  Spanish** (not a structured payload): the app was single-language at the time, so
+  rendering is trivial. `boardId` is a **soft** reference (string without an FK).
+- **Live delivery reusing the realtime bus** from the realtime feature
+  ([ADR 0007](./0007-pg-notify-over-redis.md)): a **per-user** channel (`user:<id>`) is
+  added next to the per-board channel (`board:<id>`). `notify()` writes the row and
+  publishes a "ping"; an SSE stream (`/api/notifications/stream`) forwards it and the
+  client calls `router.refresh()`.
+- **Best-effort**, like the audit log: if creating the notification or publishing fails,
+  the mutation that triggered it (adding a member, etc.) is not affected.
 
-## Justificación
+## Rationale
 
-- **Cero infraestructura nueva.** No se añade una cola de trabajos ni un servicio de
-  email: el bus pub/sub ya existe y el puente opcional de PostgreSQL `LISTEN/NOTIFY`
-  cubre el caso multi-instancia sin Redis (coherente con ADR 0004/0007).
-- **El "ping" no lleva datos.** Igual que el evento de tablero, solo avisa de que hay
-  algo nuevo; el cliente recarga y el servidor vuelve a consultar. Así no hay que
-  serializar el contenido por el canal ni preocuparse de fugas entre usuarios: cada
-  pestaña solo lee SUS notificaciones (el `WHERE` lleva el `userId` de la sesión).
-- **Texto precalculado** evita una capa de plantillas/i18n para una app de un idioma.
+- **Zero new infrastructure.** No job queue or email service is added: the pub/sub bus
+  already exists and the optional PostgreSQL `LISTEN/NOTIFY` bridge covers the
+  multi-instance case without Redis (consistent with ADR 0004/0007).
+- **The "ping" carries no data.** Like the board event, it only signals that there is
+  something new; the client reloads and the server queries again. That way the content
+  does not have to be serialized through the channel and there is no risk of leaks
+  between users: each tab only reads ITS OWN notifications (the `WHERE` carries the
+  session's `userId`).
+- **Pre-rendered text** avoids a templates/i18n layer for a single-language app.
 
-## Consecuencias
+## Consequences
 
-- Sin notificaciones fuera de la app (si no tienes una pestaña abierta, las ves la
-  próxima vez que entras). Email/Web Push quedan como evolución futura; encajarían como
-  un consumidor más del mismo `notify()`.
-- El conjunto de eventos es pequeño y vive en `app/lib/notifications.ts`
-  (`NotificationType`). Añadir un evento nuevo es llamar a `notify()` desde la acción
-  correspondiente.
-- Documentado en [`docs/notifications.md`](../notifications.md); el canal por usuario se
-  describe también en [`docs/realtime.md`](../realtime.md).
+- No notifications outside the app (if you have no tab open, you see them the next time
+  you come in). Email/Web Push remain a future evolution; they would fit as one more
+  consumer of the same `notify()`.
+- The set of events is small and lives in `app/lib/notifications.ts`
+  (`NotificationType`). Adding a new event means calling `notify()` from the relevant
+  action.
+- Documented in [`docs/notifications.md`](../notifications.md); the per-user channel is
+  also described in [`docs/realtime.md`](../realtime.md).

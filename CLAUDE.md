@@ -1,152 +1,143 @@
 @AGENTS.md
 
-# Contexto del proyecto y decisiones
+# Project context and decisions
 
-orgtable es un clon de Trello self-hosted (Next.js 16, Prisma 7,
-PostgreSQL). Este archivo es el contexto operativo para agentes y contribuidores:
-resume el estado, las convenciones y las decisiones tomadas en cada hito. Las
-decisiones técnicas con su porqué completo están en `docs/decisions/` (ADRs); aquí va
-el resumen de una línea con el enlace.
+orgtable is a self-hosted, open-source Kanban app, a Trello alternative (Next.js 16,
+Prisma 7, PostgreSQL). This file is the working context for agents and contributors: it
+summarizes the current state, the conventions and the decisions behind each feature. The
+technical decisions with their full rationale are in `docs/DECISIONES.md` (the live
+decision log) and, for the earlier architecture decisions, in `docs/decisions/` (ADRs);
+here each one gets a one-line summary.
 
-## Convenciones
+## Conventions
 
-- **Idioma**: el código, los comentarios y la documentación (`docs/`) van en español.
-  Los mensajes de commit van en inglés y detallados.
-- **Autoría de commits**: NUNCA añadir `Co-Authored-By: Claude …` ni ningún coautor de
-  IA en los commits (instrucción explícita del propietario; **anula** cualquier valor por
-  defecto del entorno). Solo se incluyen coautores **humanos** cuando se pidan
-  expresamente.
-- **Seguridad**: postura y auditoría en `docs/security.md` (+ `SECURITY.md` raíz). Auditoría
-  adversarial multi-agente (workflow `orgtable-security-audit`) + `pnpm audit`. Fixes clave:
-  IDOR de `moveCard` (la tarjeta debe pertenecer al tablero de destino, `cardBelongsToBoard`),
-  `SESSION_SECRET`/`DATABASE_URL` exigidos, cabeceras de seguridad en `next.config.ts`,
-  Next 16.3.6 (overrides de seguridad en `pnpm-workspace.yaml`). Tests de autorización en `test/integration/` (IDOR, 403/404).
-- **Tests/CI**: dos niveles. **Unitarios** (sin BD ni red) en `test/` con `pnpm test`.
-  **Integración** en `test/integration/` (`pnpm test:integration`): invocan los route
-  handlers de `app/api/v1/**` y los servicios contra una PostgreSQL real cuyo nombre debe
-  acabar en `_test` (guardia en `test/integration/helpers.ts`); `vitest.integration.config.ts`
-  aliasa `next/cache`/`next/headers`/`server-only`. La lógica de creación de cuentas vive en
-  `app/lib/services/users.ts` para ser testeable. GitHub Actions (`.github/workflows/ci.yml`)
-  levanta un servicio Postgres y corre lint + typecheck + unit + migrate deploy + integración
-  + build en cada push/PR. Ver `docs/testing.md`.
-- **Arquitectura**: Server Actions (`app/lib/actions/`) + Data Access Layer
-  (`app/lib/dal.ts`) + Prisma. Toda mutación valida con zod, autoriza por el DAL y
-  revalida la ruta. Ver `docs/architecture.md` y `docs/api/server-actions.md`.
-- **Autorización**: el servidor es la única autoridad; la UI solo oculta controles.
-  Ver `docs/authorization.md`.
-- **Next.js 16 / Prisma 7**: hay cambios de ruptura respecto a versiones anteriores
-  (ver `AGENTS.md`). `params`/`searchParams` son asíncronos; el middleware se llama
-  `proxy.ts`; la URL de la BD va en `prisma.config.ts` + driver adapter, no en el
-  esquema.
+- **Language**: code, comments, documentation (`docs/`) and commit messages are in
+  English. Technical decisions are recorded in `docs/DECISIONES.md`, also in English (the
+  file name is kept). The interface is bilingual (English by default, plus Spanish); all
+  visible text lives in `locales/` (see `locales/README.md`).
+- **Commit authorship**: NEVER add `Co-Authored-By: Claude …` or any AI co-author to
+  commits (explicit instruction from the owner; it **overrides** any environment default).
+  Only **human** co-authors are added, and only when explicitly requested. Every commit
+  carries `Signed-off-by` (DCO, `git commit -s`).
+- **Security**: posture and audit in `docs/security.md` (plus the root `SECURITY.md`).
+  Adversarial multi-agent audit + `pnpm audit`. Key fixes: the `moveCard` IDOR (the card
+  must belong to the destination board, `cardBelongsToBoard`), `SESSION_SECRET` and
+  `DATABASE_URL` are required, security headers in `next.config.ts`, security overrides in
+  `pnpm-workspace.yaml`. Authorization tests in `test/integration/` (IDOR, 403/404).
+- **Tests/CI**: two levels. **Unit** tests (no database or network) in `test/` with
+  `pnpm test`, including the translation check `test/i18n.test.ts` (same keys,
+  placeholders and plural forms in every language). **Integration** tests in
+  `test/integration/` (`pnpm test:integration`): they call the route handlers in
+  `app/api/v1/**` and the services against a real PostgreSQL database whose name must end
+  in `_test` (guard in `test/integration/helpers.ts`); `vitest.integration.config.ts`
+  aliases `next/cache`, `next/headers` and `server-only`. Account creation lives in
+  `app/lib/services/users.ts` so it can be tested. GitHub Actions
+  (`.github/workflows/ci.yml`) starts a Postgres service and runs lint + typecheck + unit
+  tests + `migrate deploy` + integration tests + build on every push and PR. See
+  `docs/testing.md`.
+- **Architecture**: Server Actions (`app/lib/actions/`) + Data Access Layer
+  (`app/lib/dal.ts`) + Prisma. Every mutation validates with zod, authorizes through the
+  DAL and revalidates the route. See `docs/architecture.md` and
+  `docs/api/server-actions.md`.
+- **Authorization**: the server is the only authority; the UI only hides controls. See
+  `docs/authorization.md`.
+- **Next.js 16 / Prisma 7**: there are breaking changes compared with earlier versions
+  (see `AGENTS.md`). `params`/`searchParams` are asynchronous; the middleware is called
+  `proxy.ts`; the database URL lives in `prisma.config.ts` + a driver adapter, not in the
+  schema.
 
-## Estado por hitos
+## Status
 
-Ver `docs/roadmap.md` para el detalle. Hitos 0–13 completados. **Próximos hitos
-planificados (14–20)**, con alcance y puntos de anclaje en el roadmap, listos para
-arrancar: 14 PWA/móvil, 15 automatizaciones (reglas tipo Butler), 16 vistas de tabla y
-swimlanes, 17 plantillas/duplicar/archivar, 18 actividad e historial de tarjeta, 19 webhooks
-e integraciones, 20 i18n + accesibilidad. Diferido al backlog: email/Web Push + preferencias,
-búsqueda full-text, ampliar superficie API + rate-limit + OpenAPI. Tras el 20: SSO/OIDC, 2FA,
-observabilidad, backups.
+The shipped features and the planned work are in `docs/roadmap.md`. Planned themes: PWA
+and mobile, automations (Butler-style rules), table and swimlane views, templates /
+duplicate / archive, card activity history, webhooks and integrations, accessibility.
+Smaller items (email and Web Push, full-text search, a wider API with rate limiting and
+OpenAPI) and later ideas (SSO/OIDC, 2FA, observability, scheduled backups) are listed
+there too.
 
-## Decisiones (resumen)
+## Decisions (summary)
 
-- ADR 0001 — Prisma como ORM.
-- ADR 0002 — Fractional indexing para el orden de listas/tarjetas.
-- ADR 0003 — Credenciales de BD en `.env`.
-- ADR 0004 — Sin Redis en el MVP (entra con tiempo real / rate-limiting).
-- ADR 0005 — Licencia inicial AGPL-3.0; histórica.
-- ADR 0006 — Autorización por rol con guardas explícitas (no `forbidden()`
-  experimental). Roles de tablero OWNER/EDITOR/VIEWER en `app/lib/roles.ts`.
-- ADR 0007 — PostgreSQL `LISTEN/NOTIFY` (no Redis) para el pub/sub del tiempo real.
-- ADR 0008 — Tabla `Session` para revocación inmediata de sesiones.
-- ADR 0009 — Rate limiting en memoria (sin Redis) para el login.
-- ADR 0010 — Adjuntos en disco local (volumen), no S3.
-- ADR 0011 — Búsqueda con `ILIKE` acotada en el servidor (sin motor de búsqueda externo).
-- ADR 0012 — Notificaciones in-app sobre el bus pub/sub (sin email ni cola).
-- ADR 0013 — API pública con tokens personales hasheados (Bearer, reutiliza el RBAC).
-- ADR 0014 — Colaboración en la tarjeta: asignados (solo miembros) y comentarios (hilo plano, cascade).
-- ADR 0015 — Recordatorios de vencimiento por endpoint cron externo (secreto, sin scheduler en proceso).
-- ADR 0016 — Licencia propietaria (MARA-KASSA SL); histórica. Desde el 2026-10-14 la
-  vigente es AGPL-3.0-or-later con atribución 7(b) (`LICENSE`, ver `docs/DECISIONES.md`).
+- ADR 0001 — Prisma as the ORM.
+- ADR 0002 — Fractional indexing for the order of lists and cards.
+- ADR 0003 — Database credentials in `.env`.
+- ADR 0004 — No Redis in the MVP (it would come with real time / rate limiting).
+- ADR 0005 — Initial license (historical).
+- ADR 0006 — Role-based authorization with explicit guards (not the experimental
+  `forbidden()`). Board roles OWNER/EDITOR/VIEWER in `app/lib/roles.ts`.
+- ADR 0007 — PostgreSQL `LISTEN/NOTIFY` (not Redis) for real-time pub/sub.
+- ADR 0008 — `Session` table for immediate session revocation.
+- ADR 0009 — In-memory rate limiting (no Redis) for sign-in.
+- ADR 0010 — Attachments on local disk (a volume), not S3.
+- ADR 0011 — Search with `ILIKE`, scoped on the server (no external search engine).
+- ADR 0012 — In-app notifications over the pub/sub bus (no email, no queue).
+- ADR 0013 — Public API with hashed personal tokens (Bearer, reuses the RBAC).
+- ADR 0014 — Card collaboration: assignees (members only) and comments (flat thread,
+  cascade delete).
+- ADR 0015 — Due-date reminders through an external cron endpoint (secret, no in-process
+  scheduler).
+- ADR 0016 — Proprietary license (historical, superseded).
+- Current license: AGPL-3.0-or-later with a section 7(b) attribution term (`LICENSE`); see
+  `docs/DECISIONES.md`. Later decisions (fonts, open sign-up and GDPR, bilingual
+  interface…) are recorded there.
 
-## Notas de hito
+## Feature notes
 
-- **Hito 3 (multiusuario)**: el esquema ya tenía `BoardMember`/`BoardRole`/`User.role`
-  desde el Hito 0, así que no hizo falta migración. Se añadieron las guardas de rol en
-  todas las acciones, el panel de miembros por tablero y `/admin/users` para la gestión
-  de cuentas. (Desde el 2026-10-14 hay registro abierto opcional; ver abajo.)
-- **Hito 4 (tiempo real)**: SSE en `/api/boards/[id]/stream` + bus pub/sub
-  (`app/lib/realtime/`). Toda mutación llama `revalidateBoard()` (revalida + publica).
-  Sesiones respaldadas por la tabla `Session` (el JWT lleva `sid`); revocación inmediata.
-  Migración `20260605100000_sessions` escrita a mano (no había BD local para
-  `migrate dev`); aplicar con `prisma migrate deploy` (lo hace el entrypoint de Docker).
-- **Hito 5 (operación)**: rate-limit del login (`app/lib/rate-limit.ts`, en memoria) +
-  auditoría (`app/lib/audit.ts`, `/admin/audit`); adjuntos en disco
-  (`app/lib/storage.ts`, volumen `/data/uploads`, descarga por route handler con
-  autorización); export/import de tableros (JSON); scripts `scripts/{backup,restore,update}.sh`.
-  Migraciones a mano: `..._audit_log` y `..._attachments`. Todas las migraciones
-  escritas a mano se aplican con `migrate deploy`; al haber BD, `migrate dev` no detecta
-  deriva porque coinciden esquema y SQL.
-- **Rediseño visual (Editorial cálido)**: el cromo pasó de "Trello colorido" a una
-  estética editorial cálida (arena/papel/espresso + acento terracota). Fuentes OFL
-  Bricolage Grotesque + Figtree + Geist Mono vía `next/font/google` (las de Fontshare se
-  quitaron el 2026-10-14: su licencia no permite redistribuirlas en un repo público).
-  Solo presentación; sin cambios de lógica. Tokens en `app/globals.css`; ver `DESIGN.md`.
-- **Hito 6 (búsqueda)**: `searchForUser` en `app/lib/queries.ts` (ILIKE acotado por
-  acceso), página `/search`, caja en la navbar (`app/components/search-box.tsx`) y
-  deep-link `?card=` para abrir una tarjeta. Sin migración (solo lectura). Ver
-  `docs/search.md`.
-- **Hito 7 (calendario)**: conmutador Tablero/Calendario en `BoardView` (estado local,
-  no en la URL). `app/components/board/calendar-view.tsx` coloca las tarjetas con
-  vencimiento en una rejilla mensual; al pulsarlas reutiliza el modal de tarjeta.
-  Indexación por `dueDate.slice(0,10)` para evitar desfases de zona horaria. Sin
-  migración. Ver `docs/calendar.md`.
-- **Hito 8 (notificaciones)**: modelo `Notification` (migración `..._notifications`,
-  generada con `prisma migrate dev`). `notify()` en `app/lib/notifications.ts` escribe y
-  publica por un canal **por usuario** (`user:<id>`) añadido al bus de tiempo real
-  (`app/lib/realtime/bus.ts`); stream SSE `/api/notifications/stream` + campana
-  (`app/components/notifications-bell.tsx`) en la navbar. Eventos: añadido/quitado/cambio
-  de rol en un tablero (en `actions/members.ts`). Best-effort como la auditoría. Ver
+- **Multi-user**: `BoardMember`/`BoardRole`/`User.role` have been in the schema from the
+  start. Role guards in every action, a members panel per board and `/admin/users` for
+  account management. Open sign-up is optional per instance (off by default); otherwise
+  the admin creates the accounts.
+- **Real time**: SSE at `/api/boards/[id]/stream` + a pub/sub bus (`app/lib/realtime/`).
+  Every mutation calls `revalidateBoard()` (revalidates + publishes). Sessions are backed
+  by the `Session` table (the JWT carries `sid`), so revocation is immediate.
+- **Operations**: sign-in rate limiting (`app/lib/rate-limit.ts`, in memory) + audit log
+  (`app/lib/audit.ts`, `/admin/audit`); attachments on disk (`app/lib/storage.ts`, volume
+  `/data/uploads`, downloaded through an authorizing route handler); board export/import
+  (JSON); `scripts/{backup,restore,update}.sh`.
+- **Visual design** (warm editorial): sand/paper/espresso with a terracotta accent.
+  Typefaces Bricolage Grotesque + Figtree + Geist Mono (SIL OFL 1.1, loaded with
+  `next/font/google`). Tokens in `app/globals.css`; see `DESIGN.md`.
+- **Search**: `searchForUser` in `app/lib/queries.ts` (ILIKE scoped by access), `/search`
+  page, a search box in the navbar (`app/components/search-box.tsx`) and a `?card=`
+  deep-link that opens a card. See `docs/search.md`.
+- **Calendar**: Board/Calendar switch in `BoardView` (local state, not in the URL).
+  `app/components/board/calendar-view.tsx` places cards with a due date on a monthly grid
+  and reuses the card modal. Indexed by `dueDate.slice(0,10)` to avoid time-zone shifts.
+  Dragging a card to another day calls `setCardDueDate`. See `docs/calendar.md`.
+- **Notifications**: `Notification` model. `notify()` in `app/lib/notifications.ts` writes
+  and publishes on a **per-user** channel (`user:<id>`) of the real-time bus
+  (`app/lib/realtime/bus.ts`); SSE stream `/api/notifications/stream` + the bell
+  (`app/components/notifications-bell.tsx`). Best-effort, like the audit log. See
   `docs/notifications.md`.
-- **Hito 9 (API pública)**: modelo `ApiToken` (migración `..._api_tokens`). REST
-  `/api/v1/**` para boards/lists/cards; helpers en `app/lib/api/` (`auth.ts` Bearer→usuario
-  + rol por tablero, `tokens.ts` hash SHA-256, `respond.ts`, `serialize.ts`). Reutiliza el
-  RBAC (`canEditBoard`/`canManageBoard`) y `revalidateBoard` (tiempo real). Gestión de
-  tokens en `/settings`. Ver `docs/api/public-api.md`. NOTA dev: regenerar el cliente
-  Prisma (`prisma migrate dev`/`generate`) mientras el dev server está vivo lo deja con un
-  cliente obsoleto (errores `findMany of undefined`); hay que **reiniciar `next dev`** tras
-  una migración.
-- **Hito 10 (colaboración en la tarjeta)**: modelos `CardAssignee` y `Comment` (migración
-  `..._card_collaboration`). Acciones `actions/assignees.ts` y `actions/comments.ts`;
-  lógica testeable en `services/assignees.ts` (`assignMemberToCard`, solo miembros) y
-  `services/cards.ts` (`cardContext`). UI en `card-modal.tsx` (secciones Asignados y
-  Comentarios) y avatares en `card-item.tsx`. Notifica `card.assigned`/`comment.added`.
-  Tests en `test/integration/collaboration.int.test.ts`. Ver `docs/card-collaboration.md`.
-- **Hito 11 (recordatorios)**: `Notification.cardId` (migración `..._notification_card_ref`)
-  para deep-link y dedup. `services/reminders.ts` (`generateDueReminders(now)`, política
-  de avisos en `docs/reminders.md`) disparado por `POST /api/cron/reminders` (secreto
-  Bearer, `timingSafeEqual`, 503 si no hay `CRON_SECRET`). Arrastre en el calendario con
-  `setCardDueDate`. Tests en `test/integration/reminders.int.test.ts`. Email/prefs →
-  backlog. Ver `docs/reminders.md`.
-- **Hito 12 (filtros de tablero)**: `app/lib/board-filters.ts` (puro, `cardMatchesFilters`,
-  test unitario), `FilterBar` desplegable en la cabecera; `BoardView` filtra las tarjetas y
-  desactiva el arrastre con `sortingDisabled` (propagado a `ListColumn`/`CardItem`). Solo
-  presentación, sin migración. Full-text → backlog (ILIKE basta, ADR 0011). Ver `docs/filters.md`.
-- **Hito 13 (scopes/caducidad de tokens)**: columnas `scope` (full/read) y `expiresAt` en
-  `ApiToken` (migración `..._api_token_scopes`). `authenticateApiToken` devuelve `scope` y
-  rechaza caducados; `isReadOnly(auth)` da 403 en cada handler de escritura. Selección en
-  `/settings`. Tests `test/integration/api-scopes.int.test.ts`. Ampliar superficie API +
-  rate-limit + OpenAPI → backlog. Ver `docs/api/public-api.md`.
-- **Migraciones (a partir del Hito 7)**: ya hay BD de desarrollo local (Postgres en el
-  puerto 5433, contenedor `orgtable-dev-pg`), así que las nuevas migraciones se generan
-  con `prisma migrate dev` en vez de a mano. Se siguen aplicando con `migrate deploy` en
-  el arranque del contenedor.
-- **Código abierto, registro y RGPD (2026-10-14)**: AGPL-3.0-or-later con atribución 7(b)
-  («Created by Aimar», en `PublicFooter` y en «Acerca de» de `/settings`; datos en
-  `app/lib/site.ts`). Fuentes OFL. `InstanceConfig.registrationOpen` + datos legales del
-  operador (migración `..._registration_and_legal`), `/register`, `/admin/instance`,
-  páginas `/legal/*`. Cuenta propia en `services/account.ts` (perfil, contraseña, sesiones,
-  exportación `/api/account/export`, borrado). Limpieza en `POST /api/cron/maintenance`
-  (`services/maintenance.ts`). Menú de cuenta con popover nativo. Tests en
-  `test/integration/{registration,account,maintenance}.int.test.ts`. Ver `docs/privacy.md`.
+- **Public API**: `ApiToken` model. REST `/api/v1/**` for boards, lists and cards; helpers
+  in `app/lib/api/` (`auth.ts` Bearer → user + board role, `tokens.ts` SHA-256 hash,
+  `respond.ts`, `serialize.ts`). Reuses the RBAC (`canEditBoard`/`canManageBoard`) and
+  `revalidateBoard` (real time). Tokens have a `scope` (full/read) and an optional
+  `expiresAt`; `isReadOnly(auth)` returns 403 in every write handler. Token management in
+  `/settings`. The API answers in English only. See `docs/api/public-api.md`.
+- **Card collaboration**: `CardAssignee` and `Comment` models. Actions in
+  `actions/assignees.ts` and `actions/comments.ts`; testable logic in
+  `services/assignees.ts` (`assignMemberToCard`, members only) and `services/cards.ts`
+  (`cardContext`). Notifies `card.assigned` and `comment.added`. See
+  `docs/card-collaboration.md`.
+- **Reminders**: `Notification.cardId` for deep-links and deduplication.
+  `services/reminders.ts` (`generateDueReminders(now)`) is triggered by
+  `POST /api/cron/reminders` (Bearer secret, `timingSafeEqual`, 503 when `CRON_SECRET` is
+  not set). See `docs/reminders.md`.
+- **Board filters**: `app/lib/board-filters.ts` (pure, `cardMatchesFilters`, unit tested)
+  and a `FilterBar` in the board header; `BoardView` filters the cards and disables
+  dragging with `sortingDisabled`. See `docs/filters.md`.
+- **Open sign-up, legal pages and GDPR**: operator details under Admin › Instance feed the
+  `/legal/*` pages; everyone can export or delete their account from Settings › Privacy
+  and data; `POST /api/cron/maintenance` deletes expired data. See `docs/privacy.md`.
+- **Bilingual interface**: messages in `locales/<code>/<area>.json`, English as reference
+  and fallback. Request language: `locale` cookie, then `Accept-Language`, then English.
+  `User.locale` stores the account's choice (restores the cookie on sign-in and sets the
+  language of that person's notifications). zod schemas carry message keys. Language
+  picker in the footer of the public pages and in Settings › Appearance.
+- **Migrations**: generated with `prisma migrate dev` against the local development
+  database (Postgres on port 5433, container `orgtable-dev-pg`) and applied with
+  `migrate deploy` when the container starts. Some early migrations were written by hand;
+  their SQL matches the schema, so `migrate dev` detects no drift.
+- **Dev note**: regenerating the Prisma client (`prisma migrate dev`/`generate`) while the
+  dev server is running leaves it with a stale client (`findMany of undefined` errors);
+  **restart `next dev`** after a migration.

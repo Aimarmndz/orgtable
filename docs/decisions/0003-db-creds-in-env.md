@@ -1,35 +1,35 @@
-# ADR 0003 — Credenciales de base de datos en `.env` (no en el setup wizard)
+# ADR 0003 — Database credentials in `.env` (not in the setup wizard)
 
-**Estado:** aceptada · **Fecha:** 2026-06-04
+**Status:** accepted · **Date:** 2026-06-04
 
-## Contexto
+## Context
 
-orgtable se instala con un comando (estilo Coolify/Dokploy) y se configura por web la
-primera vez. Surge la pregunta: ¿dónde se definen las credenciales de PostgreSQL?
+orgtable is installed with one command (Coolify/Dokploy style) and configured over the web
+the first time. The question arises: where are the PostgreSQL credentials defined?
 
-- **Modelo Nextcloud/WordPress**: la app arranca sin base de datos y un asistente web
-  pide host/usuario/contraseña de la BD, los escribe a disco y se reinicia.
-- **Modelo Coolify/Dokploy**: el instalador genera las credenciales antes de levantar;
-  el asistente web solo recoge datos de la aplicación (usuario admin, nombre).
+- **Nextcloud/WordPress model**: the app starts without a database and a web wizard asks
+  for the database host/user/password, writes them to disk and restarts.
+- **Coolify/Dokploy model**: the installer generates the credentials before starting; the
+  web wizard only collects application data (admin user, name).
 
-## Decisión
+## Decision
 
-Adoptar el **modelo Coolify**: `install.sh` genera `POSTGRES_PASSWORD` y
-`SESSION_SECRET` aleatorios (`openssl rand`) en `.env` antes de `docker compose up`. La
-app **siempre** arranca con la base de datos conectada. El setup wizard solo pide el
-**usuario administrador** y el **nombre de la instancia**.
+Adopt the **Coolify model**: `install.sh` generates random `POSTGRES_PASSWORD` and
+`SESSION_SECRET` (`openssl rand`) into `.env` before `docker compose up`. The app
+**always** starts with the database connected. The setup wizard only asks for the
+**administrator user** and the **instance name**.
 
-## Justificación
+## Rationale
 
-- La app Next necesita conexión a PostgreSQL para arrancar el propio wizard (que
-  guarda el admin en la tabla `users`). El modelo Nextcloud implicaría arrancar sin
-  DB, escribir config en el sistema de archivos del contenedor y reiniciar —frágil y
-  con condiciones de carrera en un contenedor inmutable—.
-- El usuario nunca teclea ni ve credenciales de infraestructura: menos errores, más
-  seguridad.
+- The Next app needs a PostgreSQL connection to run the wizard itself (which stores the
+  admin in the `users` table). The Nextcloud model would mean starting without a database,
+  writing config to the container's file system and restarting — fragile, and prone to
+  race conditions in an immutable container.
+- The user never types or sees infrastructure credentials: fewer mistakes, more security.
 
-## Consecuencias
+## Consequences
 
-- El estado "ya configurado" vive en la base de datos (`InstanceConfig.setupCompletedAt`),
-  no en un archivo. Ver `docs/setup-wizard.md`.
-- Si alguien borra esa fila manualmente, el wizard reaparece (aceptable: es su servidor).
+- The "already configured" state lives in the database (`InstanceConfig.setupCompletedAt`),
+  not in a file. See `docs/setup-wizard.md`.
+- If someone deletes that row by hand, the wizard reappears (acceptable: it is their
+  server).

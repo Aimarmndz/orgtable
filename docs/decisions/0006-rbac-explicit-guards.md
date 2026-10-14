@@ -1,48 +1,47 @@
-# ADR 0006 — Autorización por rol con guardas explícitas
+# ADR 0006 — Role-based authorization with explicit guards
 
-**Estado:** aceptada · **Fecha:** 2026-06-05
+**Status:** accepted · **Date:** 2026-06-05
 
-## Contexto
+## Context
 
-El Hito 3 (multiusuario) introduce roles por tablero (`OWNER`/`EDITOR`/`VIEWER`) y un
-rol global (`ADMIN`/`MEMBER`). Hay que decidir **cómo se aplica** la autorización en
-las Server Actions y las páginas.
+The multi-user feature introduces per-board roles (`OWNER`/`EDITOR`/`VIEWER`) and a
+global role (`ADMIN`/`MEMBER`). We need to decide **how** authorization is enforced in
+Server Actions and pages.
 
-Next.js 16 ofrece las funciones `forbidden()` y `unauthorized()`, que lanzan una
-interrupción y renderizan una página 403/401. Son cómodas, pero **experimentales**:
-requieren activar `experimental.authInterrupts` en `next.config.ts`.
+Next.js 16 offers the `forbidden()` and `unauthorized()` functions, which throw an
+interrupt and render a 403/401 page. They are convenient, but **experimental**: they
+require enabling `experimental.authInterrupts` in `next.config.ts`.
 
-## Decisión
+## Decision
 
-Usar **guardas explícitas** con ayudantes puros, no las APIs experimentales:
+Use **explicit guards** with pure helpers, not the experimental APIs:
 
 ```ts
 const { role } = await requireBoardAccess(boardId);
-if (!canEditBoard(role)) return;          // acción de formulario → no-op
-if (!canEditBoard(role)) return { ok: false }; // acción de drag & drop → revertir
+if (!canEditBoard(role)) return;          // form action → no-op
+if (!canEditBoard(role)) return { ok: false }; // drag & drop action → roll back
 ```
 
-La jerarquía de roles vive en `app/lib/roles.ts` (`canEditBoard`, `canManageBoard`),
-compartida entre servidor y cliente.
+The role hierarchy lives in `app/lib/roles.ts` (`canEditBoard`, `canManageBoard`),
+shared between server and client.
 
-## Justificación
+## Rationale
 
-- **Sin dependencias experimentales**: `authInterrupts` puede cambiar o requerir
-  ficheros `forbidden.tsx`. Las guardas explícitas son estándar y estables.
-- **Coherencia con el código existente**: las acciones ya "fallan en silencio"
-  cuando la entrada no valida (`if (!parsed.success) return;`). El control de rol
-  sigue el mismo patrón.
-- **UI optimista**: las acciones de drag & drop devuelven `{ ok: false }` en vez de
-  lanzar; el cliente puede revertir su estado sin un overlay de error.
-- **Defensa en profundidad**: la UI oculta los controles según el rol
-  (`board-perms.tsx`), pero la barrera real es la guarda del servidor, que se ejecuta
-  siempre.
+- **No experimental dependencies**: `authInterrupts` may change or require
+  `forbidden.tsx` files. Explicit guards are standard and stable.
+- **Consistency with the existing code**: actions already "fail silently" when the input
+  does not validate (`if (!parsed.success) return;`). The role check follows the same
+  pattern.
+- **Optimistic UI**: drag & drop actions return `{ ok: false }` instead of throwing; the
+  client can roll back its state without an error overlay.
+- **Defense in depth**: the UI hides controls according to the role (`board-perms.tsx`),
+  but the real barrier is the server guard, which always runs.
 
-## Consecuencias
+## Consequences
 
-- Cada Server Action mutadora añade una línea de guarda. Es repetitivo pero explícito
-  y fácil de auditar.
-- Las páginas de administración protegen con `requireAdmin()` (redirige a `/boards`),
-  no con `forbidden()`.
-- Si en el futuro `authInterrupts` se estabiliza, se podría migrar a `forbidden()`
-  para mostrar páginas 403 propias sin cambiar el modelo de permisos.
+- Every mutating Server Action adds one guard line. It is repetitive but explicit and
+  easy to audit.
+- Administration pages are protected with `requireAdmin()` (redirects to `/boards`), not
+  with `forbidden()`.
+- If `authInterrupts` becomes stable in the future, we could migrate to `forbidden()` to
+  show custom 403 pages without changing the permission model.

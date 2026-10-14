@@ -6,47 +6,49 @@ product
 
 ## Users
 
-Personas técnicas que auto-hospedan sus propias herramientas (desarrolladores,
-equipos pequeños, entusiastas del self-hosting). Trabajan en el navegador, sobre todo
-en escritorio. Su tarea principal es capturar trabajo y moverlo entre estados en
-tableros Kanban: crear tarjetas rápido, arrastrarlas entre listas, abrir el detalle
-para añadir contexto (descripción, etiquetas, fechas, checklists).
+Technical people who self-host their own tools (developers, small teams, self-hosting
+enthusiasts). They work in the browser, mostly on desktop. Their main task is capturing
+work and moving it between states on Kanban boards: creating cards quickly, dragging
+them between lists, and opening the details to add context (description, labels, dates,
+checklists).
 
 ## Product Purpose
 
-orgtable es un clon de Trello self-hosted: tableros → listas → tarjetas
-con arrastrar y soltar. El éxito es que se sienta tan fluido y familiar como Trello,
-pero que sea tuyo (tus datos, tu servidor). El producto desaparece detrás de la tarea.
+orgtable is a self-hosted Trello alternative: boards → lists → cards with drag and drop.
+Success means it feels as fluid and familiar as Trello, while being yours (your data,
+your server). The product disappears behind the task.
 
 ## Brand Personality
 
-Familiar, colorido y directo. Alegre sin ser infantil, con la confianza de una
-herramienta de producto pulida. La voz es concreta y en español, sin jerga de
-marketing.
+Familiar, colorful and direct. Cheerful without being childish, with the confidence of a
+polished product tool. The voice is concrete, with no marketing jargon. The interface is
+available in English (the default) and Spanish, and the copy in every language follows
+the same voice.
 
 ## Anti-references
 
-- UI corporativa gris y sin vida (estilo Jira pesado).
-- Dashboards SaaS genéricos: tarjetas-métrica, gradientes decorativos, eyebrows en
-  mayúsculas con tracking.
-- El look "hecho por IA": grises lavados sobre casi-blancos, bordes laterales de color
-  como acento, sombras difusas pegadas a bordes de 1px.
-- Recargado o skeuomórfico.
+- Gray, lifeless corporate UI (heavy Jira style).
+- Generic SaaS dashboards: metric cards, decorative gradients, uppercase tracked
+  eyebrows.
+- The "made by AI" look: washed-out grays on near-whites, colored side borders as
+  accents, diffuse shadows stuck to 1px borders.
+- Cluttered or skeuomorphic.
 
 ## Design Principles
 
-- **Familiaridad ganada.** El patrón Kanban de Trello es el lenguaje del producto; no
-  se reinventa, se ejecuta bien.
-- **El color vive en el contenido.** Los fondos de tablero y las etiquetas llevan el
-  color; el cromo de la interfaz se mantiene neutro.
-- **El tablero es el héroe.** Cabeceras y navegación se apartan para que el contenido
-  mande.
-- **Fluido por defecto.** Crear, arrastrar y mover ocurren al instante (UI optimista),
-  sin recargas ni esperas.
+- **Earned familiarity.** Trello's Kanban pattern is the product's language; it is not
+  reinvented, it is executed well.
+- **Color lives in the content.** Board backgrounds and labels carry the color; the
+  interface chrome stays neutral.
+- **The board is the hero.** Headers and navigation step aside so the content leads.
+- **Fluid by default.** Creating, dragging and moving happen instantly (optimistic UI),
+  with no reloads or waiting.
 
 ## Accessibility & Inclusion
 
-- Contraste AA: texto de cuerpo ≥4.5:1. Las etiquetas de color nunca son el único
-  indicador (siempre llevan nombre o texto).
-- Soporte de tema claro y oscuro con un selector persistente.
-- `prefers-reduced-motion` respetado en todas las transiciones.
+- AA contrast: body text ≥4.5:1. Color labels are never the only indicator (they always
+  carry a name or text).
+- Light and dark themes with a persistent picker.
+- `prefers-reduced-motion` is respected in every transition.
+- Language picker (English and Spanish) in the footer of the public pages and in
+  Settings › Appearance.

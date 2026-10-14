@@ -1,51 +1,47 @@
-# Asistente de configuración inicial (Setup Wizard)
+# Setup wizard
 
-Esta guía está dirigida a **auto-hospedadores** y **contribuidores** de orgtable.
-Explica qué es el asistente de configuración inicial, cómo decide si debe
-mostrarse y por qué su lógica es segura frente a envíos duplicados.
+This guide is for **self-hosters** and **contributors** of orgtable. It explains what the
+setup wizard is, how it decides whether to show up, and why its logic is safe against
+duplicate submissions.
 
-Relacionado: [`docs/installation.md`](./installation.md) ·
+Related: [`docs/installation.md`](./installation.md) ·
 [`docs/authentication.md`](./authentication.md) ·
 [`docs/decisions/0003-db-creds-in-env.md`](./decisions/0003-db-creds-in-env.md)
 
-## Qué es
+## What it is
 
-El **setup wizard** es el asistente que aparece **la primera vez** que se abre
-una instancia recién instalada de orgtable. Vive en la ruta `/setup` y su único
-propósito es dejar la instancia lista para usarse creando la primera cuenta de
-administrador.
+The **setup wizard** is the screen shown **the first time** a freshly installed orgtable
+instance is opened. It lives at `/setup`, and its only purpose is to make the instance
+ready to use by creating the first admin account.
 
-Te pide cuatro datos:
+It asks for four things:
 
-1. **Nombre de la instancia** — una etiqueta para tu equipo o servidor
-   (p. ej. "Mi equipo"). Máximo 60 caracteres.
-2. **Tu nombre** — máximo 60 caracteres.
-3. **Tu email** — será el usuario del administrador.
-4. **Una contraseña** — entre 8 y 200 caracteres.
+1. **Instance name**: a label for your team or server (e.g. "My team"). At most 60
+   characters.
+2. **Your name**: at most 60 characters.
+3. **Your email**: the admin's sign-in.
+4. **A password**: between 8 and 200 characters.
 
-El formulario es minimalista a propósito:
+The form is deliberately minimal:
 
-> Este asistente solo aparece una vez. Crea tu cuenta de administrador.
+> This wizard only appears once. Create your admin account.
 
-### Lo que el wizard NO pide
+### What the wizard does NOT ask for
 
-El asistente **no pide credenciales de base de datos**. La conexión a PostgreSQL
-no se configura aquí: la genera el script `install.sh` y se inyecta por variables
-de entorno en tiempo de arranque. El razonamiento detrás de esta decisión está
-documentado en
-[`docs/decisions/0003-db-creds-in-env.md`](./decisions/0003-db-creds-in-env.md).
-Para el proceso de instalación completo, consulta
-[`docs/installation.md`](./installation.md).
+The wizard **does not ask for database credentials**. The PostgreSQL connection is not
+configured here: the `install.sh` script generates it and it is injected through
+environment variables at start-up. The reasoning behind this decision is documented in
+[`docs/decisions/0003-db-creds-in-env.md`](./decisions/0003-db-creds-in-env.md). For the
+full installation process, see [`docs/installation.md`](./installation.md).
 
-Cuando el wizard se ejecuta, la base de datos **ya está conectada y migrada**;
-de hecho, el wizard necesita la base de datos para poder consultar y escribir su
-fuente de verdad.
+When the wizard runs, the database is **already connected and migrated**; in fact, the
+wizard needs the database to read and write its source of truth.
 
-## Fuente de verdad: `InstanceConfig.setupCompletedAt`
+## Source of truth: `InstanceConfig.setupCompletedAt`
 
-Toda la lógica del asistente gira en torno a un único campo de la base de datos.
-La configuración global de la instancia se guarda en una **fila única** del
-modelo `InstanceConfig` (su `id` es siempre el valor fijo `"singleton"`):
+All the wizard logic revolves around a single database field. The global instance
+configuration is stored in a **single row** of the `InstanceConfig` model (its `id` is
+always the fixed value `"singleton"`):
 
 ```prisma
 // prisma/schema.prisma
@@ -57,15 +53,15 @@ model InstanceConfig {
 }
 ```
 
-El campo clave es `setupCompletedAt`:
+The key field is `setupCompletedAt`:
 
-- Mientras es **`null`**, la instancia se considera **sin configurar** y el
-  wizard (`/setup`) está **activo**.
-- En cuanto tiene una **fecha**, la instancia está configurada y el wizard queda
-  **bloqueado para siempre**.
+- While it is **`null`**, the instance is considered **not configured** and the wizard
+  (`/setup`) is **active**.
+- As soon as it holds a **date**, the instance is configured and the wizard is
+  **locked for good**.
 
-Esa pregunta — "¿está la instancia ya configurada?" — se centraliza en una sola
-función del Data Access Layer, `isSetupComplete()`:
+That question ("is the instance already configured?") is answered by a single Data
+Access Layer function, `isSetupComplete()`:
 
 ```ts
 // app/lib/dal.ts
@@ -73,34 +69,34 @@ export const getInstanceConfig = cache(async () => {
   return prisma.instanceConfig.findUnique({ where: { id: INSTANCE_ID } });
 });
 
-/** true si el setup wizard ya se completó. */
+/** true if the setup wizard has been completed. */
 export const isSetupComplete = cache(async () => {
   const config = await getInstanceConfig();
   return Boolean(config?.setupCompletedAt);
 });
 ```
 
-`isSetupComplete()` simplemente comprueba si `setupCompletedAt` tiene valor.
-Está envuelta en `cache()` de React, así que dentro de una misma petición la
-consulta solo se ejecuta una vez aunque se llame desde varios sitios.
+`isSetupComplete()` simply checks whether `setupCompletedAt` has a value. It is wrapped
+in React's `cache()`, so within a single request the query runs only once even if it is
+called from several places.
 
-## Flujo de gating (control de acceso)
+## Gating flow
 
-El estado de `setupCompletedAt` determina a dónde se redirige al visitante,
-formando un control cruzado entre el wizard y el resto de la app:
+The state of `setupCompletedAt` decides where the visitor is redirected, forming a
+two-way check between the wizard and the rest of the app:
 
-- **`/setup`** redirige a **`/login`** si el setup **ya está completo** (no tiene
-  sentido reconfigurar una instancia ya inicializada).
-- Las páginas de **login** y todo el **área autenticada** redirigen a
-  **`/setup`** si el setup **NO está completo** (no tiene sentido iniciar sesión
-  en una instancia sin administrador).
+- **`/setup`** redirects to **`/login`** if setup is **already complete** (there is no
+  point in reconfiguring an initialized instance).
+- The **login** pages and the whole **authenticated area** redirect to **`/setup`** if
+  setup is **NOT complete** (there is no point in signing in to an instance with no
+  admin).
 
-La parte del lado de `/setup` se ve en su propia página:
+The `/setup` side lives in its own page:
 
 ```tsx
 // app/setup/page.tsx
 export default async function SetupPage() {
-  // Si ya se completó el setup, el wizard queda bloqueado para siempre.
+  // Once setup is complete, the wizard is locked for good.
   if (await isSetupComplete()) redirect("/login");
 
   return (
@@ -111,26 +107,26 @@ export default async function SetupPage() {
 }
 ```
 
-El resultado es que solo existe exactamente **un** estado válido por instancia: o
-bien estás en el wizard (sin configurar), o bien estás en login / la app
-(configurada). Nunca ambos a la vez.
+As a result there is exactly **one** valid state per instance: either you are in the
+wizard (not configured) or you are on the login page / in the app (configured). Never
+both.
 
-## La acción `completeSetup`
+## The `completeSetup` action
 
-Cuando envías el formulario, se ejecuta la Server Action `completeSetup`
-(`app/lib/actions/setup.ts`). Sus pasos son:
+When you submit the form, the `completeSetup` Server Action
+(`app/lib/actions/setup.ts`) runs. Its steps are:
 
-### 1. Corte temprano
+### 1. Early exit
 
-Si `isSetupComplete()` ya es cierto, la acción hace `redirect("/login")` antes de
-validar nada y de gastar el hash de bcrypt. Hace falta aunque `/setup` ya redirija:
-el ID de la acción sigue en el bundle de la página y se puede invocar a mano. No
-sustituye a la comprobación dentro de la transacción, que es la definitiva.
+If `isSetupComplete()` is already true, the action calls `redirect("/login")` before
+validating anything or spending the bcrypt hash. This is needed even though `/setup`
+already redirects: the action ID is still in the page bundle and can be invoked by hand.
+It does not replace the check inside the transaction, which is the authoritative one.
 
-### 2. Validación con zod
+### 2. Validation with zod
 
-Los cuatro campos se validan con `setupSchema` antes de tocar la base de datos.
-Si la validación falla, la acción devuelve un error legible y no hace nada más:
+The four fields are validated with `setupSchema` before touching the database. If
+validation fails, the action returns a readable (localized) error and does nothing else:
 
 ```ts
 const parsed = setupSchema.safeParse({
@@ -140,143 +136,136 @@ const parsed = setupSchema.safeParse({
   password: formData.get("password"),
 });
 if (!parsed.success) {
-  return { error: parsed.error.issues[0]?.message ?? "Datos no válidos." };
+  return { error: /* message of the first zod issue */ };
 }
 ```
 
-La contraseña se hashea (`hashPassword`) **antes** de abrir la transacción.
+The password is hashed (`hashPassword`) **before** the transaction is opened.
 
-### 3. Transacción serializada
+### 3. Serialized transaction
 
-El núcleo es `completeInstanceSetup` (`app/lib/services/setup.ts`), una transacción
-de Prisma (`prisma.$transaction`) que hace, en este orden:
+The core is `completeInstanceSetup` (`app/lib/services/setup.ts`), a Prisma transaction
+(`prisma.$transaction`) that does, in this order:
 
-1. **Toma un advisory lock de transacción**:
-   `pg_advisory_xact_lock(hashtext('orgtable:setup'))`. Un segundo envío simultáneo
-   espera aquí hasta que el primero confirme o aborte.
-2. **Recomprueba `setupCompletedAt`.** Si ya tiene fecha, devuelve
-   `{ ok: false, reason: "ALREADY_SETUP" }` (no lanza) y no escribe nada.
-3. **Crea el usuario administrador** con la contraseña ya hasheada, el email en
-   minúsculas y el rol `ADMIN`.
-4. **Marca `setupCompletedAt`** con la fecha actual y guarda el `instanceName`
-   (mediante `upsert`, por si la fila `InstanceConfig` ya existía sin completar), y
-   devuelve `{ ok: true, userId }`.
+1. **Takes a transaction-level advisory lock**:
+   `pg_advisory_xact_lock(hashtext('orgtable:setup'))`. A second simultaneous
+   submission waits here until the first one commits or aborts.
+2. **Re-checks `setupCompletedAt`.** If it already has a date, it returns
+   `{ ok: false, reason: "ALREADY_SETUP" }` (it does not throw) and writes nothing.
+3. **Creates the admin user** with the already-hashed password, the email in lowercase
+   and the `ADMIN` role.
+4. **Sets `setupCompletedAt`** to the current date and stores the `instanceName` (with
+   `upsert`, in case the `InstanceConfig` row already existed without being completed),
+   and returns `{ ok: true, userId }`.
 
-La recomprobación del paso 2 **solo protege porque el lock del paso 1 serializa los
-envíos**. Con el aislamiento por defecto de PostgreSQL (READ COMMITTED), sin el lock
-dos envíos casi simultáneos leerían los dos «sin configurar» y crearían dos
-administradores. No quites el lock: el porqué completo y las alternativas descartadas
-están en [`DECISIONES.md`](./DECISIONES.md) («Setup: advisory lock, corte temprano y
-causa en el log»), y `test/integration/setup.int.test.ts` lo comprueba con envíos
-simultáneos.
+The re-check in step 2 **only protects because the lock in step 1 serializes the
+submissions**. With PostgreSQL's default isolation (READ COMMITTED), without the lock two
+nearly simultaneous submissions would both read "not configured" and create two admins.
+Do not remove the lock: the full reasoning and the alternatives considered are in
+[`DECISIONES.md`](./DECISIONES.md) (the entry about the setup advisory lock), and
+`test/integration/setup.int.test.ts` checks it with simultaneous submissions.
 
-Como todo ocurre en una transacción, si algo falla a mitad no se queda un estado
-inconsistente: o se crean el administrador y la marca de configuración juntos, o
-no se crea nada.
+Because everything happens in one transaction, a failure halfway through never leaves
+an inconsistent state: either the admin and the setup flag are created together, or
+nothing is.
 
-### 4. Auto-login y redirección
+### 4. Auto sign-in and redirect
 
-Tras la transacción, la acción crea la sesión (auto-login con `createSession`) y
-redirige a `/boards`:
+After the transaction, the action creates the session (auto sign-in with
+`createSession`) and redirects to `/boards`:
 
 ```ts
 await createSession(outcome.userId);
 redirect("/boards");
 ```
 
-### Por qué `redirect()` se llama FUERA del try/catch
+### Why `redirect()` is called OUTSIDE the try/catch
 
-Esto es deliberado y conviene entenderlo si vas a modificar la acción:
+This is deliberate and worth understanding if you change the action:
 
 ```ts
 // app/lib/actions/setup.ts
 try {
-  // ... la transacción ...
+  // ... the transaction ...
 } catch (e) {
-  outcome = /* ... clasifica el error ... */;
+  outcome = /* ... classify the error ... */;
 }
 
-// redirect() se llama FUERA del try/catch: lanza una excepción interna de Next
-// (NEXT_REDIRECT) que no debe ser capturada por el catch de arriba.
+// redirect() is called OUTSIDE the try/catch: it throws an internal Next exception
+// (NEXT_REDIRECT) that must not be caught by the catch above.
 if (!outcome.ok) {
   if (outcome.reason === "ALREADY_SETUP") redirect("/login");
-  return { error: "No se pudo completar la configuración. Inténtalo de nuevo." };
+  return { error: /* localized "could not complete setup, try again" message */ };
 }
 
 await createSession(outcome.userId);
 redirect("/boards");
 ```
 
-En Next.js, `redirect()` **no devuelve** un valor: funciona **lanzando una
-excepción interna** (`NEXT_REDIRECT`) que el framework intercepta para realizar
-la navegación. Si llamáramos a `redirect()` dentro del `try`, el `catch` de la
-transacción **capturaría esa excepción de control** y la confundiría con un error
-real, rompiendo la redirección.
+In Next.js, `redirect()` **does not return** a value: it works by **throwing an internal
+exception** (`NEXT_REDIRECT`) that the framework intercepts to perform the navigation. If
+`redirect()` were called inside the `try`, the transaction's `catch` **would catch that
+control-flow exception** and mistake it for a real error, breaking the redirect.
 
-Por eso la transacción solo produce un **`outcome`** (un dato plano:
-`{ ok: true, userId }` o `{ ok: false, reason }`), y todas las llamadas a
-`redirect()` quedan **después** del `try/catch`, donde nada las va a capturar.
+That is why the transaction only produces an **`outcome`** (plain data:
+`{ ok: true, userId }` or `{ ok: false, reason }`), and every `redirect()` call comes
+**after** the `try/catch`, where nothing will catch it.
 
-## Bloqueo post-setup: triple defensa
+## Post-setup lock: three layers of defense
 
-Una vez completado el setup, reabrirlo se evita por **tres** mecanismos
-independientes:
+Once setup is complete, reopening it is prevented by **three** independent mechanisms:
 
-1. **El campo en base de datos** (`InstanceConfig.setupCompletedAt`): la fuente
-   de verdad persistente. Mientras tenga fecha, la instancia se considera
-   configurada.
-2. **La recomprobación en la transacción, serializada por el advisory lock**: aunque
-   dos formularios se envíen a la vez, el lock hace que el segundo espere al
-   primero y, al recomprobar, vea el setup hecho; devuelve `ALREADY_SETUP`, que
-   redirige a `/login`. Sin el lock, la recomprobación sola no basta (ver
-   [paso 3](#3-transacción-serializada)).
-3. **Las comprobaciones previas con `isSetupComplete()`**: el redirect de la página
-   (`/setup` → `/login`) evita mostrar el formulario, y el corte temprano de la
-   acción evita validar y hashear si alguien la invoca a mano.
+1. **The database field** (`InstanceConfig.setupCompletedAt`): the persistent source of
+   truth. While it holds a date, the instance is considered configured.
+2. **The re-check inside the transaction, serialized by the advisory lock**: even if two
+   forms are submitted at once, the lock makes the second wait for the first and, on
+   re-checking, see that setup is done; it returns `ALREADY_SETUP`, which redirects to
+   `/login`. Without the lock, the re-check alone is not enough (see
+   [step 3](#3-serialized-transaction)).
+3. **The prior checks with `isSetupComplete()`**: the page redirect (`/setup` →
+   `/login`) avoids showing the form, and the action's early exit avoids validating and
+   hashing if someone invokes it by hand.
 
-Estas tres capas se solapan a propósito: las comprobaciones previas son la primera
-línea (UX y coste), y la transacción con el lock es la red de seguridad real contra
-condiciones de carrera.
+These three layers overlap on purpose: the prior checks are the first line (UX and
+cost), and the locked transaction is the real safety net against race conditions.
 
-### Caso límite: borrar la fila `InstanceConfig`
+### Edge case: deleting the `InstanceConfig` row
 
-Como el estado vive en la base de datos, si alguien **elimina manualmente** la
-fila `InstanceConfig` (o pone su `setupCompletedAt` a `null`), `isSetupComplete()`
-volverá a devolver `false` y **el wizard reaparecerá**.
+Since the state lives in the database, if someone **manually deletes** the
+`InstanceConfig` row (or sets its `setupCompletedAt` to `null`), `isSetupComplete()`
+returns `false` again and **the wizard reappears**.
 
-Esto es **aceptable**: es tu servidor y tu base de datos. orgtable no intenta
-protegerse de quien ya tiene acceso directo a PostgreSQL. Lo que hay que tener en
-cuenta al hacerlo (exposición mientras el asistente está abierto, email nuevo) está en
-[self-hosting.md](./self-hosting.md#restablecer-el-asistente-de-configuración).
+This is **acceptable**: it is your server and your database. orgtable does not try to
+protect itself from someone who already has direct access to PostgreSQL. What to keep in
+mind when doing it (exposure while the wizard is open, new email) is covered in
+[self-hosting.md](./self-hosting.md#resetting-the-setup-wizard).
 
-El asistente siempre crea un administrador **nuevo**; no sirve para recuperar uno
-existente.
+The wizard always creates a **new** admin; it cannot recover an existing one.
 
-### Recuperar el acceso de un administrador
+### Recovering access for an admin
 
-Si un administrador olvida su contraseña:
+If an admin forgets their password:
 
-- **Si hay otro administrador**, que la restablezca desde `/admin/users` (ver
+- **If there is another admin**, they can reset it from `/admin/users` (see
   [admin.md](./admin.md)).
-- **Si no hay ninguno con acceso**, cambia el hash directamente en la base de datos.
-  Desde el directorio de instalación, genera el hash con la misma librería y coste que
-  usa la app y guárdalo:
+- **If no admin has access**, change the hash directly in the database. From the
+  installation directory, generate the hash with the same library and cost the app uses
+  and store it:
 
   ```bash
   HASH=$(docker compose exec -T app node -e \
     'require("bcryptjs").hash(process.argv[1], 12).then((h) => process.stdout.write(h))' \
-    'la-contraseña-nueva')
+    'the-new-password')
   docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" "$POSTGRES_DB"' <<SQL
-  UPDATE "User" SET "passwordHash" = '$HASH' WHERE email = 'admin@ejemplo.com';
+  UPDATE "User" SET "passwordHash" = '$HASH' WHERE email = 'admin@example.com';
   SQL
   ```
 
-  Sustituye la contraseña y el email (en minúsculas). La contraseña queda en el
-  historial de la shell: bórrala de él después (`history -d` o editando
-  `~/.bash_history`).
+  Replace the password and the email (in lowercase). The password stays in the shell
+  history: remove it afterwards (`history -d` or by editing `~/.bash_history`).
 
 ---
 
-**Resumen:** el setup wizard de `/setup` solo se muestra mientras
-`InstanceConfig.setupCompletedAt` es null, crea el administrador en una
-transacción atómica protegida por triple defensa y hace auto-login a `/boards`.
+**Summary:** the setup wizard at `/setup` is only shown while
+`InstanceConfig.setupCompletedAt` is null, creates the admin in an atomic transaction
+protected by three layers of defense, and signs you in straight to `/boards`.

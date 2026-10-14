@@ -2,211 +2,219 @@
 
 # orgtable
 
-### Tu trabajo, en columnas que respiran.
+### Your work, in columns that breathe.
 
-Tableros Kanban de código abierto: tableros, listas y tarjetas con arrastrar y soltar,<br>
-en tiempo real y con tus datos donde tú decidas. Una alternativa a Trello que puedes alojar tú.
+Open-source Kanban boards: boards, lists and cards with drag and drop,<br>
+in real time, with your data wherever you decide. A Trello alternative you can host yourself.
 
 [![CI](https://github.com/Aimarmndz/orgtable/actions/workflows/ci.yml/badge.svg)](https://github.com/Aimarmndz/orgtable/actions/workflows/ci.yml)
-[![Licencia: AGPL-3.0-or-later](https://img.shields.io/badge/licencia-AGPL--3.0--or--later-9b411e)](./LICENSE)
+[![License: AGPL-3.0-or-later](https://img.shields.io/badge/license-AGPL--3.0--or--later-9b411e)](./LICENSE)
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org)
 [![PostgreSQL 17](https://img.shields.io/badge/PostgreSQL-17-336791)](https://www.postgresql.org)
 [![Docker](https://img.shields.io/badge/self--hosted-Docker-2496ed)](./docs/self-hosting.md)
 
-🇪🇸 **Español** · 🇬🇧 [English](./README.en.md)
+🇬🇧 **English** · 🇪🇸 [Español](./README.es.md)
 
-[Funciones](#qué-es) · [Instalación](#instalación) · [Privacidad](#privacidad) · [Documentación](./docs/index.md) · [Licencia](#créditos-y-licencia)
+[Features](#what-it-is) · [Installation](#installation) · [Privacy](#privacy) · [Documentation](./docs/index.md) · [License](#credits-and-license)
 
 <br>
 
-<img src="docs/screenshots/hero.gif" alt="Un tablero de orgtable: se arrastra la tarjeta «Fotos del equipo» de la lista En curso a Revisión y después se abre el detalle de «Maquetar la home», con etiquetas, asignados, descripción, vencimiento y checklist" width="960">
+<img src="docs/screenshots/hero.gif" alt="An orgtable board: the card “Team photos” is dragged from the In progress list to Review, then the details of “Build the home page” open, with labels, assignees, description, due date and a checklist" width="960">
 
-<sub>Sin montaje: la app real con datos de ejemplo, grabada en el navegador.</sub>
+<sub>No editing: the real app with sample data, recorded in the browser.</sub>
 
 </div>
 
-## Qué es
+## What it is
 
-orgtable es una aplicación de tableros Kanban. Puedes usarla en una instancia pública con
-registro gratuito o levantar la tuya en cualquier servidor con Docker, con un solo comando.
-<!-- TODO: enlazar aquí la URL de la instancia pública oficial cuando esté publicada; la
-decide Aimar. -->
+orgtable is a Kanban board app. Use it on a public instance with free sign-up, or run your
+own on any server with Docker in a single command.
+<!-- TODO: link the official public instance URL here once it is published; Aimar decides
+it. -->
 
-- 🗂️ **Tableros, listas y tarjetas** con arrastrar y soltar, con ratón y con teclado.
-  Cada tarjeta tiene etiquetas, vencimiento, checklists, adjuntos, asignados y comentarios.
-- ⚡ **Tiempo real.** Lo que mueve una persona lo ven las demás al instante, sin recargar.
-- 👥 **Equipos.** Roles por tablero (propietario, editor y lector), notificaciones y
-  recordatorios de vencimiento.
-- 🔎 **Búsqueda, filtros y calendario**, este último con arrastre para cambiar fechas.
-- 🔌 **API REST** con tokens personales, de solo lectura o de escritura, con caducidad.
-- 🔐 **Registro abierto opcional y RGPD de serie.** Páginas legales que se adaptan a cada
-  instancia. Cada persona descarga o borra sus datos desde los ajustes.
-- 🌗 **Claro y oscuro**, accesible con teclado y lector de pantalla, cómodo en el móvil.
-- 🐳 **Autoalojable.** El instalador levanta Docker, genera los secretos y un asistente
-  crea la cuenta de administrador.
+- 🗂️ **Boards, lists and cards** with drag and drop, by mouse and by keyboard. Cards have
+  labels, due dates, checklists, attachments, assignees and comments.
+- ⚡ **Real time.** What one person moves, everyone else sees instantly, without reloading.
+- 👥 **Teams.** Per-board roles (owner, editor and viewer), notifications and due-date
+  reminders.
+- 🔎 **Search, filters and a calendar view**, where you drag cards to change their due date.
+- 🔌 **REST API** with personal tokens, read-only or read-write, with optional expiry.
+- 🔐 **Optional open sign-up and GDPR built in.** Legal pages adapt to each instance, and
+  everyone can download or delete their own data from the settings.
+- 🌍 **English and Spanish.** The interface follows your browser language, and you can
+  change it from the footer or from *Settings › Appearance*. Translations are welcome: see
+  [`locales/README.md`](./locales/README.md).
+- 🌗 **Light and dark themes**, accessible by keyboard and screen reader, comfortable on
+  mobile.
+- 🐳 **Self-hostable.** The installer sets up Docker and generates the secrets, and a
+  wizard creates the admin account.
 
-## La app
+## The app
 
 <table>
   <tr>
-    <td width="50%" align="center" valign="top"><img src="docs/screenshots/realtime.gif" alt="Dos navegadores con el mismo tablero: en el de la izquierda Lucía mueve la tarjeta «Newsletter mensual» a Por hacer y en el de la derecha Marcos la ve aparecer al momento" width="100%"><br><sub><b>Tiempo real</b>. Lucía mueve una tarjeta y Marcos la ve al instante.</sub></td>
-    <td width="50%" align="center" valign="top"><img src="docs/screenshots/card-dark.webp" alt="Detalle de una tarjeta en tema oscuro con etiquetas, asignados, descripción, vencimiento y una checklist a la mitad" width="100%"><br><sub><b>Detalle de tarjeta</b>, en tema oscuro.</sub></td>
+    <td width="50%" align="center" valign="top"><img src="docs/screenshots/realtime.gif" alt="Two browsers on the same board: on the left Lucía moves the card “Monthly newsletter” to To do, and on the right Marcos sees it appear immediately" width="100%"><br><sub><b>Real time</b>. Lucía moves a card and Marcos sees it instantly.</sub></td>
+    <td width="50%" align="center" valign="top"><img src="docs/screenshots/card-dark.webp" alt="Card details in the dark theme, with labels, assignees, description, due date and a half-done checklist" width="100%"><br><sub><b>Card details</b>, in the dark theme.</sub></td>
   </tr>
   <tr>
-    <td width="50%" align="center" valign="top"><img src="docs/screenshots/calendar-light.webp" alt="Vista de calendario de octubre con las tarjetas colocadas en su día de vencimiento" width="100%"><br><sub><b>Calendario</b>. Arrastra para cambiar el vencimiento.</sub></td>
-    <td width="50%" align="center" valign="top"><img src="docs/screenshots/boards-light.webp" alt="Índice de tableros con su color, el número de tarjetas y las iniciales de quien está dentro, y el menú de la cuenta" width="100%"><br><sub><b>Tus tableros</b>, con quién está en cada uno.</sub></td>
+    <td width="50%" align="center" valign="top"><img src="docs/screenshots/calendar-light.webp" alt="October calendar view with each card placed on its due date" width="100%"><br><sub><b>Calendar</b>. Drag a card to change its due date.</sub></td>
+    <td width="50%" align="center" valign="top"><img src="docs/screenshots/boards-light.webp" alt="Board index with each board's color, card count and the initials of its members, plus the account menu" width="100%"><br><sub><b>Your boards</b>, with who is on each one.</sub></td>
   </tr>
   <tr>
-    <td width="50%" align="center" valign="top"><img src="docs/screenshots/settings-light.webp" alt="Página de ajustes con navegación lateral: perfil, contraseña y sesiones, tokens de API, apariencia, privacidad y datos, y acerca de" width="100%"><br><sub><b>Ajustes</b>. Perfil, sesiones, tokens y tus datos.</sub></td>
-    <td width="50%" align="center" valign="top"><img src="docs/screenshots/board-dark.webp" alt="El mismo tablero en tema oscuro" width="100%"><br><sub><b>Tema oscuro</b>, en carbón cálido.</sub></td>
+    <td width="50%" align="center" valign="top"><img src="docs/screenshots/settings-light.webp" alt="Settings page with side navigation: profile, password and sessions, API tokens, appearance, privacy and data, and about" width="100%"><br><sub><b>Settings</b>. Profile, sessions, tokens and your data.</sub></td>
+    <td width="50%" align="center" valign="top"><img src="docs/screenshots/board-dark.webp" alt="The same board in the dark theme" width="100%"><br><sub><b>Dark theme</b>, in warm charcoal.</sub></td>
   </tr>
 </table>
 
 <details>
-<summary>En el móvil</summary>
+<summary>On mobile</summary>
 <br>
-<p align="center"><img src="docs/screenshots/board-mobile.webp" alt="El tablero en un móvil de 390 px de ancho, con las columnas que se desplazan en horizontal" width="320"></p>
+<p align="center"><img src="docs/screenshots/board-mobile.webp" alt="The board on a 390 px wide phone, with columns that scroll horizontally" width="320"></p>
 </details>
 
-## Requisitos
+## Requirements
 
-**Para alojarlo en un servidor:**
+**To host it on a server:**
 
-- Linux con acceso a internet.
-- Docker y Docker Compose v2 (`docker compose`). Si falta Docker, el instalador lo
-  instala.
-- Un puerto libre, por defecto el `3000`.
-- Para un uso real: un dominio y un proxy inverso con HTTPS (Caddy o nginx).
+- Linux with internet access.
+- Docker and Docker Compose v2 (`docker compose`). If Docker is missing, the installer
+  installs it.
+- A free port, `3000` by default.
+- For real use: a domain and a reverse proxy with HTTPS (Caddy or nginx).
 
-**Para desarrollar:**
+**To develop:**
 
-- Node.js 22, la versión que usan la CI y la imagen Docker.
-- pnpm 11, activado con `corepack enable`. La versión exacta está en `packageManager` de
-  `package.json`. No uses npm ni yarn.
-- Docker, para la base de datos PostgreSQL de desarrollo.
+- Node.js 22, the version used by CI and the Docker image.
+- pnpm 11, enabled with `corepack enable`. The exact version is in the `packageManager`
+  field of `package.json`. Do not use npm or yarn.
+- Docker, for the development PostgreSQL database.
 
-## Instalación
+## Installation
 
-### En un servidor
+### On a server
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/Aimarmndz/orgtable/main/install.sh | bash
 ```
 
-El instalador detecta o instala Docker, genera los secretos (`.env` con permisos `600`)
-y levanta la app. Después abre `http://<IP-de-tu-servidor>:3000` y completa el asistente
-inicial, que crea la cuenta de administrador.
+The installer detects or installs Docker, generates the secrets (`.env` with `600`
+permissions) and starts the app. Then open `http://<your-server-ip>:3000` and complete the
+setup wizard, which creates the admin account.
 
-Por HTTP, la contraseña y la sesión viajan sin cifrar. Para un uso real, pon HTTPS delante
-siguiendo [`docs/self-hosting.md`](./docs/self-hosting.md#https-y-dominio-reverse-proxy).
-La guía completa y la instalación manual están en
-[`docs/installation.md`](./docs/installation.md).
+Over plain HTTP, the password and the session travel unencrypted. For real use, put HTTPS
+in front of it following
+[`docs/self-hosting.md`](./docs/self-hosting.md#https-and-domain-reverse-proxy). The full
+guide and the manual installation are in [`docs/installation.md`](./docs/installation.md).
 
-### En local, para desarrollar
+### Locally, for development
 
 ```bash
 git clone https://github.com/Aimarmndz/orgtable.git && cd orgtable
 corepack enable
 pnpm install
 
-# PostgreSQL de desarrollo en el puerto 5433
+# Development PostgreSQL on port 5433
 docker run -d --name orgtable-dev-pg \
   -e POSTGRES_USER=orgtable -e POSTGRES_PASSWORD=devpass -e POSTGRES_DB=orgtable \
   -p 5433:5432 postgres:17-alpine
 
-# .env mínimo: la app exige SESSION_SECRET (16 caracteres como mínimo)
+# Minimal .env: the app requires SESSION_SECRET (at least 16 characters)
 printf 'DATABASE_URL=postgresql://orgtable:devpass@localhost:5433/orgtable\nSESSION_SECRET=%s\n' \
   "$(openssl rand -hex 32)" > .env
 
-pnpm exec prisma migrate dev     # aplica las migraciones
-pnpm exec prisma generate        # genera el cliente de Prisma
+pnpm exec prisma migrate dev     # applies the migrations
+pnpm exec prisma generate        # generates the Prisma client
 pnpm dev                         # http://localhost:3000
 ```
 
-Más detalles en [`docs/contributing.md`](./docs/contributing.md).
+More details in [`docs/contributing.md`](./docs/contributing.md).
 
-## Comandos
+## Commands
 
-| Comando | Qué hace |
+| Command | What it does |
 |---|---|
-| `pnpm dev` | Servidor de desarrollo con recarga en caliente. |
-| `pnpm build` / `pnpm start` | Compila para producción y sirve la build. |
+| `pnpm dev` | Development server with hot reload. |
+| `pnpm build` / `pnpm start` | Builds for production and serves the build. |
 | `pnpm lint` | ESLint. |
-| `pnpm typecheck` | Comprobación de tipos (`tsc --noEmit`). |
-| `pnpm test` | Tests unitarios (sin base de datos). |
-| `pnpm test:integration` | Tests de integración contra una PostgreSQL real cuyo nombre acabe en `_test` (ver [`docs/testing.md`](./docs/testing.md)). |
-| `pnpm exec prisma migrate dev` | Crea y aplica migraciones en desarrollo. |
-| `pnpm exec prisma migrate deploy` | Aplica las migraciones pendientes. El contenedor lo hace solo al arrancar. |
-| `scripts/backup.sh` · `scripts/restore.sh` · `scripts/update.sh` | Copia de seguridad, restauración y actualización de una instalación con Docker (ver [`docs/operations.md`](./docs/operations.md)). |
-| `POST /api/cron/reminders` · `POST /api/cron/maintenance` | Recordatorios de vencimiento y limpieza de datos caducados. Los dispara un cron externo con `CRON_SECRET` (ver [`docs/operations.md`](./docs/operations.md#tareas-programadas)). |
+| `pnpm typecheck` | Type check (`tsc --noEmit`). |
+| `pnpm test` | Unit tests (no database). |
+| `pnpm test:integration` | Integration tests against a real PostgreSQL database whose name ends in `_test` (see [`docs/testing.md`](./docs/testing.md)). |
+| `pnpm exec prisma migrate dev` | Creates and applies migrations in development. |
+| `pnpm exec prisma migrate deploy` | Applies pending migrations. The container does this on startup. |
+| `scripts/backup.sh` · `scripts/restore.sh` · `scripts/update.sh` | Backup, restore and update of a Docker installation (see [`docs/operations.md`](./docs/operations.md)). |
+| `POST /api/cron/reminders` · `POST /api/cron/maintenance` | Due-date reminders and cleanup of expired data. Triggered by an external cron job with `CRON_SECRET` (see [`docs/operations.md`](./docs/operations.md#scheduled-tasks)). |
 
-## Variables de entorno
+## Environment variables
 
-La referencia de cada variable está en
-[`docs/installation.md`](./docs/installation.md#variables-de-entorno) y la plantilla
-comentada, en [`.env.example`](./.env.example).
+Every variable is documented in
+[`docs/installation.md`](./docs/installation.md#environment-variables), and the commented
+template is [`.env.example`](./.env.example).
 
-- **Obligatorias:** `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `DATABASE_URL`,
+- **Required:** `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `DATABASE_URL`,
   `SESSION_SECRET`.
-- **Opcionales:** `APP_PORT`, `CRON_SECRET`, `TRUSTED_PROXY_HOPS`, `ORGTABLE_TIMEZONE`,
-  `ORGTABLE_UPLOAD_DIR`, `ORGTABLE_REALTIME_PG_NOTIFY`, `ORGTABLE_AUDIT_RETENTION_DAYS` y
-  `ORGTABLE_SOURCE_URL`.
+- **Optional:** `APP_PORT`, `CRON_SECRET`, `TRUSTED_PROXY_HOPS` and the `ORGTABLE_*`
+  settings: `ORGTABLE_TIMEZONE`, `ORGTABLE_UPLOAD_DIR`, `ORGTABLE_REALTIME_PG_NOTIFY`,
+  `ORGTABLE_AUDIT_RETENTION_DAYS` and `ORGTABLE_SOURCE_URL`.
 
-## Despliegue
+## Deployment
 
-La imagen se construye en el propio servidor con Docker Compose: app y PostgreSQL, sin
-exponer puertos de la base de datos. Al arrancar aplica las migraciones.
+Docker Compose builds the image on the server itself: the app plus PostgreSQL, with no
+database port exposed. Migrations are applied on startup.
 
-- Operar en producción, HTTPS y proxy inverso: [`docs/self-hosting.md`](./docs/self-hosting.md).
-- Copias de seguridad, restauración, actualizaciones y cron:
-  [`docs/operations.md`](./docs/operations.md).
-- La imagen y la orquestación: [`docs/docker.md`](./docs/docker.md).
-- Abrir la instancia al público con registro gratuito: la lista de comprobación está en
-  [`docs/privacy.md`](./docs/privacy.md#lista-para-abrir-una-instancia-pública).
+- Running in production, HTTPS and reverse proxy: [`docs/self-hosting.md`](./docs/self-hosting.md).
+- Backups, restore, updates and cron: [`docs/operations.md`](./docs/operations.md).
+- The image and the orchestration: [`docs/docker.md`](./docs/docker.md).
+- Opening the instance to the public with free sign-up: the checklist is in
+  [`docs/privacy.md`](./docs/privacy.md#checklist-for-opening-a-public-instance).
 
-## Privacidad
+## Privacy
 
-orgtable guarda lo necesario para que tengas una cuenta y tus tableros funcionen. No tiene
-analíticas, ni anuncios, ni cookies de seguimiento: solo una cookie de sesión.
+orgtable keeps only what your account and boards need. There are no analytics, no ads and
+no tracking cookies: just one session cookie (plus a language cookie when you pick a
+language).
 
-- **El responsable de los datos es quien opera cada instancia.** Rellena sus datos en
-  *Administración › Instancia* y las páginas `/legal/privacidad`, `/legal/condiciones`,
-  `/legal/cookies` y `/legal/aviso-legal` los muestran. Lo que falte aparece como «sin
-  indicar», nunca inventado.
-- **Cada persona ejerce sus derechos sola**, desde *Ajustes › Privacidad y datos*: descarga
-  todos sus datos en JSON o borra su cuenta con sus tableros y adjuntos.
-- **Plazos cortos y automáticos.** Las sesiones caducan a los 7 días, las notificaciones
-  se borran a los 180 y el registro de seguridad a los 90 (configurable).
+- **Whoever runs an instance is the data controller.** They enter their details under
+  *Admin › Instance*, and the pages `/legal/privacy`, `/legal/terms`,
+  `/legal/cookies` and `/legal/notice` show them. Anything missing appears as "not
+  provided", never made up.
+- **Everyone exercises their own rights** from *Settings › Privacy and data*: download all
+  their data as JSON, or delete their account together with their boards and attachments.
+- **Short, automatic retention.** Sessions expire after 7 days, notifications are deleted
+  after 180 days and the security log after 90 (configurable).
 
-Detalle técnico y base legal en [`docs/privacy.md`](./docs/privacy.md).
+Technical details and legal basis in [`docs/privacy.md`](./docs/privacy.md).
 
-## Documentación
+## Documentation
 
-Toda la documentación está en [`docs/`](./docs/), con índice en
-[`docs/index.md`](./docs/index.md): arquitectura, base de datos, autenticación y
-autorización, [API pública](./docs/api/public-api.md),
-[registro de decisiones](./docs/DECISIONES.md) y [cómo contribuir](./docs/contributing.md).
-Está en español; el código, en inglés.
+All documentation lives in [`docs/`](./docs/), indexed in
+[`docs/index.md`](./docs/index.md): architecture, database, authentication and
+authorization, the [public API](./docs/api/public-api.md), the
+[decision log](./docs/DECISIONES.md) and [how to contribute](./docs/contributing.md).
 
-## Contribuir
+## Contributing
 
-Las aportaciones son bienvenidas. Lee antes [`docs/contributing.md`](./docs/contributing.md).
-Cada commit lleva `Signed-off-by` ([DCO](https://developercertificate.org/), con
-`git commit -s`). Los problemas de seguridad van por [`SECURITY.md`](./SECURITY.md),
-nunca en issues públicas.
+Contributions are welcome. Please read [`docs/contributing.md`](./docs/contributing.md)
+first. Code, comments, docs and commit messages are in English. Every commit carries a
+`Signed-off-by` line ([DCO](https://developercertificate.org/), with `git commit -s`).
 
-## Créditos y licencia
+Translations are especially welcome: adding a language means copying one folder and
+translating JSON files, with no code knowledge needed. See
+[`locales/README.md`](./locales/README.md).
 
-Creado por **Aimar** ([github.com/Aimarmndz](https://github.com/Aimarmndz)). Hecho con
+Report security issues through [`SECURITY.md`](./SECURITY.md), never in public issues.
+
+## Credits and license
+
+Created by **Aimar** ([github.com/Aimarmndz](https://github.com/Aimarmndz)). Built with
 [Next.js](https://nextjs.org), [React](https://react.dev),
 [Prisma](https://www.prisma.io), [PostgreSQL](https://www.postgresql.org),
-[dnd-kit](https://dndkit.com) y [Tailwind CSS](https://tailwindcss.com). Usa las
-tipografías [Bricolage Grotesque](https://fonts.google.com/specimen/Bricolage+Grotesque),
-[Figtree](https://fonts.google.com/specimen/Figtree) y
-[Geist Mono](https://fonts.google.com/specimen/Geist+Mono), todas con licencia SIL OFL 1.1.
+[dnd-kit](https://dndkit.com) and [Tailwind CSS](https://tailwindcss.com). It uses the
+typefaces [Bricolage Grotesque](https://fonts.google.com/specimen/Bricolage+Grotesque),
+[Figtree](https://fonts.google.com/specimen/Figtree) and
+[Geist Mono](https://fonts.google.com/specimen/Geist+Mono), all under the SIL OFL 1.1.
 
-Licencia **GNU AGPL-3.0-or-later** con un término adicional de la sección 7(b): las
-versiones modificadas tienen que conservar la atribución «Created by Aimar
-(github.com/Aimarmndz)» en el pie de las páginas públicas y en «Acerca de» de los ajustes.
-Puedes usarlo, modificarlo y alojarlo, también con fines comerciales. Si lo ofreces como
-servicio, tienes que publicar tu código bajo la misma licencia. Ver [`LICENSE`](./LICENSE).
+Licensed under the **GNU AGPL-3.0-or-later** with an additional term under section 7(b):
+modified versions must keep the attribution "Created by Aimar (github.com/Aimarmndz)" in
+the footer of the public pages and in the "About" section of the settings. You may use,
+modify and host it, commercially too. If you offer it as a service, you must publish your
+source code under the same license. See [`LICENSE`](./LICENSE).

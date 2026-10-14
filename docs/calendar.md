@@ -1,61 +1,59 @@
-# Vista de calendario
+# Calendar view
 
-La vista de calendario (Hito 7) muestra las tarjetas de un tablero con **fecha de
-vencimiento** sobre una rejilla mensual. Es una forma alternativa de mirar el mismo
-tablero: no añade datos nuevos ni cambia el modelo.
+The calendar view shows a board's cards that have a **due date** on a monthly grid. It is
+another way of looking at the same board: it adds no data and does not change the model.
 
-## Cómo se usa
+## How to use it
 
-- En la cabecera de un tablero hay un conmutador **Tablero / Calendario**.
-- En **Calendario** se ve el mes actual; las flechas cambian de mes y «Hoy» vuelve al
-  mes en curso. El día de hoy se resalta con un anillo de acento.
-- Cada tarjeta con vencimiento aparece como una pastilla en su día, con el punto de
-  color de su primera etiqueta. **Al pulsarla se abre su modal** —el mismo de la vista
-  de tablero—, así que se puede editar, completar checklist, etc., sin cambiar de vista.
-- Las tarjetas **sin** fecha de vencimiento no aparecen; un aviso al pie indica cuántas
-  hay.
+- The board header has a **Board / Calendar** switch.
+- **Calendar** shows the current month; the arrows change the month and "Today" returns
+  to the current one. Today is highlighted with an accent ring.
+- Each card with a due date appears as a chip on its day, with the color dot of its first
+  label. **Clicking it opens its modal** (the same one as in the board view), so you can
+  edit it, tick off checklist items and so on without switching views.
+- Cards **without** a due date do not appear; a note at the bottom says how many there
+  are.
 
-## Diseño técnico
+## Technical design
 
-- Componente cliente `app/components/board/calendar-view.tsx`, renderizado por
-  `BoardView` cuando la vista activa es `calendar`. La vista activa es estado local de
-  cliente (`useState`), no va en la URL: cambiar de vista no recarga ni navega.
-- Reutiliza el `selectedCardId` de `BoardView` para abrir el modal, de modo que el
-  detalle de tarjeta y el tiempo real (`router.refresh()`) siguen funcionando igual.
-- La rejilla es de 6 semanas (42 celdas) empezando en el **lunes** de la semana del día
-  1 (locale español).
-- **Sin desfases de zona horaria**: las tarjetas se indexan por la parte de fecha del
-  `dueDate` (`YYYY-MM-DD`, vía `slice(0,10)`) y cada celda se compara con la misma clave
-  local `YYYY-MM-DD`. No se usa la hora del `dueDate` (las fechas se eligen con un
-  `<input type="date">`, así que representan un día, no un instante).
+- Client Component `app/components/board/calendar-view.tsx`, rendered by `BoardView` when
+  the active view is `calendar`. The active view is local client state (`useState`), not
+  part of the URL: switching views neither reloads nor navigates.
+- It reuses `BoardView`'s `selectedCardId` to open the modal, so card details and real
+  time (`router.refresh()`) keep working the same way.
+- The grid has 6 weeks (42 cells), starting on the **Monday** of the week containing day 1.
+- **No time-zone drift**: cards are indexed by the date part of `dueDate` (`YYYY-MM-DD`,
+  via `slice(0,10)`) and each cell is compared with the same local `YYYY-MM-DD` key. The
+  time part of `dueDate` is not used (dates are picked with an `<input type="date">`, so
+  they represent a day, not an instant).
 
-## Archivos
+## Files
 
-- `app/components/board/calendar-view.tsx` — la rejilla mensual.
-- `app/components/board/board-view.tsx` — el conmutador y el render condicional.
+- `app/components/board/calendar-view.tsx` — the monthly grid.
+- `app/components/board/board-view.tsx` — the switch and the conditional render.
 
-## Reprogramar arrastrando (Hito 11)
+## Rescheduling by dragging
 
-Si tienes permiso de edición, puedes **arrastrar una tarjeta a otro día** para cambiar su
-fecha de vencimiento. Usa `@dnd-kit` (chips arrastrables, celdas como zonas de soltar) y
-una acción enfocada `setCardDueDate` que **solo** toca la fecha (no pisa la descripción).
-El tablero se resincroniza por el tiempo real tras revalidar.
+With edit permission, you can **drag a card to another day** to change its due date. It
+uses `@dnd-kit` (draggable chips, cells as drop zones) and a focused `setCardDueDate`
+action that **only** touches the date (it does not overwrite the description). The board
+resyncs through real time after revalidation.
 
-- Mientras se arrastra, una copia de la pastilla (`DragOverlay`) sigue al puntero; la
-  original se queda atenuada en su día (moverla con `transform` la recortaba el
-  `overflow-y-auto` del calendario). La copia se pinta en un portal a `document.body`
-  porque el panel lleva `backdrop-blur`, y un `backdrop-filter` crea un bloque contenedor
-  que desplazaría la copia `position: fixed` respecto al puntero.
-- **Teclado**: con el foco en una pastilla, Espacio la coge, las flechas la llevan al día
-  vecino (izquierda/derecha) o a la misma columna de la semana anterior/siguiente
-  (arriba/abajo), y Espacio o Intro la sueltan; Escape cancela. Intro sin arrastrar abre
-  la tarjeta. Las coordenadas las calcula `calendarKeyboardCoordinates`
-  (`app/lib/board-collision.ts`); anuncios para lectores de pantalla en español.
-- Si el servidor no guarda la nueva fecha (rechazo o fallo de red), la tarjeta sigue en
-  su día y aparece el aviso «No se pudo cambiar la fecha. Inténtalo de nuevo.» en su
-  propia fila, bajo el mes y la navegación (`role="alert"`). Se borra al empezar otro
-  arrastre.
+- While dragging, a copy of the chip (`DragOverlay`) follows the pointer; the original
+  stays dimmed on its day (moving it with `transform` got it clipped by the calendar's
+  `overflow-y-auto`). The copy is rendered in a portal to `document.body` because the
+  panel uses `backdrop-blur`, and a `backdrop-filter` creates a containing block that
+  would offset the `position: fixed` copy from the pointer.
+- **Keyboard**: with focus on a chip, Space picks it up, the arrow keys move it to the
+  neighbouring day (left/right) or to the same weekday in the previous/next week
+  (up/down), and Space or Enter drops it; Escape cancels. Enter without dragging opens
+  the card. Coordinates are computed by `calendarKeyboardCoordinates`
+  (`app/lib/board-collision.ts`); screen reader announcements are in the interface
+  language.
+- If the server does not save the new date (rejection or network failure), the card
+  stays on its day and an error notice appears on its own row, below the month and the
+  navigation (`role="alert"`). It clears when another drag starts.
 
-## Evolución posible
+## Possible improvements
 
-- Un calendario **global** que cruce todos los tableros del usuario (hoy es por tablero).
+- A **global** calendar across all of the user's boards (today it is per board).

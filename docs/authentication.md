@@ -1,111 +1,136 @@
-# Autenticación
+# Authentication
 
-Esta guía explica cómo funciona la autenticación en **orgtable** para quienes contribuyen al proyecto. Cubre las sesiones JWT, el hashing de contraseñas, la doble capa de protección (proxy + DAL), las acciones de `login`/`logout` y los límites conocidos del MVP.
+This guide explains how authentication works in **orgtable**, for contributors. It covers
+JWT sessions, the session store, password hashing, the two protection layers (proxy +
+DAL), the `login`/`logout` actions, open sign-up and the account settings.
 
-Para el contexto general del sistema, consulta [`docs/architecture.md`](./architecture.md).
+For the general system context, see [`docs/architecture.md`](./architecture.md).
 
-## Visión general
+## Overview
 
-La autenticación se reparte en cinco piezas, cada una con una responsabilidad clara:
+Authentication is split into five pieces, each with a clear responsibility:
 
-| Archivo | Responsabilidad |
+| File | Responsibility |
 | --- | --- |
-| `app/lib/session.ts` | Firmar/verificar el JWT y gestionar la cookie de sesión. |
-| `app/lib/auth.ts` | Hashear y verificar contraseñas con bcryptjs. |
-| `proxy.ts` | Chequeo **optimista** de auth a nivel de ruta (existe la cookie). |
-| `app/lib/dal.ts` | Verificación **segura** (descifra el JWT y consulta el usuario). |
-| `app/lib/actions/auth.ts` | Server Actions de `login` y `logout`. |
+| `app/lib/session.ts` | Sign/verify the JWT, manage the `Session` row and the session cookie. |
+| `app/lib/auth.ts` | Hash and verify passwords with bcryptjs. |
+| `proxy.ts` | **Optimistic** route-level auth check (does the cookie exist?). |
+| `app/lib/dal.ts` | **Secure** check (decrypts the JWT, checks the session and loads the user). |
+| `app/lib/actions/auth.ts` | `login` and `logout` Server Actions. |
 
-Idea central: el token se firma con un secreto y se guarda en una cookie `httpOnly`.
-Se valida criptográficamente en el Data Access Layer (DAL) y, desde el Hito 4, además
-contra la **tabla de sesiones** (`Session`), lo que permite revocar sesiones al
-instante. Ver [Almacén de sesiones y revocación inmediata](#almacén-de-sesiones-y-revocación-inmediata-hito-4).
+Core idea: the token is signed with a secret and stored in an `httpOnly` cookie. It is
+validated cryptographically in the Data Access Layer (DAL) and also against the **sessions
+table** (`Session`), which makes it possible to revoke sessions immediately. See
+[Session store and immediate revocation](#session-store-and-immediate-revocation).
 
-## Sesiones JWT con `jose`
+## JWT sessions with `jose`
 
-El archivo `app/lib/session.ts` usa la librería [`jose`](https://github.com/panva/jose) para firmar y verificar tokens JWT. El módulo empieza con `import "server-only"`, de modo que nunca puede acabar en el bundle del cliente.
+`app/lib/session.ts` uses the [`jose`](https://github.com/panva/jose) library to sign and
+verify JWTs. The module starts with `import "server-only"`, so it can never end up in the
+client bundle.
 
-### Configuración
+### Configuration
 
-| Constante | Valor |
+| Constant | Value |
 | --- | --- |
-| Secreto | `process.env.SESSION_SECRET` (codificado con `TextEncoder`) |
-| Algoritmo de firma | `HS256` |
-| Nombre de la cookie | `session` |
-| Duración (`MAX_AGE_MS`) | 7 días |
+| Secret | `process.env.SESSION_SECRET` (encoded with `TextEncoder`), at least 16 characters |
+| Signing algorithm | `HS256` |
+| Cookie name | `session` |
+| Lifetime (`SESSION_MAX_AGE_DAYS`) | 7 days |
 
-El payload del token es mínimo y tipado:
+The key is derived when it is used (not when the module is imported, so the build does
+not break) and it is **required**: without `SESSION_SECRET`, `TextEncoder().encode(undefined)`
+would produce an empty, predictable key that could be used to forge sessions. Failing
+loudly is the safe choice, so `getKey()` throws a clear error.
+
+The token payload is minimal and typed:
 
 ```ts
-type SessionPayload = { userId: string };
+export type SessionPayload = { userId: string; sid: string };
 ```
+
+`sid` is the id of the session's row in the `Session` table.
 
 ### `encrypt` / `decrypt`
 
-`encrypt` firma el payload con `SignJWT`, estableciendo la cabecera `HS256`, la fecha de emisión (`setIssuedAt`) y una expiración de 7 días (`setExpirationTime("7d")`):
+`encrypt` signs the payload with `SignJWT`, setting the `HS256` header, the issue date
+(`setIssuedAt`) and a 7-day expiry (`setExpirationTime("7d")`):
 
 ```ts
-export async function encrypt(payload: SessionPayload): Promise<string> {
+async function encrypt(payload: SessionPayload): Promise<string> {
   return new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
-    .sign(encodedKey);
+    .sign(getKey());
 }
 ```
 
-`decrypt` verifica la firma con `jwtVerify`, restringiendo el algoritmo permitido a `HS256`. Devuelve `null` en cualquier caso de error: token ausente, `userId` no es un string, o el token está expirado/manipulado (el `catch` cubre firma inválida y caducidad).
+`decrypt` verifies the signature with `jwtVerify`, restricting the allowed algorithm to
+`HS256`. It returns `null` on any error: missing token, `userId` or `sid` not strings, or
+an expired or tampered token (the `catch` covers an invalid signature and expiry).
+`getKey()` is called **outside** the `try`: a missing `SESSION_SECRET` is a configuration
+error and must break the request with its message, not turn into "no session".
 
 ```ts
 export async function decrypt(
   token: string | undefined,
 ): Promise<SessionPayload | null> {
   if (!token) return null;
+  const key = getKey();
   try {
-    const { payload } = await jwtVerify(token, encodedKey, {
+    const { payload } = await jwtVerify(token, key, {
       algorithms: ["HS256"],
     });
-    if (typeof payload.userId !== "string") return null;
-    return { userId: payload.userId };
+    if (typeof payload.userId !== "string" || typeof payload.sid !== "string") {
+      return null;
+    }
+    return { userId: payload.userId, sid: payload.sid };
   } catch {
-    // Token inválido, expirado o manipulado.
+    // Invalid, expired or tampered token.
     return null;
   }
 }
 ```
 
-> Restringir `algorithms` a `["HS256"]` en la verificación es importante: evita ataques de confusión de algoritmo (por ejemplo, un token forjado con `alg: none`).
+> Restricting `algorithms` to `["HS256"]` during verification matters: it prevents
+> algorithm confusion attacks (for example, a token forged with `alg: none`).
 
 ### `createSession` / `deleteSession`
 
-`createSession` cifra el `userId` y guarda el token en la cookie `session` con los siguientes flags:
+`createSession` creates a row in the `Session` table (with its expiry and the
+`user-agent`), signs the JWT with that row's id (`sid`) and stores the token in the
+`session` cookie with these flags:
 
-| Flag | Valor | Motivo |
+| Flag | Value | Reason |
 | --- | --- | --- |
-| `httpOnly` | `true` | La cookie no es accesible desde JavaScript del cliente. |
-| `secure` | `isHttpsRequest(requestHeaders)` | Solo si la petición llegó por HTTPS (primer valor de `X-Forwarded-Proto` igual a `https`, que pone Next o el proxy TLS). No depende de `NODE_ENV`: con él, la instalación por `http://IP:3000` no dejaba entrar porque el navegador descarta una cookie `Secure` recibida por HTTP. Ver [self-hosting.md](./self-hosting.md#https-y-dominio-reverse-proxy). |
-| `sameSite` | `"lax"` | Mitiga CSRF permitiendo navegación top-level. |
-| `expires` | `Date.now() + 7 días` | Coincide con la expiración del JWT. |
-| `path` | `"/"` | Disponible en toda la aplicación. |
+| `httpOnly` | `true` | The cookie is not accessible from client-side JavaScript. |
+| `secure` | `isHttpsRequest(requestHeaders)` | Only if the request arrived over HTTPS (first value of `X-Forwarded-Proto` equal to `https`, set by Next or by the TLS proxy). It does not depend on `NODE_ENV`: with `NODE_ENV`, an install reached at `http://IP:3000` could not sign in, because the browser drops a `Secure` cookie received over HTTP. See [self-hosting.md](./self-hosting.md#https-and-domain-reverse-proxy). |
+| `sameSite` | `"lax"` | Mitigates CSRF while allowing top-level navigation. |
+| `expires` | `Date.now() + 7 days` | Matches the JWT expiry. |
+| `path` | `"/"` | Available across the whole application. |
 
-Antes de poner la cookie, `createSession` crea una fila en la tabla `Session` (con la
-caducidad y el `user-agent`) y firma el JWT con su id (`sid`); ver
-[Almacén de sesiones y revocación inmediata](#almacén-de-sesiones-y-revocación-inmediata-hito-4).
-El código está en [`app/lib/session.ts`](../app/lib/session.ts); no se copia aquí para
-que no se desfase. El porqué de `secure` está en [`DECISIONES.md`](./DECISIONES.md)
-(«Cookie de sesión Secure según el esquema real y SESSION_SECRET ruidoso»).
+The key is validated before the row is created, so a missing `SESSION_SECRET` never leaves
+an orphan session in the database. The code is in
+[`app/lib/session.ts`](../app/lib/session.ts); it is not copied here so it cannot drift.
+The reasoning behind `secure` is recorded in [`DECISIONES.md`](./DECISIONES.md) (the entry
+about the `Secure` session cookie and a noisy `SESSION_SECRET`).
 
-`deleteSession` revoca la fila `Session` de la cookie actual (`revokedAt`) y borra la
-cookie.
+`deleteSession` revokes the `Session` row of the current cookie (`revokedAt`) and deletes
+the cookie.
 
-> **Nota sobre Next.js 16:** `cookies()` de `next/headers` es **asíncrono**. Siempre hay que hacer `const cookieStore = await cookies();` antes de leer o escribir. Olvidar el `await` es un error frecuente al migrar desde versiones anteriores.
+> **Next.js 16 note:** `cookies()` and `headers()` from `next/headers` are **async**.
+> Always `await` them (`const cookieStore = await cookies();`) before reading or writing.
+> Forgetting the `await` is a common mistake when migrating from earlier versions.
 
-## Hashing de contraseñas con bcryptjs
+## Password hashing with bcryptjs
 
-El archivo `app/lib/auth.ts` (también `server-only`) gestiona las contraseñas con [`bcryptjs`](https://github.com/dcodeIO/bcrypt.js) y un coste de **12 rounds** (`SALT_ROUNDS = 12`).
+`app/lib/auth.ts` (also `server-only`) handles passwords with
+[`bcryptjs`](https://github.com/dcodeIO/bcrypt.js) at a cost of **12 rounds**
+(`SALT_ROUNDS = 12`).
 
 ```ts
-const SALT_ROUNDS = 12;
+export const SALT_ROUNDS = 12;
 
 export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, SALT_ROUNDS);
@@ -119,45 +144,52 @@ export async function verifyPassword(
 }
 ```
 
-| Función | Qué hace |
+| Function | What it does |
 | --- | --- |
-| `hashPassword` | Genera un hash bcrypt (con salt incorporado) a 12 rounds. |
-| `verifyPassword` | Compara una contraseña en claro contra un hash existente. |
-| `verifyPasswordOrDummy` | Igual, pero si no hay hash (la cuenta no existe) compara contra `DUMMY_PASSWORD_HASH` y devuelve `false`: el login tarda lo mismo exista o no el email. |
+| `hashPassword` | Produces a bcrypt hash (with a built-in salt) at 12 rounds. |
+| `verifyPassword` | Compares a plain-text password with an existing hash. |
+| `verifyPasswordOrDummy` | Same, but if there is no hash (the account does not exist) it compares against `DUMMY_PASSWORD_HASH` and returns `false`: sign-in takes the same time whether the email exists or not. |
 
-### ¿Por qué `bcryptjs` y no `bcrypt`?
+### Why `bcryptjs` and not `bcrypt`?
 
-`bcryptjs` es una implementación **en JavaScript puro**, sin dependencias nativas ni compilación. Esto elimina fricción al construir la imagen (no requiere toolchain de compilación, lo que es especialmente cómodo en imágenes Alpine). A cambio es algo más lento que el binding nativo, lo cual es aceptable para el MVP.
+`bcryptjs` is a **pure JavaScript** implementation, with no native dependencies and no
+compilation. This removes friction when building the image (no compiler toolchain needed,
+which is especially convenient on Alpine images). In exchange it is somewhat slower than
+the native binding, which is acceptable for this workload.
 
-## Doble capa de protección
+## Two layers of protection
 
-orgtable protege las rutas privadas en **dos capas** con propósitos distintos.
+orgtable protects private routes in **two layers** with different purposes.
 
 ```
-Petición
+Request
    │
    ▼
-┌──────────────────────────┐   chequeo OPTIMISTA
-│ proxy.ts                 │   ¿existe la cookie "session"?
-│ (a nivel de ruta)        │── no ──► redirect /login
+┌──────────────────────────┐   OPTIMISTIC check
+│ proxy.ts                 │   does the "session" cookie exist?
+│ (route level)            │── no ──► redirect /login
 └────────────┬─────────────┘
-             │ sí (o ruta pública)
+             │ yes (or public route)
              ▼
-┌──────────────────────────┐   verificación SEGURA
-│ DAL — app/lib/dal.ts     │   descifra el JWT + consulta el usuario
-│ (en layout/página)       │── inválido ──► redirect /login
+┌──────────────────────────┐   SECURE check
+│ DAL: app/lib/dal.ts      │   decrypts the JWT + checks the Session
+│ (in layout/page)         │   + loads the user
+│                          │── invalid ──► redirect /login
 └────────────┬─────────────┘
-             │ válido
+             │ valid
              ▼
-        Renderiza la página
+        Renders the page
 ```
 
-### Capa 1: chequeo optimista en `proxy.ts`
+### Layer 1: optimistic check in `proxy.ts`
 
-En Next.js 16 el antiguo *middleware* se llama **`proxy`** (runtime Node.js). Aquí el chequeo es **optimista**: solo comprueba si **existe** la cookie `session`, sin validarla criptográficamente.
+In Next.js 16 the old *middleware* is called **`proxy`** (Node.js runtime). The check
+here is **optimistic**: it only checks whether the `session` cookie **exists**, without
+validating it cryptographically. The proxy also sets a per-request Content Security Policy
+nonce.
 
 ```ts
-const PUBLIC_PATHS = ["/login", "/setup"];
+const PUBLIC_PATHS = ["/login", "/setup", "/register", "/legal", "/robots.txt"];
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -169,13 +201,16 @@ export function proxy(request: NextRequest) {
   if (!isPublic && !hasSession) {
     return NextResponse.redirect(new URL("/login", request.nextUrl));
   }
-  return NextResponse.next();
+  // … per-request CSP nonce (app/lib/csp.ts)
 }
 ```
 
-- **Rutas públicas:** `/login` y `/setup` (y sus subrutas).
-- Cualquier otra ruta sin cookie `session` se redirige a `/login`.
-- El `matcher` excluye `api`, `_next/static`, `_next/image`, `favicon.ico` y archivos `.svg`:
+- **Public routes:** `/login`, `/setup`, `/register` (which checks by itself whether
+  sign-up is open), `/legal` (the privacy policy must be readable **before** creating an
+  account) and `/robots.txt`, plus their subroutes.
+- Any other route without a `session` cookie is redirected to `/login`.
+- The `matcher` excludes `api`, `_next/static`, `_next/image`, `favicon.ico` and `.svg`
+  files:
 
 ```ts
 export const config = {
@@ -183,22 +218,27 @@ export const config = {
 };
 ```
 
-### Capa 2: verificación segura en el DAL
+### Layer 2: secure check in the DAL
 
-El Data Access Layer (`app/lib/dal.ts`) es la **única fuente de verdad segura**. Aquí sí se descifra y valida el JWT, y se consulta el usuario en la base de datos.
+The Data Access Layer (`app/lib/dal.ts`) is the **only secure source of truth**. This is
+where the JWT is actually decrypted and validated, the `Session` row is checked and the
+user is loaded from the database.
 
-### ¿Por qué dos capas?
+### Why two layers?
 
-| Capa | Comprueba | Coste | Para qué sirve |
+| Layer | Checks | Cost | Purpose |
 | --- | --- | --- | --- |
-| `proxy.ts` (optimista) | Solo **existencia** de la cookie | Muy barato, sin BBDD ni criptografía | Evitar empezar a renderizar rutas privadas a quien claramente no ha iniciado sesión. |
-| DAL (seguro) | Firma del JWT + usuario en BBDD | Más caro | Fuente de verdad: decide realmente quién es el usuario. |
+| `proxy.ts` (optimistic) | Only that the cookie **exists** | Very cheap, no DB and no crypto | Avoid starting to render private routes for someone who has clearly not signed in. |
+| DAL (secure) | JWT signature + session + user in the DB | More expensive | Source of truth: decides who the user really is. |
 
-El proxy es un filtro rápido y barato. **No es una garantía de seguridad** (la cookie podría existir pero estar manipulada o expirada). La decisión real de autorización siempre la toma el DAL dentro del layout o página.
+The proxy is a fast, cheap filter. **It is not a security guarantee** (the cookie could
+exist but be tampered with, expired or revoked). The real authorization decision is always
+made by the DAL inside the layout or page.
 
-## El Data Access Layer (`dal.ts`)
+## The Data Access Layer (`dal.ts`)
 
-Todas las funciones del DAL están memoizadas con `cache()` de React, de modo que llamarlas varias veces durante el mismo render **no repite la consulta**. El módulo es `server-only`.
+All DAL functions are memoized with React's `cache()`, so calling them several times
+during the same render **does not repeat the query**. The module is `server-only`.
 
 ```ts
 const INSTANCE_ID = "singleton";
@@ -206,20 +246,32 @@ const INSTANCE_ID = "singleton";
 
 ### `verifySession`
 
-Lee la cookie `session`, la descifra con `decrypt` y devuelve `{ userId }` o `null`. No toca la base de datos.
+Reads the `session` cookie, decrypts it with `decrypt` and checks the `Session` row it
+points to. It returns `{ userId, sessionId }` or `null`.
 
 ```ts
 export const verifySession = cache(async () => {
   const token = (await cookies()).get("session")?.value;
-  const session = await decrypt(token);
-  if (!session?.userId) return null;
-  return { userId: session.userId };
+  const payload = await decrypt(token);
+  if (!payload?.userId || !payload.sid) return null;
+
+  const session = await prisma.session.findUnique({
+    where: { id: payload.sid },
+    select: { userId: true, revokedAt: true, expiresAt: true },
+  });
+  if (!session) return null;
+  if (session.userId !== payload.userId) return null;
+  if (session.revokedAt) return null;
+  if (session.expiresAt.getTime() < Date.now()) return null;
+
+  return { userId: payload.userId, sessionId: payload.sid };
 });
 ```
 
 ### `getCurrentUser`
 
-Resuelve la sesión y, si existe, busca el usuario en la base de datos. Devuelve `null` si no hay sesión.
+Resolves the session and, if there is one, loads the user from the database. Returns
+`null` if there is no session.
 
 ```ts
 export const getCurrentUser = cache(async () => {
@@ -231,7 +283,8 @@ export const getCurrentUser = cache(async () => {
 
 ### `requireUser`
 
-Igual que `getCurrentUser`, pero **redirige a `/login`** si no hay usuario. Es la función a usar en layouts y páginas protegidas.
+Like `getCurrentUser`, but **redirects to `/login`** if there is no user. This is the
+function to use in protected layouts and pages.
 
 ```ts
 export const requireUser = cache(async () => {
@@ -241,9 +294,11 @@ export const requireUser = cache(async () => {
 });
 ```
 
-### `getInstanceConfig` e `isSetupComplete`
+### `getInstanceConfig` and `isSetupComplete`
 
-`getInstanceConfig` lee la configuración singleton de la instancia (`id: "singleton"`). `isSetupComplete` devuelve `true` si el asistente de configuración inicial ya se completó (existe `setupCompletedAt`).
+`getInstanceConfig` reads the singleton instance configuration (`id: "singleton"`).
+`isSetupComplete` returns `true` if the initial setup wizard has been completed
+(`setupCompletedAt` is set).
 
 ```ts
 export const getInstanceConfig = cache(async () => {
@@ -258,7 +313,11 @@ export const isSetupComplete = cache(async () => {
 
 ### `requireBoardAccess`
 
-Autorización **por tablero**. Exige primero un usuario válido (`requireUser`) y luego comprueba que sea miembro del tablero consultando `board_members`. Si no hay membresía, redirige a `/boards`. Devuelve el usuario y su `role`. Toda mutación sobre un tablero (listas, tarjetas, etc.) debe pasar por aquí.
+**Per-board** authorization. It first requires a valid user (`requireUser`) and then
+checks that they are a member of the board by querying `board_members`. Without a
+membership it redirects to `/boards`. It returns the user and their `role`. Every mutation
+on a board (lists, cards, etc.) must go through it; what the role allows is checked with
+the helpers in `app/lib/roles.ts` (see [authorization.md](./authorization.md)).
 
 ```ts
 export const requireBoardAccess = cache(async (boardId: string) => {
@@ -271,134 +330,146 @@ export const requireBoardAccess = cache(async (boardId: string) => {
 });
 ```
 
-| Función | Devuelve | Si falla |
+### `requireAdmin`
+
+Requires the current user to be a **global** instance administrator (`User.role = ADMIN`),
+for the admin area (`/admin`). Redirects to `/boards` if not, and to `/login` if there is
+no session (through `requireUser`).
+
+| Function | Returns | On failure |
 | --- | --- | --- |
-| `verifySession` | `{ userId }` o `null` | Devuelve `null` |
-| `getCurrentUser` | `User` o `null` | Devuelve `null` |
-| `requireUser` | `User` | Redirige a `/login` |
-| `getInstanceConfig` | `InstanceConfig` o `null` | Devuelve `null` |
+| `verifySession` | `{ userId, sessionId }` or `null` | Returns `null` |
+| `getCurrentUser` | `User` or `null` | Returns `null` |
+| `requireUser` | `User` | Redirects to `/login` |
+| `getInstanceConfig` | `InstanceConfig` or `null` | Returns `null` |
 | `isSetupComplete` | `boolean` | — |
-| `requireBoardAccess` | `{ user, role }` | Redirige a `/boards` |
+| `requireBoardAccess` | `{ user, role }` | Redirects to `/boards` |
+| `requireAdmin` | `User` | Redirects to `/boards` (or `/login`) |
 
-## Login y logout (`actions/auth.ts`)
+## Login and logout (`actions/auth.ts`)
 
-Las Server Actions (`"use server"`) viven en `app/lib/actions/auth.ts`.
+The Server Actions (`"use server"`) live in `app/lib/actions/auth.ts`.
 
 ### `login`
 
-El código está en [`app/lib/actions/auth.ts`](../app/lib/actions/auth.ts); aquí va el
-orden de los pasos y el porqué, sin copiarlo.
+The code is in [`app/lib/actions/auth.ts`](../app/lib/actions/auth.ts); this section gives
+the order of the steps and the reasoning, without copying it.
 
-1. **Límite por IP** (`login:<ip>`, 10 intentos cada 10 minutos). Solo se aplica si hay
-   una IP fiable, es decir, con `TRUSTED_PROXY_HOPS > 0`; con el valor por defecto (0)
-   no hay límite por IP.
-2. **Valida** el `email` y la `password` del `FormData` con `loginSchema` (zod, en
-   `app/lib/validators`). Si falla, devuelve un error genérico.
-3. **Límite por cuenta** (`login-email:<email normalizado>`, 20 intentos cada 15
-   minutos). Se cuenta antes de verificar, para que no haya carreras entre peticiones
-   simultáneas, y se reinicia con un login correcto, así que en la práctica solo suman
-   los fallos. Cuenta también los emails que no existen, para no revelar cuáles existen.
-4. **Busca** al usuario por email (normalizado a minúsculas).
-5. **Verifica la contraseña siempre** con `verifyPasswordOrDummy(password,
-   user?.passwordHash ?? null)` ([`app/lib/auth.ts`](../app/lib/auth.ts)): si la cuenta
-   no existe, compara contra `DUMMY_PASSWORD_HASH`.
-6. Si el usuario no existe o la contraseña no es válida, registra `auth.login_failed`
-   (con el `userId` si la cuenta existe; **nunca** el email tecleado, que podría ser de
-   un tercero) y devuelve `"Credenciales incorrectas."`.
-7. Si todo es correcto, reinicia el límite por cuenta, crea la sesión
-   (`createSession`), registra `auth.login` y **redirige a `/boards`**.
+1. **Per-IP limit** (`login:<ip>`, 10 attempts every 10 minutes). It only applies when
+   there is a trustworthy IP, that is, with `TRUSTED_PROXY_HOPS > 0`; with the default
+   (0) there is no per-IP limit.
+2. **Validates** `email` and `password` from the `FormData` with `loginSchema` (zod, in
+   `app/lib/validators`). On failure it returns a generic error.
+3. **Per-account limit** (`login-email:<normalized email>`, 20 attempts every 15
+   minutes). It is counted before verifying, so concurrent requests cannot race past it,
+   and it resets on a successful login, so in practice only failures add up. It also
+   counts emails that do not exist, so it does not reveal which ones do.
+4. **Looks up** the user by email (normalized to lower case).
+5. **Always verifies the password** with `verifyPasswordOrDummy(password,
+   user?.passwordHash ?? null)` ([`app/lib/auth.ts`](../app/lib/auth.ts)): if the account
+   does not exist, it compares against `DUMMY_PASSWORD_HASH`.
+6. If the user does not exist or the password is wrong, it records `auth.login_failed`
+   (with the `userId` if the account exists; **never** the typed email, which could
+   belong to someone else) and returns a generic "invalid credentials" error.
+7. If everything is correct, it resets the per-account limit, creates the session
+   (`createSession`), restores the language cookie from `User.locale` if the account has
+   one (the account's language wins over the browser's on any device), records
+   `auth.login` and **redirects to `/boards`**.
 
-Cuando salta cualquiera de los dos límites, el formulario responde con el tiempo de
-espera y se registra `auth.login_rate_limited` **una sola vez por ventana**, no en cada
-intento rechazado. Los valores y el riesgo aceptado de cada límite están en
-[operations.md](./operations.md#límite-de-intentos-de-login-rate-limiting) y en el
+When either limit is hit, the form answers with the waiting time and
+`auth.login_rate_limited` is recorded **once per window**, not on every rejected attempt.
+The values and the accepted risk of each limit are in
+[operations.md](./operations.md#login-rate-limiting) and in
 [ADR 0009](./decisions/0009-in-memory-rate-limit.md).
 
-Los errores devuelven también `values: { email }` (nunca la contraseña) para que el
-formulario conserve lo tecleado.
+Errors also return `values: { email }` (never the password) so the form keeps what was
+typed.
 
-> **Protección contra timing attacks:** cuando el usuario no existe, se verifica la
-> contraseña contra un **hash ficticio** en lugar de retornar antes, para que el tiempo
-> de respuesta sea similar exista o no la cuenta. Ese hash tiene que ser un **hash bcrypt
-> válido del mismo coste** (12): con un literal mal formado, `bcrypt.compare` devuelve
-> `false` al instante y el tiempo de respuesta revela qué emails tienen cuenta. Pasó con
-> el literal anterior, de 59 caracteres; ver [`DECISIONES.md`](./DECISIONES.md) («Login:
-> IP de confianza, límite por cuenta y hash ficticio válido»). No compares nunca contra
-> un literal inventado: usa `verifyPasswordOrDummy`. El mensaje de error también es
-> genérico por el mismo motivo.
+> **Timing attack protection:** when the user does not exist, the password is verified
+> against a **dummy hash** instead of returning early, so the response time is similar
+> whether or not the account exists. That hash must be a **valid bcrypt hash with the
+> same cost** (12): with a malformed literal, `bcrypt.compare` returns `false`
+> immediately and the response time reveals which emails have an account. This happened
+> with the previous 59-character literal; see [`DECISIONES.md`](./DECISIONES.md) (the
+> entry about trusted IPs, the per-account limit and a valid dummy hash). Never compare
+> against a made-up literal: use `verifyPasswordOrDummy`. The error message is generic
+> for the same reason.
 
 ### `logout`
 
-Borra la sesión y redirige a `/login`.
+Revokes the session, records `auth.logout` and redirects to `/login`.
 
 ```ts
 export async function logout(): Promise<void> {
+  const session = await verifySession();
   await deleteSession();
+  if (session) {
+    await recordAudit({ action: "auth.logout", userId: session.userId });
+  }
   redirect("/login");
 }
 ```
 
-## Registro abierto (`actions/register.ts`)
+## Open sign-up (`actions/register.ts`)
 
-Si la instancia lo permite (`isRegistrationOpen()`: registro abierto **y** responsable y
-contacto rellenados), `/register` crea una cuenta `MEMBER` con la fecha de aceptación de la
-política (`User.termsAcceptedAt`) e inicia sesión. Antes de crearla aplica:
+If the instance allows it (`isRegistrationOpen()`: sign-up open **and** the operator and
+privacy contact filled in), `/register` creates a `MEMBER` account with the date the
+policy was accepted (`User.termsAcceptedAt`) and signs the person in. Before creating it,
+it applies:
 
-- un campo trampa;
-- 5 altas por hora y por IP, si hay IP fiable;
-- 30 altas por hora en toda la instancia.
+- a honeypot field;
+- 5 sign-ups per hour per IP, if there is a trustworthy IP;
+- 30 sign-ups per hour across the whole instance.
 
-Detalle y motivos en [privacy.md](./privacy.md#registro-abierto).
+Details and reasons in [privacy.md](./privacy.md#open-sign-up).
 
-## La cuenta propia (`actions/account.ts`)
+## Your own account (`actions/account.ts`)
 
-Desde `/settings` cada persona:
+From `/settings`, each person can:
 
-- cambia su nombre y su email (el email pide la contraseña actual);
-- cambia su contraseña, lo que **cierra sus demás sesiones** y conserva la actual;
-- cierra sesiones concretas o todas menos la actual;
-- descarga sus datos (`GET /api/account/export`) o borra su cuenta.
+- change their name and email (changing the email asks for the current password);
+- change their password, which **closes their other sessions** and keeps the current one;
+- close specific sessions, or all except the current one;
+- choose the theme and the interface language in Settings › Appearance (the language is
+  saved by `actions/locale.ts`);
+- download their data (`GET /api/account/export`) or delete their account.
 
-La lógica vive en `app/lib/services/account.ts`, sin contexto de request. Para el id de
-la sesión actual se usa `verifySession().sessionId`.
+The logic lives in `app/lib/services/account.ts`, without request context. The id of the
+current session comes from `verifySession().sessionId`.
 
-## Almacén de sesiones y revocación inmediata (Hito 4)
+## Session store and immediate revocation
 
-> **Actualización (Hito 4).** El MVP usaba JWT *stateless* sin tabla de sesiones, lo
-> que impedía revocar un token al instante. Eso ha cambiado.
-
-Ahora la cookie sigue siendo un JWT firmado, pero **lleva el id de una fila de la
-tabla `Session`** (`sid`). El DAL valida el JWT **y además** comprueba esa fila:
+The cookie is a signed JWT that **carries the id of a row in the `Session` table** (`sid`).
+The DAL validates the JWT **and** checks that row:
 
 ```
-verifySession()  →  descifra el JWT  →  busca la Session por sid
-                 →  null si: no existe · revokedAt ≠ null · expiresAt pasada
+verifySession()  →  decrypts the JWT  →  looks up the Session by sid
+                 →  null if: missing · revokedAt ≠ null · expiresAt in the past
 ```
 
-Esto da **revocación inmediata** (toma efecto en la siguiente petición, no a los 7
-días):
+An earlier design used stateless JWTs with no sessions table, which made it impossible to
+revoke a token before it expired. The session store gives **immediate revocation** (it
+takes effect on the next request, not after 7 days):
 
-- **`logout`** revoca la fila de la sesión actual (`revokedAt`) y borra la cookie.
-- **Restablecer la contraseña** (por el administrador) revoca **todas** las sesiones
-  del usuario y **borra sus tokens de API**, en una sola transacción: cualquier sesión
-  abierta y cualquier token dejan de valer al instante (ver
-  [ADR 0013](./decisions/0013-api-tokens.md)).
-- El administrador puede **forzar el cierre de sesión** de un usuario desde
-  `/admin/users` (acción `revokeUserSessions`). Solo afecta a las sesiones del
-  navegador: los tokens de API siguen vigentes.
-- **Borrar un usuario** elimina sus sesiones en cascada.
+- **`logout`** revokes the current session's row (`revokedAt`) and deletes the cookie.
+- **Resetting the password** (by the administrator) revokes **all** the user's sessions
+  and **deletes their API tokens**, in a single transaction: any open session and any
+  token stop working immediately (see [ADR 0013](./decisions/0013-api-tokens.md)).
+- The administrator can **force a user to sign out** from `/admin/users` (the
+  `revokeUserSessions` action). It only affects browser sessions: API tokens remain
+  valid.
+- **Deleting a user** deletes their sessions in cascade.
 
-El coste es **una consulta más por petición** (la búsqueda de la sesión), memoizada
-por request con `cache()` de React, así que se ejecuta una sola vez por render. La
-decisión y el porqué están en
+The cost is **one more query per request** (the session lookup), memoized per request with
+React's `cache()`, so it runs once per render. The decision and its reasoning are in
 [`docs/decisions/0008-session-store.md`](./decisions/0008-session-store.md).
 
-Los cambios de **rol** no necesitan revocar sesiones: el rol se lee fresco de la base
-de datos en cada petición, así que un cambio de rol surte efecto de inmediato.
+**Role** changes do not need to revoke sessions: the role is read fresh from the database
+on every request, so a role change takes effect immediately.
 
 ---
 
-**Resumen:** orgtable autentica con un JWT firmado (`jose` + cookie `httpOnly`) cuyo
-`sid` apunta a una fila de la tabla `Session`, validada en el DAL; junto con bcryptjs,
-el chequeo optimista de `proxy.ts` y la verificación autoritativa del DAL, permite
-revocar sesiones al instante (logout, reset de contraseña, cierre forzado).
+**Summary:** orgtable authenticates with a signed JWT (`jose` + `httpOnly` cookie) whose
+`sid` points to a row in the `Session` table, validated in the DAL. Together with
+bcryptjs, the optimistic check in `proxy.ts` and the authoritative check in the DAL, this
+allows sessions to be revoked immediately (logout, password reset, forced sign-out).

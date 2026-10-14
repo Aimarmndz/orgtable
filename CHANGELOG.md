@@ -1,38 +1,38 @@
-# Cambios
+# Changelog
 
-Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y versiones
-[SemVer](https://semver.org/lang/es/). Mientras sea `0.x`, una versión menor puede traer
-cambios incompatibles; se avisa en «Cambiado». El porqué de cada decisión está en
-[`docs/DECISIONES.md`](./docs/DECISIONES.md).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
+project uses [Semantic Versioning](https://semver.org/). While it is `0.x`, a minor
+version may include breaking changes; they are flagged under "Changed". The reasoning
+behind each decision is in [`docs/DECISIONES.md`](./docs/DECISIONES.md).
 
 ## [0.2.0] — 2026-10-14
 
-### Añadido
+### Added
 
-- Registro abierto opcional por instancia (`/register`), con consentimiento y límites
-  anti-abuso. Cerrado por defecto.
-- Datos legales del operador en *Administración › Instancia* y páginas públicas de
-  privacidad, condiciones, cookies y aviso legal.
-- Ajustes rediseñados: perfil, cambio de contraseña, sesiones abiertas, apariencia,
-  descarga de los datos personales y borrado de la cuenta.
-- Limpieza programada `POST /api/cron/maintenance` y variable
-  `ORGTABLE_AUDIT_RETENTION_DAYS`.
-- Menú de la cuenta en la barra superior. Los tableros muestran sus tarjetas y miembros.
-- `robots.txt` según la instancia, Open Graph e icono propio.
-- README con capturas y GIF, README en inglés y `docs/privacy.md`.
+- Optional open sign-up per instance (`/register`), with consent and anti-abuse limits.
+  Closed by default.
+- Operator legal details in *Admin › Instance* and public privacy, terms, cookies and
+  legal notice pages.
+- Redesigned settings: profile, password change, open sessions, appearance, personal
+  data download and account deletion.
+- Scheduled cleanup `POST /api/cron/maintenance` and the
+  `ORGTABLE_AUDIT_RETENTION_DAYS` variable.
+- Account menu in the top bar. Boards show their cards and members.
+- Per-instance `robots.txt`, Open Graph and a custom icon.
+- README with screenshots and GIFs, an English README and `docs/privacy.md`.
 
-### Cambiado
+### Changed
 
-- **Licencia: AGPL-3.0-or-later** con un término de atribución (sección 7(b)). Sustituye
-  a la licencia propietaria anterior.
-- Tipografías Bricolage Grotesque y Figtree (OFL) en lugar de Cabinet Grotesk y Satoshi.
-- `ORGTABLE_SOURCE_URL` decide el enlace «Código fuente». Si despliegas una versión
-  modificada, apúntalo a tu fork.
-- La migración `20261014171630_registration_and_legal` se aplica sola al arrancar.
+- **License: AGPL-3.0-or-later** with an attribution term (section 7(b)). It replaces the
+  previous proprietary license.
+- Bricolage Grotesque and Figtree typefaces (OFL) instead of Cabinet Grotesk and Satoshi.
+- `ORGTABLE_SOURCE_URL` sets the "Source code" link. If you deploy a modified version,
+  point it to your fork.
+- The `20261014171630_registration_and_legal` migration is applied automatically on
+  startup.
 
 ## [0.1.0]
 
-Hitos 0–13: tableros, listas y tarjetas con arrastrar y soltar, multiusuario con roles,
-tiempo real, adjuntos, búsqueda, calendario, notificaciones, API pública con tokens,
-colaboración en la tarjeta, recordatorios y filtros. Detalle en
-[`docs/roadmap.md`](./docs/roadmap.md).
+Boards, lists and cards with drag and drop, multi-user with roles, real time,
+attachments, search, calendar, notifications, public API with tokens, card collaboration,
+due-date reminders and filters. Details in [`docs/roadmap.md`](./docs/roadmap.md).

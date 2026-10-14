@@ -1,56 +1,55 @@
-# ADR 0013 — API pública con tokens personales hasheados (Bearer)
+# ADR 0013 — Public API with hashed personal tokens (Bearer)
 
-**Estado:** aceptada · **Fecha:** 2026-06-07 · **Relacionada:** [ADR 0006](./0006-rbac-explicit-guards.md), [ADR 0008](./0008-session-store.md)
+**Status:** accepted · **Date:** 2026-06-07 · **Related:** [ADR 0006](./0006-rbac-explicit-guards.md), [ADR 0008](./0008-session-store.md)
 
-## Contexto
+## Context
 
-El Hito 9 abre una API REST (`/api/v1`) para usar orgtable desde scripts u otras
-aplicaciones. Hay que decidir **cómo se autentica** esa API (sin cookies de navegador) y
-**cómo se guardan** las credenciales.
+The public API feature opens a REST API (`/api/v1`) so orgtable can be used from scripts
+or other applications. We need to decide **how that API authenticates** (without browser
+cookies) and **how the credentials are stored**.
 
-## Decisión
+## Decision
 
-- **Tokens de acceso personal** (PAT) que el usuario crea en `/settings`. La petición los
-  envía en `Authorization: Bearer <token>`.
-- **Nunca se guarda el token en claro**: solo su **hash SHA-256** (`ApiToken.tokenHash`,
-  único) y un **prefijo** visible para identificarlo en la lista. El token completo se
-  muestra **una sola vez** al crearlo.
-- La API **reutiliza la autorización por rol** existente: resuelto el usuario por el
-  token, cada endpoint vuelve a comprobar el rol del tablero contra `board_members`
-  (igual que las Server Actions, [ADR 0006](./0006-rbac-explicit-guards.md)). Un token
-  actúa **como su dueño**, con su mismo acceso, ni más ni menos.
-- Las mutaciones de la API llaman a `revalidateBoard()`, así que los cambios hechos por
-  la API también llegan en vivo a los navegadores conectados (tiempo real del Hito 4).
+- **Personal access tokens** (PAT) that the user creates in `/settings`. The request sends
+  them in `Authorization: Bearer <token>`.
+- **The token is never stored in plain text**: only its **SHA-256 hash**
+  (`ApiToken.tokenHash`, unique) and a visible **prefix** to identify it in the list. The
+  full token is shown **only once**, when it is created.
+- The API **reuses the existing role-based authorization**: once the token resolves to a
+  user, each endpoint checks the board role against `board_members` again (just like the
+  Server Actions, [ADR 0006](./0006-rbac-explicit-guards.md)). A token acts **as its
+  owner**, with exactly the same access, no more and no less.
+- API mutations call `revalidateBoard()`, so changes made through the API also reach
+  connected browsers live (via the realtime feature).
 
-## Justificación
+## Rationale
 
-- **SHA-256 sin sal es suficiente para un token de alta entropía.** El token son 24 bytes
-  aleatorios (no una contraseña humana), así que no hay ataque de diccionario que mitigar
-  con bcrypt/argon2; un hash rápido permite además resolverlo en un único `findUnique` por
-  el hash. (Las contraseñas de usuario sí usan bcrypt: ahí el riesgo es distinto.)
-- **Coherencia con el modelo de revocación** ([ADR 0008](./0008-session-store.md)):
-  revocar es borrar la fila; el token deja de funcionar al instante.
-- **Reutilizar la autorización** evita una segunda fuente de verdad de permisos: el
-  servidor sigue siendo la única autoridad y no hay forma de que la API conceda más de lo
-  que concede la UI.
-- **Cero dependencias nuevas**: `node:crypto` ya está disponible.
+- **Unsalted SHA-256 is enough for a high-entropy token.** The token is 24 random bytes
+  (not a human password), so there is no dictionary attack to mitigate with
+  bcrypt/argon2; a fast hash also lets it be resolved with a single `findUnique` on the
+  hash. (User passwords do use bcrypt: the risk there is different.)
+- **Consistent with the revocation model** ([ADR 0008](./0008-session-store.md)): revoking
+  means deleting the row; the token stops working instantly.
+- **Reusing authorization** avoids a second source of truth for permissions: the server is
+  still the only authority and there is no way for the API to grant more than the UI does.
+- **Zero new dependencies**: `node:crypto` is already available.
 
-## Consecuencias
+## Consequences
 
-- Sin OAuth ni scopes por token: un token tiene todo el acceso del usuario. Si en el
-  futuro hicieran falta permisos más finos (solo lectura, un tablero concreto), se
-  añadirían columnas a `ApiToken` y un chequeo extra, sin cambiar el modelo de
-  autenticación.
-- `lastUsedAt` se actualiza en cada petición (best-effort); es una escritura barata y útil
-  para que el usuario detecte tokens en uso o en desuso.
-- Los tokens **no dependen de la tabla `Session`**: cerrar sesión o «Cerrar sesiones»
-  en `/admin/users` no los invalida. Por eso, **restablecer la contraseña** de un
-  usuario (acción del administrador) **borra también todos sus tokens** en la misma
-  transacción que revoca sus sesiones (`resetPasswordAndRevokeAccess` en
-  `app/lib/services/users.ts`, añadido el 2026-09-24): si la cuenta estaba
-  comprometida, un token creado por el atacante dejaría abierta la API. El usuario
-  tendrá que crear tokens nuevos. Ver [`docs/api/public-api.md`](../api/public-api.md)
-  y [`docs/admin.md`](../admin.md).
-- La superficie inicial cubre tableros, listas y tarjetas (CRUD esencial); checklists,
-  etiquetas y adjuntos quedan como ampliación natural.
-- Documentado en [`docs/api/public-api.md`](../api/public-api.md).
+- No OAuth and no per-token scopes: a token has all of the user's access. If finer-grained
+  permissions were needed in the future (read-only, a specific board), columns would be
+  added to `ApiToken` along with an extra check, without changing the authentication
+  model.
+- `lastUsedAt` is updated on every request (best-effort); it is a cheap write and helps
+  the user spot tokens that are in use or unused.
+- Tokens **do not depend on the `Session` table**: signing out or "End sessions" in
+  `/admin/users` does not invalidate them. That is why **resetting a user's password**
+  (an administrator action) **also deletes all their tokens** in the same transaction
+  that revokes their sessions (`resetPasswordAndRevokeAccess` in
+  `app/lib/services/users.ts`, added on 2026-09-24): if the account was compromised, a
+  token created by the attacker would leave the API open. The user will have to create
+  new tokens. See [`docs/api/public-api.md`](../api/public-api.md) and
+  [`docs/admin.md`](../admin.md).
+- The initial surface covers boards, lists and cards (essential CRUD); checklists, labels
+  and attachments are the natural extension.
+- Documented in [`docs/api/public-api.md`](../api/public-api.md).
