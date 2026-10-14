@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { requireAdmin } from "@/app/lib/dal";
+import { AdminNav } from "../admin-nav";
 import { getAllUsers } from "@/app/lib/queries";
 import { formatDate } from "@/app/lib/format-date";
 import { CreateUserForm } from "./create-user-form";
@@ -42,21 +42,11 @@ export default async function AdminUsersPage({
 
   return (
     <div className="relative z-10 mx-auto w-full max-w-4xl overflow-y-auto p-6 sm:p-8">
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <h1 className="font-display text-3xl font-bold tracking-tight">
           Usuarios
         </h1>
-        <nav className="flex gap-1 text-sm">
-          <span className="rounded-lg bg-surface-2 px-2.5 py-1 font-medium">
-            Usuarios
-          </span>
-          <Link
-            href="/admin/audit"
-            className="rounded-lg px-2.5 py-1 text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
-          >
-            Auditoría
-          </Link>
-        </nav>
+        <AdminNav current="/admin/users" />
       </div>
       <p className="mt-1 text-sm text-ink-muted">
         Administra las cuentas de tu instancia: altas, roles y contraseñas.

@@ -11,7 +11,9 @@ import { prisma } from "@/app/lib/prisma";
 // dispositivos). Ver docs/authentication.md y docs/decisions/0008-session-store.md.
 
 const COOKIE_NAME = "session";
-const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 días
+// Exportado para la política de privacidad, que dice cuánto dura una sesión.
+export const SESSION_MAX_AGE_DAYS = 7;
+const MAX_AGE_MS = SESSION_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
 
 // La clave se deriva en el momento de usarse (no al importar el módulo, para no romper el
 // build) y se EXIGE: sin SESSION_SECRET, `TextEncoder().encode(undefined)` daría una clave

@@ -13,6 +13,8 @@ export type NewUserInput = {
   email: string;
   password: string;
   role: GlobalRole;
+  // Solo en el registro abierto (/register): cuándo aceptó la política y las condiciones.
+  termsAcceptedAt?: Date;
 };
 
 export type CreateUserResult =
@@ -36,11 +38,30 @@ export async function createUserAccount(
   if (exists) return { ok: false, error: "email_taken" };
 
   const passwordHash = await hashPassword(input.password);
-  const user = await prisma.user.create({
-    data: { email, name: input.name, passwordHash, role: input.role },
-    select: { id: true, email: true },
-  });
-  return { ok: true, user };
+  try {
+    const user = await prisma.user.create({
+      data: {
+        email,
+        name: input.name,
+        passwordHash,
+        role: input.role,
+        termsAcceptedAt: input.termsAcceptedAt ?? null,
+      },
+      select: { id: true, email: true },
+    });
+    return { ok: true, user };
+  } catch (e) {
+    // Dos altas simultáneas con el mismo email pasan las dos la comprobación de arriba y
+    // la segunda choca con el índice único. Con el registro abierto es fácil (doble clic),
+    // así que se responde como un duplicado normal en vez de con un 500.
+    if (isUniqueViolation(e)) return { ok: false, error: "email_taken" };
+    throw e;
+  }
+}
+
+/** Error de Prisma por violar un índice único (P2002). */
+export function isUniqueViolation(e: unknown): boolean {
+  return e instanceof Error && "code" in e && e.code === "P2002";
 }
 
 export type ResetPasswordResult =

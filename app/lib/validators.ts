@@ -96,8 +96,8 @@ export const addMemberSchema = z.object({
 // Rol global del usuario en la instancia.
 export const globalRoleSchema = z.enum(["ADMIN", "MEMBER"]);
 
-// Alta de usuario por el administrador (no hay registro abierto: el admin crea las
-// cuentas). Ver docs/authorization.md.
+// Alta de usuario por el administrador. El registro abierto, si la instancia lo permite,
+// usa registerSchema. Ver docs/authorization.md.
 export const createUserSchema = z.object({
   name: z.string().trim().min(1, "El nombre es obligatorio").max(60),
   email: z.email("Email no válido"),
@@ -194,3 +194,83 @@ export const apiCardUpdateSchema = z
   .refine((d) => Object.keys(d).length > 0, {
     message: "No hay campos que actualizar.",
   });
+
+// --- Registro abierto y cuenta propia (ver docs/privacy.md) ----------------------------
+
+const personNameSchema = z
+  .string()
+  .trim()
+  .min(1, "El nombre es obligatorio")
+  .max(60, "Máximo 60 caracteres");
+
+// El checkbox de aceptación llega como "on" si está marcado y no llega si no: el
+// consentimiento tiene que ser un acto afirmativo (art. 7 RGPD), nunca un valor por defecto.
+export const registerSchema = z.object({
+  name: personNameSchema,
+  email: z.email("Email no válido").max(254),
+  password: passwordSchema,
+  acceptTerms: z.literal("on", {
+    error: "Tienes que aceptar la política de privacidad y las condiciones",
+  }),
+});
+
+export const profileSchema = z.object({
+  name: personNameSchema,
+  email: z.email("Email no válido").max(254),
+  // Solo hace falta si cambia el email; se comprueba en el servicio.
+  currentPassword: z.string().max(200),
+});
+
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Escribe tu contraseña actual").max(200),
+    newPassword: passwordSchema,
+    confirmPassword: z.string(),
+  })
+  .refine((d) => d.newPassword === d.confirmPassword, {
+    message: "Las dos contraseñas nuevas no coinciden",
+    path: ["confirmPassword"],
+  });
+
+export const deleteAccountSchema = z.object({
+  password: z.string().min(1, "Escribe tu contraseña para confirmar").max(200),
+});
+
+// Texto opcional de un formulario: vacío o solo espacios se guarda como null.
+const optionalText = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max, `Máximo ${max} caracteres`)
+    .transform((v) => (v === "" ? null : v));
+
+export const instanceSettingsSchema = z.object({
+  instanceName: z
+    .string()
+    .trim()
+    .min(1, "El nombre de la instancia es obligatorio")
+    .max(60, "Máximo 60 caracteres"),
+  registrationOpen: z.enum(["open", "closed"]).transform((v) => v === "open"),
+  operatorName: optionalText(120),
+  operatorEmail: z
+    .string()
+    .trim()
+    .max(254)
+    .transform((v) => (v === "" ? null : v))
+    .pipe(z.email("Email de contacto no válido").nullable()),
+  operatorLegalId: optionalText(40),
+  operatorAddress: optionalText(200),
+  hostingDescription: optionalText(200),
+  backupRetentionDays: z
+    .string()
+    .trim()
+    .transform((v) => (v === "" ? null : Number(v)))
+    .pipe(
+      z
+        .number({ error: "Los días de las copias tienen que ser un número" })
+        .int("Los días de las copias tienen que ser un número entero")
+        .min(0, "Los días de las copias no pueden ser negativos")
+        .max(3650, "Máximo 3650 días")
+        .nullable(),
+    ),
+});

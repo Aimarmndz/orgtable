@@ -1,58 +1,58 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { isSetupComplete, verifySession } from "@/app/lib/dal";
+import { isRegistrationOpen } from "@/app/lib/services/instance";
+import { PublicFooter } from "@/app/components/public-footer";
+import { BrandPanel } from "../brand-panel";
 import { LoginForm } from "./login-form";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = { title: "Iniciar sesión" };
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ cuenta?: string }>;
+}) {
   // Si aún no se ha configurado la instancia, el primer paso es el wizard.
   if (!(await isSetupComplete())) redirect("/setup");
   if (await verifySession()) redirect("/boards");
+  const [registrationOpen, { cuenta }] = await Promise.all([
+    isRegistrationOpen(),
+    searchParams,
+  ]);
 
   return (
     <main className="grid min-h-[100dvh] flex-1 lg:grid-cols-[1.1fr_1fr]">
-      {/* Panel de marca — solo en pantallas anchas. Acento terracota, display grande. */}
-      <aside className="relative hidden flex-col justify-between overflow-hidden bg-accent p-12 text-accent-ink lg:flex">
-        {/* Arcos concéntricos sutiles como textura de fondo (no decorativa en exceso). */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-40 -top-40 size-[34rem] rounded-full border border-accent-ink/15"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -bottom-52 -left-32 size-[40rem] rounded-full border border-accent-ink/10"
-        />
+      <BrandPanel />
 
-        <div className="relative flex items-center gap-2.5">
-          <span className="grid size-8 place-items-center rounded-lg bg-accent-ink/15 font-display text-lg font-extrabold">
-            o
-          </span>
-          <span className="font-display text-lg font-bold tracking-tight">
-            orgtable
-          </span>
+      <div className="flex flex-col p-6 sm:p-10">
+        <div className="flex flex-1 flex-col items-center justify-center">
+          {/* Tras borrar la cuenta desde los ajustes (actions/account.ts). */}
+          {cuenta === "borrada" && (
+            <p
+              role="status"
+              className="mb-6 w-full max-w-sm rounded-lg border border-success/25 bg-success/10 px-3 py-2 text-sm text-success"
+            >
+              Tu cuenta y tus datos se han borrado.
+            </p>
+          )}
+          <LoginForm />
+          {registrationOpen && (
+            <p className="mt-6 w-full max-w-sm text-sm text-ink-muted">
+              ¿No tienes cuenta?{" "}
+              <Link
+                href="/register"
+                className="font-semibold text-accent underline-offset-2 hover:underline"
+              >
+                Crea una gratis
+              </Link>
+            </p>
+          )}
         </div>
-
-        <div className="relative max-w-md">
-          <h2 className="font-display text-5xl font-extrabold leading-[1.05] tracking-tight text-balance">
-            Tu trabajo, en columnas que respiran.
-          </h2>
-          <p className="mt-5 max-w-sm leading-relaxed text-accent-ink/80">
-            Tableros Kanban self-hosted. Tus datos en tu servidor, sin terceros
-            mirando.
-          </p>
-        </div>
-
-        <p className="relative font-mono text-xs uppercase tracking-widest text-accent-ink/60">
-          Kanban · Self-hosted
-        </p>
-      </aside>
-
-      {/* Formulario */}
-      <div className="flex items-center justify-center p-6 sm:p-10">
-        <LoginForm />
+        <PublicFooter className="mt-10" />
       </div>
     </main>
   );

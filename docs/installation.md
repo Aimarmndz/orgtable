@@ -45,7 +45,7 @@ El script `install.sh` realiza, paso a paso, lo siguiente:
 
    Esto es configurable mediante variables de entorno:
    - `ORGTABLE_DIR`: directorio de instalación (por defecto `$HOME/orgtable`).
-   - `ORGTABLE_REPO`: URL del repositorio (por defecto `https://github.com/aimarmndzz/orgtable.git`).
+   - `ORGTABLE_REPO`: URL del repositorio (por defecto `https://github.com/Aimarmndz/orgtable.git`).
 
 3. **Genera el `.env` con secretos aleatorios.** Solo si **no existe** ya un `.env`. En ese caso:
    - Genera `POSTGRES_PASSWORD` con `openssl rand -hex 24`.

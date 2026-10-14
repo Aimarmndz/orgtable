@@ -46,6 +46,12 @@ services:
       TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-0}
       # Zona horaria de las fechas que formatea el servidor. Ver docs/installation.md.
       ORGTABLE_TIMEZONE: ${ORGTABLE_TIMEZONE:-Atlantic/Canary}
+      # Días que se guarda el registro de auditoría antes de que POST /api/cron/maintenance
+      # lo borre. Vacío = 90. Ver docs/privacy.md.
+      ORGTABLE_AUDIT_RETENTION_DAYS: ${ORGTABLE_AUDIT_RETENTION_DAYS:-}
+      # Enlace «Código fuente» de la app (sección 13 de la AGPL). Vacío = el repositorio
+      # original; si despliegas una versión modificada, pon aquí tu fork.
+      ORGTABLE_SOURCE_URL: ${ORGTABLE_SOURCE_URL:-}
     volumes:
       - uploads:/data/uploads
     ports:

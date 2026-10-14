@@ -115,12 +115,14 @@ Cómo funcionan:
    shellcheck scripts/*.sh install.sh docker-entrypoint.sh
    ```
 2. **Variables del compose**: comprueba que `docker compose config` pasa al contenedor
-   `app` `CRON_SECRET`, `TRUSTED_PROXY_HOPS` y `ORGTABLE_TIMEZONE`. Si una se cae del
+   `app` `CRON_SECRET`, `TRUSTED_PROXY_HOPS`, `ORGTABLE_TIMEZONE`,
+   `ORGTABLE_AUDIT_RETENTION_DAYS` y `ORGTABLE_SOURCE_URL`. Si una se cae del
    `environment:`, la función que depende de ella deja de funcionar en Docker sin ningún
    error. En local:
    ```bash
-   CRON_SECRET=probe TRUSTED_PROXY_HOPS=7 ORGTABLE_TIMEZONE=Europe/Madrid docker compose config \
-     | grep -E 'CRON_SECRET|TRUSTED_PROXY_HOPS|ORGTABLE_TIMEZONE'
+   CRON_SECRET=probe TRUSTED_PROXY_HOPS=7 ORGTABLE_TIMEZONE=Europe/Madrid \
+     ORGTABLE_AUDIT_RETENTION_DAYS=45 ORGTABLE_SOURCE_URL=https://example.org/fork \
+     docker compose config | grep -E 'CRON_SECRET|TRUSTED_PROXY_HOPS|ORGTABLE_'
    ```
 3. **Licencia**: comprueba que `package.json` declara `AGPL-3.0-or-later`, que `LICENSE`
    es la AGPL con su término de atribución (sección 7(b)) y que no quedan restos de la

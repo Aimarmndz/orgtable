@@ -22,6 +22,22 @@ model InstanceConfig {
   instanceName     String
   setupCompletedAt DateTime?
   createdAt        DateTime  @default(now())
+  // Registro abierto: cualquiera puede crearse una cuenta en /register. Cerrado por
+  // defecto (instancia privada, el admin da de alta). Solo se puede abrir si están el
+  // responsable y el contacto de privacidad, que necesita la política de privacidad.
+  registrationOpen Boolean   @default(false)
+  // Datos legales de QUIEN OPERA esta instancia (no del autor del software). Salen en
+  // /legal/*. Todos opcionales: sin ellos las páginas legales lo dicen en vez de
+  // inventar nada. Ver docs/privacy.md.
+  operatorName        String?
+  operatorEmail       String?
+  operatorLegalId     String?
+  operatorAddress     String?
+  hostingDescription  String?
+  backupRetentionDays Int?
+  // Fecha de la última edición de los datos legales: es la «última actualización» que
+  // muestran las páginas legales.
+  legalUpdatedAt      DateTime?
 }
 
 enum Role {
@@ -41,6 +57,9 @@ model User {
   passwordHash String
   name         String
   role         Role          @default(MEMBER)
+  // Cuándo aceptó la política de privacidad y las condiciones al registrarse (/register).
+  // Null en las cuentas que crea el admin o el asistente inicial.
+  termsAcceptedAt DateTime?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   boards        Board[]

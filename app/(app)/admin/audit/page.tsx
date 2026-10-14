@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { requireAdmin } from "@/app/lib/dal";
+import { AdminNav } from "../admin-nav";
 import { getRecentAuditLogs } from "@/app/lib/queries";
 import type { AuditAction } from "@/app/lib/audit";
 import { formatDateTime } from "@/app/lib/format-date";
@@ -17,6 +17,14 @@ const ACTION_LABELS: Record<AuditAction, string> = {
   "auth.login_failed": "Inicio de sesión fallido",
   "auth.login_rate_limited": "Login bloqueado por límite de intentos",
   "auth.logout": "Cierre de sesión",
+  "auth.registered": "Cuenta creada desde el registro",
+  "auth.register_rate_limited": "Registro bloqueado por límite de altas",
+  "account.updated": "Perfil cambiado",
+  "account.password_changed": "Contraseña cambiada por su titular",
+  "account.sessions_revoked": "Sesiones cerradas por su titular",
+  "account.exported": "Datos personales descargados",
+  "account.deleted": "Cuenta borrada por su titular",
+  "instance.updated": "Ajustes de la instancia cambiados",
   "user.created": "Usuario creado",
   "user.deleted": "Usuario borrado",
   "user.role_changed": "Rol de usuario cambiado",
@@ -35,7 +43,9 @@ const ACTION_LABELS: Record<AuditAction, string> = {
 const WARN_ACTIONS = new Set<string>([
   "auth.login_failed",
   "auth.login_rate_limited",
+  "auth.register_rate_limited",
   "user.deleted",
+  "account.deleted",
   "board.deleted",
 ]);
 
@@ -49,21 +59,11 @@ export default async function AdminAuditPage() {
 
   return (
     <div className="relative z-10 mx-auto w-full max-w-4xl overflow-y-auto p-6 sm:p-8">
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <h1 className="font-display text-3xl font-bold tracking-tight">
           Auditoría
         </h1>
-        <nav className="flex gap-1 text-sm">
-          <Link
-            href="/admin/users"
-            className="rounded-lg px-2.5 py-1 text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
-          >
-            Usuarios
-          </Link>
-          <span className="rounded-lg bg-surface-2 px-2.5 py-1 font-medium">
-            Auditoría
-          </span>
-        </nav>
+        <AdminNav current="/admin/audit" />
       </div>
       <p className="mt-1 text-sm text-ink-muted">
         Los {logs.length} eventos de seguridad y operación más recientes.

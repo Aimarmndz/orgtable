@@ -8,7 +8,7 @@
 set -euo pipefail
 
 INSTALL_DIR="${ORGTABLE_DIR:-$HOME/orgtable}"
-REPO_URL="${ORGTABLE_REPO:-https://github.com/aimarmndzz/orgtable.git}"
+REPO_URL="${ORGTABLE_REPO:-https://github.com/Aimarmndz/orgtable.git}"
 
 log() { printf '\033[1;36m[orgtable]\033[0m %s\n' "$1"; }
 

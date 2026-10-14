@@ -12,7 +12,9 @@ import { buildContentSecurityPolicy, generateNonce } from "@/app/lib/csp";
 //    petición (Next extrae el nonce para sus scripts; el layout raíz lo lee de
 //    `x-nonce` para el script del tema) y en la respuesta (la aplica el navegador).
 
-const PUBLIC_PATHS = ["/login", "/setup"];
+// /register comprueba él mismo si el registro está abierto; /legal se lee sin sesión
+// (la política de privacidad tiene que poder leerse ANTES de crear la cuenta).
+const PUBLIC_PATHS = ["/login", "/setup", "/register", "/legal"];
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;

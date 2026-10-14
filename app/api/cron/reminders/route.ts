@@ -1,6 +1,6 @@
-import { timingSafeEqual } from "node:crypto";
 import { generateDueReminders } from "@/app/lib/services/reminders";
-import { apiError, apiOk } from "@/app/lib/api/respond";
+import { apiOk } from "@/app/lib/api/respond";
+import { rejectUnauthorizedCron } from "@/app/lib/api/cron";
 
 // Endpoint de recordatorios de vencimiento (Hito 11). Pensado para que lo dispare un
 // programador EXTERNO (cron del sistema, `docker compose` con un sidecar, GitHub Actions
@@ -14,26 +14,9 @@ import { apiError, apiOk } from "@/app/lib/api/respond";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-// Comparación en tiempo constante para no filtrar el secreto por el tiempo de respuesta.
-function secretMatches(provided: string, expected: string): boolean {
-  const a = Buffer.from(provided);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length) return false;
-  return timingSafeEqual(a, b);
-}
-
 export async function POST(request: Request): Promise<Response> {
-  const expected = process.env.CRON_SECRET;
-  if (!expected) {
-    // Mensaje genérico: no revelamos detalles de configuración al cliente.
-    return apiError(503, "Servicio no disponible.");
-  }
-
-  const header = request.headers.get("authorization") ?? "";
-  const provided = header.startsWith("Bearer ") ? header.slice(7) : "";
-  if (!provided || !secretMatches(provided, expected)) {
-    return apiError(401, "Secreto de cron no válido.");
-  }
+  const rejected = rejectUnauthorizedCron(request);
+  if (rejected) return rejected;
 
   const result = await generateDueReminders(new Date());
   return apiOk(result);

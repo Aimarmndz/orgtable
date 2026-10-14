@@ -8,6 +8,65 @@ arquitectura anteriores a este registro (ADR 0001–0015) siguen en
 
 ---
 
+## 2026-10-14 — Registro abierto, páginas legales y limpieza de datos (RGPD)
+
+**Contexto.** El propietario va a alojar una instancia pública con registro gratuito y
+quiere que cualquiera pueda levantar la suya. Hasta ahora solo el admin daba de alta
+cuentas, y no había política de privacidad, condiciones ni plazos de conservación.
+
+**Decisión.**
+- **Registro opcional por instancia.** `InstanceConfig.registrationOpen`, cerrado por
+  defecto. Se abre en `/admin/instance` y solo si están el responsable y el email de
+  contacto, que exige el art. 13 RGPD. `isRegistrationOpen()` lo vuelve a comprobar en
+  cada alta. Las cuentas nuevas son MEMBER.
+- **Consentimiento.** Checkbox obligatorio, sin marcar por defecto, con enlaces a la
+  política y a las condiciones. Se guarda `User.termsAcceptedAt`. Junto al formulario va
+  una primera capa informativa: responsable, finalidad y derechos.
+- **Antiabuso sin servicios externos.**
+  - Campo trampa (honeypot).
+  - 5 altas por hora por IP, si hay proxy de confianza.
+  - 30 por hora en toda la instancia, contadas tras validar para que un error al teclear
+    no gaste cupo.
+  - El alta concurrente con el mismo email (P2002) responde como un duplicado normal, no
+    con un 500.
+- **Datos legales del operador** (`InstanceConfig.operator*`, alojamiento, días de copias)
+  editables por el admin. Las páginas `/legal/{privacidad,condiciones,cookies,aviso-legal}`
+  describen lo que hace este código, con los plazos sacados de las mismas constantes que
+  la limpieza. Lo que falta se muestra como «sin indicar», nunca inventado. Así valen para
+  la instancia oficial y para cualquier instancia autoalojada.
+- **Limpieza** con `POST /api/cron/maintenance` (mismo `CRON_SECRET` que los
+  recordatorios, autorización compartida en `app/lib/api/cron.ts`):
+  - auditoría a los `ORGTABLE_AUDIT_RETENTION_DAYS` días (90 por defecto);
+  - sesiones cerradas o caducadas a los 30 días;
+  - notificaciones a los 180 días.
+- **Pie público** con enlaces legales, código fuente (`ORGTABLE_SOURCE_URL`, validada) y
+  la atribución de la licencia, en login, registro, setup y páginas legales.
+- **Edad mínima de 14 años** en las condiciones: es la edad de consentimiento digital en
+  España (art. 7 LOPDGDD).
+
+**Alternativas descartadas.**
+- **Verificación por email.** Necesita SMTP, que sigue en el backlog. Sin ella, el
+  registro revela si un email ya tiene cuenta. El límite de altas frena la enumeración
+  masiva.
+- **CAPTCHA externo (Turnstile, hCaptcha).** Añade un tercero que ve a cada visitante y
+  obliga a ampliar la política y la CSP. Se queda como opción si aparece spam real.
+- **Textos legales fijos en Markdown.** Mentirían en cuanto otra persona alojara su
+  instancia o cambiara un plazo.
+- **Banner de cookies.** Solo hay almacenamiento técnico imprescindible (art. 22.2 LSSI).
+  Un banner sobra mientras no haya analítica.
+
+**Consecuencias.**
+- Migración `20261014171630_registration_and_legal`, solo columnas nuevas.
+- Para que la limpieza corra, hay que programar el cron de mantenimiento, como el de
+  recordatorios (`docs/operations.md`).
+- Tests en `test/integration/registration.int.test.ts` y `maintenance.int.test.ts`.
+- Los textos legales los ha redactado Claude, no un abogado: conviene que un profesional
+  los revise antes de abrir la instancia pública.
+- Los datos del operador de la instancia oficial los rellena el propietario en
+  `/admin/instance`. No están en el repo.
+
+---
+
 ## 2026-10-14 — Fuentes OFL en lugar de las de Fontshare
 
 **Contexto.** La interfaz usaba Satoshi y Cabinet Grotesk, de Fontshare, con los
