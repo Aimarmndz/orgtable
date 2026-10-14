@@ -19,7 +19,14 @@ behind each decision is in [`docs/DECISIONES.md`](./docs/DECISIONES.md).
   `ORGTABLE_AUDIT_RETENTION_DAYS` variable.
 - Account menu in the top bar. Boards show their cards and members.
 - Per-instance `robots.txt`, Open Graph and a custom icon.
-- README with screenshots and GIFs, an English README and `docs/privacy.md`.
+- **English and Spanish interface**, English by default. The language comes from the
+  picker (footer and Settings › Appearance), the account's preference or the browser.
+  Notifications are written in each recipient's language. Translations live in
+  `locales/<code>/*.json`, and adding a language is documented in `locales/README.md`.
+- `pnpm test` checks that every language has the same messages, placeholders and plural
+  forms as English (`test/i18n.test.ts`).
+- README with screenshots and GIFs, a Spanish README (`README.es.md`) and
+  `docs/privacy.md`.
 
 ### Changed
 
@@ -28,8 +35,11 @@ behind each decision is in [`docs/DECISIONES.md`](./docs/DECISIONES.md).
 - Bricolage Grotesque and Figtree typefaces (OFL) instead of Cabinet Grotesk and Satoshi.
 - `ORGTABLE_SOURCE_URL` sets the "Source code" link. If you deploy a modified version,
   point it to your fork.
-- The `20261014171630_registration_and_legal` migration is applied automatically on
-  startup.
+- The code, tests, documentation and commit messages are in English. The public REST API
+  answers in English.
+- `next` 16.3.8 and patched `sharp` and `source-map-js` (security advisories).
+- The `20261014171630_registration_and_legal` and `20261014175506_user_locale`
+  migrations are applied automatically on startup.
 
 ## [0.1.0]
 
