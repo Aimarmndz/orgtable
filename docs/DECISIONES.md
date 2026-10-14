@@ -8,6 +8,32 @@ arquitectura anteriores a este registro (ADR 0001–0015) siguen en
 
 ---
 
+## 2026-10-14 — Icono propio, robots.txt según la instancia y Open Graph
+
+**Contexto.** El favicon era el triángulo por defecto de la plantilla de Next y `public/`
+guardaba los SVG de la plantilla (logos de Next y Vercel), sin usar. Un repo público no
+debería llevar marcas ajenas. Tampoco había `robots.txt`: una instancia privada podía
+acabar indexada a partir de su página de login.
+
+**Decisión.**
+- `app/icon.svg` con la «o» de la marca sobre terracota. Se borran `app/favicon.ico` y los
+  SVG de la plantilla.
+- `app/robots.ts` dinámico. Con el registro cerrado pide `Disallow: /`. Con el registro
+  abierto permite solo `/login`, `/register` y `/legal/`. `/robots.txt` es público en
+  `proxy.ts`.
+- Metadatos Open Graph básicos en el layout raíz: nombre, descripción e idioma.
+
+**Alternativas descartadas.**
+- **`robots.txt` estático.** Tendría que valer igual para una instancia privada y para una
+  pública.
+- **Sitemap.** Necesita la URL pública absoluta de la instancia, que la app no conoce. Una
+  variable más (`ORGTABLE_PUBLIC_URL`) para tres páginas públicas no compensa por ahora.
+- **Imagen Open Graph.** Se deja para cuando exista la instancia oficial y su dominio.
+
+**Consecuencias.** Test de `robots()` en `registration.int.test.ts`.
+
+---
+
 ## 2026-10-14 — README visual con capturas y GIF reales
 
 **Contexto.** Para publicar el proyecto, el README tenía que enseñar la app, como el de

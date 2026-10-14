@@ -13,8 +13,9 @@ import { buildContentSecurityPolicy, generateNonce } from "@/app/lib/csp";
 //    `x-nonce` para el script del tema) y en la respuesta (la aplica el navegador).
 
 // /register comprueba él mismo si el registro está abierto; /legal se lee sin sesión
-// (la política de privacidad tiene que poder leerse ANTES de crear la cuenta).
-const PUBLIC_PATHS = ["/login", "/setup", "/register", "/legal"];
+// (la política de privacidad tiene que poder leerse ANTES de crear la cuenta). Los
+// buscadores leen /robots.txt sin cookie.
+const PUBLIC_PATHS = ["/login", "/setup", "/register", "/legal", "/robots.txt"];
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;

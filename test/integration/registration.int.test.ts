@@ -4,6 +4,7 @@ import { register } from "@/app/lib/actions/register";
 import { saveInstanceSettings } from "@/app/lib/actions/instance";
 import { isRegistrationOpen } from "@/app/lib/services/instance";
 import { verifySession } from "@/app/lib/dal";
+import robots from "@/app/robots";
 import { __setHeaders } from "../stubs/next-headers";
 import { resetDb, disconnect, seedUser, loginAs } from "./helpers";
 
@@ -210,5 +211,19 @@ describe("ajustes de la instancia (saveInstanceSettings)", () => {
       saveInstanceSettings({}, settingsForm({ registrationOpen: "open", ...LEGAL })),
     ).rejects.toMatchObject({ digest: expect.stringContaining(";/boards;") });
     expect((await prisma.instanceConfig.findUniqueOrThrow({ where: { id: "singleton" } })).operatorName).toBeNull();
+  });
+});
+
+describe("robots.txt", () => {
+  it("cerrada no deja indexar nada; abierta, solo las páginas públicas", async () => {
+    await seedInstance({ registrationOpen: false, ...LEGAL });
+    expect((await robots()).rules).toEqual({ userAgent: "*", disallow: "/" });
+
+    await prisma.instanceConfig.update({ where: { id: "singleton" }, data: { registrationOpen: true } });
+    expect((await robots()).rules).toEqual({
+      userAgent: "*",
+      allow: ["/login", "/register", "/legal/"],
+      disallow: "/",
+    });
   });
 });

@@ -33,6 +33,14 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: { template: "%s · orgtable", default: "orgtable" },
   description: "Tableros Kanban self-hosted, una alternativa a Trello",
+  applicationName: "orgtable",
+  openGraph: {
+    type: "website",
+    siteName: "orgtable",
+    title: "orgtable",
+    description: "Tableros Kanban de código abierto: tus listas y tarjetas, en tiempo real.",
+    locale: "es_ES",
+  },
 };
 
 // Se ejecuta antes del primer paint para aplicar el tema guardado (o la preferencia
