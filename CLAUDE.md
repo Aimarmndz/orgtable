@@ -48,12 +48,19 @@ here each one gets a one-line summary.
 
 ## Status
 
-The shipped features and the planned work are in `docs/roadmap.md`. Planned themes: PWA
-and mobile, automations (Butler-style rules), table and swimlane views, templates /
-duplicate / archive, card activity history, webhooks and integrations, accessibility.
-Smaller items (email and Web Push, full-text search, a wider API with rate limiting and
-OpenAPI) and later ideas (SSO/OIDC, 2FA, observability, scheduled backups) are listed
-there too.
+The shipped features and the planned work are in `docs/roadmap.md`. Organizations have a
+full admin panel (one page per section, `app/(app)/[workspace]/settings/`): custom roles and
+permissions (`app/lib/permissions.ts`, `docs/roles.md`), teams, security policy, activity
+log, brand, webhooks and integrations (`app/lib/webhooks/`), organization API keys and
+backups (`app/lib/backups/`). Accounts have two-step verification. Secrets the app must read
+back are encrypted with `ORGTABLE_SECRET_KEY` (`app/lib/crypto/secrets.ts`). Planned themes:
+PWA and mobile, automations, table and swimlane views, templates / archive, card activity
+history, accessibility; later ideas (SSO/OIDC, passkeys, observability) are listed there too.
+
+Multi-tenancy rules for new features: settings pages go through `requireOrgSettings` /
+`requireOrgPermission` (`app/lib/org-settings.ts`); services re-check membership and look rows
+up by `{ workspaceId, id }`; join tables carry `workspaceId` in composite foreign keys; board
+access is decided only in `app/lib/access.ts`; cross-tenant cases get an integration test.
 
 ## Decisions (summary)
 

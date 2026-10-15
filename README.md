@@ -38,11 +38,22 @@ single command.
 - ⚡ **Real time.** What one person moves, everyone else sees instantly, without reloading.
 - 👥 **Teams.** Per-board roles (owner, editor and viewer), notifications and due-date
   reminders.
-- 🏢 **Organizations, free.** Register your company, create your employees' accounts with
-  owner, admin and member roles, and give every board an address:
-  `/<workspace>/<board>`. See [`docs/workspaces.md`](./docs/workspaces.md).
+- 🏢 **Organizations, free.** Register your company, create your employees' accounts, and give
+  every board an address: `/<workspace>/<board>`. Owner, admin and member roles plus **custom
+  roles** with 13 permissions, and **teams** that share boards. See
+  [`docs/workspaces.md`](./docs/workspaces.md) and [`docs/roles.md`](./docs/roles.md).
+- 🛡️ **Security for companies.** Two-step verification (TOTP) for every account, and per
+  organization: mandatory 2FA, allowed email domains, the sessions of its employees and an
+  **activity log** with CSV export.
+- 🔗 **Webhooks and integrations.** Signed outgoing webhooks per organization or board, Slack,
+  Discord and Teams, and incoming webhooks that create cards. See
+  [`docs/webhooks.md`](./docs/webhooks.md).
+- 💾 **Backups from the app.** Scheduled, to your server or your own S3, encrypted, with
+  restore; a portable export/import `.zip`; and whole-instance backups for the administrator.
+  See [`docs/backups.md`](./docs/backups.md).
 - 🔎 **Search, filters and a calendar view**, where you drag cards to change their due date.
-- 🔌 **REST API** with personal tokens, read-only or read-write, with optional expiry.
+- 🔌 **REST API** with personal tokens and organization keys, read-only or read-write, with
+  optional expiry.
 - 🔐 **Optional open sign-up and GDPR built in.** Legal pages adapt to each instance, and
   everyone can download or delete their own data from the settings.
 - 🌍 **English and Spanish.** The interface follows your browser language, and you can
@@ -174,8 +185,10 @@ template is [`.env.example`](./.env.example).
   `SESSION_SECRET`.
 - **Optional:** `APP_PORT`, `CRON_SECRET`, `TRUSTED_PROXY_HOPS` and the `ORGTABLE_*`
   settings: `ORGTABLE_TIMEZONE`, `ORGTABLE_UPLOAD_DIR`, `ORGTABLE_REALTIME_PG_NOTIFY`,
-  `ORGTABLE_AUDIT_RETENTION_DAYS`, `ORGTABLE_SOURCE_URL`, `ORGTABLE_LANDING` and
-  `ORGTABLE_INSTALL_URL`.
+  `ORGTABLE_AUDIT_RETENTION_DAYS`, `ORGTABLE_SOURCE_URL`, `ORGTABLE_LANDING`,
+  `ORGTABLE_INSTALL_URL`, `ORGTABLE_SECRET_KEY` (two-step verification, webhooks and backups
+  need it; the installer generates it), `ORGTABLE_BACKUP_DIR`, `ORGTABLE_IMPORT_MAX_MB` and
+  `ORGTABLE_ALLOW_PRIVATE_TARGETS`.
 
 ## Deployment
 

@@ -142,7 +142,7 @@ The app container only receives the variables listed under `environment:` in `do
 | `DATABASE_URL` | Yes | Connection string used by the app. It must match the three variables above. The host is `postgres` (the docker-compose service name). Format: `postgresql://USER:PASSWORD@postgres:5432/DATABASE`. |
 | `SESSION_SECRET` | Yes | Secret used to sign the JWT sessions, at least 16 characters. Without it (or with a shorter one) the app cannot create sessions, so sign-in and the setup wizard fail. The installer generates it with `openssl rand -hex 32`. |
 | `APP_PORT` | No | Host port the app is exposed on. Default `3000`. Accepts `127.0.0.1:3000` to publish it on localhost only, behind a reverse proxy. Inside the container the app always listens on `3000`. |
-| `CRON_SECRET` | No | Secret for the cron endpoints: [reminders](./reminders.md) and data cleanup ([operations.md](./operations.md#scheduled-tasks)). Empty = endpoints disabled. The installer generates it with `openssl rand -hex 32`. |
+| `CRON_SECRET` | No | Secret for the cron endpoints: [reminders](./reminders.md), data cleanup, webhook retries and scheduled backups ([operations.md](./operations.md#scheduled-tasks)). Empty = endpoints disabled. The installer generates it with `openssl rand -hex 32`. |
 | `TRUSTED_PROXY_HOPS` | No | Number of trusted proxies in front of the app (default `0`: `X-Forwarded-For` is ignored). Behind one reverse proxy, `1`. See [operations.md](./operations.md#login-rate-limiting). |
 | `ORGTABLE_TIMEZONE` | No | IANA time zone for dates formatted on the server. Default `Atlantic/Canary`. |
 | `ORGTABLE_UPLOAD_DIR` | No | Attachments directory. In Docker, `/data/uploads` (the `uploads` volume). See [attachments.md](./attachments.md). |
@@ -153,6 +153,10 @@ The app container only receives the variables listed under `environment:` in `do
 | `ORGTABLE_SMTP_URL` | No | SMTP server for password reset links and employee invitations (`smtps://user:password@host:465`). Empty = email off. See [email.md](./email.md). |
 | `ORGTABLE_MAIL_FROM` | With email | Sender of the emails, e.g. `orgtable <no-reply@example.org>`. |
 | `ORGTABLE_PUBLIC_URL` | With email | The instance's public address, used in the links of the emails. |
+| `ORGTABLE_SECRET_KEY` | For 2FA, webhooks and S3 | Key (≥ 32 characters) that encrypts the secrets orgtable must read back: two-step verification keys, webhook secrets, S3 credentials and encrypted backups. The installer generates it (`openssl rand -hex 32`) and adds it to older installations. **Never change it** once in use, and keep it with your backups. See [security.md](./security.md#secrets-at-rest). |
+| `ORGTABLE_BACKUP_DIR` | No | Where backups made from the app are kept "on this server". In Docker, `/data/backups` (the `backups` volume). See [backups.md](./backups.md). |
+| `ORGTABLE_IMPORT_MAX_MB` | No | Largest `.zip` an organization can import, in MB. Default `200`. The reverse proxy must accept bodies that large. |
+| `ORGTABLE_ALLOW_PRIVATE_TARGETS` | No | `1` lets webhooks and S3 backup endpoints reach private addresses and plain `http://` (targets on your own network). Default: refused. See [webhooks.md](./webhooks.md#security). |
 | `ORGTABLE_REALTIME_PG_NOTIFY` | No | `1` to propagate real-time events between several app replicas with PostgreSQL `LISTEN/NOTIFY`. Default `0`. See [realtime.md](./realtime.md). |
 | `ORGTABLE_DIR` | No | Installer only (`install.sh`, read from the shell, not from `.env`): installation directory. Default `$HOME/orgtable`. |
 | `ORGTABLE_REPO` | No | Installer only (`install.sh`, read from the shell, not from `.env`): repository URL to clone. Default `https://github.com/Aimarmndz/orgtable.git`. |

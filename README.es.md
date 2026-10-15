@@ -41,12 +41,22 @@ con Docker, con un solo comando.
 - ⚡ **Tiempo real.** Lo que mueve una persona lo ven las demás al instante, sin recargar.
 - 👥 **Equipos.** Roles por tablero (propietario, editor y lector), notificaciones y
   recordatorios de vencimiento.
-- 🏢 **Organizaciones, gratis.** Registra tu empresa, crea las cuentas de tus empleados con
-  roles de propietario, administrador y miembro, y dale a cada tablero una dirección:
-  `/<espacio>/<tablero>`. Ver [`docs/workspaces.md`](./docs/workspaces.md).
+- 🏢 **Organizaciones, gratis.** Registra tu empresa, crea las cuentas de tus empleados y dale a
+  cada tablero una dirección: `/<espacio>/<tablero>`. Roles de propietario, administrador y
+  miembro más **roles personalizados** con 13 permisos, y **equipos** que comparten tableros.
+  Ver [`docs/workspaces.md`](./docs/workspaces.md) y [`docs/roles.md`](./docs/roles.md).
+- 🛡️ **Seguridad para empresas.** Verificación en dos pasos (TOTP) para todas las cuentas y,
+  por organización: 2FA obligatoria, dominios de correo permitidos, las sesiones de sus
+  empleados y un **registro de actividad** exportable a CSV.
+- 🔗 **Webhooks e integraciones.** Webhooks salientes firmados por organización o por tablero,
+  Slack, Discord y Teams, y webhooks entrantes que crean tarjetas. Ver
+  [`docs/webhooks.md`](./docs/webhooks.md).
+- 💾 **Copias de seguridad desde la app.** Programadas, en tu servidor o en tu propio S3,
+  cifradas y restaurables; exportación e importación en un `.zip` portable; y copias de toda la
+  instancia para la administración. Ver [`docs/backups.md`](./docs/backups.md).
 - 🔎 **Búsqueda, filtros y calendario**, este último con arrastre para cambiar fechas.
-- 🔌 **API REST** con tokens personales, de solo lectura o de escritura, con caducidad
-  opcional.
+- 🔌 **API REST** con tokens personales y claves de organización, de solo lectura o de
+  escritura, con caducidad opcional.
 - 🔐 **Registro abierto opcional y RGPD de serie.** Páginas legales que se adaptan a cada
   instancia. Cada persona descarga o borra sus datos desde los ajustes.
 - 🌍 **En inglés y en español.** La interfaz sigue el idioma del navegador y se puede

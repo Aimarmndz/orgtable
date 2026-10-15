@@ -63,8 +63,22 @@ approach. See [`contributing.md`](./contributing.md).
 - User management for admins, sign-in rate limiting and an audit log. See
   [`admin.md`](./admin.md) and [`operations.md`](./operations.md).
 - Optional open sign-up per instance, with consent and anti-abuse measures.
-- Account settings: profile, password, active sessions, API tokens, appearance, data
-  export and account deletion.
+- Account settings, one page per section: profile, password and sessions, two-step
+  verification (TOTP), API tokens, appearance, your organizations, data export and account
+  deletion.
+
+### Organizations
+
+- Settings with an index and one page per section, behind a single tenant door. See
+  [`workspaces.md`](./workspaces.md).
+- Custom roles with 13 permissions, and teams that share boards. See [`roles.md`](./roles.md)
+  and [`teams.md`](./teams.md).
+- Security policy (mandatory 2FA, allowed email domains, employee sessions), activity log with
+  CSV, brand (logo, colour, time zone) and organization API keys. See [`audit.md`](./audit.md).
+- Signed outgoing webhooks per organization or board, Slack/Discord/Teams and incoming
+  webhooks. See [`webhooks.md`](./webhooks.md).
+- Backups (scheduled, local or S3, encrypted, restore), export and import, and instance
+  backups. See [`backups.md`](./backups.md).
 - Security headers, hardened dependencies and authorization tests. See
   [`security.md`](./security.md).
 
@@ -134,11 +148,9 @@ without external services.
   commented, assigned, due date changed.
 - Optionally, an activity feed per board, updated in real time.
 
-### Webhooks and integrations
+### Integrations
 
-- Outgoing webhooks per board, with HMAC-signed payloads and best-effort retries.
-- Incoming webhooks to create cards, and optionally email-to-card.
-- Managed by board owners from the board settings.
+- Email-to-card, and webhook settings reachable from each board's menu.
 
 ### Accessibility
 
@@ -153,9 +165,10 @@ without external services.
 ## Ideas / later
 
 - Optional single sign-on with OpenID Connect, alongside the built-in sign-in.
-- Two-factor authentication (TOTP).
+- Passkeys (WebAuthn) as a second factor or instead of passwords.
 - Observability: a metrics endpoint (Prometheus), structured logs and a readiness check.
-- Scheduled backups and guided restore from the interface.
+- Streaming exports and imports for organizations with gigabytes of attachments.
+- Password policies and maximum session length per organization.
 
 ## Smaller improvements
 
