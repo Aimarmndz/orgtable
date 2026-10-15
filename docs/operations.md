@@ -184,19 +184,21 @@ and the `importBoard` Server Action in
 
 ## Scheduled tasks
 
-Two endpoints must be called by an **external** cron (ADR 0015), with `CRON_SECRET` from
+These endpoints must be called by an **external** cron (ADR 0015), with `CRON_SECRET` from
 `.env` as a `Bearer` token. Without `CRON_SECRET` they answer 503; with a wrong secret,
 401.
 
 | Endpoint | Frequency | What it does |
 |---|---|---|
 | `POST /api/cron/reminders` | Every hour | Reminders for cards that are due soon or overdue ([reminders.md](./reminders.md)). |
-| `POST /api/cron/maintenance` | Once a day | Deletes audit entries older than `ORGTABLE_AUDIT_RETENTION_DAYS` (90 by default), sessions closed or expired more than 30 days ago, and notifications older than 180 days. These are the retention periods promised by the privacy policy ([privacy.md](./privacy.md)). |
+| `POST /api/cron/maintenance` | Once a day | Deletes audit entries older than `ORGTABLE_AUDIT_RETENTION_DAYS` (90 by default), sessions closed or expired more than 30 days ago, notifications older than 180 days and finished webhook deliveries older than 30 days. These are the retention periods promised by the privacy policy ([privacy.md](./privacy.md)). |
+| `POST /api/cron/webhooks` | Every minute | Retries webhook deliveries that failed ([webhooks.md](./webhooks.md)). Events are sent at once when they happen; without this job only the retries wait. |
 
 ```cron
 # host crontab; loads CRON_SECRET from the installation's .env
 0 * * * *  . /opt/orgtable/.env && curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" http://127.0.0.1:3000/api/cron/reminders
 15 4 * * * . /opt/orgtable/.env && curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" http://127.0.0.1:3000/api/cron/maintenance
+* * * * *  . /opt/orgtable/.env && curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" http://127.0.0.1:3000/api/cron/webhooks
 ```
 
 Adjust the `.env` path and the port (`APP_PORT`) to your installation.

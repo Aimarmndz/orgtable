@@ -69,6 +69,28 @@ export function orgSettingsSections(
       ],
     },
     {
+      label: t.integrationsGroup,
+      items: ctx.permissions.has("integrations.manage")
+        ? [
+            {
+              key: "webhooks",
+              href: `${base}/webhooks`,
+              label: t.webhooks,
+              hint: t.hints.webhooks,
+              icon: NavIcon.webhook,
+              badge: counts.webhooks ? String(counts.webhooks) : undefined,
+            },
+            {
+              key: "integrations",
+              href: `${base}/integrations`,
+              label: t.integrations,
+              hint: t.hints.integrations,
+              icon: NavIcon.plug,
+            },
+          ]
+        : [],
+    },
+    {
       label: t.dataGroup,
       items: [
         ...(ctx.role === "OWNER" || ctx.role === "ADMIN"

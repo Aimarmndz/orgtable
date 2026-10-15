@@ -3,6 +3,7 @@
 import { prisma } from "@/app/lib/prisma";
 import { effectiveBoardRole } from "@/app/lib/access";
 import { revalidateBoard } from "@/app/lib/realtime/notify";
+import { cardSnapshot, emitCard } from "@/app/lib/webhooks/emit";
 import { requireBoardAccess } from "@/app/lib/dal";
 import { canEditBoard, canManageBoard } from "@/app/lib/roles";
 import { cardContext } from "@/app/lib/services/cards";
@@ -24,8 +25,9 @@ export async function addComment(formData: FormData): Promise<void> {
   const parsed = commentTextSchema.safeParse(formData.get("text"));
   if (!parsed.success) return;
 
-  await prisma.comment.create({
+  const comment = await prisma.comment.create({
     data: { cardId, authorId: user.id, text: parsed.data },
+    select: { id: true },
   });
 
   // Notify the card's assignees (except the author) who can still open the board (members
@@ -55,6 +57,9 @@ export async function addComment(formData: FormData): Promise<void> {
       ),
   );
   revalidateBoard(ctx.boardId);
+  await emitCard("comment.created", await cardSnapshot(cardId), user.id, {
+    comment: { id: comment.id, text: parsed.data },
+  });
 }
 
 export async function deleteComment(formData: FormData): Promise<void> {

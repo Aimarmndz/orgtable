@@ -2,6 +2,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/app/lib/prisma";
 import { getBoardsForUser } from "@/app/lib/queries";
 import { recordAudit } from "@/app/lib/audit";
+import { emitBoardEvent } from "@/app/lib/webhooks/dispatch";
 import { boardTitleSchema } from "@/app/lib/validators";
 import { authenticateApiToken, isReadOnly } from "@/app/lib/api/auth";
 import { apiError, apiOk, apiValidationError } from "@/app/lib/api/respond";
@@ -80,6 +81,7 @@ export async function POST(request: Request) {
     targetId: board.id,
     detail: `api: ${board.title}`,
   });
+  await emitBoardEvent({ event: "board.created", boardId: board.id, actorId: auth.userId, data: { board: { id: board.id, title: board.title } } });
   revalidatePath("/boards");
   return apiOk(serializeBoardSummary(board), 201);
 }

@@ -2,6 +2,7 @@
 
 import { prisma } from "@/app/lib/prisma";
 import { revalidateBoard } from "@/app/lib/realtime/notify";
+import { emitList } from "@/app/lib/webhooks/emit";
 import { requireBoardAccess } from "@/app/lib/dal";
 import { canEditBoard } from "@/app/lib/roles";
 import { z } from "zod";
@@ -18,13 +19,14 @@ const reorderListSchema = z.object({
 
 export async function createList(formData: FormData): Promise<void> {
   const boardId = String(formData.get("boardId"));
-  const { role } = await requireBoardAccess(boardId);
+  const { user, role } = await requireBoardAccess(boardId);
   if (!canEditBoard(role)) return;
   const parsed = listTitleSchema.safeParse(formData.get("title"));
   if (!parsed.success) return;
 
-  await createListAtEnd({ boardId, title: parsed.data });
+  const list = await createListAtEnd({ boardId, title: parsed.data });
   revalidateBoard(boardId);
+  await emitList("list.created", { id: list.id, title: parsed.data, boardId }, user.id);
 }
 
 export async function renameList(formData: FormData): Promise<void> {
@@ -47,16 +49,17 @@ export async function deleteList(formData: FormData): Promise<void> {
   const listId = String(formData.get("listId"));
   const list = await prisma.list.findUnique({
     where: { id: listId },
-    select: { boardId: true },
+    select: { boardId: true, title: true },
   });
   if (!list) return;
-  const { role } = await requireBoardAccess(list.boardId);
+  const { user, role } = await requireBoardAccess(list.boardId);
   if (!canEditBoard(role)) return;
 
   // Cards are deleted in cascade (onDelete: Cascade in the schema); the service deletes
   // their attachment files.
   await deleteListWithAttachments(listId);
   revalidateBoard(list.boardId);
+  await emitList("list.deleted", { id: listId, title: list.title, boardId: list.boardId }, user.id);
 }
 
 /**

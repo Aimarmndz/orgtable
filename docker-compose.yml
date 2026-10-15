@@ -60,6 +60,9 @@ services:
       # docs/landing.md.
       ORGTABLE_LANDING: ${ORGTABLE_LANDING:-}
       ORGTABLE_INSTALL_URL: ${ORGTABLE_INSTALL_URL:-}
+      # 1 = webhooks may call private addresses and plain http (targets on your own
+      # network). Empty = refused. See docs/webhooks.md.
+      ORGTABLE_WEBHOOKS_ALLOW_PRIVATE: ${ORGTABLE_WEBHOOKS_ALLOW_PRIVATE:-}
       # Email (optional): password reset links and employee invitations. Empty = off.
       # See docs/email.md.
       ORGTABLE_SMTP_URL: ${ORGTABLE_SMTP_URL:-}

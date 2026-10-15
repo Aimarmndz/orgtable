@@ -1,0 +1,130 @@
+{
+  "text": {
+    "card.created": "{actor} creó la tarjeta «{card}» en {list}",
+    "card.updated": "{actor} editó la tarjeta «{card}»",
+    "card.moved": "{actor} movió la tarjeta «{card}» de {from} a {to}",
+    "card.deleted": "{actor} borró la tarjeta «{card}»",
+    "comment.created": "{actor} comentó en «{card}»: {comment}",
+    "list.created": "{actor} creó la lista {list}",
+    "list.deleted": "{actor} borró la lista {list}",
+    "board.created": "{actor} creó el tablero {board}",
+    "board.deleted": "{actor} borró el tablero {board}",
+    "member.added": "{actor} añadió a {member} al tablero",
+    "member.removed": "{actor} quitó a {member} del tablero",
+    "member.role_changed": "{actor} cambió el rol de {member}",
+    "ping": "Prueba de orgtable: este webhook funciona.",
+    "someone": "Alguien",
+    "open": "Abrir en orgtable"
+  },
+  "page": {
+    "title": "Webhooks",
+    "subtitle": "orgtable avisa a otros sistemas de lo que pasa en vuestros tableros, con firma para que sepan que somos nosotros.",
+    "new": "Nuevo webhook",
+    "empty": "Aún no hay webhooks.",
+    "endpoints": "Destinos",
+    "recent": "Entregas recientes",
+    "noDeliveries": "Aún no se ha enviado nada.",
+    "failing": {
+      "one": "{count} webhook está fallando o se apagó.",
+      "other": "{count} webhooks están fallando o se apagaron."
+    },
+    "scopeOrg": "Toda la organización",
+    "scopeBoard": "Tablero: {board}",
+    "events": {
+      "one": "{count} evento",
+      "other": "{count} eventos"
+    },
+    "active": "Activo",
+    "paused": "En pausa",
+    "disabled": "Apagado tras fallar",
+    "never": "sin usar",
+    "noKey": "Los webhooks necesitan ORGTABLE_SECRET_KEY en el servidor para guardar sus secretos de firma. Pídeselo a quien administra esta instancia.",
+    "verifyTitle": "Comprobar la firma",
+    "verifyText": "Cada petición lleva estas cabeceras. Calcula el HMAC-SHA256 de la marca de tiempo t, un punto y el cuerpo tal cual con tu secreto, y compáralo con v1; rechaza marcas de tiempo de hace más de 5 minutos.",
+    "scopeNote": "Los webhooks de toda la organización llevan los tableros compartidos con toda ella. Los eventos de un tablero privado solo van a los webhooks de ese tablero."
+  },
+  "status": {
+    "PENDING": "Pendiente",
+    "SUCCESS": "Entregado",
+    "FAILED": "Falló"
+  },
+  "form": {
+    "name": "Nombre",
+    "url": "URL",
+    "urlHint": "Solo HTTPS. Las direcciones de redes privadas se rechazan.",
+    "format": "Formato",
+    "formats": {
+      "JSON": "JSON (orgtable)",
+      "SLACK": "Slack",
+      "DISCORD": "Discord",
+      "TEAMS": "Microsoft Teams"
+    },
+    "scope": "Ámbito",
+    "scopeOrg": "Todos los tableros compartidos con la organización",
+    "events": "Eventos",
+    "all": "Todos",
+    "groups": {
+      "cards": "Tarjetas",
+      "lists": "Listas",
+      "boards": "Tableros",
+      "members": "Miembros"
+    },
+    "create": "Crear webhook",
+    "save": "Guardar",
+    "saved": "Webhook guardado.",
+    "secretTitle": "Secreto de firma",
+    "secretOnce": "Cópialo ahora: no se volverá a mostrar.",
+    "secretHidden": "El secreto se guarda cifrado y no se vuelve a mostrar. Rótalo para tener uno nuevo; el anterior sigue valiendo 24 horas.",
+    "rotate": "Rotar el secreto",
+    "copy": "Copiar",
+    "copied": "Copiado",
+    "open": "Abrir el webhook",
+    "ping": "Enviar una prueba",
+    "pingOk": "Prueba entregada (HTTP {status}).",
+    "pingFailed": "La prueba falló: {error}",
+    "pause": "Pausar",
+    "resume": "Activar",
+    "delete": "Borrar webhook",
+    "deleteText": "Su registro de entregas también se borra.",
+    "deliveries": "Entregas",
+    "request": "Petición",
+    "response": "Respuesta",
+    "redeliver": "Reenviar",
+    "attempts": {
+      "one": "{count} intento",
+      "other": "{count} intentos"
+    },
+    "nextTry": "próximo intento {date}",
+    "back": "Todos los webhooks"
+  },
+  "integrations": {
+    "title": "Apps y entrantes",
+    "subtitle": "Publica lo que pasa en el chat de tu equipo y deja que otras herramientas creen tarjetas.",
+    "chats": "Apps de chat",
+    "connect": "Conectar",
+    "connected": {
+      "one": "{count} canal conectado",
+      "other": "{count} canales conectados"
+    },
+    "notConnected": "Sin conectar",
+    "slackText": "Crea un webhook entrante en Slack y pega su URL.",
+    "discordText": "Ajustes del canal › Integraciones › Webhooks, y pega su URL.",
+    "teamsText": "Añade el conector Incoming Webhook (o un webhook de Workflows) y pega su URL.",
+    "incoming": "Webhooks entrantes",
+    "incomingText": "Una URL secreta que crea una tarjeta en una lista cada vez que algo le hace POST: un formulario web, una alerta, Zapier…",
+    "noIncoming": "Aún no hay webhooks entrantes.",
+    "newIncoming": "Nuevo webhook entrante",
+    "list": "Crea tarjetas en",
+    "pickList": "Elige una lista",
+    "create": "Crear URL",
+    "urlOnce": "Copia esta URL ahora: no se volverá a mostrar. Quien la tenga puede crear tarjetas.",
+    "regenerate": "Nueva URL",
+    "uses": {
+      "one": "{count} tarjeta",
+      "other": "{count} tarjetas"
+    },
+    "lastUsed": "último uso {date}",
+    "howTo": "Así se usa",
+    "howToText": "Solo title es obligatorio. También admite description, labels (nombres de etiquetas del tablero), due (una fecha) y assignee (el correo de alguien del tablero). Hasta 60 tarjetas por minuto por URL."
+  }
+}

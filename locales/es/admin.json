@@ -180,7 +180,16 @@
       "workspace.security_updated": "Política de seguridad cambiada",
       "workspace.security_sessions_revoked": "Sesiones de un empleado cerradas",
       "workspace.security_two_factor_reset": "Verificación en dos pasos de un empleado restablecida",
-      "workspace.brand_updated": "Marca cambiada"
+      "workspace.brand_updated": "Marca cambiada",
+      "workspace.webhook_created": "Webhook creado",
+      "workspace.webhook_updated": "Webhook editado",
+      "workspace.webhook_deleted": "Webhook borrado",
+      "workspace.webhook_secret_rotated": "Secreto de webhook rotado",
+      "workspace.webhook_enabled": "Webhook activado",
+      "workspace.webhook_disabled": "Webhook en pausa",
+      "workspace.incoming_created": "Webhook entrante creado",
+      "workspace.incoming_regenerated": "URL de webhook entrante cambiada",
+      "workspace.incoming_deleted": "Webhook entrante borrado"
     }
   },
   "workspaces": {

@@ -46,6 +46,7 @@ describe("purgeExpiredData", () => {
       sessionsDeleted: 2,
       notificationsDeleted: 1,
       accountLinksDeleted: 0,
+      webhookDeliveriesDeleted: 0,
     });
     expect((await prisma.auditLog.findMany()).map((a) => a.ip)).toEqual(["203.0.113.2"]);
     expect(await prisma.session.count()).toBe(2);

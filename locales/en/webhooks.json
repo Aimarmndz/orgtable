@@ -1,0 +1,130 @@
+{
+  "text": {
+    "card.created": "{actor} created the card «{card}» in {list}",
+    "card.updated": "{actor} edited the card «{card}»",
+    "card.moved": "{actor} moved the card «{card}» from {from} to {to}",
+    "card.deleted": "{actor} deleted the card «{card}»",
+    "comment.created": "{actor} commented on «{card}»: {comment}",
+    "list.created": "{actor} created the list {list}",
+    "list.deleted": "{actor} deleted the list {list}",
+    "board.created": "{actor} created the board {board}",
+    "board.deleted": "{actor} deleted the board {board}",
+    "member.added": "{actor} added {member} to the board",
+    "member.removed": "{actor} removed {member} from the board",
+    "member.role_changed": "{actor} changed the role of {member}",
+    "ping": "Test from orgtable: this webhook works.",
+    "someone": "Someone",
+    "open": "Open in orgtable"
+  },
+  "page": {
+    "title": "Webhooks",
+    "subtitle": "orgtable tells other systems what happens in your boards, signed so they know it was us.",
+    "new": "New webhook",
+    "empty": "No webhooks yet.",
+    "endpoints": "Destinations",
+    "recent": "Recent deliveries",
+    "noDeliveries": "Nothing sent yet.",
+    "failing": {
+      "one": "{count} webhook is failing or was switched off.",
+      "other": "{count} webhooks are failing or were switched off."
+    },
+    "scopeOrg": "Whole organization",
+    "scopeBoard": "Board: {board}",
+    "events": {
+      "one": "{count} event",
+      "other": "{count} events"
+    },
+    "active": "Active",
+    "paused": "Paused",
+    "disabled": "Switched off after failing",
+    "never": "never used",
+    "noKey": "Webhooks need ORGTABLE_SECRET_KEY on the server to keep their signing secrets. Ask whoever runs this instance.",
+    "verifyTitle": "Verifying the signature",
+    "verifyText": "Each request carries these headers. Compute HMAC-SHA256 of the timestamp t, a dot and the raw body with your secret, and compare it with v1; refuse timestamps older than 5 minutes.",
+    "scopeNote": "Organization-wide webhooks carry the boards shared with the whole organization. A private board's events only go to webhooks of that board."
+  },
+  "status": {
+    "PENDING": "Pending",
+    "SUCCESS": "Delivered",
+    "FAILED": "Failed"
+  },
+  "form": {
+    "name": "Name",
+    "url": "URL",
+    "urlHint": "HTTPS only. Addresses inside private networks are refused.",
+    "format": "Format",
+    "formats": {
+      "JSON": "JSON (orgtable)",
+      "SLACK": "Slack",
+      "DISCORD": "Discord",
+      "TEAMS": "Microsoft Teams"
+    },
+    "scope": "Scope",
+    "scopeOrg": "Every board shared with the organization",
+    "events": "Events",
+    "all": "All",
+    "groups": {
+      "cards": "Cards",
+      "lists": "Lists",
+      "boards": "Boards",
+      "members": "Members"
+    },
+    "create": "Create webhook",
+    "save": "Save",
+    "saved": "Webhook saved.",
+    "secretTitle": "Signing secret",
+    "secretOnce": "Copy it now: it will not be shown again.",
+    "secretHidden": "The secret is kept encrypted and never shown again. Rotate it to get a new one; the old one keeps working for 24 hours.",
+    "rotate": "Rotate secret",
+    "copy": "Copy",
+    "copied": "Copied",
+    "open": "Open the webhook",
+    "ping": "Send a test",
+    "pingOk": "Test delivered (HTTP {status}).",
+    "pingFailed": "The test failed: {error}",
+    "pause": "Pause",
+    "resume": "Turn on",
+    "delete": "Delete webhook",
+    "deleteText": "Its log of deliveries goes too.",
+    "deliveries": "Deliveries",
+    "request": "Request",
+    "response": "Response",
+    "redeliver": "Send again",
+    "attempts": {
+      "one": "{count} attempt",
+      "other": "{count} attempts"
+    },
+    "nextTry": "next try {date}",
+    "back": "All webhooks"
+  },
+  "integrations": {
+    "title": "Apps and incoming",
+    "subtitle": "Post what happens to your team's chat, and let other tools create cards.",
+    "chats": "Chat apps",
+    "connect": "Connect",
+    "connected": {
+      "one": "{count} channel connected",
+      "other": "{count} channels connected"
+    },
+    "notConnected": "Not connected",
+    "slackText": "Create an incoming webhook in Slack and paste its URL.",
+    "discordText": "Channel settings › Integrations › Webhooks, then paste its URL.",
+    "teamsText": "Add the Incoming Webhook connector (or a Workflows webhook) and paste its URL.",
+    "incoming": "Incoming webhooks",
+    "incomingText": "A secret URL that creates a card in a list each time something POSTs to it: a web form, an alert, Zapier…",
+    "noIncoming": "No incoming webhooks yet.",
+    "newIncoming": "New incoming webhook",
+    "list": "Creates cards in",
+    "pickList": "Choose a list",
+    "create": "Create URL",
+    "urlOnce": "Copy this URL now: it will not be shown again. Anyone with it can create cards.",
+    "regenerate": "New URL",
+    "uses": {
+      "one": "{count} card",
+      "other": "{count} cards"
+    },
+    "lastUsed": "last used {date}",
+    "howTo": "How to use it",
+    "howToText": "Only title is required. It also takes description, labels (names of the board's labels), due (a date) and assignee (an email of someone on the board). Up to 60 cards a minute per URL."
+  }
+}

@@ -126,13 +126,18 @@
       "roles": "Qué puede hacer cada rol, y vuestros propios roles",
       "teams": "Grupos de personas que comparten acceso a tableros",
       "audit": "Quién hizo qué, y cuándo",
-      "security": "Verificación en dos pasos, dominios de correo y sesiones"
+      "security": "Verificación en dos pasos, dominios de correo y sesiones",
+      "webhooks": "Avisa a otros sistemas de lo que pasa, con firma",
+      "integrations": "Slack, Discord, Teams y webhooks entrantes"
     },
     "roles": "Roles y permisos",
     "teams": "Equipos",
     "dataGroup": "Datos y seguridad",
     "audit": "Registro de actividad",
-    "security": "Seguridad"
+    "security": "Seguridad",
+    "integrationsGroup": "Integraciones",
+    "webhooks": "Webhooks",
+    "integrations": "Apps y entrantes"
   },
   "general": {
     "title": "General",

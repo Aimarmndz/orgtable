@@ -1,4 +1,5 @@
 import { prisma } from "@/app/lib/prisma";
+import { cardSnapshot, emitCard } from "@/app/lib/webhooks/emit";
 import { revalidateBoard } from "@/app/lib/realtime/notify";
 import { canEditBoard } from "@/app/lib/roles";
 import { apiCardUpdateSchema } from "@/app/lib/validators";
@@ -95,6 +96,7 @@ export async function PATCH(
   await prisma.card.update({ where: { id }, data });
   const card = await loadCard(id);
   revalidateBoard(existing.list.boardId);
+  await emitCard("card.updated", await cardSnapshot(id), auth.userId, { changes: Object.keys(data) });
   return apiOk(card ? serializeCard(card) : { id });
 }
 
@@ -119,7 +121,9 @@ export async function DELETE(
     return apiError(403, "You need edit permission on this board.");
   }
 
+  const before = await cardSnapshot(id);
   await deleteCardWithAttachments(id);
   revalidateBoard(existing.list.boardId);
+  await emitCard("card.deleted", before, auth.userId);
   return apiOk({ deleted: true });
 }

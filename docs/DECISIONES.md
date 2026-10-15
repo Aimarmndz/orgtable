@@ -7,6 +7,40 @@ living log from 2026-09-24 onwards.
 
 ---
 
+## 2026-10-15 — Webhooks: a delivery table, signed bodies and an SSRF guard in the lookup
+
+**Context.** The owner asked for webhooks "per organization and per board", ready-made Slack,
+Discord and Teams integrations, and incoming webhooks. orgtable has no job queue (ADR 0004)
+and must not become a way to call the operator's own network.
+
+**Decision.**
+- `WebhookDelivery` is the queue: one row per event and webhook with the body already
+  rendered, claimed with `FOR UPDATE SKIP LOCKED` and a lease. Sent at once in the background;
+  retries (1 min … 6 h, six attempts) by `POST /api/cron/webhooks`, like the other cron jobs.
+  Fifteen final failures in a row switch the webhook off.
+- Signature `t=<ts>,v1=<HMAC-SHA256("<ts>.<body>")>`, Stripe-style, with a second `v1` during
+  a 24 h rotation window. Secrets encrypted with `ORGTABLE_SECRET_KEY`.
+- Scope: organization-wide webhooks only carry boards shared with the whole organization;
+  private boards need a board webhook made by someone who can open the board.
+- Slack, Discord and Teams are webhooks with a format, not OAuth apps: one sentence in the
+  creator's language, escaped per chat (Discord `allowed_mentions`, Slack `&lt;`).
+- SSRF: https only, and every address checked inside the socket's `lookup` (catches DNS
+  rebinding), plus IP literals before connecting; tests found that Node skips `lookup` for
+  literals. `ORGTABLE_WEBHOOKS_ALLOW_PRIVATE=1` for targets on the operator's network.
+- Incoming: a hashed secret token per list, acting on behalf of its creator, rate limited.
+
+**Alternatives considered.**
+- A queue (Redis, pg-boss): more infrastructure for a few events a minute; the table also gives
+  the delivery log for free.
+- Slack/Discord OAuth apps: need registering an app per instance; incoming webhook URLs work
+  for everyone today.
+- Validating the URL only when saved: DNS can change after.
+
+**Consequences.** Without the webhooks cron job, failed deliveries are only retried when
+another event is sent. Every new board mutation should call the emit helpers.
+
+---
+
 ## 2026-10-15 — An organization's security policy is enforced in access.ts
 
 **Context.** The approved Security page: mandatory two-step verification with an adoption bar,

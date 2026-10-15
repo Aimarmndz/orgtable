@@ -28,11 +28,15 @@ export const ENDED_SESSION_RETENTION_DAYS = 30;
 /** Days a notification is kept, read or not. */
 export const NOTIFICATION_RETENTION_DAYS = 180;
 
+/** Days the log of webhook deliveries (bodies and answers) is kept. */
+export const WEBHOOK_DELIVERY_RETENTION_DAYS = 30;
+
 export type MaintenanceResult = {
   auditLogsDeleted: number;
   sessionsDeleted: number;
-    notificationsDeleted: number;
+  notificationsDeleted: number;
   accountLinksDeleted: number;
+  webhookDeliveriesDeleted: number;
 };
 
 export async function purgeExpiredData(now: Date): Promise<MaintenanceResult> {
@@ -42,7 +46,9 @@ export async function purgeExpiredData(now: Date): Promise<MaintenanceResult> {
     now.getTime() - NOTIFICATION_RETENTION_DAYS * DAY_MS,
   );
 
-    const [audit, sessions, notifications, links] = await prisma.$transaction([
+  const deliveryCutoff = new Date(now.getTime() - WEBHOOK_DELIVERY_RETENTION_DAYS * DAY_MS);
+
+  const [audit, sessions, notifications, links, deliveries] = await prisma.$transaction([
     prisma.auditLog.deleteMany({ where: { createdAt: { lt: auditCutoff } } }),
     prisma.session.deleteMany({
       where: {
@@ -52,9 +58,13 @@ export async function purgeExpiredData(now: Date): Promise<MaintenanceResult> {
         ],
       },
     }),
-        prisma.notification.deleteMany({ where: { createdAt: { lt: notificationCutoff } } }),
+    prisma.notification.deleteMany({ where: { createdAt: { lt: notificationCutoff } } }),
     // Emailed password links that expired without being used (docs/email.md).
     prisma.accountToken.deleteMany({ where: { expiresAt: { lt: now } } }),
+    // Webhook deliveries that finished long ago (a pending one is never deleted).
+    prisma.webhookDelivery.deleteMany({
+      where: { createdAt: { lt: deliveryCutoff }, status: { not: "PENDING" } },
+    }),
   ]);
 
   return {
@@ -62,5 +72,6 @@ export async function purgeExpiredData(now: Date): Promise<MaintenanceResult> {
     sessionsDeleted: sessions.count,
     notificationsDeleted: notifications.count,
     accountLinksDeleted: links.count,
+    webhookDeliveriesDeleted: deliveries.count,
   };
 }

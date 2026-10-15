@@ -110,6 +110,8 @@ model Workspace {
   managedUsers    User[]            @relation("ManagedUsers")
   customRoles     WorkspaceCustomRole[]
   teams           Team[]
+  webhooks        Webhook[]
+  incomingHooks   IncomingHook[]
 }
 
 model WorkspaceMember {
@@ -301,6 +303,8 @@ model Board {
   labels      Label[]
   members     BoardMember[]
   teams       TeamBoard[]
+  webhooks    Webhook[]
+  incoming    IncomingHook[]
 
   @@unique([workspaceId, slug])
   @@unique([workspaceId, id])
@@ -322,6 +326,7 @@ model List {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   cards     Card[]
+  incoming  IncomingHook[]
 
   @@index([boardId])
 }
@@ -522,4 +527,100 @@ model Comment {
   createdAt DateTime @default(now())
 
   @@index([cardId, createdAt])
+}
+
+// --- Webhooks (docs/webhooks.md) ------------------------------------------------------------
+
+// What a webhook sends: orgtable's own JSON, or a message already formatted for a chat.
+enum WebhookFormat {
+  JSON
+  SLACK
+  DISCORD
+  TEAMS
+}
+
+// An outgoing webhook of an organization: every board of it (boardId null) or one board. The
+// board's foreign key includes workspaceId, so a webhook never points at another
+// organization's board. The signing secret is encrypted (app/lib/crypto/secrets.ts); after a
+// rotation the previous one keeps signing too until previousSecretUntil.
+model Webhook {
+  id                  String            @id @default(cuid())
+  workspaceId         String
+  workspace           Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  boardId             String?
+  board               Board?            @relation(fields: [workspaceId, boardId], references: [workspaceId, id], onDelete: Cascade)
+  name                String
+  url                 String
+  format              WebhookFormat     @default(JSON)
+  // Event names (app/lib/webhooks/events.ts).
+  events              String[]
+  secretEnc           String
+  previousSecretEnc   String?
+  previousSecretUntil DateTime?
+  active              Boolean           @default(true)
+  // Final failures in a row. At the limit the webhook is switched off (disabledAt) and the
+  // settings page says why.
+  consecutiveFailures Int               @default(0)
+  disabledAt          DateTime?
+  createdById         String?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  deliveries          WebhookDelivery[]
+
+  @@unique([workspaceId, id])
+  @@index([workspaceId])
+}
+
+enum WebhookDeliveryStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+// One event sent (or to be sent) to one webhook, with every attempt's outcome. Retried with
+// growing waits; kept for 30 days (POST /api/cron/maintenance).
+model WebhookDelivery {
+  id             String                @id @default(cuid())
+  webhookId      String
+  webhook        Webhook               @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+  event          String
+  // The exact body sent (already in the webhook's format), so a retry or a redelivery sends
+  // the same bytes and the log shows what went out.
+  body           String
+  status         WebhookDeliveryStatus @default(PENDING)
+  attempts       Int                   @default(0)
+  nextAttemptAt  DateTime?
+  // Who is sending it now (a claim with a deadline, so a crashed sender does not hold it).
+  lockedUntil    DateTime?
+  responseStatus Int?
+  responseBody   String?
+  error          String?
+  durationMs     Int?
+  createdAt      DateTime              @default(now())
+  deliveredAt    DateTime?
+
+  @@index([status, nextAttemptAt])
+  @@index([webhookId, createdAt])
+}
+
+// An incoming webhook: a secret URL that creates cards in one list of one board
+// (POST /api/hooks/in/<token>). Only the SHA-256 of the token is kept, like API tokens.
+model IncomingHook {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  boardId     String
+  board       Board     @relation(fields: [workspaceId, boardId], references: [workspaceId, id], onDelete: Cascade)
+  listId      String
+  list        List      @relation(fields: [listId], references: [id], onDelete: Cascade)
+  name        String
+  tokenHash   String    @unique
+  // The first characters of the token, to recognise it in the list.
+  prefix      String
+  createdById String?
+  createdAt   DateTime  @default(now())
+  lastUsedAt  DateTime?
+  useCount    Int       @default(0)
+
+  @@index([workspaceId])
 }

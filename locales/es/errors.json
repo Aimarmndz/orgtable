@@ -135,5 +135,16 @@
     "badLogo": "El logo tiene que ser una imagen PNG, JPEG o WebP.",
     "logoTooBig": "El logo puede ocupar hasta 512 KB.",
     "badTimezone": "Esa zona horaria no existe."
+  },
+  "webhooks": {
+    "nameRequired": "Ponle un nombre.",
+    "nameTooLong": "El nombre puede tener hasta 60 caracteres.",
+    "urlInvalid": "Esa URL no es válida.",
+    "notHttps": "La URL tiene que empezar por https://.",
+    "wrongService": "Esa URL no es de la app elegida.",
+    "noEvents": "Elige al menos un evento.",
+    "tooMany": "Una organización puede tener hasta 25.",
+    "notFound": "Ese tablero o lista no existe aquí, o no puedes editarlo.",
+    "noKey": "Los webhooks necesitan ORGTABLE_SECRET_KEY en el servidor."
   }
 }

@@ -10,6 +10,7 @@ import { canManageBoard } from "@/app/lib/roles";
 import { boardPath } from "@/app/lib/slugs";
 import { createBoardWithSlug, freeBoardSlug } from "@/app/lib/services/workspaces";
 import { recordAudit } from "@/app/lib/audit";
+import { emitBoardEvent } from "@/app/lib/webhooks/dispatch";
 import {
   boardTitleSchema,
   boardImportSchema,
@@ -72,6 +73,7 @@ export async function createBoard(formData: FormData): Promise<void> {
     targetId: board.id,
     detail: board.title,
   });
+  await emitBoardEvent({ event: "board.created", boardId: board.id, actorId: user.id, data: { board: { id: board.id, title: board.title } } });
   revalidatePath("/boards");
   redirect(boardPath(workspace.slug, board.slug));
 }
@@ -271,7 +273,17 @@ export async function deleteBoard(formData: FormData): Promise<void> {
     role !== null && (canManageBoard(role) || (await holdsPermissionOnBoard(boardId, user.id, "boards.delete")));
   // Read before deleting: the audit event keeps the board's workspace and title.
   const before = allowed
-    ? await prisma.board.findUnique({ where: { id: boardId }, select: { workspaceId: true, title: true } })
+    ? await prisma.board.findUnique({
+        where: { id: boardId },
+        select: {
+          id: true,
+          workspaceId: true,
+          title: true,
+          slug: true,
+          visibility: true,
+          workspace: { select: { id: true, slug: true, name: true } },
+        },
+      })
     : null;
   const count = allowed ? await deleteBoardWithAttachments({ id: boardId }) : 0;
   if (count > 0) {
@@ -283,6 +295,15 @@ export async function deleteBoard(formData: FormData): Promise<void> {
       workspaceId: before?.workspaceId ?? null,
       detail: before?.title,
     });
+    if (before) {
+      await emitBoardEvent({
+        event: "board.deleted",
+        boardId,
+        actorId: user.id,
+        board: before,
+        data: { board: { id: before.id, title: before.title } },
+      });
+    }
     // Tell the board's open tabs (SSE) so that they stop showing it.
     revalidateBoard(boardId);
   }

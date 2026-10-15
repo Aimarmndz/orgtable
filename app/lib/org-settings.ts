@@ -94,16 +94,17 @@ export async function requireOrgPermission(
   return ctx;
 }
 
-export type OrgSettingsCounts = { members: number; roles: number; teams: number };
+export type OrgSettingsCounts = { members: number; roles: number; teams: number; webhooks: number };
 
 /** Figures shown next to the sections of the menu and the index (one round trip). */
 export const orgSettingsCounts = cache(async (workspaceId: string): Promise<OrgSettingsCounts> => {
-  const [members, customRoles, teams] = await Promise.all([
+  const [members, customRoles, teams, webhooks] = await Promise.all([
     prisma.workspaceMember.count({ where: { workspaceId } }),
     prisma.workspaceCustomRole.count({ where: { workspaceId } }),
     prisma.team.count({ where: { workspaceId } }),
+    prisma.webhook.count({ where: { workspaceId } }),
   ]);
-  return { members, roles: 3 + customRoles, teams };
+  return { members, roles: 3 + customRoles, teams, webhooks };
 });
 
 /**

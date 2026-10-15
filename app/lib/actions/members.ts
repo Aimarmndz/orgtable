@@ -10,6 +10,7 @@ import { getI18n, i18nFor, issueMessage } from "@/app/i18n/server";
 import { fmt } from "@/app/i18n/format";
 import { removeMemberFromBoard } from "@/app/lib/services/members";
 import { workspaceEmailAllowed } from "@/app/lib/services/org-security";
+import { emitBoardEvent } from "@/app/lib/webhooks/dispatch";
 import { addMemberSchema, assignableBoardRoleSchema } from "@/app/lib/validators";
 
 // Board member management. Only the OWNER can invite, change the role of or remove members.
@@ -98,6 +99,12 @@ export async function addBoardMember(
     targetId: boardId,
     detail: `${user.id} (${parsed.data.role})`,
   });
+  await emitBoardEvent({
+    event: "member.added",
+    boardId,
+    actorId: actor.id,
+    data: { member: { id: user.id, name: user.name }, role: parsed.data.role },
+  });
   // Notify the invitee, in their language.
   const board = await prisma.board.findUnique({
     where: { id: boardId },
@@ -152,6 +159,13 @@ export async function updateBoardMemberRole(formData: FormData): Promise<void> {
     targetId: boardId,
     detail: `${userId} → ${parsed.data}`,
   });
+  const changed = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, name: true } });
+  await emitBoardEvent({
+    event: "member.role_changed",
+    boardId,
+    actorId: actor.id,
+    data: { member: changed, role: parsed.data },
+  });
   const { m } = await recipientI18n(userId);
   await notify({
     userId,
@@ -189,6 +203,8 @@ export async function removeBoardMember(formData: FormData): Promise<void> {
     targetId: boardId,
     detail: userId,
   });
+  const gone = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, name: true } });
+  await emitBoardEvent({ event: "member.removed", boardId, actorId: actor.id, data: { member: gone } });
   // No boardId: the user no longer has access, so the notification has no link.
   const { m } = await recipientI18n(userId);
   await notify({

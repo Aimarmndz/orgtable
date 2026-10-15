@@ -1,4 +1,5 @@
 import { prisma } from "@/app/lib/prisma";
+import { emitList } from "@/app/lib/webhooks/emit";
 import { revalidateBoard } from "@/app/lib/realtime/notify";
 import { canEditBoard } from "@/app/lib/roles";
 import { listTitleSchema } from "@/app/lib/validators";
@@ -56,5 +57,6 @@ export async function POST(
 
   const list = await createListAtEnd({ boardId, title: parsed.data });
   revalidateBoard(boardId);
+  await emitList("list.created", { id: list.id, title: parsed.data, boardId }, auth.userId);
   return apiOk(serializeListSummary(list), 201);
 }

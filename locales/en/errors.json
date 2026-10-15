@@ -135,5 +135,16 @@
     "badLogo": "The logo must be a PNG, JPEG or WebP image.",
     "logoTooBig": "The logo can be up to 512 KB.",
     "badTimezone": "That time zone does not exist."
+  },
+  "webhooks": {
+    "nameRequired": "Give it a name.",
+    "nameTooLong": "The name can be up to 60 characters.",
+    "urlInvalid": "That URL is not valid.",
+    "notHttps": "The URL must start with https://.",
+    "wrongService": "That URL does not belong to the chosen app.",
+    "noEvents": "Choose at least one event.",
+    "tooMany": "An organization can have up to 25 of these.",
+    "notFound": "That board or list does not exist here, or you cannot edit it.",
+    "noKey": "Webhooks need ORGTABLE_SECRET_KEY on the server."
   }
 }

@@ -21,7 +21,8 @@ locales/
 │   ├── notifications.json # in-app notification texts
 │   ├── landing.json  # the public landing page at /
 │   ├── workspaces.json # organizations, members and employees
-│   └── emails.json   # the emails (password reset, invitation)
+│   ├── emails.json   # the emails (password reset, invitation)
+│   └── webhooks.json # webhooks, integrations and what they post to chats
 └── es/               # Spanish
 ```
 

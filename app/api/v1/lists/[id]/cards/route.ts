@@ -1,4 +1,5 @@
 import { prisma } from "@/app/lib/prisma";
+import { cardSnapshot, emitCard } from "@/app/lib/webhooks/emit";
 import { revalidateBoard } from "@/app/lib/realtime/notify";
 import { canEditBoard } from "@/app/lib/roles";
 import { apiCardCreateSchema } from "@/app/lib/validators";
@@ -91,5 +92,6 @@ export async function POST(
     include: cardInclude,
   });
   revalidateBoard(list.boardId);
+  await emitCard("card.created", await cardSnapshot(id), auth.userId);
   return apiOk(serializeCard(created), 201);
 }

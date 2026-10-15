@@ -126,13 +126,18 @@
       "roles": "What each role can do, and your own roles",
       "teams": "Groups of people that share access to boards",
       "audit": "Who did what, and when",
-      "security": "Two-step verification, email domains and sessions"
+      "security": "Two-step verification, email domains and sessions",
+      "webhooks": "Tell other systems what happens, signed",
+      "integrations": "Slack, Discord, Teams and incoming webhooks"
     },
     "roles": "Roles and permissions",
     "teams": "Teams",
     "dataGroup": "Data and security",
     "audit": "Activity log",
-    "security": "Security"
+    "security": "Security",
+    "integrationsGroup": "Integrations",
+    "webhooks": "Webhooks",
+    "integrations": "Apps and incoming"
   },
   "general": {
     "title": "General",

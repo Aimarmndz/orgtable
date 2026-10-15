@@ -14,6 +14,7 @@ import notifications from "./notifications.json";
 import landing from "./landing.json";
 import workspaces from "./workspaces.json";
 import emails from "./emails.json";
+import webhooks from "./webhooks.json";
 
 const messages = {
   common,
@@ -29,6 +30,7 @@ const messages = {
   landing,
   workspaces,
   emails,
+  webhooks,
 };
 
 const languagePack = { language, messages };

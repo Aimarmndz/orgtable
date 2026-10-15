@@ -40,6 +40,15 @@ behind each decision is in [`docs/DECISIONES.md`](./docs/DECISIONES.md).
   for everyone who opens its boards, limit employee accounts and board invitations to some
   email domains, and see, close and reset the sessions and two-step verification of the
   accounts the organization created.
+- **Webhooks** (`/<slug>/settings/webhooks`): outgoing webhooks for the whole organization
+  or one board, 12 events, HMAC-SHA256 signature with a timestamp, secret rotation with 24 h
+  of overlap, retries with growing waits (`POST /api/cron/webhooks`), automatic switch-off
+  after repeated failures, a delivery log with request and response, test and redeliver. An
+  SSRF guard refuses private addresses. See `docs/webhooks.md`.
+- **Slack, Discord and Microsoft Teams** (`/<slug>/settings/integrations`): webhooks whose
+  message is already written for the chat, escaped so nothing can ping everyone.
+- **Incoming webhooks**: a secret URL (`POST /api/hooks/in/<token>`) that creates cards with
+  labels, due date and assignee.
 - **Brand of an organization** (`/<slug>/settings/general`): logo (PNG/JPEG/WebP, type read
   from the bytes, SVG refused), brand colour with a preview, and the organization's time zone.
   The logo replaces the initials in the settings menu and the list of organizations.

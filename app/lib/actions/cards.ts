@@ -15,6 +15,7 @@ import { cardBelongsToBoard, createCardAtEnd } from "@/app/lib/services/cards";
 import { deleteCardWithAttachments } from "@/app/lib/services/attachments";
 import { isValidPositionKey } from "@/app/lib/ordering";
 import { getI18n } from "@/app/i18n/server";
+import { cardSnapshot, emitCard } from "@/app/lib/webhooks/emit";
 import { fmt } from "@/app/i18n/format";
 
 const setCardDueDateSchema = z.object({
@@ -49,13 +50,14 @@ export async function createCard(formData: FormData): Promise<void> {
   const listId = String(formData.get("listId"));
   const boardId = await boardIdForList(listId);
   if (!boardId) return;
-  const { role } = await requireBoardAccess(boardId);
+  const { user, role } = await requireBoardAccess(boardId);
   if (!canEditBoard(role)) return;
   const parsed = cardTitleSchema.safeParse(formData.get("title"));
   if (!parsed.success) return;
 
-  await createCardAtEnd({ listId, title: parsed.data });
+  const card = await createCardAtEnd({ listId, title: parsed.data });
   revalidateBoard(boardId);
+  await emitCard("card.created", await cardSnapshot(card.id), user.id);
 }
 
 /**
@@ -88,7 +90,7 @@ export async function updateCard(
     select: { description: true, list: { select: { boardId: true } } },
   });
   if (!card) return { error: m.errors.cards.notFound, ...submitted };
-  const { role } = await requireBoardAccess(card.list.boardId);
+  const { user, role } = await requireBoardAccess(card.list.boardId);
   if (!canEditBoard(role)) {
     return { error: m.errors.cards.noPermission, ...submitted };
   }
@@ -125,6 +127,9 @@ export async function updateCard(
     data: { ...newDescription, dueDate: toDueDate(parsedDue.data) },
   });
   revalidateBoard(card.list.boardId);
+  await emitCard("card.updated", await cardSnapshot(cardId), user.id, {
+    changes: [...(newDescription ? ["description"] : []), "dueDate"],
+  });
   return {};
 }
 
@@ -148,7 +153,7 @@ export async function setCardDueDate(input: {
     select: { list: { select: { boardId: true } } },
   });
   if (!card) return { ok: false };
-  const { role } = await requireBoardAccess(card.list.boardId);
+  const { user, role } = await requireBoardAccess(card.list.boardId);
   if (!canEditBoard(role)) return { ok: false };
 
   await prisma.card.update({
@@ -156,6 +161,7 @@ export async function setCardDueDate(input: {
     data: { dueDate: toDueDate(dueDate) },
   });
   revalidateBoard(card.list.boardId);
+  await emitCard("card.updated", await cardSnapshot(cardId), user.id, { changes: ["dueDate"] });
   return { ok: true };
 }
 
@@ -166,13 +172,14 @@ export async function renameCard(formData: FormData): Promise<void> {
     select: { list: { select: { boardId: true } } },
   });
   if (!card) return;
-  const { role } = await requireBoardAccess(card.list.boardId);
+  const { user, role } = await requireBoardAccess(card.list.boardId);
   if (!canEditBoard(role)) return;
   const parsed = cardTitleSchema.safeParse(formData.get("title"));
   if (!parsed.success) return;
 
   await prisma.card.update({ where: { id: cardId }, data: { title: parsed.data } });
   revalidateBoard(card.list.boardId);
+  await emitCard("card.updated", await cardSnapshot(cardId), user.id, { changes: ["title"] });
 }
 
 export async function deleteCard(formData: FormData): Promise<void> {
@@ -182,11 +189,13 @@ export async function deleteCard(formData: FormData): Promise<void> {
     select: { list: { select: { boardId: true } } },
   });
   if (!card) return;
-  const { role } = await requireBoardAccess(card.list.boardId);
+  const { user, role } = await requireBoardAccess(card.list.boardId);
   if (!canEditBoard(role)) return;
 
+  const before = await cardSnapshot(cardId);
   await deleteCardWithAttachments(cardId);
   revalidateBoard(card.list.boardId);
+  await emitCard("card.deleted", before, user.id);
 }
 
 /**
@@ -203,7 +212,7 @@ export async function moveCard(input: {
   const { cardId, toListId, position } = parsed.data;
   const boardId = await boardIdForList(toListId);
   if (!boardId) return { ok: false };
-  const { role } = await requireBoardAccess(boardId);
+  const { user, role } = await requireBoardAccess(boardId);
   if (!canEditBoard(role)) return { ok: false };
 
   // Security (IDOR): the card must ALREADY belong to the SAME destination board. Without
@@ -212,10 +221,16 @@ export async function moveCard(input: {
   // allow it either: dragging happens within a single board).
   if (!(await cardBelongsToBoard(cardId, boardId))) return { ok: false };
 
+  const before = await cardSnapshot(cardId);
   await prisma.card.update({
     where: { id: cardId },
     data: { listId: toListId, position },
   });
   revalidateBoard(boardId);
+  // Only a change of list is an event; reordering within a list is not worth a message.
+  if (before && before.list.id !== toListId) {
+    const after = await cardSnapshot(cardId);
+    await emitCard("card.moved", after, user.id, { from: before.list, to: after?.list });
+  }
   return { ok: true };
 }
