@@ -5,7 +5,7 @@
 ### Tu trabajo, en columnas que respiran.
 
 Tableros Kanban de código abierto: tableros, listas y tarjetas con arrastrar y soltar,<br>
-en tiempo real y con tus datos donde tú decidas. Una alternativa a Trello que puedes alojar tú.
+en tiempo real. Gratis para personas y empresas en orgtable.aimar.dev, o en tu propio servidor.
 
 [![CI](https://github.com/Aimarmndz/orgtable/actions/workflows/ci.yml/badge.svg)](https://github.com/Aimarmndz/orgtable/actions/workflows/ci.yml)
 [![Licencia: AGPL-3.0-or-later](https://img.shields.io/badge/licencia-AGPL--3.0--or--later-9b411e)](./LICENSE)
@@ -19,7 +19,7 @@ en tiempo real y con tus datos donde tú decidas. Una alternativa a Trello que p
 
 <br>
 
-<img src="docs/screenshots/hero.gif" alt="Un tablero de orgtable: se arrastra la tarjeta «Team photos» de la lista In progress a Review y después se abre el detalle de «Build the home page» (la interfaz de las capturas está en inglés), con etiquetas, asignados, descripción, vencimiento y checklist" width="960">
+<img src="docs/screenshots/hero.gif" alt="Un tablero de la organización Northwind Studio en /northwind/website-launch: se arrastra la tarjeta «Team photos» de la lista In progress a Review y después se abre el detalle de «Build the home page» (la interfaz de las capturas está en inglés), con etiquetas, asignados, descripción, vencimiento y checklist" width="960">
 
 <sub>Sin montaje: la app real con datos de ejemplo, grabada en el navegador.</sub>
 
@@ -60,15 +60,27 @@ con Docker, con un solo comando.
 
 <table>
   <tr>
+    <td width="50%" align="center" valign="top"><img src="docs/screenshots/landing-light.webp" alt="La landing pública en estilo retro: «Your boards. Your server.», un tablero de ejemplo en una ventana y botones para crear una cuenta gratis, registrar una empresa o instalarlo" width="100%"><br><sub><b>Landing</b>. Gratis en la web, o en tu propio servidor.</sub></td>
+    <td width="50%" align="center" valign="top"><img src="docs/screenshots/register-light.webp" alt="Formulario de registro con la opción «Para mí» o «Para mi organización», y el nombre y la dirección de la organización" width="100%"><br><sub><b>Regístrate</b> tú o tu organización, gratis.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center" valign="top"><img src="docs/screenshots/org-members-light.webp" alt="Miembros de la organización Northwind Studio: tarjetas con el resumen de roles, una tabla con el rol de cada persona y botones para cambiar el rol, poner una contraseña nueva o expulsar, y el formulario para crear una cuenta de empleado" width="100%"><br><sub><b>Tu organización</b>. Empleados, roles y quién puede hacer qué.</sub></td>
+    <td width="50%" align="center" valign="top"><img src="docs/screenshots/workspace-light.webp" alt="La página de la organización Northwind Studio en /northwind con sus tableros" width="100%"><br><sub><b>Cada organización tiene su dirección</b>: <code>/northwind/website-launch</code>.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center" valign="top"><img src="docs/screenshots/org-general-light.webp" alt="Ajustes de la organización: nombre y dirección, salir de la organización y una zona de peligro para borrarla" width="100%"><br><sub><b>Ajustes de la organización</b>, con zona de peligro.</sub></td>
+    <td width="50%" align="center" valign="top"><img src="docs/screenshots/admin-light.webp" alt="El resumen de la administración de la instancia: cifras del servicio y cada organización con sus propietarios, miembros, tableros y estado, y botones para suspender o borrar" width="100%"><br><sub><b>Administración</b>. Cifras y todos los espacios, nunca su contenido.</sub></td>
+  </tr>
+  <tr>
     <td width="50%" align="center" valign="top"><img src="docs/screenshots/realtime.gif" alt="Dos navegadores con el mismo tablero: en el de la izquierda Lucía mueve la tarjeta «Monthly newsletter» a To do y en el de la derecha Marcos la ve aparecer al momento" width="100%"><br><sub><b>Tiempo real</b>. Lucía mueve una tarjeta y Marcos la ve al instante.</sub></td>
     <td width="50%" align="center" valign="top"><img src="docs/screenshots/card-dark.webp" alt="Detalle de una tarjeta en tema oscuro con etiquetas, asignados, descripción, vencimiento y una checklist a la mitad" width="100%"><br><sub><b>Detalle de tarjeta</b>, en tema oscuro.</sub></td>
   </tr>
   <tr>
     <td width="50%" align="center" valign="top"><img src="docs/screenshots/calendar-light.webp" alt="Vista de calendario de octubre con las tarjetas colocadas en su día de vencimiento" width="100%"><br><sub><b>Calendario</b>. Arrastra para cambiar el vencimiento.</sub></td>
-    <td width="50%" align="center" valign="top"><img src="docs/screenshots/boards-light.webp" alt="Índice de tableros con su color, el número de tarjetas y las iniciales de quien está dentro, y el menú de la cuenta" width="100%"><br><sub><b>Tus tableros</b>, con quién está en cada uno.</sub></td>
+    <td width="50%" align="center" valign="top"><img src="docs/screenshots/boards-light.webp" alt="Tus tableros agrupados por espacio: los personales y los de la organización Northwind Studio" width="100%"><br><sub><b>Tus tableros</b>, agrupados por espacio.</sub></td>
   </tr>
   <tr>
-    <td width="50%" align="center" valign="top"><img src="docs/screenshots/settings-light.webp" alt="Página de ajustes con navegación lateral: perfil, contraseña y sesiones, tokens de API, apariencia, privacidad y datos, y acerca de" width="100%"><br><sub><b>Ajustes</b>. Perfil, sesiones, tokens y tus datos.</sub></td>
+    <td width="50%" align="center" valign="top"><img src="docs/screenshots/settings-light.webp" alt="Página de ajustes con navegación lateral: perfil con tu dirección personal, contraseña y sesiones, tokens de API, apariencia, privacidad y datos" width="100%"><br><sub><b>Ajustes</b>. Perfil, tu dirección, sesiones y tus datos.</sub></td>
     <td width="50%" align="center" valign="top"><img src="docs/screenshots/board-dark.webp" alt="El mismo tablero en tema oscuro" width="100%"><br><sub><b>Tema oscuro</b>, en carbón cálido.</sub></td>
   </tr>
 </table>
@@ -76,7 +88,11 @@ con Docker, con un solo comando.
 <details>
 <summary>En el móvil</summary>
 <br>
-<p align="center"><img src="docs/screenshots/board-mobile.webp" alt="El tablero en un móvil de 390 px de ancho, con las columnas que se desplazan en horizontal" width="320"></p>
+<p align="center">
+  <img src="docs/screenshots/board-mobile.webp" alt="El tablero en un móvil de 390 px de ancho, con las columnas que se desplazan en horizontal" width="300">
+  &nbsp;
+  <img src="docs/screenshots/landing-mobile-dark.webp" alt="La landing en un móvil de 390 px de ancho en tema oscuro" width="300">
+</p>
 </details>
 
 ## Requisitos

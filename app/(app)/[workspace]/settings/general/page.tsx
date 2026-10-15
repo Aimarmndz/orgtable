@@ -6,7 +6,7 @@ import { getWorkspaceForUser } from "@/app/lib/queries";
 import { removeMemberAction } from "@/app/lib/actions/workspaces";
 import { canOwnWorkspace } from "@/app/lib/roles";
 import { prisma } from "@/app/lib/prisma";
-import { mailConfig } from "@/app/lib/mail/config";
+import { publicHost } from "@/app/lib/mail/config";
 import {
   DeleteOrganizationForm,
   OrganizationSettingsForm,
@@ -36,13 +36,6 @@ export async function generateMetadata({
   };
 }
 
-/** The address shown in front of the slug: the configured public one, else the request's. */
-async function displayHost(): Promise<string> {
-  const config = mailConfig();
-  if (config.enabled) return new URL(config.publicUrl).host;
-  return (await headers()).get("host") ?? "orgtable";
-}
-
 export default async function WorkspaceGeneralPage({
   params,
 }: {
@@ -57,7 +50,7 @@ export default async function WorkspaceGeneralPage({
   const [{ m }, boards, host] = await Promise.all([
     getI18n(),
     prisma.board.count({ where: { workspaceId: workspace.id } }),
-    displayHost(),
+    headers().then((h) => publicHost(h.get("host"))),
   ]);
   const t = m.workspaces;
 

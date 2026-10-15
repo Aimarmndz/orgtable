@@ -5,7 +5,7 @@
 ### Your work, in columns that breathe.
 
 Open-source Kanban boards: boards, lists and cards with drag and drop,<br>
-in real time, with your data wherever you decide. A Trello alternative you can host yourself.
+in real time. Free for people and companies at orgtable.aimar.dev, or on your own server.
 
 [![CI](https://github.com/Aimarmndz/orgtable/actions/workflows/ci.yml/badge.svg)](https://github.com/Aimarmndz/orgtable/actions/workflows/ci.yml)
 [![License: AGPL-3.0-or-later](https://img.shields.io/badge/license-AGPL--3.0--or--later-9b411e)](./LICENSE)
@@ -19,7 +19,7 @@ in real time, with your data wherever you decide. A Trello alternative you can h
 
 <br>
 
-<img src="docs/screenshots/hero.gif" alt="An orgtable board: the card “Team photos” is dragged from the In progress list to Review, then the details of “Build the home page” open, with labels, assignees, description, due date and a checklist" width="960">
+<img src="docs/screenshots/hero.gif" alt="A board of the organization Northwind Studio at /northwind/website-launch: the card “Team photos” is dragged from the In progress list to Review, then the details of “Build the home page” open, with labels, assignees, description, due date and a checklist" width="960">
 
 <sub>No editing: the real app with sample data, recorded in the browser.</sub>
 
@@ -57,15 +57,27 @@ single command.
 
 <table>
   <tr>
+    <td width="50%" align="center" valign="top"><img src="docs/screenshots/landing-light.webp" alt="The public landing page in a retro style: “Your boards. Your server.”, an example board in a window, and buttons to create a free account, register a company or install it" width="100%"><br><sub><b>Landing page</b>. Free online, or on your own server.</sub></td>
+    <td width="50%" align="center" valign="top"><img src="docs/screenshots/register-light.webp" alt="Sign-up form with the choice “For me” or “For my organization”, and the organization’s name and address" width="100%"><br><sub><b>Sign up</b> yourself or your organization, free.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center" valign="top"><img src="docs/screenshots/org-members-light.webp" alt="Members of the organization Northwind Studio: role summary cards, a table with each person’s role, and buttons to change the role, set a new password or remove them, plus the form to create an employee account" width="100%"><br><sub><b>Your organization</b>. Employees, roles and who can do what.</sub></td>
+    <td width="50%" align="center" valign="top"><img src="docs/screenshots/workspace-light.webp" alt="The page of the organization Northwind Studio at /northwind with its boards" width="100%"><br><sub><b>Every organization has its address</b>: <code>/northwind/website-launch</code>.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center" valign="top"><img src="docs/screenshots/org-general-light.webp" alt="Organization settings: name and address, leaving the organization, and a danger zone to delete it" width="100%"><br><sub><b>Organization settings</b>, with a danger zone.</sub></td>
+    <td width="50%" align="center" valign="top"><img src="docs/screenshots/admin-light.webp" alt="The instance administrator’s overview: service figures and every organization with its owners, members, boards and status, and buttons to suspend or delete" width="100%"><br><sub><b>Administration</b>. Figures and every workspace, never their content.</sub></td>
+  </tr>
+  <tr>
     <td width="50%" align="center" valign="top"><img src="docs/screenshots/realtime.gif" alt="Two browsers on the same board: on the left Lucía moves the card “Monthly newsletter” to To do, and on the right Marcos sees it appear immediately" width="100%"><br><sub><b>Real time</b>. Lucía moves a card and Marcos sees it instantly.</sub></td>
     <td width="50%" align="center" valign="top"><img src="docs/screenshots/card-dark.webp" alt="Card details in the dark theme, with labels, assignees, description, due date and a half-done checklist" width="100%"><br><sub><b>Card details</b>, in the dark theme.</sub></td>
   </tr>
   <tr>
     <td width="50%" align="center" valign="top"><img src="docs/screenshots/calendar-light.webp" alt="October calendar view with each card placed on its due date" width="100%"><br><sub><b>Calendar</b>. Drag a card to change its due date.</sub></td>
-    <td width="50%" align="center" valign="top"><img src="docs/screenshots/boards-light.webp" alt="Board index with each board's color, card count and the initials of its members, plus the account menu" width="100%"><br><sub><b>Your boards</b>, with who is on each one.</sub></td>
+    <td width="50%" align="center" valign="top"><img src="docs/screenshots/boards-light.webp" alt="Your boards grouped by workspace: personal boards and the organization Northwind Studio" width="100%"><br><sub><b>Your boards</b>, grouped by workspace.</sub></td>
   </tr>
   <tr>
-    <td width="50%" align="center" valign="top"><img src="docs/screenshots/settings-light.webp" alt="Settings page with side navigation: profile, password and sessions, API tokens, appearance, privacy and data, and about" width="100%"><br><sub><b>Settings</b>. Profile, sessions, tokens and your data.</sub></td>
+    <td width="50%" align="center" valign="top"><img src="docs/screenshots/settings-light.webp" alt="Settings page with side navigation: profile with your personal address, password and sessions, API tokens, appearance, privacy and data" width="100%"><br><sub><b>Settings</b>. Profile, your address, sessions and your data.</sub></td>
     <td width="50%" align="center" valign="top"><img src="docs/screenshots/board-dark.webp" alt="The same board in the dark theme" width="100%"><br><sub><b>Dark theme</b>, in warm charcoal.</sub></td>
   </tr>
 </table>
@@ -73,7 +85,11 @@ single command.
 <details>
 <summary>On mobile</summary>
 <br>
-<p align="center"><img src="docs/screenshots/board-mobile.webp" alt="The board on a 390 px wide phone, with columns that scroll horizontally" width="320"></p>
+<p align="center">
+  <img src="docs/screenshots/board-mobile.webp" alt="The board on a 390 px wide phone, with columns that scroll horizontally" width="300">
+  &nbsp;
+  <img src="docs/screenshots/landing-mobile-dark.webp" alt="The landing page on a 390 px wide phone in the dark theme" width="300">
+</p>
 </details>
 
 ## Requirements

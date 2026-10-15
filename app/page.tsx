@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
+import { publicHost } from "@/app/lib/mail/config";
 import { isSetupComplete, verifySession } from "@/app/lib/dal";
 import { isRegistrationOpen } from "@/app/lib/services/instance";
 import {
@@ -32,7 +33,7 @@ export default async function Home() {
   return (
     <LandingPage
       registrationOpen={registrationOpen}
-      host={(await headers()).get("host") ?? "orgtable"}
+      host={publicHost((await headers()).get("host"))}
       installScriptUrl={installScriptUrl()}
       sourceUrl={sourceCodeUrl()}
     />

@@ -72,3 +72,19 @@ export function mailConfig(env: NodeJS.ProcessEnv = process.env): MailConfig {
 export function isMailEnabled(): boolean {
   return mailConfig().enabled;
 }
+
+/**
+ * The address shown in front of workspace slugs (settings, landing): ORGTABLE_PUBLIC_URL's
+ * host when it is set (email on or not), else the host the request came to.
+ */
+export function publicHost(requestHost: string | null): string {
+  const raw = process.env.ORGTABLE_PUBLIC_URL?.trim();
+  if (raw) {
+    try {
+      return new URL(raw).host;
+    } catch {
+      // Invalid: mailConfig() reports it when email is on; here the request's host is fine.
+    }
+  }
+  return requestHost ?? "orgtable";
+}

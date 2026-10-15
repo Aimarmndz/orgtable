@@ -25,7 +25,7 @@ import { DeleteAccountForm, PasswordForm, ProfileForm } from "./account-forms";
 import { ThemePicker } from "./theme-picker";
 import { HandleForm } from "@/app/components/workspace/forms";
 import { personalWorkspaceOf } from "@/app/lib/services/workspaces";
-import { mailConfig } from "@/app/lib/mail/config";
+import { publicHost } from "@/app/lib/mail/config";
 import { headers } from "next/headers";
 
 export const dynamic = "force-dynamic";
@@ -121,10 +121,7 @@ export default async function SettingsPage() {
   // The handle (address of the personal boards) and the host shown in front of it: the
   // configured public address, else the one this request came to.
   const personal = await personalWorkspaceOf(user.id);
-  const mail = mailConfig();
-  const handleHost = mail.enabled
-    ? new URL(mail.publicUrl).host
-    : ((await headers()).get("host") ?? "orgtable");
+  const handleHost = publicHost((await headers()).get("host"));
   const { intl, m } = await getI18n();
   const t = m.settings;
   const session = await verifySession();

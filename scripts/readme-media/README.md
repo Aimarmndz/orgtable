@@ -17,9 +17,12 @@ DATABASE_URL="$DEMO_URL" pnpm exec prisma migrate deploy
 export DEMO_PASSWORD="$(openssl rand -hex 12)"
 DATABASE_URL="$DEMO_URL" node scripts/readme-media/seed-demo.mjs
 
-# 2. Production build served with the demo database (any free port, e.g. 3051)
+# 2. Production build served with the demo database (any free port, e.g. 3051). The
+#    landing is forced on and the public address set, so screenshots show the landing page
+#    and "orgtable.aimar.dev/<slug>" in front of addresses.
 pnpm build
-DATABASE_URL="$DEMO_URL" pnpm start -p 3051 &
+DATABASE_URL="$DEMO_URL" ORGTABLE_LANDING=on ORGTABLE_PUBLIC_URL=https://orgtable.aimar.dev \
+  pnpm start -p 3051 &
 
 # 3. Screenshots and frames. playwright-core goes in a temporary folder and the script is
 #    copied there: ESM imports are resolved from the script's folder.
@@ -33,3 +36,9 @@ OUT=/tmp/orgtable-media python3 scripts/readme-media/make_gifs.py
 `make_gifs.py` writes the two GIFs and the WebP screenshots to `$OUT/gifs/`: copy them to
 `docs/screenshots/` with `cp /tmp/orgtable-media/gifs/*.{gif,webp} docs/screenshots/`.
 Recording changes the demo (cards are moved): seed it again before repeating.
+
+The demo is an organization, **Northwind Studio** (`/northwind`), owned by Lucía (also the
+instance administrator, for the `/admin` screenshot), whose employees are Marcos (admin), Ana and
+Diego; Sofía owns another organization. Besides the boards, `capture.mjs` takes the landing
+page (signed out, light and dark), signing up an organization, the organization's page, members
+and general settings, and the administration overview.

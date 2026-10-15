@@ -35,13 +35,20 @@ async function open({ width = 1280, height = 800, dark = false, user = "lucia@ex
   return { ctx, page };
 }
 
+// Boards live at /<workspace>/<board> (docs/workspaces.md).
+const isBoardPath = (url) => /^\/[a-z0-9-]+\/[a-z0-9-]+$/.test(new URL(url).pathname);
+
 async function gotoBoard(page, title) {
   await page.goto(`${BASE}/boards`);
-  await Promise.all([page.waitForURL("**/board/**"), page.getByRole("link", { name: new RegExp(`^${title}`) }).click()]);
+  await Promise.all([
+    page.waitForURL(isBoardPath),
+    page.getByRole("link", { name: new RegExp(`^${title}`) }).first().click(),
+  ]);
   await page.waitForTimeout(800);
 }
 
-const shot = (page, name) => page.screenshot({ path: `${HERE}readme/${name}.png` });
+const shot = (page, name, opts = {}) =>
+  page.screenshot({ path: `${HERE}readme/${name}.png`, ...opts });
 
 /** Records frames while `act` runs. */
 async function record(page, name, act, { every = 70 } = {}) {
@@ -128,6 +135,44 @@ const center = async (loc) => {
   await page.goto(`${BASE}/settings`);
   await page.waitForTimeout(400);
   await shot(page, "settings-light");
+  await ctx.close();
+}
+
+// --- 2b. Organizations and the instance administration -----------------------------------
+{
+  const { ctx, page } = await open();
+  await page.goto(`${BASE}/northwind`);
+  await page.waitForTimeout(400);
+  await shot(page, "workspace-light");
+  await page.goto(`${BASE}/northwind/settings`);
+  await page.waitForTimeout(400);
+  await shot(page, "org-members-light", { fullPage: true });
+  await page.goto(`${BASE}/northwind/settings/general`);
+  await page.waitForTimeout(400);
+  await shot(page, "org-general-light", { fullPage: true });
+  await page.goto(`${BASE}/admin/workspaces`);
+  await page.waitForTimeout(400);
+  await shot(page, "admin-light");
+  await ctx.close();
+}
+
+// --- 2c. Public pages, signed out: the landing and signing up an organization ------------
+for (const [dark, suffix] of [[false, "light"], [true, "dark"]]) {
+  const ctx = await browser.newContext({
+    viewport: { width: 1280, height: 800 },
+    deviceScaleFactor: 2,
+    colorScheme: dark ? "dark" : "light",
+    locale: "en-US",
+  });
+  const page = await ctx.newPage();
+  await page.goto(`${BASE}/`);
+  await page.waitForTimeout(600);
+  await shot(page, `landing-${suffix}`);
+  if (!dark) {
+    await page.goto(`${BASE}/register?type=organization`);
+    await page.waitForTimeout(400);
+    await shot(page, "register-light");
+  }
   await ctx.close();
 }
 
