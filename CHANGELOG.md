@@ -9,6 +9,10 @@ behind each decision is in [`docs/DECISIONES.md`](./docs/DECISIONES.md).
 
 ### Changed
 
+- `ORGTABLE_WEBHOOKS_ALLOW_PRIVATE` (never released) is now `ORGTABLE_ALLOW_PRIVATE_TARGETS`
+  and also covers S3 backup endpoints. docker-compose gains a `backups` volume
+  (`ORGTABLE_BACKUP_DIR`).
+
 - **Settings are pages, not anchors.** One's own settings moved from one long page with
   `#fragments` to `/settings/profile`, `/settings/security`, `/settings/tokens`,
   `/settings/appearance`, `/settings/workspaces` (new: your organizations) and
@@ -49,6 +53,13 @@ behind each decision is in [`docs/DECISIONES.md`](./docs/DECISIONES.md).
   message is already written for the chat, escaped so nothing can ping everyone.
 - **Incoming webhooks**: a secret URL (`POST /api/hooks/in/<token>`) that creates cards with
   labels, due date and assignee.
+- **Backups of an organization** (`/<slug>/settings/backups`): daily, weekly or monthly at
+  its own hour and time zone, kept on this server or in its own S3-compatible bucket,
+  encrypted with AES-256 by default, with a history to download and restore from. Export to a
+  readable `.zip` and import one into any organization (people matched by email, never
+  created). Importing and restoring take a backup first; restoring is all-or-nothing.
+- **Instance backups** (`/admin/backups`) for the administrator: every table and file, with
+  the same schedule, destinations and restore. New cron job `POST /api/cron/backups` (hourly).
 - **Organization API keys** (`/<slug>/settings/api-keys`, `ot_org_…`): keys of the
   organization rather than of a person. They only reach its boards, at most as an editor,
   expire if you want, stop working when their creator leaves, and their use is logged.

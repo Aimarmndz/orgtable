@@ -80,3 +80,68 @@ export function postWebhook(
     req.end(body);
   });
 }
+
+export type RawResult =
+  | { ok: boolean; status: number; headers: http.IncomingHttpHeaders; body: Buffer }
+  | { ok: false; status: null; error: string };
+
+/**
+ * Any request to a user-typed address (S3 endpoints of backups), with the same guard as
+ * webhooks. Keeps up to `maxBytes` of the answer (larger answers are an error).
+ */
+export function safeRequest(
+  method: string,
+  url: string,
+  headers: Record<string, string>,
+  body: Buffer | null,
+  { timeoutMs = 60_000, maxBytes = 1024 * 1024 * 1024 }: { timeoutMs?: number; maxBytes?: number } = {},
+): Promise<RawResult> {
+  return new Promise((resolve) => {
+    let target: URL;
+    try {
+      target = new URL(url);
+    } catch {
+      resolve({ ok: false, status: null, error: "Invalid URL" });
+      return;
+    }
+    if (target.protocol !== "https:" && !(privateTargetsAllowed() && target.protocol === "http:")) {
+      resolve({ ok: false, status: null, error: "Only https:// addresses are allowed" });
+      return;
+    }
+    const literal = target.hostname.replace(/^\[|\]$/g, "");
+    if (isIP(literal) && !privateTargetsAllowed() && !isPublicAddress(literal)) {
+      resolve({ ok: false, status: null, error: `Refusing to connect to a non-public address (${literal})` });
+      return;
+    }
+    const client = target.protocol === "https:" ? https : http;
+    const req = client.request(
+      target,
+      {
+        method,
+        headers: { ...headers, ...(body ? { "content-length": String(body.length) } : {}) },
+        lookup: safeLookup as never,
+        timeout: timeoutMs,
+      },
+      (res) => {
+        const chunks: Buffer[] = [];
+        let size = 0;
+        res.on("data", (chunk: Buffer) => {
+          size += chunk.length;
+          if (size > maxBytes) {
+            req.destroy(new Error("The answer is too large"));
+            return;
+          }
+          chunks.push(chunk);
+        });
+        res.on("end", () => {
+          const status = res.statusCode ?? 0;
+          resolve({ ok: status >= 200 && status < 300, status, headers: res.headers, body: Buffer.concat(chunks) });
+        });
+        res.on("error", (err) => resolve({ ok: false, status: null, error: err.message }));
+      },
+    );
+    req.on("timeout", () => req.destroy(new Error(`Timed out after ${timeoutMs} ms`)));
+    req.on("error", (err) => resolve({ ok: false, status: null, error: err.message.slice(0, 300) }));
+    req.end(body ?? undefined);
+  });
+}

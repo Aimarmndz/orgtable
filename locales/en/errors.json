@@ -146,5 +146,15 @@
     "tooMany": "An organization can have up to 25 of these.",
     "notFound": "That board or list does not exist here, or you cannot edit it.",
     "noKey": "Webhooks need ORGTABLE_SECRET_KEY on the server."
+  },
+  "backups": {
+    "badDestination": "The S3 destination does not work. Check the endpoint (https), the bucket and the keys.",
+    "noKey": "Encryption and S3 need ORGTABLE_SECRET_KEY on the server.",
+    "safetyFailed": "The safety backup taken first failed, so nothing was changed.",
+    "invalidArchive": "That file is not an orgtable export.",
+    "notFound": "That backup does not exist (or its file is gone).",
+    "badSchedule": "Check the frequency, the hour and how many to keep.",
+    "failed": "The backup failed:",
+    "confirmMismatch": "Type the exact text to confirm."
   }
 }

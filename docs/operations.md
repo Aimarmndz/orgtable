@@ -192,12 +192,14 @@ These endpoints must be called by an **external** cron (ADR 0015), with `CRON_SE
 |---|---|---|
 | `POST /api/cron/reminders` | Every hour | Reminders for cards that are due soon or overdue ([reminders.md](./reminders.md)). |
 | `POST /api/cron/maintenance` | Once a day | Deletes audit entries older than `ORGTABLE_AUDIT_RETENTION_DAYS` (90 by default), sessions closed or expired more than 30 days ago, notifications older than 180 days and finished webhook deliveries older than 30 days. These are the retention periods promised by the privacy policy ([privacy.md](./privacy.md)). |
+| `POST /api/cron/backups` | Every hour | Scheduled backups of each organization and of the instance, at their own hour and time zone ([backups.md](./backups.md)). |
 | `POST /api/cron/webhooks` | Every minute | Retries webhook deliveries that failed ([webhooks.md](./webhooks.md)). Events are sent at once when they happen; without this job only the retries wait. |
 
 ```cron
 # host crontab; loads CRON_SECRET from the installation's .env
 0 * * * *  . /opt/orgtable/.env && curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" http://127.0.0.1:3000/api/cron/reminders
 15 4 * * * . /opt/orgtable/.env && curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" http://127.0.0.1:3000/api/cron/maintenance
+5 * * * *  . /opt/orgtable/.env && curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" http://127.0.0.1:3000/api/cron/backups
 * * * * *  . /opt/orgtable/.env && curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" http://127.0.0.1:3000/api/cron/webhooks
 ```
 

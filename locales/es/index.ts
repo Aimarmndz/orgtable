@@ -15,6 +15,7 @@ import landing from "./landing.json";
 import workspaces from "./workspaces.json";
 import emails from "./emails.json";
 import webhooks from "./webhooks.json";
+import backups from "./backups.json";
 
 const messages = {
   common,
@@ -31,6 +32,7 @@ const messages = {
   workspaces,
   emails,
   webhooks,
+  backups,
 };
 
 const languagePack = { language, messages };

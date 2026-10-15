@@ -15,6 +15,7 @@ want to **contribute** to the code.
 - [**Roles and permissions**](./roles.md) — base roles, custom roles per organization and the 13 permissions.
 - [**Teams**](./teams.md) — groups of people that share access to boards.
 - [**Activity log of an organization**](./audit.md) — who did what, filters and the CSV export.
+- [**Backups, export and import**](./backups.md) — scheduled backups to this server or S3, restore, and the portable .zip.
 - [**Webhooks and integrations**](./webhooks.md) — signed outgoing webhooks, Slack/Discord/Teams and incoming webhooks.
 - [**Email**](./email.md) — password reset links and invitations (optional SMTP).
 - [**Landing page**](./landing.md) — the public page at `/`: when it shows and what it offers.

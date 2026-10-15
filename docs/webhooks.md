@@ -110,7 +110,7 @@ Webhook URLs are typed by users, so orgtable must never be made to call its own 
   name that resolves differently later (DNS rebinding) is still caught; IP literals are checked
   before connecting.
 
-`ORGTABLE_WEBHOOKS_ALLOW_PRIVATE=1` lifts it (and allows `http://`) for self-hosters whose targets
+`ORGTABLE_ALLOW_PRIVATE_TARGETS=1` lifts it (and allows `http://`) for self-hosters whose targets
 are on their own network.
 
 ## Incoming webhooks

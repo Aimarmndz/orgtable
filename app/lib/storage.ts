@@ -14,6 +14,11 @@ const UPLOAD_DIR =
   process.env.ORGTABLE_UPLOAD_DIR ||
   path.join(/* turbopackIgnore: true */ process.cwd(), "uploads");
 
+/** The directory uploads live in (instance backups copy all of it). */
+export function uploadDir(): string {
+  return UPLOAD_DIR;
+}
+
 // Size limit per file: 10 MB.
 export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 
@@ -84,6 +89,14 @@ export function sniffLogoType(bytes: Buffer): { mime: string; ext: string } | nu
 export async function saveLogoFile(bytes: Buffer, ext: string): Promise<string> {
   await mkdir(UPLOAD_DIR, { recursive: true });
   const storedName = `logo-${randomUUID()}${ext}`;
+  await writeFile(storedPath(storedName), bytes);
+  return storedName;
+}
+
+/** Saves bytes as an attachment file under a random name (imports of backups). */
+export async function saveAttachmentBytes(bytes: Buffer, ext: string): Promise<string> {
+  await mkdir(UPLOAD_DIR, { recursive: true });
+  const storedName = `${randomUUID()}${ext.replace(/[^.a-zA-Z0-9]/g, "").slice(0, 16)}`;
   await writeFile(storedPath(storedName), bytes);
   return storedName;
 }

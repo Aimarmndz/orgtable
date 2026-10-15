@@ -113,6 +113,8 @@ model Workspace {
   webhooks        Webhook[]
   incomingHooks   IncomingHook[]
   apiKeys         WorkspaceApiKey[]
+  backupConfig    BackupConfig?
+  backups         Backup[]
 }
 
 model WorkspaceMember {
@@ -647,4 +649,79 @@ model WorkspaceApiKey {
   createdAt   DateTime  @default(now())
 
   @@index([workspaceId])
+}
+
+// --- Backups (docs/backups.md) --------------------------------------------------------------
+
+enum BackupFrequency {
+  OFF
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum BackupDestination {
+  LOCAL
+  S3
+}
+
+// How and where an organization (workspaceId) or the whole instance (workspaceId null, id
+// "instance") is backed up. The S3 credentials are encrypted (app/lib/crypto/secrets.ts).
+model BackupConfig {
+  id                 String            @id
+  workspaceId        String?           @unique
+  workspace          Workspace?        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  frequency          BackupFrequency   @default(OFF)
+  // Hour of the day (0–23) in the organization's time zone (Workspace.timezone, else the
+  // instance's).
+  hour               Int               @default(3)
+  // Scheduled backups kept; older ones are deleted. Manual ones are never deleted on their own.
+  retention          Int               @default(14)
+  includeAttachments Boolean           @default(true)
+  destination        BackupDestination @default(LOCAL)
+  s3Endpoint         String?
+  s3Region           String?
+  s3Bucket           String?
+  s3Prefix           String?
+  s3AccessKeyEnc     String?
+  s3SecretKeyEnc     String?
+  // Encrypt the file before it leaves this server (AES-256-GCM with ORGTABLE_SECRET_KEY).
+  encrypt            Boolean           @default(true)
+  lastScheduledAt    DateTime?
+  updatedAt          DateTime          @updatedAt
+}
+
+enum BackupKind {
+  MANUAL
+  SCHEDULED
+  BEFORE_IMPORT
+  BEFORE_RESTORE
+}
+
+enum BackupStatus {
+  RUNNING
+  SUCCESS
+  FAILED
+}
+
+// One backup file of an organization (workspaceId) or of the instance (null). The file is a
+// .zip (docs/backups.md, "Format"), maybe encrypted, on this server or in S3.
+model Backup {
+  id                  String            @id @default(cuid())
+  workspaceId         String?
+  workspace           Workspace?        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  kind                BackupKind
+  status              BackupStatus      @default(RUNNING)
+  destination         BackupDestination
+  // Path under the backups directory, or the object key in S3.
+  location            String?
+  size                Int?
+  encrypted           Boolean           @default(false)
+  includesAttachments Boolean           @default(true)
+  error               String?
+  createdById         String?
+  createdAt           DateTime          @default(now())
+  finishedAt          DateTime?
+
+  @@index([workspaceId, createdAt])
 }

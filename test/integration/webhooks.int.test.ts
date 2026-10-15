@@ -30,7 +30,7 @@ import {
 } from "./helpers";
 
 // Outgoing and incoming webhooks (docs/webhooks.md), against a real HTTP server on localhost.
-// Private targets are allowed here (ORGTABLE_WEBHOOKS_ALLOW_PRIVATE), as a self-hoster would;
+// Private targets are allowed here (ORGTABLE_ALLOW_PRIVATE_TARGETS), as a self-hoster would;
 // the guard itself is tested with it switched off.
 
 type Received = { headers: http.IncomingHttpHeaders; body: string };
@@ -57,14 +57,14 @@ beforeEach(async () => {
   await resetDb();
   received.length = 0;
   answer = 200;
-  process.env.ORGTABLE_WEBHOOKS_ALLOW_PRIVATE = "1";
+  process.env.ORGTABLE_ALLOW_PRIVATE_TARGETS = "1";
   await prisma.instanceConfig.create({
     data: { id: "singleton", instanceName: "Test", setupCompletedAt: new Date() },
   });
 });
 
 afterAll(async () => {
-  delete process.env.ORGTABLE_WEBHOOKS_ALLOW_PRIVATE;
+  delete process.env.ORGTABLE_ALLOW_PRIVATE_TARGETS;
   await new Promise((r) => server.close(r));
   await disconnect();
 });
@@ -101,12 +101,12 @@ describe("managing webhooks", () => {
       ok: false,
       error: "no_events",
     });
-    delete process.env.ORGTABLE_WEBHOOKS_ALLOW_PRIVATE;
+    delete process.env.ORGTABLE_ALLOW_PRIVATE_TARGETS;
     expect(await createWebhook({ workspaceId: org.id, actorId: owner.id, webhook: { ...HOOK, url: base } })).toEqual({
       ok: false,
       error: "not_https",
     });
-    process.env.ORGTABLE_WEBHOOKS_ALLOW_PRIVATE = "1";
+    process.env.ORGTABLE_ALLOW_PRIVATE_TARGETS = "1";
     const ok = await createWebhook({ workspaceId: org.id, actorId: owner.id, webhook: { ...HOOK, url: base } });
     expect(ok.ok).toBe(true);
     if (!ok.ok) return;
@@ -265,7 +265,7 @@ describe("chat formats", () => {
 
 describe("SSRF guard", () => {
   it("refuses to connect to a private address when not allowed", async () => {
-    delete process.env.ORGTABLE_WEBHOOKS_ALLOW_PRIVATE;
+    delete process.env.ORGTABLE_ALLOW_PRIVATE_TARGETS;
     const r = await postWebhook(`${base}/x`, "{}", {});
     expect(r.ok).toBe(false);
     expect("error" in r && r.error).toMatch(/non-public/);

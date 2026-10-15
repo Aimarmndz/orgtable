@@ -7,6 +7,41 @@ living log from 2026-09-24 onwards.
 
 ---
 
+## 2026-10-15 — Backups in the app: a readable zip, S3 by hand, and atomic restores
+
+**Context.** The owner chose all four: organization export/import, scheduled backups, the
+organization's own S3, and instance backups for the administrator. Until now backups were
+`scripts/backup.sh` (pg_dump on the host), useless to an organization on a shared instance.
+
+**Decision.**
+- One format for an organization's export and backup: `organization.json` (people by email,
+  local ids) plus `attachments/`, zipped with `fflate`. Readable, portable between instances,
+  and without secrets (webhooks and keys are left out).
+- Import adds; restore replaces boards, teams and roles inside the import's transaction. People
+  are matched with current members only: an import never creates accounts, which would let a
+  file grant access. Both take a safety backup first and stop if it fails.
+- Instance backups dump every table found in the catalog as JSON and restore them in
+  foreign-key order, breaking the one nullable cycle; only into the same set of migrations.
+- Destinations: a directory (its own docker volume) or S3 via a ~100-line SigV4 client over the
+  webhooks' SSRF-guarded HTTP, tested against the AWS documentation's signature. Files are
+  encrypted (AES-256-GCM, `ORGTABLE_SECRET_KEY`) by default.
+- Scheduling: an hourly cron call; each scope at its own hour in its own time zone, claimed
+  before running; retention only prunes scheduled backups.
+
+**Alternatives considered.**
+- pg_dump from the app: needs the binary in the image and gives a whole-database file an
+  organization must never get.
+- The AWS SDK: megabytes of dependency for put/get/delete.
+- Streaming zips: simpler buffers are enough at the sizes orgtable targets; revisit if
+  organizations with gigabytes of attachments appear.
+
+**Consequences.** Large imports need the reverse proxy to accept the body
+(`ORGTABLE_IMPORT_MAX_MB`, nginx `client_max_body_size`). Restoring an instance signs everyone
+out. A future schema change must keep `insertionPlan` able to order the tables (any new cycle
+needs a nullable column).
+
+---
+
 ## 2026-10-15 — Webhooks: a delivery table, signed bodies and an SSRF guard in the lookup
 
 **Context.** The owner asked for webhooks "per organization and per board", ready-made Slack,
@@ -26,7 +61,7 @@ and must not become a way to call the operator's own network.
   creator's language, escaped per chat (Discord `allowed_mentions`, Slack `&lt;`).
 - SSRF: https only, and every address checked inside the socket's `lookup` (catches DNS
   rebinding), plus IP literals before connecting; tests found that Node skips `lookup` for
-  literals. `ORGTABLE_WEBHOOKS_ALLOW_PRIVATE=1` for targets on the operator's network.
+  literals. `ORGTABLE_ALLOW_PRIVATE_TARGETS=1` for targets on the operator's network.
 - Incoming: a hashed secret token per list, acting on behalf of its creator, rate limited.
 
 **Alternatives considered.**

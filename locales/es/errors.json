@@ -146,5 +146,15 @@
     "tooMany": "Una organización puede tener hasta 25.",
     "notFound": "Ese tablero o lista no existe aquí, o no puedes editarlo.",
     "noKey": "Los webhooks necesitan ORGTABLE_SECRET_KEY en el servidor."
+  },
+  "backups": {
+    "badDestination": "El destino S3 no funciona. Revisa el endpoint (https), el bucket y las claves.",
+    "noKey": "El cifrado y S3 necesitan ORGTABLE_SECRET_KEY en el servidor.",
+    "safetyFailed": "Falló la copia de seguridad previa, así que no se ha cambiado nada.",
+    "invalidArchive": "Ese archivo no es una exportación de orgtable.",
+    "notFound": "Esa copia no existe (o ya no está su archivo).",
+    "badSchedule": "Revisa la frecuencia, la hora y cuántas guardar.",
+    "failed": "La copia falló:",
+    "confirmMismatch": "Escribe exactamente el texto para confirmar."
   }
 }

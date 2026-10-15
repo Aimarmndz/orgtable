@@ -1,0 +1,98 @@
+{
+  "title": "Backups",
+  "subtitle": "Copies of all of {name} (boards, cards, comments, attachments, roles and teams) to download or restore whenever you want.",
+  "instanceTitle": "Instance backups",
+  "instanceSubtitle": "Every account, organization, board and file of this instance in one file. Restoring one replaces EVERYTHING.",
+  "now": "Back up now",
+  "done": "Backup done.",
+  "saved": "Saved.",
+  "testOk": "Connected: orgtable could write, read and delete a test file.",
+  "restored": "Restored. A backup of what was there before is in the history.",
+  "stats": {
+    "last": "Last backup",
+    "next": "Next",
+    "destination": "Destination",
+    "kept": "Kept",
+    "none": "None yet",
+    "off": "Not scheduled",
+    "local": "This server",
+    "keptOf": "{count} of {max}"
+  },
+  "schedule": {
+    "title": "Schedule",
+    "hint": "Backups run at the chosen hour in the organization's time zone ({tz}).",
+    "frequency": "Frequency",
+    "OFF": "Off",
+    "DAILY": "Daily",
+    "WEEKLY": "Weekly (Mondays)",
+    "MONTHLY": "Monthly (the 1st)",
+    "hour": "Hour",
+    "retention": "How many to keep",
+    "retentionHint": "Up to 90. The oldest scheduled ones are deleted; manual ones stay.",
+    "attachments": "Include attachments",
+    "attachmentsHint": "Without them the backup is much smaller, but files are not restored.",
+    "save": "Save schedule",
+    "cronNote": "Needs the hourly cron job POST /api/cron/backups (docs/backups.md)."
+  },
+  "destination": {
+    "title": "Where they are stored",
+    "hint": "Keys are stored encrypted and never shown again.",
+    "LOCAL": "On this server",
+    "LOCALHint": "Simple, but if the server is lost, they are lost with it.",
+    "S3": "Your S3 or compatible",
+    "S3Hint": "AWS, Cloudflare R2, Backblaze B2, MinIO…",
+    "endpoint": "Endpoint",
+    "region": "Region",
+    "bucket": "Bucket",
+    "prefix": "Folder",
+    "accessKey": "Access key",
+    "secretKey": "Secret key",
+    "keepKey": "Leave it empty to keep the current one.",
+    "encrypt": "Encrypt before storing",
+    "encryptHint": "AES-256; only an instance with this ORGTABLE_SECRET_KEY can open them.",
+    "test": "Test connection",
+    "save": "Save destination"
+  },
+  "history": {
+    "title": "History",
+    "empty": "No backups yet.",
+    "date": "Date",
+    "kind": "Type",
+    "size": "Size",
+    "status": "Status",
+    "kinds": {
+      "MANUAL": "Manual",
+      "SCHEDULED": "Scheduled",
+      "BEFORE_IMPORT": "Before importing",
+      "BEFORE_RESTORE": "Before restoring"
+    },
+    "statuses": {
+      "RUNNING": "In progress",
+      "SUCCESS": "Done",
+      "FAILED": "Failed"
+    },
+    "download": "Download",
+    "restore": "Restore…",
+    "restoreText": "The organization's boards, teams and custom roles are replaced by the ones in this backup. A backup of what is there now is taken first. Type {confirm} to confirm.",
+    "restoreInstanceText": "EVERYTHING in this instance (accounts, organizations, boards, files) is replaced by this backup, and everyone is signed out. A backup of what is there now is taken first. Type {confirm} to confirm.",
+    "restoreSubmit": "Restore",
+    "delete": "Delete",
+    "encrypted": "encrypted",
+    "noFiles": "no attachments"
+  },
+  "export": {
+    "title": "Export",
+    "text": "A .zip with readable JSON and the attachments, to take your data with you or open it in another orgtable instance.",
+    "all": "Export everything",
+    "noFiles": "Without attachments"
+  },
+  "import": {
+    "title": "Import",
+    "text": "From an orgtable .zip. Its boards are added next to yours; people are matched by email among your members. A backup is taken first in case you need to go back.",
+    "choose": "Choose the file",
+    "submit": "Import",
+    "working": "Importing…",
+    "done": "Imported: {boards} boards, {cards} cards, {attachments} attachments.",
+    "tooLarge": "The file is too large for this instance."
+  }
+}

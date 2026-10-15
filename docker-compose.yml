@@ -38,6 +38,10 @@ services:
       NODE_ENV: production
       # Attachments directory (persistent volume). See docs/attachments.md.
       ORGTABLE_UPLOAD_DIR: ${ORGTABLE_UPLOAD_DIR:-/data/uploads}
+      # Backups made from the app ("on this server"). See docs/backups.md.
+      ORGTABLE_BACKUP_DIR: ${ORGTABLE_BACKUP_DIR:-/data/backups}
+      # Largest .zip an organization can import, in MB. Empty = 200.
+      ORGTABLE_IMPORT_MAX_MB: ${ORGTABLE_IMPORT_MAX_MB:-}
       # Real time across several replicas (0 = in-process). See docs/realtime.md.
       ORGTABLE_REALTIME_PG_NOTIFY: ${ORGTABLE_REALTIME_PG_NOTIFY:-0}
       # Secret for the reminders endpoint. Empty = endpoint disabled (503). The container
@@ -60,9 +64,9 @@ services:
       # docs/landing.md.
       ORGTABLE_LANDING: ${ORGTABLE_LANDING:-}
       ORGTABLE_INSTALL_URL: ${ORGTABLE_INSTALL_URL:-}
-      # 1 = webhooks may call private addresses and plain http (targets on your own
-      # network). Empty = refused. See docs/webhooks.md.
-      ORGTABLE_WEBHOOKS_ALLOW_PRIVATE: ${ORGTABLE_WEBHOOKS_ALLOW_PRIVATE:-}
+      # 1 = webhooks and S3 backup endpoints may call private addresses and plain http
+      # (targets on your own network). Empty = refused. See docs/webhooks.md.
+      ORGTABLE_ALLOW_PRIVATE_TARGETS: ${ORGTABLE_ALLOW_PRIVATE_TARGETS:-}
       # Email (optional): password reset links and employee invitations. Empty = off.
       # See docs/email.md.
       ORGTABLE_SMTP_URL: ${ORGTABLE_SMTP_URL:-}
@@ -70,6 +74,7 @@ services:
       ORGTABLE_PUBLIC_URL: ${ORGTABLE_PUBLIC_URL:-}
     volumes:
       - uploads:/data/uploads
+      - backups:/data/backups
     ports:
       # APP_PORT also accepts "127.0.0.1:3000" to publish the app on localhost only
       # (behind a reverse proxy). See docs/self-hosting.md.
@@ -88,6 +93,7 @@ services:
 volumes:
   pgdata:
   uploads:
+  backups:
 
 networks:
   orgtable:

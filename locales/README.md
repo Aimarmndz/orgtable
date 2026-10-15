@@ -22,7 +22,8 @@ locales/
 │   ├── landing.json  # the public landing page at /
 │   ├── workspaces.json # organizations, members and employees
 │   ├── emails.json   # the emails (password reset, invitation)
-│   └── webhooks.json # webhooks, integrations and what they post to chats
+│   ├── webhooks.json # webhooks, integrations and what they post to chats
+│   └── backups.json  # backups, export and import
 └── es/               # Spanish
 ```
 

@@ -5,7 +5,8 @@
     "instance": "Instance",
     "audit": "Audit log",
     "workspaces": "Overview",
-    "back": "Back to my boards"
+    "back": "Back to my boards",
+    "backups": "Instance backups"
   },
   "roles": {
     "MEMBER": "Member",
@@ -192,7 +193,16 @@
       "workspace.incoming_deleted": "Incoming webhook deleted",
       "workspace.apikey_created": "Organization API key created",
       "workspace.apikey_revoked": "Organization API key revoked",
-      "workspace.apikey_used": "Organization API key used"
+      "workspace.apikey_used": "Organization API key used",
+      "workspace.backup_settings": "Backup settings changed",
+      "workspace.backup_created": "Backup taken",
+      "workspace.backup_deleted": "Backup deleted",
+      "workspace.restore": "Restored from a backup",
+      "workspace.import": "Data imported",
+      "instance.backup_settings": "Instance backup settings changed",
+      "instance.backup_created": "Instance backup taken",
+      "instance.backup_deleted": "Instance backup deleted",
+      "instance.backup_restored": "Instance restored from a backup"
     }
   },
   "workspaces": {

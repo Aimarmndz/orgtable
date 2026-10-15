@@ -67,19 +67,21 @@ Every member of an organization opens its settings at `/<slug>/settings`. Each s
 own page with its own address, listed in a side menu (on a phone, `/<slug>/settings` is the
 list of sections and every page has a "back" link instead of the menu):
 
-| Page                            | What                                                                     |
-| ------------------------------- | ------------------------------------------------------------------------ |
-| `/<slug>/settings`              | Index of the sections                                                    |
-| `/<slug>/settings/general`      | Name and address (owners), leaving, the danger zone (owners)             |
-| `/<slug>/settings/members`      | Who is in the organization and their role                                |
-| `/<slug>/settings/members/new`  | Create an employee account (`people.invite`)                             |
-| `/<slug>/settings/teams`        | Teams and the boards they open; `/teams/<id>` manages one                |
-| `/<slug>/settings/webhooks`     | Outgoing webhooks (`integrations.manage`), see [webhooks](./webhooks.md) |
-| `/<slug>/settings/integrations` | Slack, Discord, Teams and incoming webhooks (`integrations.manage`)      |
-| `/<slug>/settings/api-keys`     | Organization API keys (`apikeys.manage`)                                 |
-| `/<slug>/settings/security`     | Security policy and employee sessions (owners and admins)                |
-| `/<slug>/settings/audit`        | The organization's activity log (`audit.view`)                           |
-| `/<slug>/settings/roles`        | Base and custom roles; `/roles/<id>` edits one (owners, admins)          |
+| Page                            | What                                                                       |
+| ------------------------------- | -------------------------------------------------------------------------- |
+| `/<slug>/settings`              | Index of the sections                                                      |
+| `/<slug>/settings/general`      | Name and address (owners), leaving, the danger zone (owners)               |
+| `/<slug>/settings/members`      | Who is in the organization and their role                                  |
+| `/<slug>/settings/members/new`  | Create an employee account (`people.invite`)                               |
+| `/<slug>/settings/teams`        | Teams and the boards they open; `/teams/<id>` manages one                  |
+| `/<slug>/settings/webhooks`     | Outgoing webhooks (`integrations.manage`), see [webhooks](./webhooks.md)   |
+| `/<slug>/settings/integrations` | Slack, Discord, Teams and incoming webhooks (`integrations.manage`)        |
+| `/<slug>/settings/api-keys`     | Organization API keys (`apikeys.manage`)                                   |
+| `/<slug>/settings/backups`      | Backups, export and import (`backups.manage`), see [backups](./backups.md) |
+| `/<slug>/settings/export`       | Export only (`data.export` without `backups.manage`)                       |
+| `/<slug>/settings/security`     | Security policy and employee sessions (owners and admins)                  |
+| `/<slug>/settings/audit`        | The organization's activity log (`audit.view`)                             |
+| `/<slug>/settings/roles`        | Base and custom roles; `/roles/<id>` edits one (owners, admins)            |
 
 The pages only show what the person's role allows; the services check everything again. How
 the tenant boundary is enforced is in [authorization](./authorization.md#tenant-isolation).

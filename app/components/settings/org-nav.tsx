@@ -98,6 +98,11 @@ export function orgSettingsSections(
     {
       label: t.dataGroup,
       items: [
+        ...(ctx.permissions.has("backups.manage")
+          ? [{ key: "backups", href: `${base}/backups`, label: t.backups, hint: t.hints.backups, icon: NavIcon.database }]
+          : ctx.permissions.has("data.export")
+            ? [{ key: "export", href: `${base}/export`, label: t.export, hint: t.hints.export, icon: NavIcon.download }]
+            : []),
         ...(ctx.role === "OWNER" || ctx.role === "ADMIN"
           ? [
               {

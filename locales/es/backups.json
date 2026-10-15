@@ -1,0 +1,98 @@
+{
+  "title": "Copias de seguridad",
+  "subtitle": "Copias de todo {name} (tableros, tarjetas, comentarios, adjuntos, roles y equipos) que puedes descargar o restaurar cuando quieras.",
+  "instanceTitle": "Copias de la instancia",
+  "instanceSubtitle": "Todas las cuentas, organizaciones, tableros y archivos de esta instancia en un archivo. Restaurar una lo reemplaza TODO.",
+  "now": "Hacer una copia ahora",
+  "done": "Copia hecha.",
+  "saved": "Guardado.",
+  "testOk": "Conectado: orgtable pudo escribir, leer y borrar un archivo de prueba.",
+  "restored": "Restaurado. En el historial hay una copia de lo que había antes.",
+  "stats": {
+    "last": "Última copia",
+    "next": "Próxima",
+    "destination": "Destino",
+    "kept": "Guardadas",
+    "none": "Ninguna aún",
+    "off": "Sin programar",
+    "local": "Este servidor",
+    "keptOf": "{count} de {max}"
+  },
+  "schedule": {
+    "title": "Programación",
+    "hint": "Las copias se hacen a la hora elegida en la zona horaria de la organización ({tz}).",
+    "frequency": "Frecuencia",
+    "OFF": "Desactivadas",
+    "DAILY": "Diaria",
+    "WEEKLY": "Semanal (lunes)",
+    "MONTHLY": "Mensual (el día 1)",
+    "hour": "Hora",
+    "retention": "Cuántas guardar",
+    "retentionHint": "Hasta 90. Se borran las programadas más antiguas; las manuales se quedan.",
+    "attachments": "Incluir adjuntos",
+    "attachmentsHint": "Sin ellos la copia ocupa mucho menos, pero los archivos no se restauran.",
+    "save": "Guardar programación",
+    "cronNote": "Necesita la tarea cron horaria POST /api/cron/backups (docs/backups.md)."
+  },
+  "destination": {
+    "title": "Dónde se guardan",
+    "hint": "Las claves se guardan cifradas y nunca se vuelven a mostrar.",
+    "LOCAL": "En este servidor",
+    "LOCALHint": "Sencillo, pero si el servidor se pierde, se pierden con él.",
+    "S3": "Vuestro S3 o compatible",
+    "S3Hint": "AWS, Cloudflare R2, Backblaze B2, MinIO…",
+    "endpoint": "Endpoint",
+    "region": "Región",
+    "bucket": "Bucket",
+    "prefix": "Carpeta",
+    "accessKey": "Clave de acceso",
+    "secretKey": "Clave secreta",
+    "keepKey": "Déjala vacía para no cambiarla.",
+    "encrypt": "Cifrar antes de guardar",
+    "encryptHint": "AES-256; solo una instancia con esta ORGTABLE_SECRET_KEY puede abrirlas.",
+    "test": "Probar conexión",
+    "save": "Guardar destino"
+  },
+  "history": {
+    "title": "Historial",
+    "empty": "Aún no hay copias.",
+    "date": "Fecha",
+    "kind": "Tipo",
+    "size": "Tamaño",
+    "status": "Estado",
+    "kinds": {
+      "MANUAL": "Manual",
+      "SCHEDULED": "Automática",
+      "BEFORE_IMPORT": "Antes de importar",
+      "BEFORE_RESTORE": "Antes de restaurar"
+    },
+    "statuses": {
+      "RUNNING": "En curso",
+      "SUCCESS": "Correcta",
+      "FAILED": "Falló"
+    },
+    "download": "Descargar",
+    "restore": "Restaurar…",
+    "restoreText": "Los tableros, equipos y roles personalizados de la organización se sustituyen por los de esta copia. Antes se hace una copia de lo que hay ahora. Escribe {confirm} para confirmar.",
+    "restoreInstanceText": "TODO lo de esta instancia (cuentas, organizaciones, tableros, archivos) se sustituye por esta copia, y se cierran todas las sesiones. Antes se hace una copia de lo que hay ahora. Escribe {confirm} para confirmar.",
+    "restoreSubmit": "Restaurar",
+    "delete": "Borrar",
+    "encrypted": "cifrada",
+    "noFiles": "sin adjuntos"
+  },
+  "export": {
+    "title": "Exportar",
+    "text": "Un .zip con JSON legible y los adjuntos, para llevarte tus datos o abrirlos en otra instancia de orgtable.",
+    "all": "Exportar todo",
+    "noFiles": "Sin adjuntos"
+  },
+  "import": {
+    "title": "Importar",
+    "text": "Desde un .zip de orgtable. Sus tableros se añaden junto a los vuestros; las personas se emparejan por email con vuestros miembros. Antes se hace una copia por si hay que volver atrás.",
+    "choose": "Elige el archivo",
+    "submit": "Importar",
+    "working": "Importando…",
+    "done": "Importado: {boards} tableros, {cards} tarjetas, {attachments} adjuntos.",
+    "tooLarge": "El archivo es demasiado grande para esta instancia."
+  }
+}

@@ -11,7 +11,7 @@ import { isIP } from "node:net";
 // connected to, so a name that resolves to a public IP when validated and to 127.0.0.1 when
 // used (DNS rebinding) is still refused.
 //
-// ORGTABLE_WEBHOOKS_ALLOW_PRIVATE=1 lifts it, for self-hosters whose targets are on their own
+// ORGTABLE_ALLOW_PRIVATE_TARGETS=1 lifts it, for self-hosters whose targets are on their own
 // network (and for the tests).
 
 function v4ToInt(ip: string): number {
@@ -67,7 +67,7 @@ export function isPublicAddress(ip: string): boolean {
 }
 
 export function privateTargetsAllowed(): boolean {
-  return process.env.ORGTABLE_WEBHOOKS_ALLOW_PRIVATE === "1";
+  return process.env.ORGTABLE_ALLOW_PRIVATE_TARGETS === "1";
 }
 
 export class BlockedAddressError extends Error {

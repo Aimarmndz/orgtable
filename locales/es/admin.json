@@ -5,7 +5,8 @@
     "instance": "Instancia",
     "audit": "Auditoría",
     "workspaces": "Resumen",
-    "back": "Volver a mis tableros"
+    "back": "Volver a mis tableros",
+    "backups": "Copias de la instancia"
   },
   "roles": {
     "MEMBER": "Miembro",
@@ -192,7 +193,16 @@
       "workspace.incoming_deleted": "Webhook entrante borrado",
       "workspace.apikey_created": "Clave API de la organización creada",
       "workspace.apikey_revoked": "Clave API de la organización revocada",
-      "workspace.apikey_used": "Clave API de la organización usada"
+      "workspace.apikey_used": "Clave API de la organización usada",
+      "workspace.backup_settings": "Ajustes de copias cambiados",
+      "workspace.backup_created": "Copia hecha",
+      "workspace.backup_deleted": "Copia borrada",
+      "workspace.restore": "Restaurado desde una copia",
+      "workspace.import": "Datos importados",
+      "instance.backup_settings": "Ajustes de copias de la instancia cambiados",
+      "instance.backup_created": "Copia de la instancia hecha",
+      "instance.backup_deleted": "Copia de la instancia borrada",
+      "instance.backup_restored": "Instancia restaurada desde una copia"
     }
   },
   "workspaces": {

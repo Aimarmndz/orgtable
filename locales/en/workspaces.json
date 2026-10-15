@@ -129,7 +129,9 @@
       "security": "Two-step verification, email domains and sessions",
       "webhooks": "Tell other systems what happens, signed",
       "integrations": "Slack, Discord, Teams and incoming webhooks",
-      "apiKeys": "Keys of the organization for the public API"
+      "apiKeys": "Keys of the organization for the public API",
+      "backups": "Scheduled backups, S3, export and import",
+      "export": "Download all the organization's data"
     },
     "roles": "Roles and permissions",
     "teams": "Teams",
@@ -139,7 +141,9 @@
     "integrationsGroup": "Integrations",
     "webhooks": "Webhooks",
     "integrations": "Apps and incoming",
-    "apiKeys": "API keys"
+    "apiKeys": "API keys",
+    "backups": "Backups",
+    "export": "Export"
   },
   "general": {
     "title": "General",
