@@ -2686,3 +2686,33 @@ Vitest.
 **Consequences.** Use `pnpm` instead of `npm`/`npx` (documentation updated). A new
 dependency with an install script must be added to `allowBuilds`, or pnpm will warn with
 `ERR_PNPM_IGNORED_BUILDS`.
+
+## 2026-10-15 — A context menu of our own inside boards
+
+**Context.** Inside a board a right click showed the browser's menu, which offers nothing
+for the board. The owner asked that a right click there mean "options for this": the
+background, quick actions on lists and cards.
+
+**Decision.**
+- A menu of our own on the board, its lists and its cards, built from a list of entries
+  (`board-menu.tsx`) and drawn by one component (`context-menu.tsx`) as a popover with
+  flyout submenus or, on touch, as a bottom sheet with drill-in submenus.
+- Only what the viewer's role allows is listed; the server checks every action again.
+- The browser's menu stays reachable: Shift + right click, and any right click on a field,
+  a link or selected text.
+- Touch opens it with a half-second long press (iOS fires no `contextmenu`); the press
+  cancels a pending card drag and the finger's lift is not a tap on the sheet.
+- Two board colours (Slate, Ink) can be chosen by hand, but `pickBoardColor` keeps its
+  original six, so no existing board, avatar or team changes colour.
+- Duplicating a card copies its content (description, date, labels, checklists), not its
+  attachments, comments or assignees: the copy is new work.
+
+**Alternatives considered.**
+- A menu library (Radix, Floating UI): one more dependency for a component of about 400
+  lines that also needs our sheet variant.
+- Greying out what the role forbids: noise for viewers, who could do nothing with it.
+
+**Consequences.** `renameBoard` changed signature (object in, new path out), since the
+slug follows the title and the page must move. New actions: `setBoardBackground`,
+`duplicateCard`, `sortListByDue`, `moveAllCardsTo`. See `docs/board-menu.md`.
+

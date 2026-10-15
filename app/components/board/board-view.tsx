@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   DndContext,
@@ -48,6 +48,7 @@ import {
 import { BoardPermsProvider } from "./board-perms";
 import { MembersPanel, type BoardMemberDTO } from "./members-panel";
 import { CardModal } from "../card/card-modal";
+import { BoardMenu, type BoardMenuState, type MenuTarget } from "./board-menu";
 import { useI18n } from "@/app/i18n/client";
 import { fmt } from "@/app/i18n/format";
 
@@ -84,6 +85,27 @@ export function BoardView({
   // Board filters: presentation only. Stable `now` for "overdue".
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [now] = useState(() => Date.now());
+  // Context menu (right click, long press, context-menu key) and its short notices
+  // ("Link copied."). `menuKey` remounts the menu on every opening, so its inline
+  // confirmations start closed. See docs/board-menu.md.
+  const [menu, setMenu] = useState<(BoardMenuState & { key: number }) | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  // The background chosen from the menu, shown before the server confirms it.
+  const [background, setBackground] = useState<string | null | undefined>(undefined);
+  const press = useRef<{ type: string; at: number; x: number; y: number; timer: ReturnType<typeof setTimeout> | null; openedAt: number }>({
+    type: "mouse",
+    at: 0,
+    x: 0,
+    y: 0,
+    timer: null,
+    openedAt: 0,
+  });
+
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(null), 2600);
+    return () => clearTimeout(timer);
+  }, [notice]);
 
   const canEdit = canEditBoard(viewerRole);
   const canManage = canManageBoard(viewerRole);
@@ -95,6 +117,7 @@ export function BoardView({
   if (board !== syncedBoard) {
     setSyncedBoard(board);
     setLists(board.lists);
+    setBackground(undefined);
     // If server data arrives mid-drag, the snapshot is stale: cancelling must go back
     // to this data, not the previous one.
     if (dragSnapshot) setDragSnapshot(board.lists);
@@ -144,6 +167,75 @@ export function BoardView({
   const closeCard = () => {
     window.history.replaceState(null, "", pathname);
   };
+
+  // --- Context menu ---
+  // What was under the pointer: a card, a list or the board itself.
+  const menuTargetOf = (el: Element): { target: MenuTarget; node: Element | null } => {
+    const cardNode = el.closest("[data-card-id]");
+    if (cardNode) return { target: { kind: "card", cardId: cardNode.getAttribute("data-card-id")! }, node: cardNode };
+    const listNode = el.closest("[data-list-id]");
+    if (listNode) return { target: { kind: "list", listId: listNode.getAttribute("data-list-id")! }, node: listNode };
+    return { target: { kind: "board" }, node: null };
+  };
+  // Places where the browser's own menu is more useful: fields (paste), links (open in
+  // a new tab) and selected text (copy). Shift + right click always gives the browser's.
+  const wantsNativeMenu = (el: Element, shiftClick: boolean) =>
+    shiftClick ||
+    Boolean(el.closest('input, textarea, select, a[href], [contenteditable=""], [contenteditable="true"]')) ||
+    Boolean(window.getSelection()?.toString().trim());
+  const openMenu = (target: MenuTarget, at: { x: number; y: number }, mode: "popover" | "sheet") =>
+    setMenu((prev) => ({ target, at, mode, key: (prev?.key ?? 0) + 1 }));
+
+  function handleContextMenu(e: React.MouseEvent) {
+    const el = e.target as Element;
+    if (wantsNativeMenu(el, e.button === 2 && e.shiftKey)) return;
+    e.preventDefault();
+    // A long press already opened it (Android fires contextmenu after its own long press).
+    if (Date.now() - press.current.openedAt < 800) return;
+    const touch = press.current.type !== "mouse" && Date.now() - press.current.at < 2000;
+    const { target, node } = menuTargetOf(el);
+    let at = { x: e.clientX, y: e.clientY };
+    if (e.button !== 2 && !touch) {
+      // From the keyboard (context-menu key, Shift+F10): next to the focused card or list.
+      const r = (node ?? el).getBoundingClientRect();
+      at = { x: r.left + 12, y: r.top + Math.min(r.height, 32) };
+    }
+    openMenu(target, at, touch ? "sheet" : "popover");
+  }
+
+  // Touch: holding a card, list or the background for half a second opens the sheet (iOS
+  // has no contextmenu event). Moving the finger first means scrolling or dragging.
+  function handlePointerDown(e: React.PointerEvent) {
+    const p = press.current;
+    p.type = e.pointerType;
+    p.at = Date.now();
+    p.x = e.clientX;
+    p.y = e.clientY;
+    if (p.timer) clearTimeout(p.timer);
+    p.timer = null;
+    if (e.pointerType !== "touch" || wantsNativeMenu(e.target as Element, false)) return;
+    const el = e.target as Element;
+    const pointerId = e.pointerId;
+    p.timer = setTimeout(() => {
+      p.timer = null;
+      p.openedAt = Date.now();
+      // Stop a pending card drag: lifting the finger later must not drop it somewhere.
+      el.dispatchEvent(new PointerEvent("pointercancel", { pointerId, bubbles: true }));
+      navigator.vibrate?.(10);
+      openMenu(menuTargetOf(el).target, { x: p.x, y: p.y }, "sheet");
+    }, 500);
+  }
+  function handlePointerMove(e: React.PointerEvent) {
+    const p = press.current;
+    if (p.timer && Math.hypot(e.clientX - p.x, e.clientY - p.y) > 8) {
+      clearTimeout(p.timer);
+      p.timer = null;
+    }
+  }
+  function endPress() {
+    if (press.current.timer) clearTimeout(press.current.timer);
+    press.current.timer = null;
+  }
 
   // Screen reader texts: dnd-kit's defaults are English-only, so they come from the
   // messages.
@@ -339,8 +431,25 @@ export function BoardView({
         onDragCancel={handleDragCancel}
       >
         <div
-          className="flex flex-1 flex-col overflow-hidden"
-          style={{ background: boardBackgroundFor(board) }}
+          className="flex flex-1 flex-col overflow-hidden [-webkit-touch-callout:none]"
+          style={{
+            background: boardBackgroundFor({
+              id: board.id,
+              background: background === undefined ? board.background : background,
+            }),
+          }}
+          onContextMenu={handleContextMenu}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={endPress}
+          onPointerCancel={endPress}
+          onClickCapture={(e) => {
+            // The finger lifting after a long press is not a tap on the card.
+            if (Date.now() - press.current.openedAt < 800) {
+              e.preventDefault();
+              e.stopPropagation();
+            }
+          }}
         >
           <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 px-4 pb-2 pt-4">
             <div className="min-w-0 max-w-full">
@@ -482,6 +591,36 @@ export function BoardView({
           onClose={closeCard}
         />
       )}
+
+      {menu && (
+        <BoardMenu
+          key={menu.key}
+          state={menu}
+          board={{ ...board, background: background === undefined ? board.background : background }}
+          lists={lists}
+          members={members}
+          currentUserId={currentUserId}
+          view={view}
+          canEdit={canEdit}
+          canManage={canManage}
+          onClose={() => setMenu(null)}
+          onOpenCard={openCard}
+          onSetView={setView}
+          onOpenMembers={() => setMembersOpen(true)}
+          onOpenFilters={() => document.querySelector<HTMLButtonElement>("[data-filter-trigger]")?.click()}
+          onBackground={setBackground}
+          onNotice={setNotice}
+        />
+      )}
+
+      {/* Result of a menu action ("Link copied."), announced and gone after a moment. */}
+      <div aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-6 z-50 flex justify-center px-4">
+        {notice && (
+          <p role="status" className="rounded-lg bg-ink px-3.5 py-2 text-sm font-medium text-bg shadow-lg">
+            {notice}
+          </p>
+        )}
+      </div>
 
       {membersOpen && (
         <MembersPanel

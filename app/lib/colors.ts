@@ -10,16 +10,24 @@ export const BOARD_COLORS = {
   amber: "oklch(0.54 0.09 62)",
   rose: "oklch(0.52 0.12 33)",
   teal: "oklch(0.5 0.06 200)",
+  // Picked by hand only (board menu → Background): the automatic colour below keeps
+  // drawing from the first six, so boards without a chosen colour never change.
+  slate: "oklch(0.42 0.02 260)",
+  ink: "oklch(0.32 0.03 52)",
 } as const;
 
 export type BoardColor = keyof typeof BOARD_COLORS;
 export const BOARD_COLOR_KEYS = Object.keys(BOARD_COLORS) as BoardColor[];
+// The palette pickBoardColor draws from. Frozen at the original six: adding a colour to
+// BOARD_COLORS must not repaint every board, avatar and team that relies on the
+// automatic one.
+const AUTO_BOARD_COLORS: BoardColor[] = ["blue", "green", "purple", "amber", "rose", "teal"];
 
 /** Deterministic board colour from an id (assigned on creation). */
 export function pickBoardColor(seed: string): BoardColor {
   let h = 0;
   for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
-  return BOARD_COLOR_KEYS[h % BOARD_COLOR_KEYS.length];
+  return AUTO_BOARD_COLORS[h % AUTO_BOARD_COLORS.length];
 }
 
 /** A board's background: its chosen colour or, if none, a stable one based on its id. */

@@ -1,9 +1,19 @@
 import "server-only";
-import { generateKeyBetween } from "fractional-indexing";
+import { generateKeyBetween, generateNKeysBetween } from "fractional-indexing";
 
 // Fractional indexing ordering helpers. Each list/card position is a lexicographic
 // string key; moving an item only updates its own row.
 // See docs/decisions/0002-fractional-indexing.md.
+
+/** Key between two neighbours (null = that end of the list is open). */
+export function positionBetween(before: string | null, after: string | null): string {
+  return generateKeyBetween(before, after);
+}
+
+/** `n` ascending keys after `lastPosition` (null = empty): appends a batch in one go. */
+export function positionsAtEnd(lastPosition: string | null, n: number): string[] {
+  return generateNKeysBetween(lastPosition, null, n);
+}
 
 /** Key to append an item at the end, given the last position (or null if empty). */
 export function positionAtEnd(lastPosition: string | null): string {

@@ -268,7 +268,9 @@
       "purple": "Plum",
       "amber": "Ochre",
       "rose": "Clay",
-      "teal": "Teal"
+      "teal": "Teal",
+      "slate": "Slate",
+      "ink": "Ink"
     }
   },
   "teams": {

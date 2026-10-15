@@ -1,6 +1,6 @@
 import "server-only";
 import { prisma } from "@/app/lib/prisma";
-import { positionAtEnd } from "@/app/lib/ordering";
+import { positionAtEnd, positionBetween } from "@/app/lib/ordering";
 
 // A card's context (its board) for authorization and notifications. Isolated here so the
 // comment and assignee Server Actions can reuse it and so it can be tested. Returns null
@@ -78,5 +78,64 @@ export async function createCardAtEnd(data: {
       },
       select: { id: true },
     });
+  });
+}
+
+/**
+ * Copies a card right below the original, in the same list: title (as given), description,
+ * due date, labels and checklists with their items and ticks. Not copied: attachments
+ * (their files belong to the original), comments and assignees (a copy is new work; the
+ * people choose to take it). The list row is locked like in createCardAtEnd, so a
+ * concurrent create or copy cannot take the same gap.
+ */
+export async function duplicateCardBelow(cardId: string, title: string): Promise<{ id: string } | null> {
+  return prisma.$transaction(async (tx) => {
+    const source = await tx.card.findUnique({
+      where: { id: cardId },
+      select: {
+        listId: true,
+        position: true,
+        description: true,
+        dueDate: true,
+        labels: { select: { labelId: true } },
+        checklists: {
+          orderBy: { position: "asc" },
+          select: {
+            title: true,
+            position: true,
+            items: { orderBy: { position: "asc" }, select: { text: true, done: true, position: true } },
+          },
+        },
+      },
+    });
+    if (!source) return null;
+    await tx.$queryRaw`SELECT 1 FROM "List" WHERE id = ${source.listId} FOR UPDATE`;
+    const next = await tx.card.findFirst({
+      where: { listId: source.listId, position: { gt: source.position } },
+      orderBy: { position: "asc" },
+      select: { position: true },
+    });
+    const card = await tx.card.create({
+      data: {
+        listId: source.listId,
+        title,
+        description: source.description,
+        dueDate: source.dueDate,
+        position: positionBetween(source.position, next?.position ?? null),
+        labels: { create: source.labels.map((l) => ({ labelId: l.labelId })) },
+      },
+      select: { id: true },
+    });
+    for (const checklist of source.checklists) {
+      await tx.checklist.create({
+        data: {
+          cardId: card.id,
+          title: checklist.title,
+          position: checklist.position,
+          items: { create: checklist.items },
+        },
+      });
+    }
+    return card;
   });
 }

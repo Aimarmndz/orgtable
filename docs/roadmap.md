@@ -46,6 +46,9 @@ approach. See [`contributing.md`](./contributing.md).
 - Board filters by label, assignee and due-date status. See [`filters.md`](./filters.md).
 - Calendar view with a monthly grid; dragging a card to another day changes its due date.
   See [`calendar.md`](./calendar.md).
+- Right-click menu (long press on touch) with quick actions on the board, its lists and
+  its cards: background, rename, move, sort, labels, due date, assign, duplicate, delete.
+  See [`board-menu.md`](./board-menu.md).
 
 ### Public API
 

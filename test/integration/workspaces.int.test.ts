@@ -638,7 +638,10 @@ describe("board URLs", () => {
       workspace: { slug: "acme" },
     });
     await loginAs(owner.id);
-    await renameBoard(form({ boardId: shared.id, title: "Roadmap 2027" }));
+    expect(await renameBoard({ boardId: shared.id, title: "Roadmap 2027" })).toEqual({
+      ok: true,
+      path: "/acme/roadmap-2027",
+    });
     expect(await findBoardByPath("acme", "roadmap-2027")).toMatchObject({
       id: shared.id,
     });

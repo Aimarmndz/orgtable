@@ -65,6 +65,8 @@ export function FilterBar({
       <button
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
+        // "Filter cards" in the board menu clicks this.
+        data-filter-trigger=""
         className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium backdrop-blur-sm transition-colors ${
           active
             ? "bg-white/90 text-ink shadow-sm"

@@ -27,6 +27,8 @@ export function AddListForm({ boardId }: { boardId: string }) {
           pending.current = false;
         }
       }}
+      // "Add list" in the board menu focuses this field.
+      data-add-list=""
       className="w-72 shrink-0"
     >
       <input type="hidden" name="boardId" value={boardId} />

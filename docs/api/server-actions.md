@@ -38,8 +38,9 @@ messages live in `locales/<code>/errors.json`. See
 
 | Style | Actions | Input | Return | Effects |
 | --- | --- | --- | --- | --- |
-| **Form** (`<form action={...}>`) | `completeSetup`, `login`, `logout`, `createBoard`, `renameBoard`, `deleteBoard`, `createList`, `renameList`, `deleteList`, `createCard`, `renameCard`, `deleteCard` | `FormData` (sometimes preceded by `_prev` for `useActionState`) | `void` or `{ error?: string }` | `revalidatePath` and/or `redirect` |
+| **Form** (`<form action={...}>`) | `completeSetup`, `login`, `logout`, `createBoard`, `deleteBoard`, `createList`, `renameList`, `deleteList`, `createCard`, `renameCard`, `deleteCard` | `FormData` (sometimes preceded by `_prev` for `useActionState`) | `void` or `{ error?: string }` | `revalidatePath` and/or `redirect` |
 | **Drag and drop** (imperative call from the client) | `reorderList`, `moveCard` | A typed **object** | `{ ok: boolean }` | `revalidatePath`, no `redirect` |
+| **Board menu** (imperative call from the right-click menu) | `renameBoard`, `setBoardBackground`, `duplicateCard`, `sortListByDue`, `moveAllCardsTo` | A typed **object** | `{ ok: boolean, … }` | `revalidatePath`, no `redirect` |
 
 Form actions receive `FormData` and usually end by redirecting or revalidating a route so
 the server renders again. Drag-and-drop actions receive a plain object (the client has
@@ -67,7 +68,8 @@ check it with `isValidPositionKey` before saving it. See
 | `login` | `auth.ts` | `(_prev, FormData)` | `Promise<AuthState>` | `loginSchema` | None (it is the login) | `createSession`, `redirect` |
 | `logout` | `auth.ts` | `()` | `Promise<void>` | — | — | `deleteSession`, `redirect` |
 | `createBoard` | `boards.ts` | `(FormData)` | `Promise<void>` | `boardTitleSchema` | `requireUser` | `revalidatePath`, `redirect` |
-| `renameBoard` | `boards.ts` | `(FormData)` | `Promise<void>` | `boardTitleSchema` | `requireBoardAccess` | `revalidatePath` |
+| `renameBoard` | `boards.ts` | `({ boardId, title })` | `Promise<{ ok, path? }>` | `boardTitleSchema` | `requireBoardAccess` + owner | `revalidatePath` |
+| `setBoardBackground` | `boards.ts` | `({ boardId, background })` | `Promise<{ ok: boolean }>` | `boardBackgroundChoiceSchema` | `requireBoardAccess` + owner | `revalidatePath` |
 | `deleteBoard` | `boards.ts` | `(FormData)` | `Promise<void>` | — | `requireUser` + owner only | `revalidatePath`, `redirect` |
 | `createList` | `lists.ts` | `(FormData)` | `Promise<void>` | `listTitleSchema` | `requireBoardAccess` | `revalidatePath` |
 | `renameList` | `lists.ts` | `(FormData)` | `Promise<void>` | `listTitleSchema` | `requireBoardAccess` | `revalidatePath` |
@@ -77,6 +79,9 @@ check it with `isValidPositionKey` before saving it. See
 | `renameCard` | `cards.ts` | `(FormData)` | `Promise<void>` | `cardTitleSchema` | `requireBoardAccess` | `revalidatePath` |
 | `deleteCard` | `cards.ts` | `(FormData)` | `Promise<void>` | — | `requireBoardAccess` | `revalidatePath` |
 | `moveCard` | `cards.ts` | `({ cardId, toListId, position })` | `Promise<{ ok: boolean }>` | `moveCardSchema` (`isValidPositionKey`) | `requireBoardAccess` | `revalidatePath` |
+| `duplicateCard` | `cards.ts` | `({ cardId })` | `Promise<{ ok, id? }>` | — | `requireBoardAccess` + editor | `revalidatePath`, webhook `card.created` |
+| `sortListByDue` | `lists.ts` | `({ listId })` | `Promise<{ ok: boolean }>` | — | `requireBoardAccess` + editor | `revalidatePath` |
+| `moveAllCardsTo` | `lists.ts` | `({ fromListId, toListId })` | `Promise<{ ok, moved? }>` | both lists on one board | `requireBoardAccess` + editor | `revalidatePath`, webhook `card.moved` per card |
 
 ---
 
@@ -220,15 +225,21 @@ export async function createBoard(formData: FormData): Promise<void>
 **File:** `app/lib/actions/boards.ts`
 
 ```ts
-export async function renameBoard(formData: FormData): Promise<void>
+export async function renameBoard(input: { boardId: string; title: string }): Promise<{ ok: boolean; path?: string }>
 ```
 
-- **Authorization:** `requireBoardAccess(boardId)` (requires board membership; otherwise
-  redirects to `/boards`).
-- **Validates:** `boardTitleSchema` on `title`. On failure it returns without doing
-  anything.
-- **Database:** `board.update` changing the `title`.
-- **Effects:** `revalidatePath(\`/board/${boardId}\`)`. No redirect.
+- **Authorization:** `requireBoardAccess(boardId)`, then owners only (`canManageBoard`).
+- **Validates:** `boardTitleSchema` on `title`. On failure it returns `{ ok: false }`.
+- **Database:** `board.update` changing the `title` and the `slug`, which follows the title.
+- **Returns:** the board's new path; the board menu moves the page there, since the old slug
+  stops resolving (the board id keeps working and redirects).
+- **Effects:** `revalidateBoard(boardId)`. No redirect.
+
+### `setBoardBackground`
+
+**File:** `app/lib/actions/boards.ts`. Owners pick a colour of `BOARD_COLORS` or `null`
+(automatic, from the board's id). Unlike the import, an unknown colour is refused, not
+turned into automatic. See [board-menu.md](../board-menu.md).
 
 ### `deleteBoard`
 

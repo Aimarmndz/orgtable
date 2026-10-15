@@ -11,7 +11,7 @@ import {
   dueDateSchema,
   CARD_DESCRIPTION_MAX,
 } from "@/app/lib/validators";
-import { cardBelongsToBoard, createCardAtEnd } from "@/app/lib/services/cards";
+import { cardBelongsToBoard, createCardAtEnd, duplicateCardBelow } from "@/app/lib/services/cards";
 import { deleteCardWithAttachments } from "@/app/lib/services/attachments";
 import { isValidPositionKey } from "@/app/lib/ordering";
 import { getI18n } from "@/app/i18n/server";
@@ -196,6 +196,30 @@ export async function deleteCard(formData: FormData): Promise<void> {
   await deleteCardWithAttachments(cardId);
   revalidateBoard(card.list.boardId);
   await emitCard("card.deleted", before, user.id);
+}
+
+/**
+ * Copies a card right below itself (board menu → Duplicate). The copy is titled
+ * "<title> (copy)" in the actor's language, cut to the title limit. See duplicateCardBelow
+ * for what travels with it.
+ */
+export async function duplicateCard(input: { cardId: string }): Promise<{ ok: boolean; id?: string }> {
+  const cardId = String(input.cardId);
+  const card = await prisma.card.findUnique({
+    where: { id: cardId },
+    select: { title: true, list: { select: { boardId: true } } },
+  });
+  if (!card) return { ok: false };
+  const { user, role } = await requireBoardAccess(card.list.boardId);
+  if (!canEditBoard(role)) return { ok: false };
+
+  const { m } = await getI18n();
+  const title = fmt(m.boards.menu.copyTitle, { title: card.title }).slice(0, 500);
+  const copy = await duplicateCardBelow(cardId, title);
+  if (!copy) return { ok: false };
+  revalidateBoard(card.list.boardId);
+  await emitCard("card.created", await cardSnapshot(copy.id), user.id);
+  return { ok: true, id: copy.id };
 }
 
 /**

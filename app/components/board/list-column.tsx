@@ -73,6 +73,8 @@ export function ListColumn({
     <div
       ref={setNodeRef}
       style={style}
+      // The board menu finds the list under a right click by this (board-menu.tsx).
+      data-list-id={list.id}
       className="flex max-h-full w-72 shrink-0 flex-col rounded-2xl border border-border/50 bg-column/95 shadow-[0_2px_8px_-4px_oklch(0.27_0.022_52/0.2)] backdrop-blur-sm"
     >
       <div className="flex items-center gap-1.5 px-3.5 py-3">

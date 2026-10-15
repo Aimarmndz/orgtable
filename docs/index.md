@@ -38,6 +38,7 @@ want to **contribute** to the code.
 - [**Search**](./search.md) — global search across boards and cards, scoped by access.
 - [**Board filters**](./filters.md) — narrow the visible cards by label, assignee and due date.
 - [**Calendar view**](./calendar.md) — cards with a due date on a monthly grid.
+- [**Board menu**](./board-menu.md) — right click (or long press) for quick actions on the board, a list or a card.
 - [**Due-date reminders**](./reminders.md) — the reminder cron job and drag to reschedule.
 - [**Attachments**](./attachments.md) — files on cards, storage and authorized download.
 - [**Design system**](./design-system.md) — OKLCH tokens, light and dark themes, components.

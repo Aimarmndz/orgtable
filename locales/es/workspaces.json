@@ -268,7 +268,9 @@
       "purple": "Ciruela",
       "amber": "Ocre",
       "rose": "Arcilla",
-      "teal": "Verde azulado"
+      "teal": "Verde azulado",
+      "slate": "Pizarra",
+      "ink": "Tinta"
     }
   },
   "teams": {

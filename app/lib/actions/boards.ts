@@ -13,6 +13,7 @@ import { recordAudit } from "@/app/lib/audit";
 import { emitBoardEvent } from "@/app/lib/webhooks/dispatch";
 import {
   boardTitleSchema,
+  boardBackgroundChoiceSchema,
   boardImportSchema,
   boardVisibilitySchema,
 } from "@/app/lib/validators";
@@ -78,27 +79,51 @@ export async function createBoard(formData: FormData): Promise<void> {
   redirect(boardPath(workspace.slug, board.slug));
 }
 
-export async function renameBoard(formData: FormData): Promise<void> {
-  const boardId = String(formData.get("boardId"));
+/**
+ * Renames a board (owners). The slug follows the title, so the board's address changes:
+ * the new path is returned for the page to move to (the old slug stops resolving; the
+ * board's id keeps working in URLs and redirects to it).
+ */
+export async function renameBoard(input: {
+  boardId: string;
+  title: string;
+}): Promise<{ ok: boolean; path?: string }> {
+  const boardId = String(input.boardId);
   const { role } = await requireBoardAccess(boardId);
-  if (!canManageBoard(role)) return;
-  const parsed = boardTitleSchema.safeParse(formData.get("title"));
-  if (!parsed.success) return;
+  if (!canManageBoard(role)) return { ok: false };
+  const parsed = boardTitleSchema.safeParse(input.title);
+  if (!parsed.success) return { ok: false };
 
-  // The slug follows the title; the board's id keeps working in URLs and redirects to it.
   const current = await prisma.board.findUnique({
     where: { id: boardId },
     select: { workspaceId: true },
   });
-  if (!current) return;
-  await prisma.board.update({
+  if (!current) return { ok: false };
+  const board = await prisma.board.update({
     where: { id: boardId },
     data: {
       title: parsed.data,
       slug: await freeBoardSlug(prisma, current.workspaceId, parsed.data, boardId),
     },
+    select: { slug: true, workspace: { select: { slug: true } } },
   });
   revalidateBoard(boardId);
+  return { ok: true, path: boardPath(board.workspace.slug, board.slug) };
+}
+
+/** The board's background (owners): a colour of the palette, or null for the automatic one. */
+export async function setBoardBackground(input: {
+  boardId: string;
+  background: string | null;
+}): Promise<{ ok: boolean }> {
+  const boardId = String(input.boardId);
+  const { role } = await requireBoardAccess(boardId);
+  if (!canManageBoard(role)) return { ok: false };
+  const parsed = boardBackgroundChoiceSchema.safeParse(input.background);
+  if (!parsed.success) return { ok: false };
+  await prisma.board.update({ where: { id: boardId }, data: { background: parsed.data } });
+  revalidateBoard(boardId);
+  return { ok: true };
 }
 
 /** Who besides its members sees an organization board: the whole workspace, or nobody. */

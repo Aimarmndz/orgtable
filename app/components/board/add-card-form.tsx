@@ -34,6 +34,8 @@ export function AddCardForm({
           pending.current = false;
         }
       }}
+      // "Add card" in the list's menu focuses this field.
+      data-add-card={listId}
       className="p-2"
     >
       <input type="hidden" name="listId" value={listId} />

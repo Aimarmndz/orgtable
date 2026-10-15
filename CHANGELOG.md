@@ -9,6 +9,8 @@ behind each decision is in [`docs/DECISIONES.md`](./docs/DECISIONES.md).
 
 ### Changed
 
+- `renameBoard` takes `{ boardId, title }` and returns `{ ok, path }` (the board's new
+  address) instead of taking `FormData`.
 - `ORGTABLE_WEBHOOKS_ALLOW_PRIVATE` (never released) is now `ORGTABLE_ALLOW_PRIVATE_TARGETS`
   and also covers S3 backup endpoints. docker-compose gains a `backups` volume
   (`ORGTABLE_BACKUP_DIR`).
@@ -22,6 +24,15 @@ behind each decision is in [`docs/DECISIONES.md`](./docs/DECISIONES.md).
   is a list of sections.
 
 ### Added
+
+- **Right-click menu inside a board.** On the background: add a list, change the
+  background (two new colours, Slate and Ink), rename the board, switch to the calendar,
+  filter, members, copy the link, export. On a list: add a card, rename, move left or
+  right, sort by due date, move all its cards to another list, delete. On a card: open,
+  rename, labels, due date shortcuts, assign, move to another list or to the top or
+  bottom, duplicate, copy the link, delete. Keyboard (context-menu key, Shift+F10, arrows
+  and letter shortcuts) and touch (long press opens a bottom sheet) work too; Shift + right
+  click keeps the browser's menu. See `docs/board-menu.md`.
 
 - **Custom roles per organization** (`/<slug>/settings/roles`). Owners and admins create
   roles with a name, colour, description and any of 13 permissions: see every board, create,

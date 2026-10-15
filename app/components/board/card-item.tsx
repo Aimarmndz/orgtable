@@ -86,6 +86,8 @@ export function CardItem({
       // aria-label with only the title would hide it.
       role="button"
       tabIndex={overlay ? -1 : 0}
+      // The board menu finds the card under a right click by this (board-menu.tsx).
+      data-card-id={overlay ? undefined : card.id}
       onClick={() => onOpen?.(card.id)}
       onKeyDown={(e) => {
         // dnd-kit first (Space picks up the card if it is draggable; if it does, it marks

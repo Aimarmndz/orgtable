@@ -82,6 +82,9 @@ export const cardDetailsSchema = z.object({
 // the old tolerance: an unknown colour falls back to the default instead of failing.
 export const labelColorSchema = z.enum(LABEL_COLOR_KEYS).catch("blue");
 const boardBackgroundSchema = z.enum(BOARD_COLOR_KEYS).nullable().catch(null);
+// Choosing one from the board menu is strict instead: an unknown colour is refused, not
+// silently turned into "automatic". null = automatic (the colour from the board's id).
+export const boardBackgroundChoiceSchema = z.enum(BOARD_COLOR_KEYS).nullable();
 
 // Card comments.
 export const commentTextSchema = z
