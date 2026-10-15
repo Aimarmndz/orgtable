@@ -5,6 +5,9 @@ import { randomBytes, createHash } from "node:crypto";
 // only its SHA-256 hash is stored in the database. See docs/decisions/0013-api-tokens.md.
 
 const PREFIX = "orgt_";
+// Organization keys (WorkspaceApiKey) start with this instead, so authentication knows which
+// table to look in.
+export const ORG_KEY_PREFIX = "ot_org_";
 
 export type GeneratedToken = {
   /** Full plain-text token. Shown only once; never persisted. */
@@ -29,4 +32,10 @@ export function generateApiToken(): GeneratedToken {
     // Visible prefix (e.g. "orgt_Ab3kQ9x"): enough to recognise it without revealing it.
     prefix: token.slice(0, PREFIX.length + 7),
   };
+}
+
+/** A new organization key, like generateApiToken but with ORG_KEY_PREFIX. */
+export function generateOrgKey(): GeneratedToken {
+  const token = ORG_KEY_PREFIX + randomBytes(24).toString("base64url");
+  return { token, hash: hashToken(token), prefix: token.slice(0, ORG_KEY_PREFIX.length + 6) };
 }

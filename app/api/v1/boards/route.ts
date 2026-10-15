@@ -21,7 +21,9 @@ export async function GET(request: Request) {
   if (!auth) return apiError(401, "Missing or invalid API token.");
 
   const boards = await getBoardsForUser(auth.userId);
-  return apiOk({ boards: boards.map(serializeBoardSummary) });
+  // An organization key only lists that organization's boards.
+  const visible = auth.workspaceId ? boards.filter((b) => b.workspaceId === auth.workspaceId) : boards;
+  return apiOk({ boards: visible.map(serializeBoardSummary) });
 }
 
 /**
@@ -43,12 +45,15 @@ export async function POST(request: Request) {
   if (requested !== undefined && typeof requested !== "string") {
     return apiError(400, "`workspace` must be a workspace slug.");
   }
-  // Same 404 for a workspace that does not exist and one the user is not in.
+  // Same 404 for a workspace that does not exist and one the user is not in. An
+  // organization key creates boards in its organization, and only there.
   const workspace = await prisma.workspace.findFirst({
     where: {
-      ...(requested
-        ? { slug: requested.toLowerCase(), members: { some: { userId: auth.userId } } }
-        : { personalOwnerId: auth.userId }),
+      ...(auth.workspaceId
+        ? { id: auth.workspaceId, ...(requested ? { slug: requested.toLowerCase() } : {}) }
+        : requested
+          ? { slug: requested.toLowerCase(), members: { some: { userId: auth.userId } } }
+          : { personalOwnerId: auth.userId }),
       suspendedAt: null,
     },
     select: { id: true, kind: true },

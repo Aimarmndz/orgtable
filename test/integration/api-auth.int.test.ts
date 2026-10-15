@@ -27,7 +27,7 @@ describe("authenticateApiToken — last-used mark (integration)", () => {
     const auth = await authenticateApiToken(
       apiRequest("GET", "/api/v1/boards", { token }),
     );
-    expect(auth).toEqual({ userId: user.id, scope: "full" });
+    expect(auth).toEqual({ userId: user.id, scope: "full", workspaceId: null });
     const row = await prisma.apiToken.findFirstOrThrow({
       where: { userId: user.id },
     });
@@ -49,7 +49,7 @@ describe("authenticateApiToken — last-used mark (integration)", () => {
       apiRequest("GET", "/api/v1/boards", { token }),
     );
 
-    expect(auth).toEqual({ userId: user.id, scope: "full" });
+    expect(auth).toEqual({ userId: user.id, scope: "full", workspaceId: null });
     expect(errorSpy).toHaveBeenCalledWith(
       "[api-auth] could not update lastUsedAt",
       { tokenId: row.id, error: "DB down" },

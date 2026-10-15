@@ -22,7 +22,7 @@ export async function GET(
   if (!auth) return apiError(401, "Missing or invalid API token.");
   const { id: boardId } = await params;
 
-  const role = await apiBoardRole(auth.userId, boardId);
+  const role = await apiBoardRole(auth, boardId);
   if (!role) return apiError(404, "Board not found.");
 
   const lists = await prisma.list.findMany({
@@ -43,7 +43,7 @@ export async function POST(
   if (isReadOnly(auth)) return apiError(403, "Read-only token.");
   const { id: boardId } = await params;
 
-  const role = await apiBoardRole(auth.userId, boardId);
+  const role = await apiBoardRole(auth, boardId);
   if (!role) return apiError(404, "Board not found.");
   if (!canEditBoard(role)) {
     return apiError(403, "You need edit permission on this board.");

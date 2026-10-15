@@ -112,6 +112,7 @@ model Workspace {
   teams           Team[]
   webhooks        Webhook[]
   incomingHooks   IncomingHook[]
+  apiKeys         WorkspaceApiKey[]
 }
 
 model WorkspaceMember {
@@ -241,6 +242,7 @@ model User {
   totpEnabledAt        DateTime?
   totpLastStep         Int?
   recoveryCodeHashes   String[]          @default([])
+  workspaceApiKeys     WorkspaceApiKey[]
 }
 
 // What a single-use link sent by email lets its holder do with an account.
@@ -621,6 +623,28 @@ model IncomingHook {
   createdAt   DateTime  @default(now())
   lastUsedAt  DateTime?
   useCount    Int       @default(0)
+
+  @@index([workspaceId])
+}
+
+// An API key of an organization (docs/api/public-api.md, "Organization keys"): it only reaches
+// that organization's boards, never more than editing (no deleting boards or managing
+// people), and acts on behalf of whoever created it, who must still be a member. Only its
+// SHA-256 is stored; it is shown once. Leaving the organization deletes one's keys.
+model WorkspaceApiKey {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  tokenHash   String    @unique
+  prefix      String
+  // "read" or "full" (read and write), like personal tokens.
+  scope       String    @default("read")
+  createdById String
+  createdBy   User      @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  expiresAt   DateTime?
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
 
   @@index([workspaceId])
 }

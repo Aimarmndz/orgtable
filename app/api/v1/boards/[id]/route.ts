@@ -30,7 +30,9 @@ export async function GET(
   if (!auth) return apiError(401, "Missing or invalid API token.");
   const { id } = await params;
 
-  // getBoardWithLists already scopes by access (owner or member); null = no access.
+  // apiBoardRole limits an organization key to its organization; getBoardWithLists scopes by
+  // access too (null = no access).
+  if (!(await apiBoardRole(auth, id))) return apiError(404, "Board not found.");
   const board = await getBoardWithLists(id, auth.userId);
   if (!board) return apiError(404, "Board not found.");
   return apiOk(serializeBoardFull(board));
@@ -46,7 +48,7 @@ export async function PATCH(
   if (isReadOnly(auth)) return apiError(403, "Read-only token.");
   const { id } = await params;
 
-  const role = await apiBoardRole(auth.userId, id);
+  const role = await apiBoardRole(auth, id);
   if (!role) return apiError(404, "Board not found.");
   if (!canManageBoard(role)) {
     return apiError(403, "You need to be the board owner.");
@@ -84,9 +86,11 @@ export async function DELETE(
   if (isReadOnly(auth)) return apiError(403, "Read-only token.");
   const { id } = await params;
 
-  const role = await apiBoardRole(auth.userId, id);
+  const role = await apiBoardRole(auth, id);
   if (!role) return apiError(404, "Board not found.");
-  if (!canManageBoard(role) && !(await holdsPermissionOnBoard(id, auth.userId, "boards.delete"))) {
+  // An organization key never deletes boards (apiBoardRole caps it at EDITOR, and the
+  // creator's "boards.delete" does not travel with the key).
+  if (!canManageBoard(role) && (auth.workspaceId || !(await holdsPermissionOnBoard(id, auth.userId, "boards.delete")))) {
     return apiError(403, "You need to be the board owner.");
   }
 

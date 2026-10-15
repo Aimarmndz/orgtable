@@ -70,25 +70,30 @@ export function orgSettingsSections(
     },
     {
       label: t.integrationsGroup,
-      items: ctx.permissions.has("integrations.manage")
-        ? [
-            {
-              key: "webhooks",
-              href: `${base}/webhooks`,
-              label: t.webhooks,
-              hint: t.hints.webhooks,
-              icon: NavIcon.webhook,
-              badge: counts.webhooks ? String(counts.webhooks) : undefined,
-            },
-            {
-              key: "integrations",
-              href: `${base}/integrations`,
-              label: t.integrations,
-              hint: t.hints.integrations,
-              icon: NavIcon.plug,
-            },
-          ]
-        : [],
+      items: [
+        ...(ctx.permissions.has("integrations.manage")
+          ? [
+              {
+                key: "webhooks",
+                href: `${base}/webhooks`,
+                label: t.webhooks,
+                hint: t.hints.webhooks,
+                icon: NavIcon.webhook,
+                badge: counts.webhooks ? String(counts.webhooks) : undefined,
+              },
+              {
+                key: "integrations",
+                href: `${base}/integrations`,
+                label: t.integrations,
+                hint: t.hints.integrations,
+                icon: NavIcon.plug,
+              },
+            ]
+          : []),
+        ...(ctx.permissions.has("apikeys.manage")
+          ? [{ key: "api-keys", href: `${base}/api-keys`, label: t.apiKeys, hint: t.hints.apiKeys, icon: NavIcon.key }]
+          : []),
+      ],
     },
     {
       label: t.dataGroup,

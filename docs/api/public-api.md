@@ -23,6 +23,22 @@ Authorization: Bearer orgt_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
   with `401` (it is not deleted; Settings shows it as expired).
 - Revoking a token (deleting it in Settings) invalidates it immediately.
 
+### Organization keys
+
+An organization can create **keys of its own** at _Settings › API keys_
+(`/<slug>/settings/api-keys`, `apikeys.manage` permission). They start with `ot_org_` and are sent
+the same way (`Authorization: Bearer ot_org_…`). Unlike a personal token:
+
+- they only reach **that organization's boards** (`GET /api/v1/boards` lists those; any other board
+  is a 404) and create boards only there;
+- they are capped at **editor**: they create and edit lists and cards, but never rename or delete
+  boards, nor manage their members, even if the person who created them could;
+- they act on behalf of their creator and **stop working when that person leaves** the organization
+  (their keys are deleted);
+- `read` or `full`, with an optional expiry, like personal tokens; only the SHA-256 is stored and the
+  key is shown once;
+- their use is written to the organization's [activity log](../audit.md), at most once an hour per key.
+
 ## Conventions
 
 - Request and response bodies are **JSON** (`Content-Type: application/json`).

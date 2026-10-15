@@ -501,6 +501,10 @@ export async function removeMember(input: {
         board: { workspaceId: input.workspaceId },
       },
     });
+    // Organization API keys act on behalf of their creator: they go with them.
+    await tx.workspaceApiKey.deleteMany({
+      where: { workspaceId: input.workspaceId, createdById: input.userId },
+    });
     await tx.workspaceMember.delete({
       where: {
         workspaceId_userId: {

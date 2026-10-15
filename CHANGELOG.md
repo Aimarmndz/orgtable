@@ -49,6 +49,9 @@ behind each decision is in [`docs/DECISIONES.md`](./docs/DECISIONES.md).
   message is already written for the chat, escaped so nothing can ping everyone.
 - **Incoming webhooks**: a secret URL (`POST /api/hooks/in/<token>`) that creates cards with
   labels, due date and assignee.
+- **Organization API keys** (`/<slug>/settings/api-keys`, `ot_org_…`): keys of the
+  organization rather than of a person. They only reach its boards, at most as an editor,
+  expire if you want, stop working when their creator leaves, and their use is logged.
 - **Brand of an organization** (`/<slug>/settings/general`): logo (PNG/JPEG/WebP, type read
   from the bytes, SVG refused), brand colour with a preview, and the organization's time zone.
   The logo replaces the initials in the settings menu and the list of organizations.

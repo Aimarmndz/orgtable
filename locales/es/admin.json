@@ -189,7 +189,10 @@
       "workspace.webhook_disabled": "Webhook en pausa",
       "workspace.incoming_created": "Webhook entrante creado",
       "workspace.incoming_regenerated": "URL de webhook entrante cambiada",
-      "workspace.incoming_deleted": "Webhook entrante borrado"
+      "workspace.incoming_deleted": "Webhook entrante borrado",
+      "workspace.apikey_created": "Clave API de la organización creada",
+      "workspace.apikey_revoked": "Clave API de la organización revocada",
+      "workspace.apikey_used": "Clave API de la organización usada"
     }
   },
   "workspaces": {

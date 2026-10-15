@@ -128,7 +128,8 @@
       "audit": "Quién hizo qué, y cuándo",
       "security": "Verificación en dos pasos, dominios de correo y sesiones",
       "webhooks": "Avisa a otros sistemas de lo que pasa, con firma",
-      "integrations": "Slack, Discord, Teams y webhooks entrantes"
+      "integrations": "Slack, Discord, Teams y webhooks entrantes",
+      "apiKeys": "Claves de la organización para la API pública"
     },
     "roles": "Roles y permisos",
     "teams": "Equipos",
@@ -137,7 +138,8 @@
     "security": "Seguridad",
     "integrationsGroup": "Integraciones",
     "webhooks": "Webhooks",
-    "integrations": "Apps y entrantes"
+    "integrations": "Apps y entrantes",
+    "apiKeys": "Claves API"
   },
   "general": {
     "title": "General",

@@ -126,5 +126,25 @@
     "lastUsed": "last used {date}",
     "howTo": "How to use it",
     "howToText": "Only title is required. It also takes description, labels (names of the board's labels), due (a date) and assignee (an email of someone on the board). Up to 60 cards a minute per URL."
+  },
+  "keys": {
+    "title": "API keys",
+    "subtitle": "Keys of {name}, not of a person: for integrations that must keep working when someone leaves… as long as whoever created them stays.",
+    "new": "New key",
+    "name": "Name",
+    "scope": "Permissions",
+    "expiry": "Expires",
+    "days30": "In 30 days",
+    "days90": "In 90 days",
+    "days365": "In a year",
+    "never": "Never",
+    "create": "Create key",
+    "created": "Your new key",
+    "once": "Copy it now: it will not be shown again.",
+    "list": "Keys",
+    "empty": "No keys yet.",
+    "by": "by {name}",
+    "note": "A key only sees the boards of {name}, at most as an editor: it never deletes boards or manages people, roles or backups. Only its fingerprint (SHA-256) is kept, so not even admins can recover it. Its use is written to the activity log, and it stops working if whoever created it leaves.",
+    "docs": "API documentation"
   }
 }

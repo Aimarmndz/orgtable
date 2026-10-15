@@ -46,7 +46,7 @@ export async function GET(
 
   const card = await loadCard(id);
   if (!card) return apiError(404, "Card not found.");
-  const role = await apiBoardRole(auth.userId, card.list.boardId);
+  const role = await apiBoardRole(auth, card.list.boardId);
   if (!role) return apiError(404, "Card not found.");
 
   return apiOk(serializeCard(card));
@@ -67,7 +67,7 @@ export async function PATCH(
     select: { list: { select: { boardId: true } } },
   });
   if (!existing) return apiError(404, "Card not found.");
-  const role = await apiBoardRole(auth.userId, existing.list.boardId);
+  const role = await apiBoardRole(auth, existing.list.boardId);
   if (!role) return apiError(404, "Card not found.");
   if (!canEditBoard(role)) {
     return apiError(403, "You need edit permission on this board.");
@@ -115,7 +115,7 @@ export async function DELETE(
     select: { list: { select: { boardId: true } } },
   });
   if (!existing) return apiError(404, "Card not found.");
-  const role = await apiBoardRole(auth.userId, existing.list.boardId);
+  const role = await apiBoardRole(auth, existing.list.boardId);
   if (!role) return apiError(404, "Card not found.");
   if (!canEditBoard(role)) {
     return apiError(403, "You need edit permission on this board.");

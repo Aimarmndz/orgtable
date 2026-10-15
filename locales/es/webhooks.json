@@ -126,5 +126,25 @@
     "lastUsed": "último uso {date}",
     "howTo": "Así se usa",
     "howToText": "Solo title es obligatorio. También admite description, labels (nombres de etiquetas del tablero), due (una fecha) y assignee (el correo de alguien del tablero). Hasta 60 tarjetas por minuto por URL."
+  },
+  "keys": {
+    "title": "Claves API",
+    "subtitle": "Claves de {name}, no de una persona: para integraciones que deben seguir funcionando… mientras siga quien las creó.",
+    "new": "Nueva clave",
+    "name": "Nombre",
+    "scope": "Permisos",
+    "expiry": "Caduca",
+    "days30": "En 30 días",
+    "days90": "En 90 días",
+    "days365": "En un año",
+    "never": "Nunca",
+    "create": "Crear clave",
+    "created": "Tu nueva clave",
+    "once": "Cópiala ahora: no se volverá a mostrar.",
+    "list": "Claves",
+    "empty": "Aún no hay claves.",
+    "by": "de {name}",
+    "note": "Una clave solo ve los tableros de {name}, como mucho como editora: nunca borra tableros ni gestiona personas, roles ni copias. Solo guardamos su huella (SHA-256), así que ni siquiera los administradores pueden recuperarla. Su uso queda en el registro de actividad y deja de funcionar si quien la creó se va.",
+    "docs": "Documentación de la API"
   }
 }

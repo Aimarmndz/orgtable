@@ -76,6 +76,7 @@ list of sections and every page has a "back" link instead of the menu):
 | `/<slug>/settings/teams`        | Teams and the boards they open; `/teams/<id>` manages one                |
 | `/<slug>/settings/webhooks`     | Outgoing webhooks (`integrations.manage`), see [webhooks](./webhooks.md) |
 | `/<slug>/settings/integrations` | Slack, Discord, Teams and incoming webhooks (`integrations.manage`)      |
+| `/<slug>/settings/api-keys`     | Organization API keys (`apikeys.manage`)                                 |
 | `/<slug>/settings/security`     | Security policy and employee sessions (owners and admins)                |
 | `/<slug>/settings/audit`        | The organization's activity log (`audit.view`)                           |
 | `/<slug>/settings/roles`        | Base and custom roles; `/roles/<id>` edits one (owners, admins)          |

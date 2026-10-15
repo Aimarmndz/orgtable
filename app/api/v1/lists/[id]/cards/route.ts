@@ -42,7 +42,7 @@ export async function GET(
     select: { boardId: true },
   });
   if (!list) return apiError(404, "List not found.");
-  const role = await apiBoardRole(auth.userId, list.boardId);
+  const role = await apiBoardRole(auth, list.boardId);
   if (!role) return apiError(404, "List not found.");
 
   const cards = await prisma.card.findMany({
@@ -68,7 +68,7 @@ export async function POST(
     select: { boardId: true },
   });
   if (!list) return apiError(404, "List not found.");
-  const role = await apiBoardRole(auth.userId, list.boardId);
+  const role = await apiBoardRole(auth, list.boardId);
   if (!role) return apiError(404, "List not found.");
   if (!canEditBoard(role)) {
     return apiError(403, "You need edit permission on this board.");
