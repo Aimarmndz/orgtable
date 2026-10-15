@@ -9,6 +9,7 @@ import { notify, recipientI18n } from "@/app/lib/notifications";
 import { getI18n, i18nFor, issueMessage } from "@/app/i18n/server";
 import { fmt } from "@/app/i18n/format";
 import { removeMemberFromBoard } from "@/app/lib/services/members";
+import { workspaceEmailAllowed } from "@/app/lib/services/org-security";
 import { addMemberSchema, assignableBoardRoleSchema } from "@/app/lib/validators";
 
 // Board member management. Only the OWNER can invite, change the role of or remove members.
@@ -72,6 +73,11 @@ export async function addBoardMember(
   // read what they are invited to. Same answer as an unknown email.
   if (!user || (user.managedById && user.managedById !== target?.workspaceId)) {
     return { error: m.errors.members.userNotFound, values };
+  }
+  // An organization that limits its email domains (docs/workspaces.md, "Security") does not
+  // take guests from other domains on its boards either.
+  if (target && !(await workspaceEmailAllowed(target.workspaceId, parsed.data.email))) {
+    return { error: m.errors.workspaces.domainNotAllowed, values };
   }
 
   const existing = await prisma.boardMember.findUnique({

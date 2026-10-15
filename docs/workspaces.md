@@ -74,11 +74,32 @@ list of sections and every page has a "back" link instead of the menu):
 | `/<slug>/settings/members`     | Who is in the organization and their role                       |
 | `/<slug>/settings/members/new` | Create an employee account (`people.invite`)                    |
 | `/<slug>/settings/teams`       | Teams and the boards they open; `/teams/<id>` manages one       |
+| `/<slug>/settings/security`    | Security policy and employee sessions (owners and admins)       |
 | `/<slug>/settings/audit`       | The organization's activity log (`audit.view`)                  |
 | `/<slug>/settings/roles`       | Base and custom roles; `/roles/<id>` edits one (owners, admins) |
 
 The pages only show what the person's role allows; the services check everything again. How
 the tenant boundary is enforced is in [authorization](./authorization.md#tenant-isolation).
+
+## Security
+
+Owners and admins set the organization's security policy at `/<slug>/settings/security`
+(`app/lib/services/org-security.ts`):
+
+- **Mandatory two-step verification.** Nobody without [two-step
+  verification](./authentication.md#two-step-verification) opens the organization's boards,
+  guests included: `app/lib/access.ts` simply grants nothing. The page shows how many people
+  have it and who does not; the workspace page and their security settings tell those people
+  what to do. Whoever turns the policy on must have it themselves, so they cannot lock
+  themselves out.
+- **Allowed email domains.** With a list (exact domains, `acme.com`), new employee accounts
+  and board invitations of the organization must use one of them. Empty means any.
+- **Sessions of the accounts it created.** For the accounts this organization created (and
+  only those, the same boundary as resetting their password), the page lists their open
+  sessions with "close" and "close all", and can reset their two-step verification when they
+  lose their phone.
+
+Every change is in the [activity log](./audit.md) under _Security_.
 
 ## Employees
 

@@ -7,6 +7,36 @@ living log from 2026-09-24 onwards.
 
 ---
 
+## 2026-10-15 — An organization's security policy is enforced in access.ts
+
+**Context.** The approved Security page: mandatory two-step verification with an adoption bar,
+allowed invite domains, and the open sessions of the team.
+
+**Decision.**
+- `Workspace.requireTwoFactor` is checked where access is decided: `accessibleBoardsWhere`
+  gets one more condition (the organization does not require it, or the user has it, reached
+  through any of their membership rows) and `effectiveBoardRole` returns null. Lists, pages,
+  API, search, real time and attachments follow without changes.
+- Turning it on requires the actor to have 2FA, so nobody locks themselves out.
+- `Workspace.allowedEmailDomains`, exact matches, applied to new employee accounts and to
+  board invitations on the organization's boards.
+- Sessions and 2FA reset only for accounts the organization created, the same boundary as
+  password resets: the devices of people who signed up on their own are not the employer's
+  to see.
+- Only base owners and admins: security is not one of the 13 permissions.
+
+**Alternatives considered.**
+- Showing every member's sessions: the design hinted at it, but an organization does not
+  own the accounts people registered themselves.
+- Blocking at sign-in: a person may belong to several organizations with different rules.
+  Closing the boards is precise and reversible.
+- Password policies (length, breached-password check) and maximum session length are left
+  for later; they apply to accounts, which can belong to several organizations.
+
+**Consequences.** Guests of a 2FA organization need 2FA too.
+
+---
+
 ## 2026-10-15 — Two-step verification with TOTP, and an encryption key for secrets
 
 **Context.** The design's Security page lets an organization require two-step verification,

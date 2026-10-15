@@ -90,7 +90,19 @@ export default async function WorkspacePage({ params }: { params: Params }) {
         )}
       </div>
 
-      {workspace.canCreateBoards && (
+      {workspace.twoFactorBlocked && (
+        <div role="alert" className="mt-6 flex flex-wrap items-center gap-3 rounded-2xl border border-danger/30 bg-danger/[0.06] p-4">
+          <p className="min-w-0 flex-1 text-sm font-medium">{t.page.twoFactorRequired}</p>
+          <Link
+            href="/settings/security/two-factor"
+            className="inline-flex h-9 items-center rounded-lg bg-accent px-3 text-sm font-semibold text-accent-ink hover:bg-accent-hover"
+          >
+            {t.page.turnOn}
+          </Link>
+        </div>
+      )}
+
+      {workspace.canCreateBoards && !workspace.twoFactorBlocked && (
         <form action={createBoard} className="mt-7 flex flex-wrap gap-2">
           <input type="hidden" name="workspaceId" value={workspace.id} />
           <Input

@@ -127,6 +127,10 @@
     "teamNameTaken": "Ya hay un equipo con ese nombre.",
     "tooManyTeams": "Una organización puede tener hasta 100 equipos.",
     "teamNotFound": "Ese equipo o tablero no existe aquí, o no puedes abrirlo.",
-    "teamRoleTooHigh": "No puedes dar a un equipo más permiso en un tablero del que tú tienes."
+    "teamRoleTooHigh": "No puedes dar a un equipo más permiso en un tablero del que tú tienes.",
+    "domainNotAllowed": "Esta organización solo acepta correos de sus dominios permitidos.",
+    "actorNeeds2fa": "Activa primero la verificación en dos pasos en tu cuenta, o te quedarías fuera.",
+    "badDomain": "Uno de los dominios no es válido (p. ej. acme.com).",
+    "tooManyDomains": "Hasta 20 dominios."
   }
 }

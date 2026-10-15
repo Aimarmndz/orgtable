@@ -71,6 +71,17 @@ export function orgSettingsSections(
     {
       label: t.dataGroup,
       items: [
+        ...(ctx.role === "OWNER" || ctx.role === "ADMIN"
+          ? [
+              {
+                key: "security",
+                href: `${base}/security`,
+                label: t.security,
+                hint: t.hints.security,
+                icon: NavIcon.lock,
+              },
+            ]
+          : []),
         ...(ctx.permissions.has("audit.view")
           ? [
               {

@@ -127,6 +127,10 @@
     "teamNameTaken": "There is already a team with that name.",
     "tooManyTeams": "An organization can have up to 100 teams.",
     "teamNotFound": "That team or board does not exist here, or you cannot open it.",
-    "teamRoleTooHigh": "You cannot give a team more permission on a board than you have."
+    "teamRoleTooHigh": "You cannot give a team more permission on a board than you have.",
+    "domainNotAllowed": "This organization only accepts email addresses of its allowed domains.",
+    "actorNeeds2fa": "Turn on two-step verification on your own account first, or you would lock yourself out.",
+    "badDomain": "One of the domains is not valid (e.g. acme.com).",
+    "tooManyDomains": "Up to 20 domains."
   }
 }

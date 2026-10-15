@@ -176,7 +176,10 @@
       "account.two_factor_enabled": "Two-step verification turned on",
       "account.two_factor_disabled": "Two-step verification turned off",
       "account.recovery_codes_regenerated": "New recovery codes",
-      "user.two_factor_reset": "Two-step verification reset"
+      "user.two_factor_reset": "Two-step verification reset",
+      "workspace.security_updated": "Security policy changed",
+      "workspace.security_sessions_revoked": "Sessions of an employee closed",
+      "workspace.security_two_factor_reset": "Two-step verification of an employee reset"
     }
   },
   "workspaces": {

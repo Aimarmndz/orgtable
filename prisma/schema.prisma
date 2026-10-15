@@ -90,6 +90,11 @@ model Workspace {
   // until it is lifted. The reason is shown to the workspace's members.
   suspendedAt     DateTime?
   suspendedReason String?
+  // Security policy of an organization (/<slug>/settings/security, docs/workspaces.md):
+  // nobody without two-step verification opens its boards, and new employee accounts and
+  // board invitations are limited to these email domains (empty = any).
+  requireTwoFactor    Boolean       @default(false)
+  allowedEmailDomains String[]      @default([])
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
   members         WorkspaceMember[]

@@ -37,7 +37,9 @@
     "suspendedText": "Sus tableros no se pueden abrir hasta que la administración del servicio levante la suspensión. Motivo: {reason}",
     "noReason": "no indicado",
     "boardsTitle": "Tableros",
-    "empty": "Aún no hay tableros. Crea el primero arriba."
+    "empty": "Aún no hay tableros. Crea el primero arriba.",
+    "twoFactorRequired": "Esta organización exige la verificación en dos pasos. Actívala para abrir sus tableros.",
+    "turnOn": "Activarla"
   },
   "members": {
     "title": "Miembros",
@@ -123,12 +125,14 @@
       "members": "Quién está en la organización y su rol",
       "roles": "Qué puede hacer cada rol, y vuestros propios roles",
       "teams": "Grupos de personas que comparten acceso a tableros",
-      "audit": "Quién hizo qué, y cuándo"
+      "audit": "Quién hizo qué, y cuándo",
+      "security": "Verificación en dos pasos, dominios de correo y sesiones"
     },
     "roles": "Roles y permisos",
     "teams": "Equipos",
     "dataGroup": "Datos y seguridad",
-    "audit": "Registro de actividad"
+    "audit": "Registro de actividad",
+    "security": "Seguridad"
   },
   "general": {
     "title": "General",
@@ -320,5 +324,27 @@
       "data": "Datos",
       "security": "Seguridad"
     }
+  },
+  "security": {
+    "title": "Seguridad",
+    "subtitle": "Quién puede entrar y desde dónde. Solo los propietarios y administradores ven esta página.",
+    "adoptionTitle": "Verificación en dos pasos",
+    "adoption": "La tienen activada {count} de {total} personas.",
+    "without": "Sin ella: {names}.",
+    "blockedNow": "No pueden abrir los tableros de la organización hasta que la activen.",
+    "policyTitle": "Política",
+    "require2fa": "Exigir la verificación en dos pasos",
+    "require2faHint": "Nadie sin ella abre los tableros de la organización (tampoco los invitados). Tienes que tenerla tú para activar esto.",
+    "domains": "Dominios de correo permitidos",
+    "domainsHint": "Uno por línea. Las cuentas de empleado nuevas y las invitaciones a tableros tienen que usar uno de ellos. Vacío: cualquiera.",
+    "save": "Guardar política",
+    "saved": "Política de seguridad guardada.",
+    "sessionsTitle": "Sesiones de las cuentas que habéis creado",
+    "sessionsHint": "Solo las cuentas que ha creado esta organización: los dispositivos de quien se registró por su cuenta son cosa suya.",
+    "noManaged": "Esta organización aún no ha creado ninguna cuenta.",
+    "has2fa": "dos pasos activada",
+    "no2fa": "sin dos pasos",
+    "closeAll": "Cerrar todas las sesiones",
+    "reset2fa": "Restablecer 2FA"
   }
 }

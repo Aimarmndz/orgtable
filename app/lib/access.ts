@@ -19,7 +19,8 @@ import { permissionsOf, type Permission } from "@/app/lib/permissions";
 //    private ones (app/lib/permissions.ts).
 // 3. A team of the board's organization gives the role it holds on that board to its
 //    members (TeamBoard, docs/teams.md).
-// 4. A suspended workspace (/admin/workspaces) gives nobody anything.
+// 4. A suspended workspace (/admin/workspaces) gives nobody anything, and an organization
+//    that requires two-step verification gives nothing to someone without it.
 //
 // The effective role is the highest of 1, 2 and 3. See docs/authorization.md.
 
@@ -29,6 +30,17 @@ const MANAGERS: WorkspaceRole[] = ["OWNER", "ADMIN"];
 export function accessibleBoardsWhere(userId: string): Prisma.BoardWhereInput {
   return {
     workspace: { suspendedAt: null },
+    // Mandatory two-step verification: the board's organization does not require it, or
+    // this user has it on. (The user is reached through any membership row of theirs.)
+    AND: [
+      {
+        OR: [
+          { workspace: { requireTwoFactor: false } },
+          { workspace: { members: { some: { userId, user: { totpEnabledAt: { not: null } } } } } },
+          { members: { some: { userId, user: { totpEnabledAt: { not: null } } } } },
+        ],
+      },
+    ],
     OR: [
       { members: { some: { userId } } },
       { workspace: { members: { some: { userId, role: { in: MANAGERS } } } } },
@@ -57,6 +69,7 @@ export async function effectiveBoardRole(
       workspace: {
         select: {
           suspendedAt: true,
+          requireTwoFactor: true,
           members: {
             where: { userId },
             select: { role: true, customRole: { select: { permissions: true } } },
@@ -66,6 +79,7 @@ export async function effectiveBoardRole(
     },
   });
   if (!board || board.workspace.suspendedAt) return null;
+  if (board.workspace.requireTwoFactor && !(await hasTwoFactor(userId))) return null;
   const explicit = board.members[0]?.role ?? null;
   const membership = board.workspace.members[0];
   const fromWorkspace = membership ? boardRoleFromMembership(membership, board.visibility) : null;
@@ -133,4 +147,9 @@ export async function holdsPermissionOnBoard(
   if (!board || board.workspace.kind !== "ORGANIZATION") return false;
   const access = await workspaceAccessOf(board.workspaceId, userId);
   return Boolean(access?.permissions.has(permission));
+}
+
+async function hasTwoFactor(userId: string): Promise<boolean> {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { totpEnabledAt: true } });
+  return Boolean(user?.totpEnabledAt);
 }

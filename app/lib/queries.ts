@@ -119,7 +119,15 @@ export async function getWorkspaceForUser(slug: string, userId: string) {
       kind: true,
       suspendedAt: true,
       suspendedReason: true,
-      members: { where: { userId }, select: { role: true, customRole: { select: { permissions: true } } } },
+      requireTwoFactor: true,
+      members: {
+        where: { userId },
+        select: {
+          role: true,
+          customRole: { select: { permissions: true } },
+          user: { select: { totpEnabledAt: true } },
+        },
+      },
     },
   });
   if (!workspace) return null;
@@ -140,6 +148,9 @@ export async function getWorkspaceForUser(slug: string, userId: string) {
     suspendedAt: workspace.suspendedAt,
     suspendedReason: workspace.suspendedReason,
     role,
+    // The organization requires two-step verification and this member does not have it:
+    // its boards stay closed to them (app/lib/access.ts) until they turn it on.
+    twoFactorBlocked: workspace.requireTwoFactor && membership !== null && !membership.user.totpEnabledAt,
     canCreateBoards:
       membership !== null &&
       (workspace.kind === "PERSONAL" ||

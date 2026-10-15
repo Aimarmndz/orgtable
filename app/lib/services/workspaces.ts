@@ -22,6 +22,7 @@ import {
   type WorkspaceRole,
 } from "@/app/lib/roles";
 import { workspaceAccessOf } from "@/app/lib/access";
+import { workspaceEmailAllowed } from "@/app/lib/services/org-security";
 
 // Workspaces (personal and organizations), their members and the employees an organization
 // creates. Business rules only, WITHOUT request context: the Server Actions
@@ -260,6 +261,7 @@ export type MemberError =
   | "email_taken"
   | "last_owner"
   | "role_not_found"
+  | "domain_not_allowed"
   | "self";
 
 /** Whether a custom role belongs to this organization (an id from elsewhere does not). */
@@ -323,6 +325,9 @@ export async function createEmployee(input: {
     return { ok: false, error: "closed" };
 
   const email = input.email.trim().toLowerCase();
+  // The organization's security policy may limit who it brings in (docs/workspaces.md).
+  if (!(await workspaceEmailAllowed(input.workspaceId, email)))
+    return { ok: false, error: "domain_not_allowed" };
   const passwordHash = await hashPassword(input.password);
   try {
     const userId = await prisma.$transaction(async (tx) => {

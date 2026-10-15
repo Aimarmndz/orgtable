@@ -37,7 +37,9 @@
     "suspendedText": "Its boards cannot be opened until the administrator of the service lifts the suspension. Reason: {reason}",
     "noReason": "not given",
     "boardsTitle": "Boards",
-    "empty": "No boards yet. Create the first one above."
+    "empty": "No boards yet. Create the first one above.",
+    "twoFactorRequired": "This organization requires two-step verification. Turn it on to open its boards.",
+    "turnOn": "Turn it on"
   },
   "members": {
     "title": "Members",
@@ -123,12 +125,14 @@
       "members": "Who is in the organization and their role",
       "roles": "What each role can do, and your own roles",
       "teams": "Groups of people that share access to boards",
-      "audit": "Who did what, and when"
+      "audit": "Who did what, and when",
+      "security": "Two-step verification, email domains and sessions"
     },
     "roles": "Roles and permissions",
     "teams": "Teams",
     "dataGroup": "Data and security",
-    "audit": "Activity log"
+    "audit": "Activity log",
+    "security": "Security"
   },
   "general": {
     "title": "General",
@@ -320,5 +324,27 @@
       "data": "Data",
       "security": "Security"
     }
+  },
+  "security": {
+    "title": "Security",
+    "subtitle": "Who can get in and from where. Only owners and admins see this page.",
+    "adoptionTitle": "Two-step verification",
+    "adoption": "{count} of {total} people have it on.",
+    "without": "Without it: {names}.",
+    "blockedNow": "They cannot open the organization's boards until they turn it on.",
+    "policyTitle": "Policy",
+    "require2fa": "Require two-step verification",
+    "require2faHint": "Nobody without it opens the organization's boards (guests included). You need it on yourself to turn this on.",
+    "domains": "Allowed email domains",
+    "domainsHint": "One per line. New employee accounts and board invitations must use one of them. Empty: any.",
+    "save": "Save policy",
+    "saved": "Security policy saved.",
+    "sessionsTitle": "Sessions of the accounts you created",
+    "sessionsHint": "Only accounts this organization created: the devices of people who signed up on their own are their business.",
+    "noManaged": "This organization has not created any account yet.",
+    "has2fa": "two-step on",
+    "no2fa": "no two-step",
+    "closeAll": "Close all sessions",
+    "reset2fa": "Reset 2FA"
   }
 }

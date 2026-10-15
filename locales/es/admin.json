@@ -176,7 +176,10 @@
       "account.two_factor_enabled": "Verificación en dos pasos activada",
       "account.two_factor_disabled": "Verificación en dos pasos desactivada",
       "account.recovery_codes_regenerated": "Nuevos códigos de recuperación",
-      "user.two_factor_reset": "Verificación en dos pasos restablecida"
+      "user.two_factor_reset": "Verificación en dos pasos restablecida",
+      "workspace.security_updated": "Política de seguridad cambiada",
+      "workspace.security_sessions_revoked": "Sesiones de un empleado cerradas",
+      "workspace.security_two_factor_reset": "Verificación en dos pasos de un empleado restablecida"
     }
   },
   "workspaces": {

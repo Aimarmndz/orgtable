@@ -11,6 +11,7 @@ import { fmt, plural } from "@/app/i18n/format";
 import { PasswordForm } from "../account-forms";
 import Link from "next/link";
 import { twoFactorStatus } from "@/app/lib/services/two-factor";
+import { prisma } from "@/app/lib/prisma";
 import { isSecretKeyConfigured } from "@/app/lib/crypto/secrets";
 import { DisableTwoFactorForm, RegenerateCodesForm } from "@/app/components/settings/two-factor-forms";
 
@@ -37,6 +38,14 @@ export default async function SecuritySettingsPage() {
     twoFactorStatus(user.id),
   ]);
   const tf = m.settings.twoFactor;
+  // Organizations of this person that require two-step verification (their boards are
+  // closed while it is off).
+  const requiring = twoFactor.enabledAt
+    ? []
+    : await prisma.workspace.findMany({
+        where: { requireTwoFactor: true, members: { some: { userId: user.id } } },
+        select: { name: true },
+      });
   const t = m.settings;
   const otherSessions = sessions.filter((s) => s.id !== session?.sessionId).length;
   return (
@@ -82,6 +91,10 @@ export default async function SecuritySettingsPage() {
           </div>
         ) : !isSecretKeyConfigured() ? (
           <p className="text-sm text-ink-muted">{tf.noKey}</p>
+        ) : requiring.length > 0 ? (
+          <p role="alert" className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
+            {fmt(tf.requiredBy, { names: requiring.map((w) => w.name).join(", ") })}
+          </p>
         ) : undefined}
       </SettingsCard>
       <SettingsCard

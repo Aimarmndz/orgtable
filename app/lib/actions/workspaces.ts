@@ -75,6 +75,8 @@ function memberErrorMessage(m: Messages, error: MemberError): string {
       return m.errors.workspaces.notMember;
     case "role_not_found":
       return m.errors.workspaces.roleNotFound;
+    case "domain_not_allowed":
+      return m.errors.workspaces.domainNotAllowed;
     default:
       return m.errors.workspaces.forbidden;
   }
