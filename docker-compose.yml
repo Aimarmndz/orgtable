@@ -32,6 +32,9 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL}
       SESSION_SECRET: ${SESSION_SECRET}
+      # Encrypts the secrets the app must read back (two-step verification, webhooks,
+      # backup credentials). Never change it once in use. See docs/security.md.
+      ORGTABLE_SECRET_KEY: ${ORGTABLE_SECRET_KEY:-}
       NODE_ENV: production
       # Attachments directory (persistent volume). See docs/attachments.md.
       ORGTABLE_UPLOAD_DIR: ${ORGTABLE_UPLOAD_DIR:-/data/uploads}

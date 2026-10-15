@@ -5,6 +5,7 @@ import {
   updateUserRole,
   resetUserPassword,
   deleteUser,
+  resetUserTwoFactor,
   revokeUserSessions,
 } from "@/app/lib/actions/admin";
 import { Button } from "@/app/components/ui/button";
@@ -20,11 +21,14 @@ export function UserRowActions({
   userName,
   role,
   isSelf,
+  twoFactor = false,
 }: {
   userId: string;
   userName: string;
   role: "ADMIN" | "MEMBER";
   isSelf: boolean;
+  // The account has two-step verification on: offer to reset it.
+  twoFactor?: boolean;
 }) {
   const [resetting, setResetting] = useState(false);
   const { m } = useI18n();
@@ -105,6 +109,23 @@ export function UserRowActions({
           {t.revokeSessions}
         </button>
       </form>
+
+      {twoFactor && (
+        <form
+          action={resetUserTwoFactor}
+          onSubmit={(e) => {
+            if (!confirm(fmt(t.resetTwoFactorConfirm, { name: userName }))) e.preventDefault();
+          }}
+        >
+          <input type="hidden" name="userId" value={userId} />
+          <button
+            type="submit"
+            className="inline-flex h-8 items-center rounded-lg border border-ink/20 bg-surface px-2.5 text-xs font-semibold text-ink shadow-sm transition hover:bg-surface-2"
+          >
+            {t.resetTwoFactor}
+          </button>
+        </form>
+      )}
 
       <form
         action={deleteUser}

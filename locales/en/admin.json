@@ -22,7 +22,8 @@
       "role": "Role updated.",
       "password": "Password reset. The user's sessions have been signed out and their API tokens revoked.",
       "delete": "User deleted.",
-      "revoked": "Sessions signed out."
+      "revoked": "Sessions signed out.",
+      "twoFactorReset": "Two-step verification reset. The person can set it up again."
     },
     "errors": {
       "self-role": "You can't change your own role.",
@@ -60,7 +61,9 @@
       "role": "Role",
       "submit": "Create user",
       "submitting": "Creating…"
-    }
+    },
+    "resetTwoFactor": "Reset 2FA",
+    "resetTwoFactorConfirm": "Turn off two-step verification for {name}? Their sessions are closed and they sign in with just their password until they set it up again."
   },
   "instance": {
     "meta": {
@@ -166,7 +169,14 @@
       "workspace.team_member_removed": "Removed from a team",
       "workspace.team_board_set": "Team access to a board changed",
       "workspace.team_board_removed": "Board taken from a team",
-      "workspace.export": "Organization data exported"
+      "workspace.export": "Organization data exported",
+      "auth.two_factor_failed": "Wrong two-step code",
+      "auth.two_factor_rate_limited": "Two-step codes blocked",
+      "auth.recovery_code_used": "Recovery code used",
+      "account.two_factor_enabled": "Two-step verification turned on",
+      "account.two_factor_disabled": "Two-step verification turned off",
+      "account.recovery_codes_regenerated": "New recovery codes",
+      "user.two_factor_reset": "Two-step verification reset"
     }
   },
   "workspaces": {

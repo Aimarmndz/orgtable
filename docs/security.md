@@ -93,6 +93,23 @@ not vulnerabilities.
   **before authentication**, so anyone can send up to 11 MB to an action; actions then
   reject anything that exceeds their own limits.
 
+## Secrets at rest
+
+orgtable hashes what it only needs to compare (passwords with bcrypt; API tokens, emailed
+links and recovery codes with SHA-256) and **encrypts** what it has to read back: two-step
+verification secrets, webhook signing secrets and backup (S3) credentials.
+
+- **AES-256-GCM** with a key derived (HKDF-SHA-256) from `ORGTABLE_SECRET_KEY`, which lives
+  in the environment, never in the database: a stolen dump alone does not open them.
+- Each value is bound to its place with GCM additional data (e.g. `totp:<userId>`): a
+  ciphertext copied to another row does not decrypt there.
+- Format `v1.<iv>.<tag>.<ciphertext>`, so the scheme can change without ambiguity.
+- Without the variable those features are off and say so; with a short one (< 32
+  characters) they refuse to start. `install.sh` generates it (and adds it to older
+  installations). **Never change it** once in use, and keep it with your backups.
+
+Code: `app/lib/crypto/secrets.ts`; tests: `test/secrets.test.ts`.
+
 ## Accepted risks
 
 - **Password spraying with the default configuration**: with `TRUSTED_PROXY_HOPS=0` there

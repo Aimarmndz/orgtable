@@ -35,7 +35,9 @@
     "tooManyAttempts": {
       "one": "Too many attempts. Try again in {seconds} second.",
       "other": "Too many attempts. Try again in {seconds} seconds."
-    }
+    },
+    "twoFactorInvalid": "That code is not valid, or it was already used. Try the current one.",
+    "twoFactorLocked": "Too many wrong codes. Sign in again with your password."
   },
   "register": {
     "closed": "Registration is closed on this instance.",
@@ -61,7 +63,10 @@
     },
     "wrongPassword": "The password is not correct.",
     "lastAdmin": "You are the only administrator. Make someone else an administrator before deleting your account.",
-    "soleOwner": "You are the only owner of {organizations}. Make another member an owner, or delete the organization, before deleting your account."
+    "soleOwner": "You are the only owner of {organizations}. Make another member an owner, or delete the organization, before deleting your account.",
+    "twoFactorBadCode": "That code is not valid. Type the one your app shows now.",
+    "twoFactorNoSetup": "Start the setup again: the QR code expired.",
+    "twoFactorNoKey": "Two-step verification needs ORGTABLE_SECRET_KEY on the server. Ask whoever runs this instance."
   },
   "admin": {
     "emailTaken": "A user with that email already exists.",

@@ -36,7 +36,13 @@ export default defineConfig({
     // deterministic on any machine and in CI.
     // SESSION_SECRET: a FIXED, test-only key so createSession/verifySession work with
     // the cookie stub (loginAs). It protects nothing real.
-    env: { TZ: "UTC", SESSION_SECRET: "test-only-session-secret-0123456789" },
+    // ORGTABLE_SECRET_KEY: likewise a fixed test-only key for the encrypted secrets
+    // (app/lib/crypto/secrets.ts).
+    env: {
+      TZ: "UTC",
+      SESSION_SECRET: "test-only-session-secret-0123456789",
+      ORGTABLE_SECRET_KEY: "test-only-secret-key-0123456789abcdef0123",
+    },
     include: ["test/integration/**/*.int.test.ts"],
     // A single DB connection: tests share one PrismaClient and reset between each test,
     // so files must not run in parallel.

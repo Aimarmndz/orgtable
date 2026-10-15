@@ -39,6 +39,7 @@ if [ ! -f .env ]; then
   POSTGRES_PASSWORD="$(openssl rand -hex 24)"
   SESSION_SECRET="$(openssl rand -hex 32)"
   CRON_SECRET="$(openssl rand -hex 32)"
+  SECRET_KEY="$(openssl rand -hex 32)"
   cat > .env <<EOF
 POSTGRES_USER=orgtable
 POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -46,6 +47,7 @@ POSTGRES_DB=orgtable
 DATABASE_URL=postgresql://orgtable:${POSTGRES_PASSWORD}@postgres:5432/orgtable
 SESSION_SECRET=${SESSION_SECRET}
 CRON_SECRET=${CRON_SECRET}
+ORGTABLE_SECRET_KEY=${SECRET_KEY}
 APP_PORT=3000
 EOF
   chmod 600 .env
@@ -58,6 +60,14 @@ else
     # If .env does not end with a newline, the variable would be glued to the last line.
     if [ -n "$(tail -c 1 .env)" ]; then echo >> .env; fi
     printf 'CRON_SECRET=%s\n' "$(openssl rand -hex 32)" >> .env
+  fi
+  # Nor ORGTABLE_SECRET_KEY, which encrypts two-step verification keys, webhook secrets and
+  # backup credentials (docs/security.md). Added once; never replaced, or those secrets
+  # could no longer be read.
+  if ! grep -q '^ORGTABLE_SECRET_KEY=.' .env; then
+    log "Adding ORGTABLE_SECRET_KEY to .env..."
+    if [ -n "$(tail -c 1 .env)" ]; then echo >> .env; fi
+    printf 'ORGTABLE_SECRET_KEY=%s\n' "$(openssl rand -hex 32)" >> .env
   fi
 fi
 

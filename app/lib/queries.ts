@@ -203,6 +203,7 @@ export async function getAllUsers() {
       email: true,
       role: true,
       createdAt: true,
+      totpEnabledAt: true,
       _count: { select: { boards: true, memberships: true } },
     },
   });

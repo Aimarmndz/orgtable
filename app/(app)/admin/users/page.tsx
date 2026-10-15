@@ -108,6 +108,7 @@ export default async function AdminUsersPage({
                     userName={u.name}
                     role={u.role}
                     isSelf={u.id === admin.id}
+                    twoFactor={Boolean(u.totpEnabledAt)}
                   />
                 </td>
               </tr>

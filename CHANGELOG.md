@@ -33,6 +33,11 @@ behind each decision is in [`docs/DECISIONES.md`](./docs/DECISIONES.md).
   by day with category and person filters, readable names instead of ids, and a CSV export.
   Audit events now remember their workspace (older ones were backfilled). See `docs/audit.md`.
 - A custom role with `boards.delete` can also delete through `DELETE /api/v1/boards/:id`.
+- **Two-step verification** (TOTP) for every account: QR setup, ten single-use recovery
+  codes, a second step at sign-in (`/login/verify`), replay protection, and a reset in
+  _Admin › Users_ for people who lost their phone. See `docs/authentication.md`.
+- **`ORGTABLE_SECRET_KEY`**: encrypts the secrets the app must read back (AES-256-GCM).
+  `install.sh` generates it, also for existing installations. See `docs/security.md`.
 - **Public landing page** at `/` for visitors without a session, in a retro look: what
   orgtable is, a free account on the instance (while sign-up is open) and the one-line
   installer for your own server. `ORGTABLE_LANDING` (`auto` by default: only while

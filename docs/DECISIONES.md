@@ -7,6 +7,38 @@ living log from 2026-09-24 onwards.
 
 ---
 
+## 2026-10-15 — Two-step verification with TOTP, and an encryption key for secrets
+
+**Context.** The design's Security page lets an organization require two-step verification,
+so accounts need it first. Webhooks and S3 backups, coming next, also store secrets the app
+must read back. The owner chose AES-256-GCM with `ORGTABLE_SECRET_KEY` from `.env`.
+
+**Decision.**
+- `app/lib/crypto/secrets.ts`: AES-256-GCM, key derived with HKDF from
+  `ORGTABLE_SECRET_KEY` (≥ 32 characters), a context string as additional data so a
+  ciphertext only opens in its own row, versioned format. Features that need it are off
+  (and say so) without the key; `install.sh` generates it for new and existing installs.
+- TOTP implemented over `node:crypto` (`app/lib/totp.ts`, checked against the RFC 4226 and
+  6238 vectors): SHA-1, 6 digits, 30 s, ±1 step. `qrcode` draws the QR on the server.
+- The secret waits encrypted until the first code confirms it. Ten recovery codes, stored
+  as SHA-256, each removed atomically when used. `totpLastStep` refuses replays.
+- Sign-in: the password step sets a 10-minute signed `pending_2fa` cookie (purpose and a
+  password-hash fingerprint inside), never a session. Five wrong codes send the person back
+  to the password.
+- Turning it off needs password and code; the instance admin can reset it.
+
+**Alternatives considered.**
+- WebAuthn/passkeys: stronger, but needs HTTPS and a much larger flow; TOTP covers what the
+  design asks and works with every phone. Passkeys can come later.
+- An `otplib`-style dependency: the algorithm is a dozen lines and test vectors exist.
+- Storing secrets hashed: they must be read back (to compute the codes, to sign webhooks).
+- Key in the database: a dump would then hold both lock and key.
+
+**Consequences.** Losing `ORGTABLE_SECRET_KEY` makes every encrypted secret unreadable (2FA
+must be set up again, webhooks re-created). It belongs with the backups and must never change.
+
+---
+
 ## 2026-10-15 — The organization's activity log is the instance log, filtered
 
 **Context.** The design has an activity log per organization. The instance already had one

@@ -1,4 +1,5 @@
 import "server-only";
+import { createHash } from "node:crypto";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies, headers } from "next/headers";
 import { prisma } from "@/app/lib/prisma";
@@ -125,4 +126,59 @@ export async function revokeAllUserSessions(userId: string): Promise<void> {
     where: { userId, revokedAt: null },
     data: { revokedAt: new Date() },
   });
+}
+
+// --- Two-step sign-in (docs/authentication.md, "Two-step verification") -----------------
+//
+// After a correct password, an account with two-step verification does NOT get a session
+// yet: it gets this short-lived cookie, which only lets it type a code at /login/verify.
+// It is signed with the same key, says what it is for ("2fa") and carries a fingerprint of
+// the password hash, so changing the password in the meantime voids it.
+
+const PENDING_COOKIE = "pending_2fa";
+const PENDING_MINUTES = 10;
+
+function passwordFingerprint(passwordHash: string): string {
+  return createHash("sha256").update(passwordHash).digest("base64url").slice(0, 16);
+}
+
+export async function createPendingTwoFactor(userId: string, passwordHash: string): Promise<void> {
+  const token = await new SignJWT({ purpose: "2fa", userId, pv: passwordFingerprint(passwordHash) })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime(`${PENDING_MINUTES}m`)
+    .sign(getKey());
+  const requestHeaders = await headers();
+  (await cookies()).set(PENDING_COOKIE, token, {
+    httpOnly: true,
+    secure: isHttpsRequest(requestHeaders),
+    sameSite: "lax",
+    maxAge: PENDING_MINUTES * 60,
+    path: "/",
+  });
+}
+
+/** The account waiting for its second step, or null (no cookie, expired, or stale). */
+export async function readPendingTwoFactor(): Promise<string | null> {
+  const token = (await cookies()).get(PENDING_COOKIE)?.value;
+  if (!token) return null;
+  const key = getKey();
+  try {
+    const { payload } = await jwtVerify(token, key, { algorithms: ["HS256"] });
+    if (payload.purpose !== "2fa" || typeof payload.userId !== "string" || typeof payload.pv !== "string") {
+      return null;
+    }
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: { passwordHash: true, totpEnabledAt: true },
+    });
+    if (!user?.totpEnabledAt || passwordFingerprint(user.passwordHash) !== payload.pv) return null;
+    return payload.userId;
+  } catch {
+    return null;
+  }
+}
+
+export async function clearPendingTwoFactor(): Promise<void> {
+  (await cookies()).delete(PENDING_COOKIE);
 }

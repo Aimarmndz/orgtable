@@ -22,7 +22,8 @@
       "role": "Rol actualizado.",
       "password": "Contraseña restablecida. Se han cerrado las sesiones del usuario y revocado sus tokens de API.",
       "delete": "Usuario borrado.",
-      "revoked": "Sesiones cerradas."
+      "revoked": "Sesiones cerradas.",
+      "twoFactorReset": "Verificación en dos pasos restablecida. La persona puede volver a activarla."
     },
     "errors": {
       "self-role": "No puedes cambiar tu propio rol.",
@@ -60,7 +61,9 @@
       "role": "Rol",
       "submit": "Crear usuario",
       "submitting": "Creando…"
-    }
+    },
+    "resetTwoFactor": "Restablecer 2FA",
+    "resetTwoFactorConfirm": "¿Desactivar la verificación en dos pasos de {name}? Se cierran sus sesiones y entrará solo con su contraseña hasta que la vuelva a activar."
   },
   "instance": {
     "meta": {
@@ -166,7 +169,14 @@
       "workspace.team_member_removed": "Quitado de un equipo",
       "workspace.team_board_set": "Acceso de un equipo a un tablero cambiado",
       "workspace.team_board_removed": "Tablero quitado a un equipo",
-      "workspace.export": "Datos de la organización exportados"
+      "workspace.export": "Datos de la organización exportados",
+      "auth.two_factor_failed": "Código de dos pasos incorrecto",
+      "auth.two_factor_rate_limited": "Códigos de dos pasos bloqueados",
+      "auth.recovery_code_used": "Código de recuperación usado",
+      "account.two_factor_enabled": "Verificación en dos pasos activada",
+      "account.two_factor_disabled": "Verificación en dos pasos desactivada",
+      "account.recovery_codes_regenerated": "Nuevos códigos de recuperación",
+      "user.two_factor_reset": "Verificación en dos pasos restablecida"
     }
   },
   "workspaces": {

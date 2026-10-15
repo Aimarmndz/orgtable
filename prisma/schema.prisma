@@ -217,6 +217,16 @@ model User {
   managedById          String?
   managedBy            Workspace?        @relation("ManagedUsers", fields: [managedById], references: [id], onDelete: SetNull)
   accountTokens        AccountToken[]
+  // Two-step verification (TOTP, docs/authentication.md). The secret is encrypted with
+  // ORGTABLE_SECRET_KEY (app/lib/crypto/secrets.ts, context "totp:<userId>"); while it is
+  // being set up it waits in totpPendingEnc until the first code confirms it.
+  // totpLastStep refuses a code that was already used. Recovery codes: SHA-256 of each
+  // unused code, removed as they are used.
+  totpSecretEnc        String?
+  totpPendingEnc       String?
+  totpEnabledAt        DateTime?
+  totpLastStep         Int?
+  recoveryCodeHashes   String[]          @default([])
 }
 
 // What a single-use link sent by email lets its holder do with an account.

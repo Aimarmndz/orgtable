@@ -5,7 +5,14 @@ import { isLocale } from "@/app/i18n/config";
 import { setLocaleCookie } from "@/app/i18n/cookie";
 import { prisma } from "@/app/lib/prisma";
 import { verifyPasswordOrDummy } from "@/app/lib/auth";
-import { createSession, deleteSession } from "@/app/lib/session";
+import {
+  clearPendingTwoFactor,
+  createPendingTwoFactor,
+  createSession,
+  deleteSession,
+  readPendingTwoFactor,
+} from "@/app/lib/session";
+import { verifySecondFactor } from "@/app/lib/services/two-factor";
 import { verifySession } from "@/app/lib/dal";
 import { loginSchema } from "@/app/lib/validators";
 import { rateLimit, resetRateLimit } from "@/app/lib/rate-limit";
@@ -108,13 +115,65 @@ export async function login(
   }
 
   resetRateLimit(emailKey);
+  // Two-step verification: no session yet, only the right to type a code at /login/verify
+  // (app/lib/session.ts, createPendingTwoFactor).
+  if (user.totpEnabledAt) {
+    await createPendingTwoFactor(user.id, user.passwordHash);
+    redirect("/login/verify");
+  }
+  return finishLogin(user, ip, null);
+}
+
+/** Opens the session once every step passed, and remembers the account's language. */
+async function finishLogin(
+  user: { id: string; locale: string | null },
+  ip: string | null,
+  detail: string | null,
+): Promise<never> {
   await createSession(user.id);
   // The account's language wins over the browser's on any device it signs in from.
   if (isLocale(user.locale)) {
     await setLocaleCookie(user.locale);
   }
-  await recordAudit({ action: "auth.login", userId: user.id, ip });
+  await recordAudit({ action: "auth.login", userId: user.id, ip, detail: detail ?? undefined });
   redirect("/boards");
+}
+
+export type VerifyState = { error?: string };
+
+// Codes per account and window at the second step. Six digits are a million options: five
+// tries per ten minutes keep guessing hopeless, and running out sends the person back to
+// the password.
+const CODE_LIMIT = 5;
+const CODE_WINDOW_MS = 10 * 60 * 1000;
+
+/** Second step of the sign-in: a code from the authenticator app, or a recovery code. */
+export async function verifyLoginCode(_prev: VerifyState, formData: FormData): Promise<VerifyState> {
+  const { m } = await getI18n();
+  const ip = await clientIp();
+  const userId = await readPendingTwoFactor();
+  if (!userId) {
+    await clearPendingTwoFactor();
+    redirect("/login");
+  }
+  const limit = rateLimit(`2fa:${userId}`, CODE_LIMIT, CODE_WINDOW_MS);
+  if (!limit.ok) {
+    if (limit.firstBlock) await recordAudit({ action: "auth.two_factor_rate_limited", userId, ip });
+    await clearPendingTwoFactor();
+    return { error: m.errors.auth.twoFactorLocked };
+  }
+  const raw = formData.get("code");
+  const code = typeof raw === "string" ? raw.slice(0, 40) : "";
+  const kind = await verifySecondFactor(userId, code);
+  if (!kind) {
+    await recordAudit({ action: "auth.two_factor_failed", userId, ip });
+    return { error: m.errors.auth.twoFactorInvalid };
+  }
+  resetRateLimit(`2fa:${userId}`);
+  await clearPendingTwoFactor();
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { id: true, locale: true } });
+  if (kind === "recovery") await recordAudit({ action: "auth.recovery_code_used", userId, ip });
+  return finishLogin(user, ip, kind === "recovery" ? "2fa: recovery code" : "2fa");
 }
 
 export async function logout(): Promise<void> {

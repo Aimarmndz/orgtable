@@ -371,10 +371,11 @@ the order of the steps and the reasoning, without copying it.
 6. If the user does not exist or the password is wrong, it records `auth.login_failed`
    (with the `userId` if the account exists; **never** the typed email, which could
    belong to someone else) and returns a generic "invalid credentials" error.
-7. If everything is correct, it resets the per-account limit, creates the session
-   (`createSession`), restores the language cookie from `User.locale` if the account has
-   one (the account's language wins over the browser's on any device), records
-   `auth.login` and **redirects to `/boards`**.
+7. If everything is correct, it resets the per-account limit. An account with
+   [two-step verification](#two-step-verification) gets no session yet: it is sent to
+   `/login/verify`. Any other account gets its session (`createSession`), the language
+   cookie from `User.locale` if it has one (the account's language wins over the browser's
+   on any device), `auth.login` is recorded and it is **redirected to `/boards`**.
 
 When either limit is hit, the form answers with the waiting time and
 `auth.login_rate_limited` is recorded **once per window**, not on every rejected attempt.
@@ -398,6 +399,39 @@ typed.
 ### `logout`
 
 Revokes the session, records `auth.logout` and redirects to `/login`.
+
+## Two-step verification
+
+Anyone can add a second step to their account at **Settings › Password and sessions**: a
+6-digit code from an authenticator app (TOTP, RFC 6238: SHA-1, 6 digits, 30 s; the parameters
+every app supports). It needs `ORGTABLE_SECRET_KEY` on the server; without it the option says
+so instead of appearing. An organization can make it mandatory for its members (see
+[workspaces](./workspaces.md)).
+
+**Setup** (`/settings/security/two-factor`, `app/lib/services/two-factor.ts`):
+
+1. A POST creates a random 160-bit secret and keeps it **encrypted** in `totpPendingEnc`
+   (AES-256-GCM, `app/lib/crypto/secrets.ts`, bound to the account with the context
+   `totp:<userId>`). Opening the page never creates one.
+2. The page shows it as a QR code (drawn on the server as SVG, `qrcode`) and as text.
+3. The first valid code moves it to `totpSecretEnc`, sets `totpEnabledAt` and returns ten
+   **recovery codes**, shown once. Only their SHA-256 is stored.
+
+**Sign-in.** After a correct password, `login` sets a `pending_2fa` cookie instead of a
+session: a JWT signed with `SESSION_SECRET`, valid 10 minutes, marked `purpose: "2fa"` and
+carrying a fingerprint of the password hash, so a password change voids it. `/login/verify`
+asks for a code (or a recovery code) and only then `verifyLoginCode` opens the session. Five
+wrong codes in ten minutes throw the person back to the password.
+
+**Every code works once.** `totpLastStep` only moves forward (`UPDATE … WHERE totpLastStep <
+step`), so the same code cannot open two sessions; a recovery code is removed from the array
+by the same `UPDATE` that checks it. One step of clock drift either way is accepted.
+
+**Turning it off** needs the password **and** a code. New recovery codes need the password.
+Someone who lost both their phone and their codes asks the instance administrator, who can
+**reset** it from `/admin/users` (their sessions are closed too).
+
+API tokens are a separate credential and are not affected by two-step verification.
 
 ```ts
 export async function logout(): Promise<void> {

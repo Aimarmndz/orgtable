@@ -35,7 +35,9 @@
     "tooManyAttempts": {
       "one": "Demasiados intentos. Inténtalo de nuevo en {seconds} segundo.",
       "other": "Demasiados intentos. Inténtalo de nuevo en {seconds} segundos."
-    }
+    },
+    "twoFactorInvalid": "Ese código no es válido o ya se usó. Prueba con el actual.",
+    "twoFactorLocked": "Demasiados códigos incorrectos. Vuelve a entrar con tu contraseña."
   },
   "register": {
     "closed": "El registro está cerrado en esta instancia.",
@@ -61,7 +63,10 @@
     },
     "wrongPassword": "La contraseña no es correcta.",
     "lastAdmin": "Eres la única persona administradora. Nombra a otra antes de borrar tu cuenta.",
-    "soleOwner": "Eres la única persona propietaria de {organizations}. Haz propietaria a otra persona, o borra la organización, antes de borrar tu cuenta."
+    "soleOwner": "Eres la única persona propietaria de {organizations}. Haz propietaria a otra persona, o borra la organización, antes de borrar tu cuenta.",
+    "twoFactorBadCode": "Ese código no es válido. Escribe el que muestra ahora tu app.",
+    "twoFactorNoSetup": "Vuelve a empezar: el código QR ha caducado.",
+    "twoFactorNoKey": "La verificación en dos pasos necesita ORGTABLE_SECRET_KEY en el servidor. Pídeselo a quien administra esta instancia."
   },
   "admin": {
     "emailTaken": "Ya existe un usuario con ese email.",

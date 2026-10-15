@@ -12,6 +12,7 @@ import {
 import { revokeAllUserSessions } from "@/app/lib/session";
 import { purgeWorkspace } from "@/app/lib/services/workspaces";
 import { recordAudit } from "@/app/lib/audit";
+import { clearTwoFactor } from "@/app/lib/services/two-factor";
 import { getI18n, issueMessage } from "@/app/i18n/server";
 import { fmt } from "@/app/i18n/format";
 import {
@@ -175,6 +176,26 @@ export async function revokeUserSessions(formData: FormData): Promise<void> {
   });
   revalidatePath("/admin/users");
   backToUsers({ ok: "revoked" });
+}
+
+/**
+ * Turns off two-step verification of an account whose owner lost their phone and their
+ * recovery codes. Their sessions are revoked too, so whoever is signed in with it has to
+ * come back through the password (docs/authentication.md).
+ */
+export async function resetUserTwoFactor(formData: FormData): Promise<void> {
+  const admin = await requireAdmin();
+  const userId = readUserId(formData);
+  if (userId === admin.id) backToUsers({ error: "invalid" });
+  const target = await prisma.user.findUnique({ where: { id: userId }, select: { totpEnabledAt: true } });
+  if (!target) backToUsers({ error: "not-found" });
+  if (target.totpEnabledAt) {
+    await clearTwoFactor(userId);
+    await revokeAllUserSessions(userId);
+    await recordAudit({ action: "user.two_factor_reset", userId: admin.id, targetType: "user", targetId: userId });
+  }
+  revalidatePath("/admin/users");
+  backToUsers({ ok: "twoFactorReset" });
 }
 
 /**
