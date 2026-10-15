@@ -74,6 +74,7 @@ list of sections and every page has a "back" link instead of the menu):
 | `/<slug>/settings/members`     | Who is in the organization and their role                       |
 | `/<slug>/settings/members/new` | Create an employee account (`people.invite`)                    |
 | `/<slug>/settings/teams`       | Teams and the boards they open; `/teams/<id>` manages one       |
+| `/<slug>/settings/audit`       | The organization's activity log (`audit.view`)                  |
 | `/<slug>/settings/roles`       | Base and custom roles; `/roles/<id>` edits one (owners, admins) |
 
 The pages only show what the person's role allows; the services check everything again. How

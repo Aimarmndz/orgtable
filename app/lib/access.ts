@@ -115,3 +115,22 @@ export async function workspaceAccessOf(
     permissions: permissionsOf(member.role, member.customRole?.permissions),
   };
 }
+
+/**
+ * Whether the user holds `permission` in the organization of a board: a custom role may
+ * change visibility or delete boards without managing them (permissions.ts). False for
+ * personal boards (their owner manages them anyway). Callers check access to the board too.
+ */
+export async function holdsPermissionOnBoard(
+  boardId: string,
+  userId: string,
+  permission: Permission,
+): Promise<boolean> {
+  const board = await prisma.board.findUnique({
+    where: { id: boardId },
+    select: { workspaceId: true, workspace: { select: { kind: true } } },
+  });
+  if (!board || board.workspace.kind !== "ORGANIZATION") return false;
+  const access = await workspaceAccessOf(board.workspaceId, userId);
+  return Boolean(access?.permissions.has(permission));
+}

@@ -122,10 +122,13 @@
       "general": "Nombre, dirección, salir y zona de peligro",
       "members": "Quién está en la organización y su rol",
       "roles": "Qué puede hacer cada rol, y vuestros propios roles",
-      "teams": "Grupos de personas que comparten acceso a tableros"
+      "teams": "Grupos de personas que comparten acceso a tableros",
+      "audit": "Quién hizo qué, y cuándo"
     },
     "roles": "Roles y permisos",
-    "teams": "Equipos"
+    "teams": "Equipos",
+    "dataGroup": "Datos y seguridad",
+    "audit": "Registro de actividad"
   },
   "general": {
     "title": "General",
@@ -295,5 +298,27 @@
     "delete": "Borrar equipo",
     "deleteText": "Sus personas siguen en la organización; pierden el acceso que les daba el equipo.",
     "back": "Todos los equipos"
+  },
+  "audit": {
+    "title": "Registro de actividad",
+    "subtitle": "Todo lo importante que ha pasado en la organización: personas, roles, tableros, integraciones, datos y seguridad.",
+    "export": "Exportar CSV",
+    "category": "Categoría",
+    "allCategories": "Todas",
+    "person": "Persona",
+    "everyone": "Todas las personas",
+    "filter": "Filtrar",
+    "clear": "Quitar filtros",
+    "empty": "Aquí aún no hay nada.",
+    "more": "Cargar más",
+    "system": "orgtable",
+    "categories": {
+      "organization": "Organización",
+      "people": "Personas y roles",
+      "boards": "Tableros",
+      "integrations": "Integraciones",
+      "data": "Datos",
+      "security": "Seguridad"
+    }
   }
 }

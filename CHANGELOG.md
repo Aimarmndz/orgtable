@@ -29,6 +29,10 @@ behind each decision is in [`docs/DECISIONES.md`](./docs/DECISIONES.md).
 - **Teams** (`/<slug>/settings/teams`): groups of people that get a role (reader, editor or
   manager) on some boards, private ones included. The highest of every path to a board wins,
   and a team never gives more than the person configuring it has. See `docs/teams.md`.
+- **Activity log per organization** (`/<slug>/settings/audit`, `audit.view`): events grouped
+  by day with category and person filters, readable names instead of ids, and a CSV export.
+  Audit events now remember their workspace (older ones were backfilled). See `docs/audit.md`.
+- A custom role with `boards.delete` can also delete through `DELETE /api/v1/boards/:id`.
 - **Public landing page** at `/` for visitors without a session, in a retro look: what
   orgtable is, a free account on the instance (while sign-up is open) and the one-line
   installer for your own server. `ORGTABLE_LANDING` (`auto` by default: only while

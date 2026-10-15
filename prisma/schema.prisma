@@ -393,18 +393,23 @@ model ChecklistItem {
 // onDelete: SetNull, so the history is kept even if the account is deleted. See
 // app/lib/audit.ts and docs/operations.md.
 model AuditLog {
-  id         String   @id @default(cuid())
-  userId     String?
-  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  action     String
-  targetType String?
-  targetId   String?
-  detail     String?
-  ip         String?
-  createdAt  DateTime @default(now())
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action      String
+  targetType  String?
+  targetId    String?
+  detail      String?
+  ip          String?
+  // The workspace the event belongs to, for its own activity log (/<slug>/settings/audit). A
+  // SOFT reference (no FK), like Notification.boardId: "organization deleted" must outlive
+  // the organization in the instance's log. Set by recordAudit (app/lib/audit.ts).
+  workspaceId String?
+  createdAt   DateTime @default(now())
 
   @@index([createdAt])
   @@index([userId])
+  @@index([workspaceId, createdAt])
 }
 
 // A user's membership in a board. It already existed in the single-user MVP so that

@@ -7,6 +7,33 @@ living log from 2026-09-24 onwards.
 
 ---
 
+## 2026-10-15 — The organization's activity log is the instance log, filtered
+
+**Context.** The design has an activity log per organization. The instance already had one
+(`AuditLog`, `/admin/audit`), but events did not say which organization they belonged to.
+
+**Decision.**
+- `AuditLog.workspaceId`, a soft reference (no FK) with an index on
+  `(workspaceId, createdAt)`. `recordAudit` derives it from the target (workspace, or a
+  board's workspace) or takes it explicitly. A migration backfilled older events.
+- One log, two views: the instance admin keeps seeing everything; an organization sees its
+  rows with `audit.view`. No second table to keep in sync.
+- Categories come from the action's name, with an SQL prefix list for filtering and a unit
+  test that checks both agree.
+- Details show names only for ids of the same organization, and the CSV export neutralises
+  formula cells.
+
+**Alternatives considered.**
+- A separate per-organization event table: duplicates writes and retention.
+- A foreign key with `SET NULL`: deleting an organization would erase which organization the
+  instance's own "deleted" event was about.
+
+**Consequences.** New organization events should use `targetType: "workspace"` or `"board"`,
+or pass `workspaceId`, and follow the `workspace.<area>_<verb>` naming so they fall into the
+right category.
+
+---
+
 ## 2026-10-15 — Teams grant board roles, decided in access.ts
 
 **Context.** The approved design has teams (Design, Development, Sales) with members and board

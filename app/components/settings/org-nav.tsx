@@ -68,6 +68,22 @@ export function orgSettingsSections(
         },
       ],
     },
+    {
+      label: t.dataGroup,
+      items: [
+        ...(ctx.permissions.has("audit.view")
+          ? [
+              {
+                key: "audit",
+                href: `${base}/audit`,
+                label: t.audit,
+                hint: t.hints.audit,
+                icon: NavIcon.activity,
+              },
+            ]
+          : []),
+      ],
+    },
   ];
   return groups.filter((g) => g.items.length > 0);
 }

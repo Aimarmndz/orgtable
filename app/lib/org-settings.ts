@@ -1,7 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { notFound } from "next/navigation";
-import { requireUser } from "@/app/lib/dal";
+import { requireUser, verifySession } from "@/app/lib/dal";
 import { prisma } from "@/app/lib/prisma";
 import type { WorkspaceRole } from "@/app/lib/roles";
 import { permissionsOf, type Permission } from "@/app/lib/permissions";
@@ -96,3 +96,32 @@ export const orgSettingsCounts = cache(async (workspaceId: string): Promise<OrgS
   ]);
   return { members, roles: 3 + customRoles, teams };
 });
+
+/**
+ * The same door for route handlers (downloads, exports): no redirect or 404 page, just null
+ * when there is no session, the organization is not the person's, or the permission is
+ * missing. The handler answers 404 to all of them alike.
+ */
+export async function orgAccessFromSession(
+  slug: string,
+  permission: Permission,
+): Promise<{ userId: string; workspace: { id: string; slug: string; name: string } } | null> {
+  const session = await verifySession();
+  if (!session) return null;
+  const workspace = await prisma.workspace.findFirst({
+    where: { slug, kind: "ORGANIZATION", members: { some: { userId: session.userId } } },
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+      members: {
+        where: { userId: session.userId },
+        select: { role: true, customRole: { select: { permissions: true } } },
+      },
+    },
+  });
+  const member = workspace?.members[0];
+  if (!workspace || !member) return null;
+  if (!permissionsOf(member.role, member.customRole?.permissions).has(permission)) return null;
+  return { userId: session.userId, workspace: { id: workspace.id, slug: workspace.slug, name: workspace.name } };
+}

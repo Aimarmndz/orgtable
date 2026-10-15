@@ -122,10 +122,13 @@
       "general": "Name, address, leaving and the danger zone",
       "members": "Who is in the organization and their role",
       "roles": "What each role can do, and your own roles",
-      "teams": "Groups of people that share access to boards"
+      "teams": "Groups of people that share access to boards",
+      "audit": "Who did what, and when"
     },
     "roles": "Roles and permissions",
-    "teams": "Teams"
+    "teams": "Teams",
+    "dataGroup": "Data and security",
+    "audit": "Activity log"
   },
   "general": {
     "title": "General",
@@ -295,5 +298,27 @@
     "delete": "Delete team",
     "deleteText": "Its people stay in the organization; they lose the access the team gave them.",
     "back": "All teams"
+  },
+  "audit": {
+    "title": "Activity log",
+    "subtitle": "Everything important that happened in the organization: people, roles, boards, integrations, data and security.",
+    "export": "Export CSV",
+    "category": "Category",
+    "allCategories": "All",
+    "person": "Person",
+    "everyone": "Everyone",
+    "filter": "Filter",
+    "clear": "Clear",
+    "empty": "Nothing here yet.",
+    "more": "Load more",
+    "system": "orgtable",
+    "categories": {
+      "organization": "Organization",
+      "people": "People and roles",
+      "boards": "Boards",
+      "integrations": "Integrations",
+      "data": "Data",
+      "security": "Security"
+    }
   }
 }

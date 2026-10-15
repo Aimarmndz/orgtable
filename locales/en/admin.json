@@ -165,7 +165,8 @@
       "workspace.team_member_added": "Added to a team",
       "workspace.team_member_removed": "Removed from a team",
       "workspace.team_board_set": "Team access to a board changed",
-      "workspace.team_board_removed": "Board taken from a team"
+      "workspace.team_board_removed": "Board taken from a team",
+      "workspace.export": "Organization data exported"
     }
   },
   "workspaces": {

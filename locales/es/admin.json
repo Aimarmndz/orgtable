@@ -165,7 +165,8 @@
       "workspace.team_member_added": "Añadido a un equipo",
       "workspace.team_member_removed": "Quitado de un equipo",
       "workspace.team_board_set": "Acceso de un equipo a un tablero cambiado",
-      "workspace.team_board_removed": "Tablero quitado a un equipo"
+      "workspace.team_board_removed": "Tablero quitado a un equipo",
+      "workspace.export": "Datos de la organización exportados"
     }
   },
   "workspaces": {

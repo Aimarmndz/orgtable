@@ -6,7 +6,8 @@ import { parseTrustedProxyHops, pickClientIp } from "@/app/lib/client-ip";
 // Audit log. `recordAudit` writes one row per relevant security or operations event. It
 // must NEVER break the main operation: a failed write is not rethrown, but it is recorded
 // in the server log (without detail, ip or personal data). See the AuditLog model in
-// prisma/schema.prisma and the view at /admin/audit (docs/operations.md).
+// prisma/schema.prisma and the views at /admin/audit (the whole instance) and
+// /<slug>/settings/audit (one organization, by AuditLog.workspaceId; docs/audit.md).
 
 export type AuditAction =
   | "setup.completed"
@@ -52,6 +53,7 @@ export type AuditAction =
   | "workspace.team_member_removed"
   | "workspace.team_board_set"
   | "workspace.team_board_removed"
+  | "workspace.export"
   | "member.added"
   | "member.removed"
   | "member.role_changed"
@@ -70,6 +72,21 @@ export async function clientIp(): Promise<string | null> {
   return pickClientIp(h.get("x-forwarded-for"), hops);
 }
 
+/**
+ * The workspace an event belongs to, for the organization's own activity log: the target
+ * itself when it is a workspace, the board's workspace when it is a board (pass
+ * `workspaceId` explicitly when the board is already gone, as after deleting it).
+ */
+async function workspaceOfTarget(targetType?: string, targetId?: string): Promise<string | null> {
+  if (!targetId) return null;
+  if (targetType === "workspace") return targetId;
+  if (targetType === "board") {
+    const board = await prisma.board.findUnique({ where: { id: targetId }, select: { workspaceId: true } });
+    return board?.workspaceId ?? null;
+  }
+  return null;
+}
+
 export async function recordAudit(params: {
   action: AuditAction;
   userId?: string | null;
@@ -77,9 +94,14 @@ export async function recordAudit(params: {
   targetId?: string;
   detail?: string;
   ip?: string | null;
+  workspaceId?: string | null;
 }): Promise<void> {
   try {
     const ip = params.ip !== undefined ? params.ip : await clientIp();
+    const workspaceId =
+      params.workspaceId !== undefined
+        ? params.workspaceId
+        : await workspaceOfTarget(params.targetType, params.targetId);
     await prisma.auditLog.create({
       data: {
         action: params.action,
@@ -88,6 +110,7 @@ export async function recordAudit(params: {
         targetId: params.targetId ?? null,
         detail: params.detail?.slice(0, 500) ?? null,
         ip: ip ?? null,
+        workspaceId,
       },
     });
   } catch (error) {

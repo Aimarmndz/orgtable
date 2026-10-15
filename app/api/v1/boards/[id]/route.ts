@@ -3,6 +3,7 @@ import { prisma } from "@/app/lib/prisma";
 import { getBoardWithLists } from "@/app/lib/queries";
 import { revalidateBoard } from "@/app/lib/realtime/notify";
 import { canManageBoard } from "@/app/lib/roles";
+import { holdsPermissionOnBoard } from "@/app/lib/access";
 import { recordAudit } from "@/app/lib/audit";
 import { boardTitleSchema } from "@/app/lib/validators";
 import { deleteBoardWithAttachments } from "@/app/lib/services/attachments";
@@ -84,17 +85,19 @@ export async function DELETE(
 
   const role = await apiBoardRole(auth.userId, id);
   if (!role) return apiError(404, "Board not found.");
-  if (!canManageBoard(role)) {
+  if (!canManageBoard(role) && !(await holdsPermissionOnBoard(id, auth.userId, "boards.delete"))) {
     return apiError(403, "You need to be the board owner.");
   }
 
+  const before = await prisma.board.findUnique({ where: { id }, select: { workspaceId: true, title: true } });
   await deleteBoardWithAttachments({ id });
   await recordAudit({
     action: "board.deleted",
     userId: auth.userId,
     targetType: "board",
     targetId: id,
-    detail: "api",
+    workspaceId: before?.workspaceId ?? null,
+    detail: `api: ${before?.title ?? ""}`,
   });
   revalidatePath("/boards");
   // Tells the board's open tabs (SSE), like the Server Action does.

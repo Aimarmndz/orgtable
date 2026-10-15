@@ -54,3 +54,23 @@ export function formatDate(d: Date, intl: string): string {
     timeZone: instanceTimeZone(),
   }).format(d);
 }
+
+/** Hour and minute only, in the instance's time zone (e.g. "10:15"). */
+export function formatTime(d: Date, intl: string): string {
+  return new Intl.DateTimeFormat(intl, {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: instanceTimeZone(),
+  }).format(d);
+}
+
+/** A long day heading in the instance's time zone (e.g. "Wednesday, 15 October 2026"). */
+export function formatDay(d: Date, intl: string): string {
+  return new Intl.DateTimeFormat(intl, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: instanceTimeZone(),
+  }).format(d);
+}

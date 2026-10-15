@@ -5,9 +5,8 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/app/lib/prisma";
 import { revalidateBoard } from "@/app/lib/realtime/notify";
 import { requireUser, requireBoardAccess } from "@/app/lib/dal";
-import { effectiveBoardRole, workspaceAccessOf } from "@/app/lib/access";
+import { effectiveBoardRole, holdsPermissionOnBoard, workspaceAccessOf } from "@/app/lib/access";
 import { canManageBoard } from "@/app/lib/roles";
-import type { Permission } from "@/app/lib/permissions";
 import { boardPath } from "@/app/lib/slugs";
 import { createBoardWithSlug, freeBoardSlug } from "@/app/lib/services/workspaces";
 import { recordAudit } from "@/app/lib/audit";
@@ -46,20 +45,6 @@ async function targetWorkspace(userId: string, requested: FormDataEntryValue | n
   return { id: workspace.id, slug: workspace.slug };
 }
 
-/**
- * Whether the user holds `permission` in the organization of a board they can open: a
- * custom role may change visibility or delete boards without managing them
- * (permissions.ts). False for personal boards (their owner manages them anyway).
- */
-async function holdsOnBoard(boardId: string, userId: string, permission: Permission): Promise<boolean> {
-  const board = await prisma.board.findUnique({
-    where: { id: boardId },
-    select: { workspaceId: true, workspace: { select: { kind: true } } },
-  });
-  if (!board || board.workspace.kind !== "ORGANIZATION") return false;
-  const access = await workspaceAccessOf(board.workspaceId, userId);
-  return Boolean(access?.permissions.has(permission));
-}
 
 export async function createBoard(formData: FormData): Promise<void> {
   const user = await requireUser();
@@ -118,7 +103,7 @@ export async function renameBoard(formData: FormData): Promise<void> {
 export async function setBoardVisibility(formData: FormData): Promise<void> {
   const boardId = String(formData.get("boardId"));
   const { user, role } = await requireBoardAccess(boardId);
-  if (!canManageBoard(role) && !(await holdsOnBoard(boardId, user.id, "boards.visibility"))) return;
+  if (!canManageBoard(role) && !(await holdsPermissionOnBoard(boardId, user.id, "boards.visibility"))) return;
   const parsed = boardVisibilitySchema.safeParse(formData.get("visibility"));
   if (!parsed.success) return;
   const { count } = await prisma.board.updateMany({
@@ -283,7 +268,11 @@ export async function deleteBoard(formData: FormData): Promise<void> {
   // files.
   const role = await effectiveBoardRole(boardId, user.id);
   const allowed =
-    role !== null && (canManageBoard(role) || (await holdsOnBoard(boardId, user.id, "boards.delete")));
+    role !== null && (canManageBoard(role) || (await holdsPermissionOnBoard(boardId, user.id, "boards.delete")));
+  // Read before deleting: the audit event keeps the board's workspace and title.
+  const before = allowed
+    ? await prisma.board.findUnique({ where: { id: boardId }, select: { workspaceId: true, title: true } })
+    : null;
   const count = allowed ? await deleteBoardWithAttachments({ id: boardId }) : 0;
   if (count > 0) {
     await recordAudit({
@@ -291,6 +280,8 @@ export async function deleteBoard(formData: FormData): Promise<void> {
       userId: user.id,
       targetType: "board",
       targetId: boardId,
+      workspaceId: before?.workspaceId ?? null,
+      detail: before?.title,
     });
     // Tell the board's open tabs (SSE) so that they stop showing it.
     revalidateBoard(boardId);
