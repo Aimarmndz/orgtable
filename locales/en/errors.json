@@ -116,6 +116,12 @@
     "roleNameTooLong": "The name can be up to 60 characters.",
     "roleDescriptionTooLong": "The description can be up to 200 characters.",
     "roleNameTaken": "There is already a role with that name.",
-    "tooManyRoles": "An organization can have up to 50 custom roles."
+    "tooManyRoles": "An organization can have up to 50 custom roles.",
+    "teamNameRequired": "Give the team a name.",
+    "teamNameTooLong": "The name can be up to 60 characters.",
+    "teamNameTaken": "There is already a team with that name.",
+    "tooManyTeams": "An organization can have up to 100 teams.",
+    "teamNotFound": "That team or board does not exist here, or you cannot open it.",
+    "teamRoleTooHigh": "You cannot give a team more permission on a board than you have."
   }
 }

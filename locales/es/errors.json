@@ -116,6 +116,12 @@
     "roleNameTooLong": "El nombre puede tener hasta 60 caracteres.",
     "roleDescriptionTooLong": "La descripción puede tener hasta 200 caracteres.",
     "roleNameTaken": "Ya hay un rol con ese nombre.",
-    "tooManyRoles": "Una organización puede tener hasta 50 roles personalizados."
+    "tooManyRoles": "Una organización puede tener hasta 50 roles personalizados.",
+    "teamNameRequired": "Ponle un nombre al equipo.",
+    "teamNameTooLong": "El nombre puede tener hasta 60 caracteres.",
+    "teamNameTaken": "Ya hay un equipo con ese nombre.",
+    "tooManyTeams": "Una organización puede tener hasta 100 equipos.",
+    "teamNotFound": "Ese equipo o tablero no existe aquí, o no puedes abrirlo.",
+    "teamRoleTooHigh": "No puedes dar a un equipo más permiso en un tablero del que tú tienes."
   }
 }

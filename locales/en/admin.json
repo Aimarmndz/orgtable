@@ -158,7 +158,14 @@
       "auth.password_reset": "Password set from an email link",
       "workspace.role_created": "Custom role created",
       "workspace.role_updated": "Custom role edited",
-      "workspace.role_deleted": "Custom role deleted"
+      "workspace.role_deleted": "Custom role deleted",
+      "workspace.team_created": "Team created",
+      "workspace.team_updated": "Team edited",
+      "workspace.team_deleted": "Team deleted",
+      "workspace.team_member_added": "Added to a team",
+      "workspace.team_member_removed": "Removed from a team",
+      "workspace.team_board_set": "Team access to a board changed",
+      "workspace.team_board_removed": "Board taken from a team"
     }
   },
   "workspaces": {

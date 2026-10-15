@@ -7,6 +7,33 @@ living log from 2026-09-24 onwards.
 
 ---
 
+## 2026-10-15 — Teams grant board roles, decided in access.ts
+
+**Context.** The approved design has teams (Design, Development, Sales) with members and board
+access as Reader, Editor or Manager. Without them, sharing six private boards with five people
+is thirty invitations, and nothing stays in sync when someone joins.
+
+**Decision.**
+- `Team`, `TeamMember` and `TeamBoard` with a `role` per board. A team grant is one more path in
+  `access.ts` (`accessibleBoardsWhere`, `effectiveBoardRole`); the highest path wins. The board
+  lists and the board's people panel compute the same way.
+- Every foreign key carries `workspaceId`: `TeamMember → WorkspaceMember(workspaceId, userId)`
+  (cascade, so leaving the organization leaves its teams), `TeamBoard → Board(workspaceId, id)`
+  (a new unique index on Board) and both → `Team(workspaceId, id)`.
+- Managing teams is the `people.teams` permission. A team never gives more than the person
+  configuring it has: only boards they can open, with a role up to their own effective role.
+
+**Alternatives considered.**
+- Teams that add people as explicit `BoardMember` rows: access would not end when someone
+  leaves the team, and the rows would drift from the team.
+- Teams across organizations: they belong to one organization like everything else.
+
+**Consequences.** Removing someone from a team or deleting a team takes the access away
+immediately. `access.ts` grows one OR; the queries that compute a role from rows
+(`getBoardSummariesForUser`, `getBoardPeople`) include the teams too.
+
+---
+
 ## 2026-10-15 — Custom roles as permission sets on top of three locked base roles
 
 **Context.** The owner asked for "a place to edit roles". The three workspace roles (Owner,

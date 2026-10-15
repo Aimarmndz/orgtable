@@ -3,7 +3,7 @@ import { cache } from "react";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/app/lib/prisma";
 import { accessibleBoardsWhere } from "@/app/lib/access";
-import { boardRoleFromMembership, canManageBoard, maxBoardRole } from "@/app/lib/roles";
+import { boardRoleFromMembership, canManageBoard, maxBoardRole, type BoardRole } from "@/app/lib/roles";
 import { permissionsOf } from "@/app/lib/permissions";
 
 // Read queries. Authorization (which boards a user can see) is expressed in the WHERE
@@ -48,13 +48,17 @@ export async function getBoardSummariesForUser(userId: string, workspaceId?: str
         orderBy: { addedAt: "asc" },
         select: { role: true, user: { select: { id: true, name: true } } },
       },
+      teams: { where: { team: { members: { some: { userId } } } }, select: { role: true } },
     },
   });
-  return boards.map(({ lists, members, workspace, ...b }) => {
+  return boards.map(({ lists, members, workspace, teams, ...b }) => {
     const explicit = members.find((m) => m.user.id === userId)?.role ?? null;
     const membership = workspace.members[0];
     const fromWorkspace = membership ? boardRoleFromMembership(membership, b.visibility) : null;
-    const role = maxBoardRole(explicit, fromWorkspace);
+    const role = [explicit, fromWorkspace, ...teams.map((t) => t.role)].reduce<BoardRole | null>(
+      maxBoardRole,
+      null,
+    );
     const perms = membership ? permissionsOf(membership.role, membership.customRole?.permissions) : null;
     return {
       ...b,
@@ -303,12 +307,22 @@ export async function getBoardPeople(boardId: string, viewerId: string) {
           },
         },
       },
+      teams: { select: { role: true, team: { select: { members: { select: { userId: true } } } } } },
     },
   });
   if (!board) return [];
-  const workspaceGrant = (userId: string) => {
+  // What the organization gives: the base or custom role, and every team of the person that
+  // has this board (the highest wins, as in app/lib/access.ts).
+  const workspaceGrant = (userId: string): BoardRole | null => {
     const w = board.workspace.members.find((x) => x.user.id === userId);
-    return w ? boardRoleFromMembership(w, board.visibility) : null;
+    if (!w) return null;
+    const viaTeams = board.teams
+      .filter((t) => t.team.members.some((tm) => tm.userId === userId))
+      .map((t) => t.role);
+    return [boardRoleFromMembership(w, board.visibility), ...viaTeams].reduce<BoardRole | null>(
+      maxBoardRole,
+      null,
+    );
   };
   const people = board.members.map((m) => ({
     ...m.user,
@@ -324,7 +338,7 @@ export async function getBoardPeople(boardId: string, viewerId: string) {
   const viewerInWorkspace = board.workspace.members.some((w) => w.user.id === viewerId);
   for (const w of board.workspace.members) {
     if (explicit.has(w.user.id)) continue;
-    const role = boardRoleFromMembership(w, board.visibility);
+    const role = workspaceGrant(w.user.id);
     if (role) {
       people.push({
         ...w.user,

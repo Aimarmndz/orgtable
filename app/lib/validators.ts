@@ -364,6 +364,25 @@ export const customRoleSchema = z.object({
   permissions: z.array(z.string().max(40)).max(40),
 });
 
+// A team of an organization (docs/teams.md).
+export const teamSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, "errors.workspaces.teamNameRequired")
+    .max(60, "errors.workspaces.teamNameTooLong"),
+  color: z.string().max(20),
+  description: z
+    .string()
+    .trim()
+    .max(200, "errors.workspaces.roleDescriptionTooLong")
+    .transform((v) => (v === "" ? null : v)),
+});
+
+export const boardRoleSchema = z.enum(["OWNER", "EDITOR", "VIEWER"], {
+  error: "errors.validation.roleInvalid",
+});
+
 // An owner or admin creates an employee's account in their organization.
 export const createEmployeeSchema = z.object({
   name: personNameSchema,

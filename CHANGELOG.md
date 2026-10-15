@@ -26,6 +26,9 @@ behind each decision is in [`docs/DECISIONES.md`](./docs/DECISIONES.md).
   as locked base roles. A custom role can never change roles, and the database refuses a
   role from another organization. See `docs/roles.md`.
 - Members can be given a custom role from the members list or when their account is created.
+- **Teams** (`/<slug>/settings/teams`): groups of people that get a role (reader, editor or
+  manager) on some boards, private ones included. The highest of every path to a board wins,
+  and a team never gives more than the person configuring it has. See `docs/teams.md`.
 - **Public landing page** at `/` for visitors without a session, in a retro look: what
   orgtable is, a free account on the instance (while sign-up is open) and the one-line
   installer for your own server. `ORGTABLE_LANDING` (`auto` by default: only while

@@ -50,12 +50,13 @@ Rules that make escalation impossible (`app/lib/roles.ts`, enforced in
 ## Who can open a board
 
 Decided in one place, `app/lib/access.ts`, which every page, Server Action, route handler, the
-API, search, real time, attachments and notifications use. The effective role is the higher of:
+API, search, real time, attachments and notifications use. The effective role is the highest of:
 
 1. the explicit board membership (owner, editor, viewer), and
 2. what the workspace role gives: owners and admins manage **every** board of the organization;
    members **edit** the boards whose visibility is _Everyone in the organization_ and see nothing
-   of the _Private_ ones.
+   of the _Private_ ones (a custom role with `boards.view_all` reads them), and
+3. what the person's [teams](./teams.md) hold on that board.
 
 A suspended workspace gives nobody access. Someone outside the organization added to one board
 (a guest) sees that board only, and the names (not the emails) of the organization's people.
@@ -72,6 +73,7 @@ list of sections and every page has a "back" link instead of the menu):
 | `/<slug>/settings/general`     | Name and address (owners), leaving, the danger zone (owners)    |
 | `/<slug>/settings/members`     | Who is in the organization and their role                       |
 | `/<slug>/settings/members/new` | Create an employee account (`people.invite`)                    |
+| `/<slug>/settings/teams`       | Teams and the boards they open; `/teams/<id>` manages one       |
 | `/<slug>/settings/roles`       | Base and custom roles; `/roles/<id>` edits one (owners, admins) |
 
 The pages only show what the person's role allows; the services check everything again. How

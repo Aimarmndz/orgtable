@@ -51,6 +51,14 @@ export function orgSettingsSections(
           badge: String(counts.members),
         },
         {
+          key: "teams",
+          href: `${base}/teams`,
+          label: t.teams,
+          hint: t.hints.teams,
+          icon: NavIcon.teams,
+          badge: String(counts.teams),
+        },
+        {
           key: "roles",
           href: `${base}/roles`,
           label: t.roles,

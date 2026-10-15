@@ -158,7 +158,14 @@
       "auth.password_reset": "Contraseña puesta con un enlace del correo",
       "workspace.role_created": "Rol personalizado creado",
       "workspace.role_updated": "Rol personalizado editado",
-      "workspace.role_deleted": "Rol personalizado borrado"
+      "workspace.role_deleted": "Rol personalizado borrado",
+      "workspace.team_created": "Equipo creado",
+      "workspace.team_updated": "Equipo editado",
+      "workspace.team_deleted": "Equipo borrado",
+      "workspace.team_member_added": "Añadido a un equipo",
+      "workspace.team_member_removed": "Quitado de un equipo",
+      "workspace.team_board_set": "Acceso de un equipo a un tablero cambiado",
+      "workspace.team_board_removed": "Tablero quitado a un equipo"
     }
   },
   "workspaces": {

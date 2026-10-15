@@ -97,6 +97,7 @@ model Workspace {
   // Accounts this organization created for its employees (User.managedById).
   managedUsers    User[]            @relation("ManagedUsers")
   customRoles     WorkspaceCustomRole[]
+  teams           Team[]
 }
 
 model WorkspaceMember {
@@ -111,6 +112,7 @@ model WorkspaceMember {
   customRoleId String?
   customRole   WorkspaceCustomRole? @relation(fields: [workspaceId, customRoleId], references: [workspaceId, id], onDelete: NoAction)
   addedAt      DateTime             @default(now())
+  teams        TeamMember[]
 
   @@id([workspaceId, userId])
   @@index([userId])
@@ -135,6 +137,54 @@ model WorkspaceCustomRole {
 
   @@unique([workspaceId, name])
   @@unique([workspaceId, id])
+}
+
+// A group of people of an organization that gets access to some of its boards together
+// (docs/teams.md). Both join tables carry workspaceId inside their foreign keys: a team can
+// only hold members of its own organization and boards of its own organization, and leaving
+// the organization removes the person from its teams (cascade).
+model Team {
+  id          String       @id @default(cuid())
+  workspaceId String
+  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  // A key of BOARD_COLORS (app/lib/colors.ts).
+  color       String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  members     TeamMember[]
+  boards      TeamBoard[]
+
+  @@unique([workspaceId, name])
+  @@unique([workspaceId, id])
+}
+
+model TeamMember {
+  teamId      String
+  workspaceId String
+  userId      String
+  team        Team            @relation(fields: [workspaceId, teamId], references: [workspaceId, id], onDelete: Cascade)
+  member      WorkspaceMember @relation(fields: [workspaceId, userId], references: [workspaceId, userId], onDelete: Cascade)
+  addedAt     DateTime        @default(now())
+
+  @@id([teamId, userId])
+  @@index([workspaceId, userId])
+}
+
+// The role a team's members get on a board (VIEWER, EDITOR or OWNER), on top of whatever
+// else gives them access: the effective role is the highest (app/lib/access.ts).
+model TeamBoard {
+  teamId      String
+  workspaceId String
+  boardId     String
+  role        BoardRole @default(EDITOR)
+  team        Team      @relation(fields: [workspaceId, teamId], references: [workspaceId, id], onDelete: Cascade)
+  board       Board     @relation(fields: [workspaceId, boardId], references: [workspaceId, id], onDelete: Cascade)
+  addedAt     DateTime  @default(now())
+
+  @@id([teamId, boardId])
+  @@index([boardId])
 }
 
 model User {
@@ -228,8 +278,10 @@ model Board {
   lists       List[]
   labels      Label[]
   members     BoardMember[]
+  teams       TeamBoard[]
 
   @@unique([workspaceId, slug])
+  @@unique([workspaceId, id])
   @@index([ownerId])
 }
 

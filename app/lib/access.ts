@@ -17,9 +17,11 @@ import { permissionsOf, type Permission } from "@/app/lib/permissions";
 //    owners and admins manage every board of the organization, members edit the boards
 //    shared with the workspace, and a custom role with "boards.view_all" also sees the
 //    private ones (app/lib/permissions.ts).
-// 3. A suspended workspace (/admin/workspaces) gives nobody anything.
+// 3. A team of the board's organization gives the role it holds on that board to its
+//    members (TeamBoard, docs/teams.md).
+// 4. A suspended workspace (/admin/workspaces) gives nobody anything.
 //
-// The effective role is the higher of 1 and 2. See docs/authorization.md.
+// The effective role is the highest of 1, 2 and 3. See docs/authorization.md.
 
 const MANAGERS: WorkspaceRole[] = ["OWNER", "ADMIN"];
 
@@ -36,6 +38,7 @@ export function accessibleBoardsWhere(userId: string): Prisma.BoardWhereInput {
           members: { some: { userId, customRole: { permissions: { has: "boards.view_all" } } } },
         },
       },
+      { teams: { some: { team: { members: { some: { userId } } } } } },
     ],
   };
 }
@@ -50,6 +53,7 @@ export async function effectiveBoardRole(
     select: {
       visibility: true,
       members: { where: { userId }, select: { role: true } },
+      teams: { where: { team: { members: { some: { userId } } } }, select: { role: true } },
       workspace: {
         select: {
           suspendedAt: true,
@@ -65,7 +69,10 @@ export async function effectiveBoardRole(
   const explicit = board.members[0]?.role ?? null;
   const membership = board.workspace.members[0];
   const fromWorkspace = membership ? boardRoleFromMembership(membership, board.visibility) : null;
-  return maxBoardRole(explicit, fromWorkspace);
+  return [explicit, fromWorkspace, ...board.teams.map((t) => t.role)].reduce<BoardRole | null>(
+    maxBoardRole,
+    null,
+  );
 }
 
 /** The user's role in a workspace, or null if they are not a member. */

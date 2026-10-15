@@ -121,9 +121,11 @@
     "hints": {
       "general": "Name, address, leaving and the danger zone",
       "members": "Who is in the organization and their role",
-      "roles": "What each role can do, and your own roles"
+      "roles": "What each role can do, and your own roles",
+      "teams": "Groups of people that share access to boards"
     },
-    "roles": "Roles and permissions"
+    "roles": "Roles and permissions",
+    "teams": "Teams"
   },
   "general": {
     "title": "General",
@@ -250,5 +252,48 @@
       "rose": "Clay",
       "teal": "Teal"
     }
+  },
+  "teams": {
+    "title": "Teams",
+    "subtitle": "Give a group of people access to several boards at once. Someone in a team keeps the highest permission among everything that gives them access.",
+    "new": "New team",
+    "empty": "No teams yet.",
+    "people": {
+      "one": "{count} person",
+      "other": "{count} people"
+    },
+    "boards": {
+      "one": "{count} board",
+      "other": "{count} boards"
+    },
+    "name": "Name",
+    "description": "Description",
+    "create": "Create team",
+    "save": "Save",
+    "saved": "Team saved.",
+    "identity": "Name and colour",
+    "membersTitle": "People",
+    "noMembers": "Nobody in this team yet.",
+    "pickPerson": "Choose a person",
+    "addPerson": "Add",
+    "removePerson": "Remove {name} from the team",
+    "remove": "Remove",
+    "boardsTitle": "Team boards",
+    "noBoards": "This team gives access to no board yet.",
+    "pickBoard": "Choose a board",
+    "addBoard": "Give access",
+    "roleOn": "Permission on {board}",
+    "removeBoard": "Take {board} away from the team",
+    "private": "Private",
+    "boardRoles": {
+      "VIEWER": "Reader",
+      "EDITOR": "Editor",
+      "OWNER": "Manager"
+    },
+    "rule": "If someone reaches a board by several paths (their role, a team or a direct invitation) they keep the highest permission. A team never gives more than the person setting it up has.",
+    "readOnly": "Only people allowed to manage teams change them.",
+    "delete": "Delete team",
+    "deleteText": "Its people stay in the organization; they lose the access the team gave them.",
+    "back": "All teams"
   }
 }

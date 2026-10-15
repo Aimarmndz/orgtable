@@ -121,9 +121,11 @@
     "hints": {
       "general": "Nombre, dirección, salir y zona de peligro",
       "members": "Quién está en la organización y su rol",
-      "roles": "Qué puede hacer cada rol, y vuestros propios roles"
+      "roles": "Qué puede hacer cada rol, y vuestros propios roles",
+      "teams": "Grupos de personas que comparten acceso a tableros"
     },
-    "roles": "Roles y permisos"
+    "roles": "Roles y permisos",
+    "teams": "Equipos"
   },
   "general": {
     "title": "General",
@@ -250,5 +252,48 @@
       "rose": "Arcilla",
       "teal": "Verde azulado"
     }
+  },
+  "teams": {
+    "title": "Equipos",
+    "subtitle": "Da a un grupo de personas acceso a varios tableros a la vez. Quien está en un equipo se queda con el permiso más alto de todo lo que le da acceso.",
+    "new": "Nuevo equipo",
+    "empty": "Aún no hay equipos.",
+    "people": {
+      "one": "{count} persona",
+      "other": "{count} personas"
+    },
+    "boards": {
+      "one": "{count} tablero",
+      "other": "{count} tableros"
+    },
+    "name": "Nombre",
+    "description": "Descripción",
+    "create": "Crear equipo",
+    "save": "Guardar",
+    "saved": "Equipo guardado.",
+    "identity": "Nombre y color",
+    "membersTitle": "Personas",
+    "noMembers": "Aún no hay nadie en este equipo.",
+    "pickPerson": "Elige una persona",
+    "addPerson": "Añadir",
+    "removePerson": "Quitar a {name} del equipo",
+    "remove": "Quitar",
+    "boardsTitle": "Tableros del equipo",
+    "noBoards": "Este equipo aún no da acceso a ningún tablero.",
+    "pickBoard": "Elige un tablero",
+    "addBoard": "Dar acceso",
+    "roleOn": "Permiso en {board}",
+    "removeBoard": "Quitar {board} al equipo",
+    "private": "Privado",
+    "boardRoles": {
+      "VIEWER": "Lector",
+      "EDITOR": "Editor",
+      "OWNER": "Gestor"
+    },
+    "rule": "Si alguien llega a un tablero por varios caminos (su rol, un equipo o una invitación directa) se queda con el permiso más alto. Un equipo nunca da más de lo que tiene quien lo configura.",
+    "readOnly": "Solo quien puede gestionar equipos los cambia.",
+    "delete": "Borrar equipo",
+    "deleteText": "Sus personas siguen en la organización; pierden el acceso que les daba el equipo.",
+    "back": "Todos los equipos"
   }
 }
