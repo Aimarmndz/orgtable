@@ -94,7 +94,10 @@ proxy.ts                        # Optimistic auth check + per-request CSP nonce
 | `/boards` | authenticated | The user's boards (`(app)` group) |
 | `/board/[id]` | authenticated | A board with its lists and cards |
 | `/search` | authenticated | Search across boards and cards |
-| `/settings` | authenticated | Account settings |
+| `/settings/*` | authenticated | One's own settings, one page per section (`profile`, `security`, `tokens`, `appearance`, `workspaces`, `data`) |
+| `/<workspace>` | member or guest | A workspace's boards |
+| `/<workspace>/<board>` | board access | A board (canonical address) |
+| `/<workspace>/settings/*` | organization member | An organization's settings, one page per section (`requireOrgSettings`) |
 | `/admin/*` | admin | User management, audit log, instance settings |
 | `/api/health` | public | Health check for docker-compose |
 | `/api/v1/*` | API token | Public REST API |

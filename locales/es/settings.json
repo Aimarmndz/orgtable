@@ -23,7 +23,8 @@
     "email": "Email",
     "currentPassword": "Contraseña actual",
     "currentPasswordHint": "Solo hace falta si cambias el email.",
-    "save": "Guardar perfil"
+    "save": "Guardar perfil",
+    "cardTitle": "Nombre y email"
   },
   "security": {
     "description": "Al cambiar la contraseña se cierran tus otras sesiones.",
@@ -42,7 +43,9 @@
       "other": "Cerrar las otras {count} sesiones"
     },
     "browserOnOs": "{browser} en {os}",
-    "unknownBrowser": "Navegador desconocido"
+    "unknownBrowser": "Navegador desconocido",
+    "passwordTitle": "Cambiar la contraseña",
+    "sessionsHint": "Cada navegador en el que está abierta tu cuenta. Cierra las que no reconozcas."
   },
   "tokens": {
     "description": "Para usar la API de orgtable desde scripts u otras aplicaciones. Un token actúa <strong>como tú</strong>, con tu mismo acceso a los tableros, y solo se muestra una vez. Consulta la <link>documentación de la API</link>.",
@@ -75,7 +78,9 @@
       "expiryYear": "1 año",
       "submit": "Crear token",
       "submitting": "Creando…"
-    }
+    },
+    "newTitle": "Nuevo token",
+    "listTitle": "Tus tokens"
   },
   "appearance": {
     "description": "El tema y el idioma de la interfaz.",
@@ -117,5 +122,25 @@
   },
   "about": {
     "line": "orgtable <version>{version}</version> · <source>Código fuente</source> · Licencia <license>{license}</license>"
+  },
+  "nav": {
+    "account": "Cuenta",
+    "profile": "Perfil",
+    "security": "Contraseña y sesiones",
+    "appearance": "Apariencia e idioma",
+    "workspacesGroup": "Espacios",
+    "workspaces": "Tus organizaciones",
+    "tokens": "Tokens de API",
+    "dataGroup": "Tus datos",
+    "data": "Privacidad y datos",
+    "admin": "Administración",
+    "back": "Volver a los tableros"
+  },
+  "workspaces": {
+    "description": "Tus tableros personales y las organizaciones a las que perteneces.",
+    "listTitle": "Dónde estás",
+    "open": "Abrir",
+    "settings": "Ajustes",
+    "suspended": "suspendida"
   }
 }

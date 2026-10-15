@@ -7,6 +7,47 @@ living log from 2026-09-24 onwards.
 
 ---
 
+## 2026-10-15 — Settings as pages, and one door per organization
+
+**Context.** The owner's verdict on the settings: choosing a section "sends me down the
+screen when it should load a different section". `/settings` was one long page whose menu
+jumped to `#fragments`, and an organization's settings mixed the members list with the form
+to create an employee at the bottom. The coming features (custom roles, teams, webhooks,
+backups, security, keys) need a place each, and orgtable is multi-tenant: every one of them
+must stay inside its organization.
+
+**Decision.**
+- Every section is a page with its own address. One's own settings:
+  `/settings/{profile,security,tokens,appearance,workspaces,data}`; `/settings` opens the
+  profile, or the page an old `/settings#<fragment>` link meant (the fragment never reaches
+  the server, so a small client component maps it; `app/lib/settings-paths.ts`).
+- An organization's settings get an index (`/<slug>/settings`), `members`, `members/new` and
+  `general`. Menu and index come from ONE list (`app/components/settings/org-nav.tsx`), so a
+  section cannot be in one and missing from the other. On a phone the index is the way in
+  and other pages show a single "back" link, as designed.
+- Tenant isolation keeps the current model (one database, `/<slug>/…`), made strict:
+  `requireOrgSettings(slug)` is the only door of the organization's settings. It resolves
+  the slug together with the person's membership and answers the same 404 for "does not
+  exist", "not yours" and "personal workspace". Services keep re-checking membership and
+  look rows up by `{ id, workspaceId }`.
+- The design was approved first in a Claude Design canvas ("orgtable — Panel de empresa").
+
+**Alternatives considered.**
+- Keeping the single page and making the menu filter it with JavaScript: the address would
+  still not say where you are, and the back button would not work.
+- A database or schema per tenant: far more operations work (migrations ×N, backups, the
+  instance admin's view) for a self-hosted app whose tenants are small; strict checks at the
+  three doors give the isolation without it.
+- Redirecting `/settings` on the server: the fragment is not sent, so `/settings#data` would
+  always land on the profile.
+
+**Consequences.** New settings sections are a page plus one entry in `org-nav.tsx`. Links to
+`/settings#…` in old emails or bookmarks keep working.
+`test/integration/tenant-isolation.int.test.ts` is where cross-tenant cases go as features
+land.
+
+---
+
 ## 2026-10-14 — A public landing page at `/`, retro, off for private instances
 
 **Context.** orgtable could not be presented to anyone: `/` sent every visitor to the

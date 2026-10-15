@@ -75,6 +75,26 @@ The board component receives the viewer's role and exposes it through context
 `canManage`, components hide drag and drop, the "add" forms, the delete buttons, editing
 in the card modal and the member management panel. A `VIEWER` sees a **read-only** board.
 
+## Tenant isolation
+
+Every organization is a tenant inside one database. The boundary is drawn in three places,
+and each new feature (roles, teams, webhooks, keys, backups…) goes through the same ones:
+
+1. **Pages** of an organization's settings (`/<slug>/settings/…`) resolve it with
+   `requireOrgSettings(slug)` (`app/lib/org-settings.ts`). It looks up the slug **and** the
+   signed-in person's membership in one query and answers the same 404 for an organization
+   that does not exist, one the person is not in, and a personal workspace. A guest invited
+   to one board sees that board, never the settings. Everything the page loads afterwards
+   is filtered by the `workspace.id` it returns, never by an id from the URL.
+2. **Services** (`app/lib/services/*`) never trust a `workspaceId` coming from a form: they
+   load the actor's membership of that workspace again, and every row they touch is looked
+   up with `{ id, workspaceId }` together, so an id belonging to another organization reads
+   as "not found" instead of reaching across.
+3. **Board access** (`app/lib/access.ts`) stays the single answer to "who opens which
+   board", and only ever grants through the board's own workspace.
+
+`test/integration/tenant-isolation.int.test.ts` holds the cross-tenant cases.
+
 ## Why explicit guards instead of `forbidden()`
 
 Next.js 16 provides `forbidden()`/`unauthorized()` to stop execution with a 403/401 page,

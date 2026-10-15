@@ -89,7 +89,7 @@ export async function createApiToken(
     targetId: created.id,
     detail: `${name} (${scope})`,
   });
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
   return { token, name };
 }
 
@@ -108,5 +108,5 @@ export async function revokeApiToken(formData: FormData): Promise<void> {
       targetId: id,
     });
   }
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
 }

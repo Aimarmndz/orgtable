@@ -23,7 +23,8 @@
     "email": "Email",
     "currentPassword": "Current password",
     "currentPasswordHint": "Only needed if you change your email.",
-    "save": "Save profile"
+    "save": "Save profile",
+    "cardTitle": "Name and email"
   },
   "security": {
     "description": "Changing your password signs out your other sessions.",
@@ -42,7 +43,9 @@
       "other": "Sign out the other {count} sessions"
     },
     "browserOnOs": "{browser} on {os}",
-    "unknownBrowser": "Unknown browser"
+    "unknownBrowser": "Unknown browser",
+    "passwordTitle": "Change the password",
+    "sessionsHint": "Every browser where your account is signed in. Close the ones you do not recognise."
   },
   "tokens": {
     "description": "To use the orgtable API from scripts or other apps. A token acts <strong>as you</strong>, with the same access to boards, and is only shown once. See the <link>API documentation</link>.",
@@ -75,7 +78,9 @@
       "expiryYear": "1 year",
       "submit": "Create token",
       "submitting": "Creating…"
-    }
+    },
+    "newTitle": "New token",
+    "listTitle": "Your tokens"
   },
   "appearance": {
     "description": "Theme and language of the interface.",
@@ -117,5 +122,25 @@
   },
   "about": {
     "line": "orgtable <version>{version}</version> · <source>Source code</source> · License <license>{license}</license>"
+  },
+  "nav": {
+    "account": "Account",
+    "profile": "Profile",
+    "security": "Password and sessions",
+    "appearance": "Appearance and language",
+    "workspacesGroup": "Workspaces",
+    "workspaces": "Your organizations",
+    "tokens": "API tokens",
+    "dataGroup": "Your data",
+    "data": "Privacy and data",
+    "admin": "Administration",
+    "back": "Back to the boards"
+  },
+  "workspaces": {
+    "description": "Your personal boards and the organizations you belong to.",
+    "listTitle": "Where you are",
+    "open": "Open",
+    "settings": "Settings",
+    "suspended": "suspended"
   }
 }

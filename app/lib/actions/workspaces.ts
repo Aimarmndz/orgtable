@@ -223,7 +223,7 @@ export async function createEmployeeAction(
     where: { id: workspaceId },
     select: { slug: true, name: true },
   });
-  if (workspace) revalidatePath(`/${workspace.slug}/settings`);
+  if (workspace) revalidatePath(`/${workspace.slug}`, "layout");
   if (!invite) return { message: m.workspaces.members.created };
   const sent =
     workspace &&
@@ -353,6 +353,6 @@ export async function updateHandleAction(
   const result = await updatePersonalHandle(user.id, values.slug);
   if (!result.ok) return { error: slugErrorMessage(m, result.error), values };
   revalidatePath("/boards");
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
   return { message: m.workspaces.handle.saved, values: { slug: result.slug } };
 }

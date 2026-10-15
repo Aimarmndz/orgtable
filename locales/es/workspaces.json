@@ -95,7 +95,9 @@
     "deleteText": "Borra la organización con todos sus tableros, listas, tarjetas y adjuntos. Las cuentas de los empleados se quedan, sin la organización. No se puede deshacer.",
     "deleteConfirm": "Escribe {slug} para confirmar",
     "deleteSubmit": "Borrar organización",
-    "deleteConfirmMismatch": "Escribe exactamente la dirección de la organización para confirmar."
+    "deleteConfirmMismatch": "Escribe exactamente la dirección de la organización para confirmar.",
+    "indexTitle": "Ajustes",
+    "indexText": "Todo lo de {name}, una página por sección. Tu rol: {role}."
   },
   "visibility": {
     "label": "Quién lo ve",
@@ -108,10 +110,16 @@
     "organization": "Organización",
     "boards": "Tableros",
     "members": "Miembros",
-    "general": "General",
+    "general": "General y marca",
     "account": "Tu cuenta",
     "profile": "Perfil y seguridad",
-    "personalBoards": "Tableros personales"
+    "personalBoards": "Tableros personales",
+    "people": "Personas",
+    "backTo": "Volver a {name}",
+    "hints": {
+      "general": "Nombre, dirección, salir y zona de peligro",
+      "members": "Quién está en la organización y su rol"
+    }
   },
   "general": {
     "title": "General",

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { settingsPathForFragment } from "@/app/lib/settings-paths";
 import { getLegalInfo } from "@/app/lib/services/instance";
 import {
   auditRetentionDays,
@@ -50,7 +51,7 @@ export default async function PrivacyPage() {
     },
   ];
   const settingsLink = (anchor: string, text: string) => (
-    <Link href={`/settings#${anchor}`}>{text}</Link>
+    <Link href={settingsPathForFragment(anchor)}>{text}</Link>
   );
 
   return (

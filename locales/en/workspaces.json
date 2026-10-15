@@ -95,7 +95,9 @@
     "deleteText": "Deletes the organization with all its boards, lists, cards and attachments. Employee accounts stay, without the organization. This cannot be undone.",
     "deleteConfirm": "Type {slug} to confirm",
     "deleteSubmit": "Delete organization",
-    "deleteConfirmMismatch": "Type the organization's address exactly to confirm."
+    "deleteConfirmMismatch": "Type the organization's address exactly to confirm.",
+    "indexTitle": "Settings",
+    "indexText": "Everything about {name}, one page per section. Your role: {role}."
   },
   "visibility": {
     "label": "Who can see it",
@@ -108,10 +110,16 @@
     "organization": "Organization",
     "boards": "Boards",
     "members": "Members",
-    "general": "General",
+    "general": "General and brand",
     "account": "Your account",
     "profile": "Profile and security",
-    "personalBoards": "Personal boards"
+    "personalBoards": "Personal boards",
+    "people": "People",
+    "backTo": "Back to {name}",
+    "hints": {
+      "general": "Name, address, leaving and the danger zone",
+      "members": "Who is in the organization and their role"
+    }
   },
   "general": {
     "title": "General",

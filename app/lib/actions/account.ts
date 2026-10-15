@@ -123,7 +123,7 @@ export async function changePassword(
     userId: user.id,
     detail: `other sessions revoked: ${result.revokedSessions}`,
   });
-  revalidatePath("/settings");
+  revalidatePath("/settings", "layout");
   return {
     message:
       result.revokedSessions > 0
@@ -144,8 +144,8 @@ export async function revokeSession(formData: FormData): Promise<void> {
       await recordAudit({ action: "account.sessions_revoked", userId: user.id, detail: "1" });
     }
   }
-  revalidatePath("/settings");
-  redirect("/settings#security");
+  revalidatePath("/settings", "layout");
+  redirect("/settings/security");
 }
 
 export async function revokeOtherSessions(): Promise<void> {
@@ -159,8 +159,8 @@ export async function revokeOtherSessions(): Promise<void> {
       detail: String(count),
     });
   }
-  revalidatePath("/settings");
-  redirect("/settings#security");
+  revalidatePath("/settings", "layout");
+  redirect("/settings/security");
 }
 
 export async function deleteAccount(

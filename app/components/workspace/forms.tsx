@@ -125,11 +125,14 @@ export function CreateEmployeeForm({
   workspaceId,
   roles,
   invite,
+  heading = true,
 }: {
   workspaceId: string;
   roles: WorkspaceRole[];
   // Email is on: the person chooses their own password from an invitation (docs/email.md).
   invite: boolean;
+  // false when the page's own header already names the form.
+  heading?: boolean;
 }) {
   const ref = useRef<HTMLFormElement>(null);
   const [state, action, pending] = useActionState<WorkspaceFormState, FormData>(
@@ -147,7 +150,7 @@ export function CreateEmployeeForm({
       action={action}
       className="rounded-2xl border border-ink/15 bg-surface p-6 shadow-[0_12px_32px_-18px_oklch(0.27_0.022_52/0.35)]"
     >
-      <div className="flex items-start gap-3.5">
+      <div className={heading ? "flex items-start gap-3.5" : "sr-only"}>
         <span
           aria-hidden
           className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent/12 text-accent"

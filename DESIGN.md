@@ -162,13 +162,19 @@ else.
 The areas where people manage things (an organization's settings, the instance administration,
 account settings) follow one SaaS-panel pattern, designed first in Claude Design:
 
+- **One page per section.** Every section has its own address (`/settings/security`,
+  `/<slug>/settings/members`): the menu loads a page, it never scrolls down a long one.
 - **Side menu** (`app/components/settings/side-nav.tsx`): sections grouped under small
   uppercase labels, the current one as a raised paper pill (`aria-current="page"`). It becomes a
-  scrollable row above the content on small screens. The organization's settings use it on the
+  scrollable row above the content on small screens; an area with an index page (an
+  organization's settings) shows the index as a list of rows on a phone instead, and a single
+  "back" link on every other page. The organization's settings use it on the
   app's sand; the instance administration on a **dark espresso** column with an "ADMIN" badge,
   so it is always clear that one is acting on the whole service.
-- **Page header**: the address in mono (`/acme`), a large display title, one sentence of what
-  the page is for, and the page's main action as a primary button on the right.
+- **Page header** (`app/components/settings/page-header.tsx`): the address in mono
+  (`/acme/settings/members`), a large display title, one sentence of what the page is for, and
+  the page's main action as a primary button on the right. Content goes in titled cards
+  (`SettingsCard`).
 - **Summary cards** before lists (how many owners, admins, members; service figures), numbers in
   Geist Mono.
 - **Lists as tables**: avatar initials in the board palette, name and email, a status or role

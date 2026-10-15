@@ -181,7 +181,7 @@ describe("password and sessions", () => {
     await loginAs(user.id);
 
     expect(await redirectOf(revokeSession(form({ sessionId: theirs })))).toBe(
-      "/settings#security",
+      "/settings/security",
     );
     expect((await prisma.session.findUniqueOrThrow({ where: { id: theirs } })).revokedAt).toBeNull();
 

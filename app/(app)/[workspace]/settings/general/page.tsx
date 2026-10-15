@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import { headers } from "next/headers";
-import { requireUser } from "@/app/lib/dal";
-import { getWorkspaceForUser } from "@/app/lib/queries";
+import { requireOrgSettings } from "@/app/lib/org-settings";
 import { removeMemberAction } from "@/app/lib/actions/workspaces";
 import { canOwnWorkspace } from "@/app/lib/roles";
 import { prisma } from "@/app/lib/prisma";
@@ -12,6 +10,7 @@ import {
   OrganizationSettingsForm,
 } from "@/app/components/workspace/forms";
 import { Button } from "@/app/components/ui/button";
+import { PageHeader } from "@/app/components/settings/page-header";
 import { getI18n } from "@/app/i18n/server";
 import { fmt } from "@/app/i18n/format";
 
@@ -26,14 +25,9 @@ export async function generateMetadata({
   params: Params;
 }): Promise<Metadata> {
   const { workspace: slug } = await params;
-  const user = await requireUser();
-  const workspace = await getWorkspaceForUser(slug, user.id);
+  const { workspace } = await requireOrgSettings(slug);
   const { m } = await getI18n();
-  return {
-    title: fmt(m.workspaces.settings.metaTitle, {
-      name: workspace?.name ?? slug,
-    }),
-  };
+  return { title: `${m.workspaces.nav.general} · ${workspace.name}` };
 }
 
 export default async function WorkspaceGeneralPage({
@@ -42,11 +36,8 @@ export default async function WorkspaceGeneralPage({
   params: Params;
 }) {
   const { workspace: slug } = await params;
-  const user = await requireUser();
-  const workspace = await getWorkspaceForUser(slug, user.id);
-  if (!workspace || !workspace.role || workspace.kind !== "ORGANIZATION")
-    notFound();
-  const owner = canOwnWorkspace(workspace.role);
+  const { user, workspace, role } = await requireOrgSettings(slug);
+  const owner = canOwnWorkspace(role);
   const [{ m }, boards, host] = await Promise.all([
     getI18n(),
     prisma.board.count({ where: { workspaceId: workspace.id } }),
@@ -56,15 +47,11 @@ export default async function WorkspaceGeneralPage({
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 p-6 sm:p-8 lg:p-10">
-      <div>
-        <p className="font-mono text-xs text-ink-muted">/{workspace.slug}</p>
-        <h1 className="mt-1.5 font-display text-3xl font-extrabold tracking-tight">
-          {t.general.title}
-        </h1>
-        <p className="mt-1.5 text-[15px] text-ink-muted">
-          {t.general.subtitle}
-        </p>
-      </div>
+      <PageHeader
+        address={`/${workspace.slug}/settings/general`}
+        title={t.general.title}
+        description={t.general.subtitle}
+      />
 
       {owner ? (
         <OrganizationSettingsForm
@@ -111,9 +98,8 @@ export default async function WorkspaceGeneralPage({
 
       {owner && (
         <section
-          id="danger"
           aria-labelledby="danger-title"
-          className="scroll-mt-6 rounded-2xl border-[1.5px] border-danger/40 bg-danger/[0.04] p-6"
+          className="rounded-2xl border-[1.5px] border-danger/40 bg-danger/[0.04] p-6"
         >
           <div className="flex items-center gap-2.5">
             <span

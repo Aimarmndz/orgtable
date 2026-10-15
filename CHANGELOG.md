@@ -7,6 +7,16 @@ behind each decision is in [`docs/DECISIONES.md`](./docs/DECISIONES.md).
 
 ## [Unreleased]
 
+### Changed
+
+- **Settings are pages, not anchors.** One's own settings moved from one long page with
+  `#fragments` to `/settings/profile`, `/settings/security`, `/settings/tokens`,
+  `/settings/appearance`, `/settings/workspaces` (new: your organizations) and
+  `/settings/data`. Old `/settings#…` links still land on the right page.
+- An organization's settings have an index (`/<slug>/settings`), the members moved to
+  `/<slug>/settings/members` and creating an employee to its own page. On a phone the index
+  is a list of sections.
+
 ### Added
 
 - **Public landing page** at `/` for visitors without a session, in a retro look: what

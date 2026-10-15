@@ -59,15 +59,15 @@ export async function AccountMenu({
           <p className="truncate text-xs text-ink-muted">{email}</p>
         </div>
         <div className="my-1 h-px bg-border" />
-        <Link href="/settings#profile" className={ITEM}>
+        <Link href="/settings/profile" className={ITEM}>
           <Icon d={<><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></>} />
           {m.nav.account.profile}
         </Link>
-        <Link href="/settings#security" className={ITEM}>
+        <Link href="/settings/security" className={ITEM}>
           <Icon d={<><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></>} />
           {m.nav.account.security}
         </Link>
-        <Link href="/settings#data" className={ITEM}>
+        <Link href="/settings/data" className={ITEM}>
           <Icon d={<path d="M12 3v12M7 10l5 5 5-5M5 21h14" />} />
           {m.nav.account.privacy}
         </Link>

@@ -57,9 +57,25 @@ API, search, real time, attachments and notifications use. The effective role is
 A suspended workspace gives nobody access. Someone outside the organization added to one board
 (a guest) sees that board only, and the names (not the emails) of the organization's people.
 
+## Settings of an organization
+
+Every member of an organization opens its settings at `/<slug>/settings`. Each section is its
+own page with its own address, listed in a side menu (on a phone, `/<slug>/settings` is the
+list of sections and every page has a "back" link instead of the menu):
+
+| Page                           | What                                                         |
+| ------------------------------ | ------------------------------------------------------------ |
+| `/<slug>/settings`             | Index of the sections                                        |
+| `/<slug>/settings/general`     | Name and address (owners), leaving, the danger zone (owners) |
+| `/<slug>/settings/members`     | Who is in the organization and their role                    |
+| `/<slug>/settings/members/new` | Create an employee account (owners and admins)               |
+
+The pages only show what the person's role allows; the services check everything again. How
+the tenant boundary is enforced is in [authorization](./authorization.md#tenant-isolation).
+
 ## Employees
 
-Owners and admins create accounts for their employees on _Settings and members_. With
+Owners and admins create accounts for their employees on _Settings › Members_. With
 [email](./email.md) on, the person gets an invitation to choose their own password; without it,
 the organization sets an initial one. These accounts belong to the person (their own personal
 workspace, data export, deletion) but the organization can reset their password, so:
