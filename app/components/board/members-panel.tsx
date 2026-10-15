@@ -32,12 +32,14 @@ export function MembersPanel({
   boardId,
   members,
   canManage,
+  canChangeVisibility = canManage,
   visibility,
   onClose,
 }: {
   boardId: string;
   members: BoardMemberDTO[];
   canManage: boolean;
+  canChangeVisibility?: boolean;
   // Organization boards only (null on a personal board): who besides its members sees it.
   visibility: "WORKSPACE" | "PRIVATE" | null;
   onClose: () => void;
@@ -104,7 +106,7 @@ export function MembersPanel({
             <p id={descriptionId} className="mt-1 text-sm text-ink-muted">
               {canManage ? t.descriptionManage : t.descriptionView}
             </p>
-            {visibility && canManage && (
+            {visibility && canChangeVisibility && (
               <form action={setBoardVisibility} className="mt-3 flex flex-wrap items-center gap-2">
                 <input type="hidden" name="boardId" value={boardId} />
                 <label className="text-xs font-semibold uppercase tracking-wide text-ink-muted">

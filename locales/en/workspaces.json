@@ -82,7 +82,9 @@
     },
     "createdHere": "created here",
     "joined": "signed up on their own",
-    "newPassword": "New password"
+    "newPassword": "New password",
+    "customRoles": "Custom roles",
+    "memberAs": "Member · {role}"
   },
   "settings": {
     "metaTitle": "Settings of {name}",
@@ -118,8 +120,10 @@
     "backTo": "Back to {name}",
     "hints": {
       "general": "Name, address, leaving and the danger zone",
-      "members": "Who is in the organization and their role"
-    }
+      "members": "Who is in the organization and their role",
+      "roles": "What each role can do, and your own roles"
+    },
+    "roles": "Roles and permissions"
   },
   "general": {
     "title": "General",
@@ -139,5 +143,112 @@
     "hint": "Your personal boards live here. If you change it, old links with the previous address stop working.",
     "save": "Change address",
     "saved": "Address changed."
+  },
+  "rolesPage": {
+    "title": "Roles and permissions",
+    "subtitle": "The three base roles cannot be changed. Create your own to give someone exactly the permissions they need.",
+    "new": "New role",
+    "newTitle": "New role",
+    "base": "Base roles",
+    "custom": "Custom roles",
+    "noCustom": "No custom roles yet.",
+    "baseTag": "Base",
+    "customTag": "Custom",
+    "locked": "Base roles cannot be edited or deleted.",
+    "readOnly": "Only owners and admins edit roles.",
+    "holders": {
+      "one": "{count} person has it:",
+      "other": "{count} people have it:"
+    },
+    "holdersNone": "Nobody has it yet: give it from Members.",
+    "name": "Name",
+    "color": "Colour",
+    "description": "Description",
+    "permissionsTitle": "Permissions",
+    "count": "{count} of {total} permissions",
+    "baseOnly": "Owners and admins only. It cannot be given to a custom role.",
+    "unsaved": {
+      "one": "{count} unsaved change",
+      "other": "{count} unsaved changes"
+    },
+    "newHint": "Name the role and choose what it can do.",
+    "discard": "Discard",
+    "save": "Save changes",
+    "create": "Create role",
+    "saved": "Role saved.",
+    "duplicate": "Duplicate",
+    "delete": "Delete role",
+    "deleteConfirm": "The people who have it become plain members. This cannot be undone.",
+    "deleteSubmit": "Delete for good",
+    "rule": "Nobody can create or edit a role with permissions they do not hold, and a custom role can never change roles or delete the organization.",
+    "back": "All roles",
+    "groups": {
+      "boards": "Boards",
+      "people": "People",
+      "integrations": "Integrations",
+      "data": "Data and security"
+    },
+    "permissions": {
+      "boards.view_all": {
+        "label": "See every board of the organization",
+        "hint": "Private ones too, read-only, without being invited."
+      },
+      "boards.create": {
+        "label": "Create boards",
+        "hint": ""
+      },
+      "boards.visibility": {
+        "label": "Change who sees a board",
+        "hint": "Switch any board it can open between the whole organization and private."
+      },
+      "boards.delete": {
+        "label": "Delete boards",
+        "hint": "Any board of the organization it can open."
+      },
+      "people.invite": {
+        "label": "Invite and create employee accounts",
+        "hint": "Only as plain members."
+      },
+      "people.teams": {
+        "label": "Manage teams",
+        "hint": ""
+      },
+      "people.roles": {
+        "label": "Change other people's role",
+        "hint": ""
+      },
+      "people.remove": {
+        "label": "Remove people from the organization",
+        "hint": "Plain members only, never admins or owners."
+      },
+      "integrations.manage": {
+        "label": "Manage webhooks and apps",
+        "hint": ""
+      },
+      "apikeys.manage": {
+        "label": "Manage the organization's API keys",
+        "hint": ""
+      },
+      "audit.view": {
+        "label": "See the activity log",
+        "hint": ""
+      },
+      "data.export": {
+        "label": "Export the organization's data",
+        "hint": ""
+      },
+      "backups.manage": {
+        "label": "Manage backups",
+        "hint": "Schedule them, change where they go and restore."
+      }
+    },
+    "colors": {
+      "blue": "Blue",
+      "green": "Green",
+      "purple": "Plum",
+      "amber": "Ochre",
+      "rose": "Clay",
+      "teal": "Teal"
+    }
   }
 }

@@ -169,6 +169,8 @@ The schema lives in `prisma/schema.prisma`. Summary:
 | `CardAssignee` | Many-to-many join between `Card` and `User`. | Card assignees (board members only). |
 | `Comment` | A comment on a card. | Flat discussion thread. |
 | `BoardMember` | A user's membership in a board, with a role. | Single point of per-board authorization. |
+| `Workspace` / `WorkspaceMember` | A personal workspace or an organization, and who is in it with which base role. | Board URLs (`/<workspace>/<board>`) and multi-tenancy (see [workspaces.md](./workspaces.md)). |
+| `WorkspaceCustomRole` | A role an organization defines, with a set of permissions. | Custom roles (see [roles.md](./roles.md)). Members point to it with a composite key that includes the workspace, so a role never crosses organizations. |
 | `Notification` | An in-app notification for a user. | Notification bell, deep-links to boards and cards. |
 | `ApiToken` | A personal API token (hashed). | Public REST API access, with scope and optional expiry. |
 | `AuditLog` | A security/operations event. | Audit log in `/admin/audit`, with limited retention. |

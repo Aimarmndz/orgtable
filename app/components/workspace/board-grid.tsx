@@ -91,7 +91,7 @@ export async function BoardGrid({ boards }: { boards: BoardSummary[] }) {
                   </svg>
                 </a>
                 {/* Only who may manage it (deleteBoard checks it again). */}
-{board.canManage && (
+{board.canDelete && (
                   <DeleteBoardButton
                     boardId={board.id}
                     title={board.title}

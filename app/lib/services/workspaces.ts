@@ -21,6 +21,7 @@ import {
   grantableWorkspaceRoles,
   type WorkspaceRole,
 } from "@/app/lib/roles";
+import { workspaceAccessOf } from "@/app/lib/access";
 
 // Workspaces (personal and organizations), their members and the employees an organization
 // creates. Business rules only, WITHOUT request context: the Server Actions
@@ -258,7 +259,22 @@ export type MemberError =
   | "not_member"
   | "email_taken"
   | "last_owner"
+  | "role_not_found"
   | "self";
+
+/** Whether a custom role belongs to this organization (an id from elsewhere does not). */
+async function customRoleExists(
+  workspaceId: string,
+  roleId: string,
+  db: Tx | typeof prisma = prisma,
+): Promise<boolean> {
+  return Boolean(
+    await db.workspaceCustomRole.findUnique({
+      where: { workspaceId_id: { workspaceId, id: roleId } },
+      select: { id: true },
+    }),
+  );
+}
 
 /**
  * Creates an employee account in an organization: a new user (managed by it, with their
@@ -272,6 +288,9 @@ export async function createEmployee(input: {
   email: string;
   password: string;
   role: WorkspaceRole;
+  // A custom role of this organization for the new member (role MEMBER only). Giving roles
+  // is for owners and admins, so a custom role with "people.invite" cannot pass one.
+  customRoleId?: string | null;
   locale?: string | null;
 }): Promise<{ ok: true; userId: string } | { ok: false; error: MemberError }> {
   const workspace = await prisma.workspace.findUnique({
@@ -282,11 +301,23 @@ export async function createEmployee(input: {
     return { ok: false, error: "forbidden" };
   if (workspace.kind !== "ORGANIZATION")
     return { ok: false, error: "not_organization" };
-  const actorRole = await roleIn(input.workspaceId, input.actorId);
-  if (!actorRole || !canManageWorkspace(actorRole))
+  const actor = await workspaceAccessOf(input.workspaceId, input.actorId);
+  if (!actor || !actor.permissions.has("people.invite"))
     return { ok: false, error: "forbidden" };
-  if (!grantableWorkspaceRoles(actorRole).includes(input.role)) {
+  // Owners and admins grant what roles.ts allows them; a custom role with "people.invite"
+  // creates plain members only.
+  const grantable: WorkspaceRole[] = canManageWorkspace(actor.role)
+    ? grantableWorkspaceRoles(actor.role)
+    : ["MEMBER"];
+  if (!grantable.includes(input.role)) {
     return { ok: false, error: "forbidden" };
+  }
+  const customRoleId = input.customRoleId || null;
+  if (customRoleId) {
+    if (!canManageWorkspace(actor.role) || input.role !== "MEMBER")
+      return { ok: false, error: "forbidden" };
+    if (!(await customRoleExists(input.workspaceId, customRoleId)))
+      return { ok: false, error: "role_not_found" };
   }
   if (!(await mayCreateAccounts(input.actorId)))
     return { ok: false, error: "closed" };
@@ -312,6 +343,7 @@ export async function createEmployee(input: {
           workspaceId: input.workspaceId,
           userId: user.id,
           role: input.role,
+          customRoleId,
         },
       });
       return user.id;
@@ -324,19 +356,25 @@ export async function createEmployee(input: {
 }
 
 /**
- * Changes a member's role. The actor must be allowed to act on the member's CURRENT role
- * and to grant the NEW one, cannot change their own role, and the last owner can never be
- * demoted (an organization always has an owner).
+ * Changes a member's role and, for members, their custom role. The actor must be an owner or
+ * admin (custom roles never change roles, permissions.ts), be allowed to act on the member's
+ * CURRENT role and to grant the NEW one, cannot change their own role, and the last owner
+ * can never be demoted (an organization always has an owner). Moving someone to admin or
+ * owner drops their custom role: those hold every permission already.
  */
 export async function changeMemberRole(input: {
   workspaceId: string;
   actorId: string;
   userId: string;
   role: WorkspaceRole;
+  customRoleId?: string | null;
 }): Promise<
   { ok: true; changed: boolean } | { ok: false; error: MemberError }
 > {
   if (input.actorId === input.userId) return { ok: false, error: "self" };
+  const customRoleId = input.role === "MEMBER" ? input.customRoleId || null : null;
+  if (input.role !== "MEMBER" && input.customRoleId)
+    return { ok: false, error: "forbidden" };
   return prisma.$transaction(async (tx) => {
     // Serializes role changes in this workspace, so two owners demoting each other at the
     // same time cannot leave it without an owner.
@@ -361,7 +399,7 @@ export async function changeMemberRole(input: {
             userId: input.userId,
           },
         },
-        select: { role: true },
+        select: { role: true, customRoleId: true },
       }),
     ]);
     if (!actor || !canManageWorkspace(actor.role))
@@ -373,10 +411,14 @@ export async function changeMemberRole(input: {
     if (!grantableWorkspaceRoles(actor.role).includes(input.role)) {
       return { ok: false, error: "forbidden" } as const;
     }
-    if (target.role === input.role)
+    if (customRoleId && !(await customRoleExists(input.workspaceId, customRoleId, tx))) {
+      return { ok: false, error: "role_not_found" } as const;
+    }
+    if (target.role === input.role && target.customRoleId === customRoleId)
       return { ok: true, changed: false } as const;
     if (
       target.role === "OWNER" &&
+      input.role !== "OWNER" &&
       (await ownerCount(tx, input.workspaceId)) <= 1
     ) {
       return { ok: false, error: "last_owner" } as const;
@@ -388,7 +430,7 @@ export async function changeMemberRole(input: {
           userId: input.userId,
         },
       },
-      data: { role: input.role },
+      data: { role: input.role, customRoleId },
     });
     return { ok: true, changed: true } as const;
   });
@@ -420,15 +462,7 @@ export async function removeMember(input: {
     if (workspace.kind !== "ORGANIZATION")
       return { ok: false, error: "not_organization" } as const;
     const [actor, target] = await Promise.all([
-      tx.workspaceMember.findUnique({
-        where: {
-          workspaceId_userId: {
-            workspaceId: input.workspaceId,
-            userId: input.actorId,
-          },
-        },
-        select: { role: true },
-      }),
+      workspaceAccessOf(input.workspaceId, input.actorId, tx),
       tx.workspaceMember.findUnique({
         where: {
           workspaceId_userId: {
@@ -441,7 +475,12 @@ export async function removeMember(input: {
     ]);
     if (!actor) return { ok: false, error: "forbidden" } as const;
     if (!target) return { ok: false, error: "not_member" } as const;
-    if (!leaving && !canActOnWorkspaceMember(actor.role, target.role)) {
+    // Owners and admins as roles.ts says; a custom role with "people.remove" removes plain
+    // members only (never admins or owners).
+    const mayRemove = canManageWorkspace(actor.role)
+      ? canActOnWorkspaceMember(actor.role, target.role)
+      : actor.permissions.has("people.remove") && target.role === "MEMBER";
+    if (!leaving && !mayRemove) {
       return { ok: false, error: "forbidden" } as const;
     }
     if (

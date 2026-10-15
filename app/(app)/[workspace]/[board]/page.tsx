@@ -7,13 +7,13 @@ import {
   getBoardWithLists,
   getBoardTitleForUser,
 } from "@/app/lib/queries";
-import { effectiveBoardRole } from "@/app/lib/access";
+import { effectiveBoardRole, workspaceAccessOf } from "@/app/lib/access";
 import { boardPath } from "@/app/lib/slugs";
 import { BoardView } from "@/app/components/board/board-view";
 import { BoardRealtime } from "@/app/components/board/board-realtime";
 import type { BoardMemberDTO } from "@/app/components/board/members-panel";
 import type { BoardDTO } from "@/app/lib/types";
-import type { BoardRole } from "@/app/lib/roles";
+import { canManageBoard, type BoardRole } from "@/app/lib/roles";
 import { getI18n } from "@/app/i18n/server";
 
 // The name comes from the same access guard as the page: without access, a generic
@@ -63,6 +63,10 @@ export default async function BoardPage({
   // every action checks it again on the server).
   const members: BoardMemberDTO[] = await getBoardPeople(id, user.id);
   const viewerRole: BoardRole = (await effectiveBoardRole(id, user.id)) ?? "VIEWER";
+  const canChangeVisibility =
+    canManageBoard(viewerRole) ||
+    (board.workspace.kind === "ORGANIZATION" &&
+      Boolean((await workspaceAccessOf(board.workspaceId, user.id))?.permissions.has("boards.visibility")));
 
   // Project to a minimal, serializable DTO (dates as ISO strings).
   const dto: BoardDTO = {
@@ -71,6 +75,7 @@ export default async function BoardPage({
     background: board.background,
     workspace: board.workspace,
     visibility: board.visibility,
+    canChangeVisibility,
     labels: board.labels.map((l) => ({
       id: l.id,
       name: l.name,

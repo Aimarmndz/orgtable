@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { requireOrgSettings } from "@/app/lib/org-settings";
-import { prisma } from "@/app/lib/prisma";
+import { orgSettingsCounts, requireOrgSettings } from "@/app/lib/org-settings";
 import { orgSettingsSections } from "@/app/components/settings/org-nav";
 import { NavIcon } from "@/app/components/settings/nav-icons";
 import { PageHeader, SettingsPage } from "@/app/components/settings/page-header";
@@ -24,11 +23,11 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 export default async function OrgSettingsIndexPage({ params }: { params: Params }) {
   const { workspace: slug } = await params;
   const ctx = await requireOrgSettings(slug);
-  const [{ m }, members] = await Promise.all([
+  const [{ m }, counts] = await Promise.all([
     getI18n(),
-    prisma.workspaceMember.count({ where: { workspaceId: ctx.workspace.id } }),
+    orgSettingsCounts(ctx.workspace.id),
   ]);
-  const groups = orgSettingsSections(ctx, m, { members });
+  const groups = orgSettingsSections(ctx, m, counts);
   return (
     <SettingsPage>
       <PageHeader

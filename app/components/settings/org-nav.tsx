@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { Messages } from "@/app/i18n/config";
-import type { OrgSettingsContext } from "@/app/lib/org-settings";
+import type { OrgSettingsContext, OrgSettingsCounts } from "@/app/lib/org-settings";
 import { NavIcon } from "@/app/components/settings/nav-icons";
 
 // The sections of an organization's settings, in the order of the side menu and of the
@@ -22,7 +22,7 @@ export type OrgSectionGroup = { label: string; items: OrgSection[] };
 export function orgSettingsSections(
   ctx: OrgSettingsContext,
   m: Messages,
-  counts: { members: number },
+  counts: OrgSettingsCounts,
 ): OrgSectionGroup[] {
   const t = m.workspaces.nav;
   const base = `/${ctx.workspace.slug}/settings`;
@@ -49,6 +49,14 @@ export function orgSettingsSections(
           hint: t.hints.members,
           icon: NavIcon.members,
           badge: String(counts.members),
+        },
+        {
+          key: "roles",
+          href: `${base}/roles`,
+          label: t.roles,
+          hint: t.hints.roles,
+          icon: NavIcon.roles,
+          badge: String(counts.roles),
         },
       ],
     },

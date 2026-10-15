@@ -19,6 +19,13 @@ behind each decision is in [`docs/DECISIONES.md`](./docs/DECISIONES.md).
 
 ### Added
 
+- **Custom roles per organization** (`/<slug>/settings/roles`). Owners and admins create
+  roles with a name, colour, description and any of 13 permissions: see every board, create,
+  change visibility and delete boards, invite, manage teams, remove people, webhooks and
+  apps, API keys, the activity log, data export and backups. Owner, Admin and Member stay
+  as locked base roles. A custom role can never change roles, and the database refuses a
+  role from another organization. See `docs/roles.md`.
+- Members can be given a custom role from the members list or when their account is created.
 - **Public landing page** at `/` for visitors without a session, in a retro look: what
   orgtable is, a free account on the instance (while sign-up is open) and the one-line
   installer for your own server. `ORGTABLE_LANDING` (`auto` by default: only while

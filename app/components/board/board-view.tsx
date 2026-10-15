@@ -488,6 +488,7 @@ export function BoardView({
           boardId={board.id}
           members={members}
           canManage={canManage}
+          canChangeVisibility={board.canChangeVisibility}
           visibility={board.workspace.kind === "ORGANIZATION" ? board.visibility : null}
           onClose={() => setMembersOpen(false)}
         />

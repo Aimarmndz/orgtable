@@ -28,7 +28,7 @@ export default async function BoardsPage() {
   const memberOf = new Set(workspaces.map((w) => w.id));
   // Boards of workspaces the user is not in: someone added them to the board itself.
   const shared = boards.filter((b) => !memberOf.has(b.workspaceId));
-  const creatable = workspaces.filter((w) => !w.suspendedAt);
+  const creatable = workspaces.filter((w) => !w.suspendedAt && w.canCreateBoards);
 
   return (
     <div className="relative z-10 mx-auto w-full max-w-6xl overflow-y-auto p-6 sm:p-8">

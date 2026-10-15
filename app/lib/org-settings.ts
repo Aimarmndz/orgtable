@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/app/lib/dal";
 import { prisma } from "@/app/lib/prisma";
 import type { WorkspaceRole } from "@/app/lib/roles";
+import { permissionsOf, type Permission } from "@/app/lib/permissions";
 
 // THE door of an organization's settings (/<slug>/settings/…). Every page there resolves
 // the organization through this function, so the tenant boundary is drawn once:
@@ -29,6 +30,9 @@ export type OrgSettingsContext = {
     suspendedReason: string | null;
   };
   role: WorkspaceRole;
+  // The person's custom role, if they have one, and what they may do (permissions.ts).
+  customRole: { id: string; name: string; color: string } | null;
+  permissions: ReadonlySet<Permission>;
 };
 
 export const requireOrgSettings = cache(async (slug: string): Promise<OrgSettingsContext> => {
@@ -41,11 +45,18 @@ export const requireOrgSettings = cache(async (slug: string): Promise<OrgSetting
       name: true,
       suspendedAt: true,
       suspendedReason: true,
-      members: { where: { userId: user.id }, select: { role: true } },
+      members: {
+        where: { userId: user.id },
+        select: {
+          role: true,
+          customRole: { select: { id: true, name: true, color: true, permissions: true } },
+        },
+      },
     },
   });
-  const role = workspace?.members[0]?.role;
-  if (!workspace || !role) notFound();
+  const member = workspace?.members[0];
+  if (!workspace || !member) notFound();
+  const { role, customRole } = member;
   return {
     user,
     workspace: {
@@ -56,5 +67,31 @@ export const requireOrgSettings = cache(async (slug: string): Promise<OrgSetting
       suspendedReason: workspace.suspendedReason,
     },
     role,
+    customRole: customRole ? { id: customRole.id, name: customRole.name, color: customRole.color } : null,
+    permissions: permissionsOf(role, customRole?.permissions),
   };
+});
+
+/**
+ * The same door for a section that needs a permission: without it the page is a 404, the
+ * same answer as a section that does not exist.
+ */
+export async function requireOrgPermission(
+  slug: string,
+  permission: Permission,
+): Promise<OrgSettingsContext> {
+  const ctx = await requireOrgSettings(slug);
+  if (!ctx.permissions.has(permission)) notFound();
+  return ctx;
+}
+
+export type OrgSettingsCounts = { members: number; roles: number };
+
+/** Figures shown next to the sections of the menu and the index (one round trip). */
+export const orgSettingsCounts = cache(async (workspaceId: string): Promise<OrgSettingsCounts> => {
+  const [members, customRoles] = await Promise.all([
+    prisma.workspaceMember.count({ where: { workspaceId } }),
+    prisma.workspaceCustomRole.count({ where: { workspaceId } }),
+  ]);
+  return { members, roles: 3 + customRoles };
 });

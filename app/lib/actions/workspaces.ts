@@ -9,8 +9,8 @@ import type { Messages } from "@/app/i18n/config";
 import {
   createEmployeeSchema,
   employeePasswordSchema,
+  memberRoleChoiceSchema,
   organizationSchema,
-  workspaceRoleSchema,
 } from "@/app/lib/validators";
 import {
   changeMemberRole,
@@ -73,6 +73,8 @@ function memberErrorMessage(m: Messages, error: MemberError): string {
       return m.errors.workspaces.self;
     case "not_member":
       return m.errors.workspaces.notMember;
+    case "role_not_found":
+      return m.errors.workspaces.roleNotFound;
     default:
       return m.errors.workspaces.forbidden;
   }
@@ -178,7 +180,7 @@ export async function createEmployeeAction(
   const values = {
     name: text(formData, "name", 60),
     email: text(formData, "email", 254),
-    role: text(formData, "role", 10),
+    role: text(formData, "role", 80),
   };
   // With email, the person chooses their own password from an invitation link: the account
   // starts with a random one that is never shown (the organization can still set a new one
@@ -208,7 +210,11 @@ export async function createEmployeeAction(
   const result = await createEmployee({
     workspaceId,
     actorId: user.id,
-    ...parsed.data,
+    name: parsed.data.name,
+    email: parsed.data.email,
+    password: parsed.data.password,
+    role: parsed.data.role.role,
+    customRoleId: parsed.data.role.customRoleId,
     locale,
   });
   if (!result.ok) return { error: memberErrorMessage(m, result.error), values };
@@ -217,7 +223,7 @@ export async function createEmployeeAction(
     userId: user.id,
     targetType: "workspace",
     targetId: workspaceId,
-    detail: `${result.userId} (${parsed.data.role})`,
+    detail: `${result.userId} (${parsed.data.role.role}${parsed.data.role.customRoleId ? ` custom:${parsed.data.role.customRoleId}` : ""})`,
   });
     const workspace = await prisma.workspace.findUnique({
     where: { id: workspaceId },
@@ -231,27 +237,31 @@ export async function createEmployeeAction(
       userId: result.userId,
       organization: workspace,
       inviterName: user.name,
-      role: parsed.data.role,
+      role: parsed.data.role.role,
     }));
   return sent
     ? { message: fmt(m.workspaces.members.invited, { email: parsed.data.email }) }
     : { error: m.workspaces.members.inviteFailed };
 }
 
-/** Changes a member's role in the organization. */
+/**
+ * Changes a member's role in the organization: a base role, or "custom:<id>" for one of its
+ * custom roles (memberRoleChoiceSchema).
+ */
 export async function changeMemberRoleAction(
   formData: FormData,
 ): Promise<void> {
   const user = await requireUser();
   const workspaceId = text(formData, "workspaceId");
   const userId = text(formData, "userId");
-  const parsed = workspaceRoleSchema.safeParse(formData.get("role"));
+  const parsed = memberRoleChoiceSchema.safeParse(formData.get("role"));
   if (!parsed.success) return;
   const result = await changeMemberRole({
     workspaceId,
     actorId: user.id,
     userId,
-    role: parsed.data,
+    role: parsed.data.role,
+    customRoleId: parsed.data.customRoleId,
   });
   if (!result.ok || !result.changed) return;
   await recordAudit({
@@ -259,7 +269,7 @@ export async function changeMemberRoleAction(
     userId: user.id,
     targetType: "workspace",
     targetId: workspaceId,
-    detail: `${userId} → ${parsed.data}`,
+    detail: `${userId} → ${parsed.data.role}${parsed.data.customRoleId ? ` custom:${parsed.data.customRoleId}` : ""}`,
   });
   const slug = await slugOf(workspaceId);
   if (slug) revalidatePath(`/${slug}`, "layout");

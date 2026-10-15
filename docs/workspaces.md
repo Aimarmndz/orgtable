@@ -34,6 +34,9 @@ canonical address, as does the old `/board/<id>`; the query string (`?card=…`)
 | **Admin**      | Create employee accounts, remove members, reset the password of accounts the organization created, manage every board. |
 | **Member**     | Create boards and work on the boards shared with the organization.                                                     |
 
+On top of these, each organization can define **custom roles** with exactly the permissions it
+wants to give (see [roles and permissions](./roles.md)).
+
 Rules that make escalation impossible (`app/lib/roles.ts`, enforced in
 `app/lib/services/workspaces.ts` against the database):
 
@@ -63,12 +66,13 @@ Every member of an organization opens its settings at `/<slug>/settings`. Each s
 own page with its own address, listed in a side menu (on a phone, `/<slug>/settings` is the
 list of sections and every page has a "back" link instead of the menu):
 
-| Page                           | What                                                         |
-| ------------------------------ | ------------------------------------------------------------ |
-| `/<slug>/settings`             | Index of the sections                                        |
-| `/<slug>/settings/general`     | Name and address (owners), leaving, the danger zone (owners) |
-| `/<slug>/settings/members`     | Who is in the organization and their role                    |
-| `/<slug>/settings/members/new` | Create an employee account (owners and admins)               |
+| Page                           | What                                                            |
+| ------------------------------ | --------------------------------------------------------------- |
+| `/<slug>/settings`             | Index of the sections                                           |
+| `/<slug>/settings/general`     | Name and address (owners), leaving, the danger zone (owners)    |
+| `/<slug>/settings/members`     | Who is in the organization and their role                       |
+| `/<slug>/settings/members/new` | Create an employee account (`people.invite`)                    |
+| `/<slug>/settings/roles`       | Base and custom roles; `/roles/<id>` edits one (owners, admins) |
 
 The pages only show what the person's role allows; the services check everything again. How
 the tenant boundary is enforced is in [authorization](./authorization.md#tenant-isolation).

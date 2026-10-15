@@ -110,6 +110,12 @@
     "self": "You cannot change your own role.",
     "notMember": "That person is not a member of this organization.",
     "suspended": "This workspace is suspended: {reason}",
-    "rateLimited": "Too many in a short time. Try again in an hour."
+    "rateLimited": "Too many in a short time. Try again in an hour.",
+    "roleNotFound": "That role does not exist in this organization.",
+    "roleNameRequired": "Give the role a name.",
+    "roleNameTooLong": "The name can be up to 60 characters.",
+    "roleDescriptionTooLong": "The description can be up to 200 characters.",
+    "roleNameTaken": "There is already a role with that name.",
+    "tooManyRoles": "An organization can have up to 50 custom roles."
   }
 }

@@ -90,7 +90,7 @@ export default async function WorkspacePage({ params }: { params: Params }) {
         )}
       </div>
 
-      {workspace.role && (
+      {workspace.canCreateBoards && (
         <form action={createBoard} className="mt-7 flex flex-wrap gap-2">
           <input type="hidden" name="workspaceId" value={workspace.id} />
           <Input

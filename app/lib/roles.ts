@@ -6,6 +6,8 @@
 //
 // Role names shown in the UI live in the messages: `m.boards.roles[role]`.
 
+import { permissionsOf } from "@/app/lib/permissions";
+
 // The user's role WITHIN a given board (board_members table).
 export type BoardRole = "OWNER" | "EDITOR" | "VIEWER";
 
@@ -86,14 +88,32 @@ export function canActOnWorkspaceMember(actor: WorkspaceRole, target: WorkspaceR
  * The board role a workspace role grants on that workspace's boards, besides any explicit
  * board membership: owners and admins manage every board of the organization (private
  * ones too: the data belongs to the organization), members edit the boards shared with
- * the whole workspace and see nothing of the private ones.
+ * the whole workspace and see nothing of the private ones, unless their custom role holds
+ * "boards.view_all" (`viewAll`): then they read the private ones too.
  */
 export function boardRoleFromWorkspace(
   role: WorkspaceRole,
   visibility: "WORKSPACE" | "PRIVATE",
+  viewAll = false,
 ): BoardRole | null {
   if (canManageWorkspace(role)) return "OWNER";
-  return visibility === "WORKSPACE" ? "EDITOR" : null;
+  if (visibility === "WORKSPACE") return "EDITOR";
+  return viewAll ? "VIEWER" : null;
+}
+
+/**
+ * boardRoleFromWorkspace for a membership row as the database returns it: its base role and,
+ * if any, its custom role's permissions ("boards.view_all" opens the private boards
+ * read-only). Every place that computes access from a membership goes through here.
+ */
+export function boardRoleFromMembership(
+  membership: { role: WorkspaceRole; customRole?: { permissions: string[] } | null },
+  visibility: "WORKSPACE" | "PRIVATE",
+): BoardRole | null {
+  const viewAll = permissionsOf(membership.role, membership.customRole?.permissions).has(
+    "boards.view_all",
+  );
+  return boardRoleFromWorkspace(membership.role, visibility, viewAll);
 }
 
 /** The higher of two board roles (either may be missing). */

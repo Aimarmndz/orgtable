@@ -7,6 +7,49 @@ living log from 2026-09-24 onwards.
 
 ---
 
+## 2026-10-15 — Custom roles as permission sets on top of three locked base roles
+
+**Context.** The owner asked for "a place to edit roles". The three workspace roles (Owner,
+Admin, Member) were hard-coded: a company could not, for instance, let accounting read the
+activity log without making them admins of everything.
+
+**Decision.**
+- Thirteen named permissions in four groups (`app/lib/permissions.ts`), the ones of the
+  approved design. Owner and Admin hold all of them; Member holds `boards.create`.
+- Base roles stay, locked: they carry the escalation rules that already work (who appoints
+  admins, the last owner) and the things no permission covers (renaming or deleting the
+  organization).
+- A custom role is a full permission set that **replaces** the member defaults, so it can
+  also restrict ("read-only staff"). It is only allowed on top of MEMBER, which the database
+  enforces with a `CHECK`.
+- `people.roles` exists in the catalogue but is base-only. A custom role that could assign
+  roles could assign itself Admin; keeping role changes with owners and admins removes the
+  whole class of escalation bugs. Stored permissions are filtered by what the editor holds
+  and sanitized again on every read.
+- The member→role foreign key is composite, `(workspaceId, customRoleId)`, so a role of
+  another organization cannot be attached even by a buggy service. It is `NO ACTION`, not
+  `RESTRICT`, so deleting an organization cascades through members and roles in one
+  statement. Deleting a role clears it from its members first, in the same transaction.
+- `boards.view_all` grants VIEWER on private boards inside `access.ts`, the single place
+  that decides access. `boards.visibility` and `boards.delete` are checked in their actions
+  on top of "can open the board". `boards.create` gates the board form, the import and
+  `POST /api/v1/boards`.
+
+**Alternatives considered.**
+- Editable base roles: changing what "Admin" means silently would change every existing
+  member's power at once, and the escalation rules depend on the base hierarchy.
+- Custom roles that add to Member instead of replacing it: simpler, but no way to make a
+  read-only role.
+- Per-permission rows (a join table): more joins on every access check for no gain; a
+  `text[]` column with `has` filters works in both Prisma and SQL.
+
+**Consequences.** New features add their permission to the catalogue (and its label in
+`locales/*/workspaces.json`). Every place that turns a membership into board access goes
+through `boardRoleFromMembership`. The roles pages are in
+`app/(app)/[workspace]/settings/roles/`.
+
+---
+
 ## 2026-10-15 — Settings as pages, and one door per organization
 
 **Context.** The owner's verdict on the settings: choosing a section "sends me down the

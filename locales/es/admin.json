@@ -155,7 +155,10 @@
       "workspace.member_left": "Salió de una organización",
       "workspace.member_password_reset": "Contraseña de empleado restablecida",
       "auth.password_reset_requested": "Restablecimiento de contraseña pedido",
-      "auth.password_reset": "Contraseña puesta con un enlace del correo"
+      "auth.password_reset": "Contraseña puesta con un enlace del correo",
+      "workspace.role_created": "Rol personalizado creado",
+      "workspace.role_updated": "Rol personalizado editado",
+      "workspace.role_deleted": "Rol personalizado borrado"
     }
   },
   "workspaces": {

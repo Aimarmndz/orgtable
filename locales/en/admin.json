@@ -155,7 +155,10 @@
       "workspace.member_left": "Left an organization",
       "workspace.member_password_reset": "Employee password reset",
       "auth.password_reset_requested": "Password reset requested",
-      "auth.password_reset": "Password set from an email link"
+      "auth.password_reset": "Password set from an email link",
+      "workspace.role_created": "Custom role created",
+      "workspace.role_updated": "Custom role edited",
+      "workspace.role_deleted": "Custom role deleted"
     }
   },
   "workspaces": {

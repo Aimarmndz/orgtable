@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { requireOrgSettings } from "@/app/lib/org-settings";
-import { prisma } from "@/app/lib/prisma";
+import { orgSettingsCounts, requireOrgSettings } from "@/app/lib/org-settings";
 import { personalWorkspaceOf } from "@/app/lib/services/workspaces";
 import { SideNav } from "@/app/components/settings/side-nav";
 import { NavIcon } from "@/app/components/settings/nav-icons";
@@ -23,14 +22,14 @@ export default async function WorkspaceSettingsLayout({
   const { workspace: slug } = await params;
   const ctx = await requireOrgSettings(slug);
   const { workspace } = ctx;
-  const [{ intl, m }, personal, members] = await Promise.all([
+  const [{ intl, m }, personal, counts] = await Promise.all([
     getI18n(),
     personalWorkspaceOf(ctx.user.id),
-    prisma.workspaceMember.count({ where: { workspaceId: workspace.id } }),
+    orgSettingsCounts(workspace.id),
   ]);
   const t = m.workspaces.nav;
   const base = `/${workspace.slug}/settings`;
-  const sections = orgSettingsSections(ctx, m, { members });
+  const sections = orgSettingsSections(ctx, m, counts);
   return (
     <div className="relative z-10 flex min-h-0 flex-1 flex-col md:flex-row">
       <aside className="shrink-0 md:w-64 md:border-r md:border-border md:bg-surface-2/60 md:px-3.5 md:py-6">
@@ -48,7 +47,7 @@ export default async function WorkspaceSettingsLayout({
           <span className="min-w-0">
             <span className="block truncate font-display font-bold tracking-tight">{workspace.name}</span>
             <span className="block truncate font-mono text-xs text-ink-muted">
-              /{workspace.slug} · {plural(intl, m.workspaces.members.count, members)}
+              /{workspace.slug} · {plural(intl, m.workspaces.members.count, counts.members)}
             </span>
           </span>
         </Link>

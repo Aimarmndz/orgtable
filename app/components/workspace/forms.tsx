@@ -14,7 +14,6 @@ import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { useI18n } from "@/app/i18n/client";
 import { fmt, plural } from "@/app/i18n/format";
-import type { WorkspaceRole } from "@/app/lib/roles";
 
 // Forms of organizations and their members. Each one shows the action's answer inline
 // (useActionState); the rules live on the server (app/lib/services/workspaces.ts), these
@@ -128,7 +127,8 @@ export function CreateEmployeeForm({
   heading = true,
 }: {
   workspaceId: string;
-  roles: WorkspaceRole[];
+  // The role picker: base roles, plus "custom:<id>" entries for custom roles.
+  roles: { value: string; label: string }[];
   // Email is on: the person chooses their own password from an invitation (docs/email.md).
   invite: boolean;
   // false when the page's own header already names the form.
@@ -194,8 +194,8 @@ export function CreateEmployeeForm({
             className={SELECT}
           >
             {roles.map((r) => (
-              <option key={r} value={r}>
-                {m.workspaces.roles[r]}
+              <option key={r.value} value={r.value}>
+                {r.label}
               </option>
             ))}
           </select>

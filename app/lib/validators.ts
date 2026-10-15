@@ -330,12 +330,46 @@ export const workspaceRoleSchema = z.enum(["OWNER", "ADMIN", "MEMBER"], {
   error: "errors.validation.roleInvalid",
 });
 
+// The role picker of the members list and the employee form: a base role, or
+// "custom:<id>" for a custom role of the organization (always on top of MEMBER).
+export const memberRoleChoiceSchema = z
+  .string()
+  .max(80)
+  .transform((value, ctx) => {
+    if (value.startsWith("custom:") && value.length > 7) {
+      return { role: "MEMBER" as const, customRoleId: value.slice(7) };
+    }
+    const base = workspaceRoleSchema.safeParse(value);
+    if (!base.success) {
+      ctx.addIssue({ code: "custom", message: "errors.validation.roleInvalid" });
+      return z.NEVER;
+    }
+    return { role: base.data, customRoleId: null };
+  });
+
+// A custom role (docs/roles.md). Permissions are checked against the catalogue by the
+// service (sanitizeCustomPermissions), so unknown names are dropped, not refused.
+export const customRoleSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, "errors.workspaces.roleNameRequired")
+    .max(60, "errors.workspaces.roleNameTooLong"),
+  color: z.string().max(20),
+  description: z
+    .string()
+    .trim()
+    .max(200, "errors.workspaces.roleDescriptionTooLong")
+    .transform((v) => (v === "" ? null : v)),
+  permissions: z.array(z.string().max(40)).max(40),
+});
+
 // An owner or admin creates an employee's account in their organization.
 export const createEmployeeSchema = z.object({
   name: personNameSchema,
   email: z.email("errors.validation.emailInvalid").max(254, "errors.validation.maxChars254"),
   password: passwordSchema,
-  role: workspaceRoleSchema,
+  role: memberRoleChoiceSchema,
 });
 
 export const employeePasswordSchema = z.object({

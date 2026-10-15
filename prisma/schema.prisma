@@ -96,18 +96,45 @@ model Workspace {
   boards          Board[]
   // Accounts this organization created for its employees (User.managedById).
   managedUsers    User[]            @relation("ManagedUsers")
+  customRoles     WorkspaceCustomRole[]
 }
 
 model WorkspaceMember {
-  workspaceId String
-  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  userId      String
-  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role        WorkspaceRole @default(MEMBER)
-  addedAt     DateTime      @default(now())
+  workspaceId  String
+  workspace    Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role         WorkspaceRole        @default(MEMBER)
+  // A custom role of THIS organization (only with role MEMBER): the member holds exactly its
+  // permissions. The foreign key includes workspaceId, so the database itself refuses a role
+  // of another organization. Deleting a role first clears it from its members (services).
+  customRoleId String?
+  customRole   WorkspaceCustomRole? @relation(fields: [workspaceId, customRoleId], references: [workspaceId, id], onDelete: NoAction)
+  addedAt      DateTime             @default(now())
 
   @@id([workspaceId, userId])
   @@index([userId])
+  @@index([customRoleId])
+}
+
+// A role an organization defines on top of the three base ones: a name, a colour and a set
+// of permissions (app/lib/permissions.ts). See docs/roles.md.
+model WorkspaceCustomRole {
+  id          String            @id @default(cuid())
+  workspaceId String
+  workspace   Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  // A key of BOARD_COLORS (app/lib/colors.ts).
+  color       String
+  description String?
+  // Permission names. Validated on write and sanitized again on read (permissionsOf).
+  permissions String[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  members     WorkspaceMember[]
+
+  @@unique([workspaceId, name])
+  @@unique([workspaceId, id])
 }
 
 model User {

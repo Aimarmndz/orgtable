@@ -7,6 +7,7 @@ import { authenticateApiToken, isReadOnly } from "@/app/lib/api/auth";
 import { apiError, apiOk, apiValidationError } from "@/app/lib/api/respond";
 import { serializeBoardSummary } from "@/app/lib/api/serialize";
 import { createBoardWithSlug } from "@/app/lib/services/workspaces";
+import { workspaceAccessOf } from "@/app/lib/access";
 
 // Public API v1: board collection. See docs/api/public-api.md.
 
@@ -49,9 +50,16 @@ export async function POST(request: Request) {
         : { personalOwnerId: auth.userId }),
       suspendedAt: null,
     },
-    select: { id: true },
+    select: { id: true, kind: true },
   });
   if (!workspace) return apiError(404, "Workspace not found.");
+  // In an organization, creating boards is a permission (app/lib/permissions.ts).
+  if (workspace.kind === "ORGANIZATION") {
+    const access = await workspaceAccessOf(workspace.id, auth.userId);
+    if (!access?.permissions.has("boards.create")) {
+      return apiError(403, "Your role in this workspace cannot create boards.");
+    }
+  }
 
     const board = await createBoardWithSlug(workspace.id, parsed.data, (slug) =>
     prisma.board.create({

@@ -110,6 +110,12 @@
     "self": "No puedes cambiar tu propio rol.",
     "notMember": "Esa persona no es miembro de esta organización.",
     "suspended": "Este espacio está suspendido: {reason}",
-    "rateLimited": "Demasiados en poco tiempo. Vuelve a intentarlo dentro de una hora."
+    "rateLimited": "Demasiados en poco tiempo. Vuelve a intentarlo dentro de una hora.",
+    "roleNotFound": "Ese rol no existe en esta organización.",
+    "roleNameRequired": "Ponle un nombre al rol.",
+    "roleNameTooLong": "El nombre puede tener hasta 60 caracteres.",
+    "roleDescriptionTooLong": "La descripción puede tener hasta 200 caracteres.",
+    "roleNameTaken": "Ya hay un rol con ese nombre.",
+    "tooManyRoles": "Una organización puede tener hasta 50 roles personalizados."
   }
 }

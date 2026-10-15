@@ -5,8 +5,9 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/app/lib/prisma";
 import { revalidateBoard } from "@/app/lib/realtime/notify";
 import { requireUser, requireBoardAccess } from "@/app/lib/dal";
-import { effectiveBoardRole } from "@/app/lib/access";
+import { effectiveBoardRole, workspaceAccessOf } from "@/app/lib/access";
 import { canManageBoard } from "@/app/lib/roles";
+import type { Permission } from "@/app/lib/permissions";
 import { boardPath } from "@/app/lib/slugs";
 import { createBoardWithSlug, freeBoardSlug } from "@/app/lib/services/workspaces";
 import { recordAudit } from "@/app/lib/audit";
@@ -23,19 +24,41 @@ import { fmt } from "@/app/i18n/format";
 const IMPORT_MAX_MB = 5;
 
 /**
- * The workspace a new board goes to: the one in the form if the user is a member of it
- * (any member may create boards; a suspended workspace takes none), else their personal
- * one. Null if the requested one is not allowed.
+ * The workspace a new board goes to: the one in the form if the user may create boards in
+ * it (their own personal one, or an organization where they hold "boards.create"; a
+ * suspended workspace takes none), else their personal one. Null if the requested one is
+ * not allowed.
  */
 async function targetWorkspace(userId: string, requested: FormDataEntryValue | null) {
   const where =
     typeof requested === "string" && requested !== ""
       ? { id: requested, members: { some: { userId } } }
       : { personalOwnerId: userId };
-  return prisma.workspace.findFirst({
+  const workspace = await prisma.workspace.findFirst({
     where: { ...where, suspendedAt: null },
-    select: { id: true, slug: true },
+    select: { id: true, slug: true, kind: true },
   });
+  if (!workspace) return null;
+  if (workspace.kind === "ORGANIZATION") {
+    const access = await workspaceAccessOf(workspace.id, userId);
+    if (!access?.permissions.has("boards.create")) return null;
+  }
+  return { id: workspace.id, slug: workspace.slug };
+}
+
+/**
+ * Whether the user holds `permission` in the organization of a board they can open: a
+ * custom role may change visibility or delete boards without managing them
+ * (permissions.ts). False for personal boards (their owner manages them anyway).
+ */
+async function holdsOnBoard(boardId: string, userId: string, permission: Permission): Promise<boolean> {
+  const board = await prisma.board.findUnique({
+    where: { id: boardId },
+    select: { workspaceId: true, workspace: { select: { kind: true } } },
+  });
+  if (!board || board.workspace.kind !== "ORGANIZATION") return false;
+  const access = await workspaceAccessOf(board.workspaceId, userId);
+  return Boolean(access?.permissions.has(permission));
 }
 
 export async function createBoard(formData: FormData): Promise<void> {
@@ -95,7 +118,7 @@ export async function renameBoard(formData: FormData): Promise<void> {
 export async function setBoardVisibility(formData: FormData): Promise<void> {
   const boardId = String(formData.get("boardId"));
   const { user, role } = await requireBoardAccess(boardId);
-  if (!canManageBoard(role)) return;
+  if (!canManageBoard(role) && !(await holdsOnBoard(boardId, user.id, "boards.visibility"))) return;
   const parsed = boardVisibilitySchema.safeParse(formData.get("visibility"));
   if (!parsed.success) return;
   const { count } = await prisma.board.updateMany({
@@ -254,12 +277,14 @@ export async function importBoard(
 export async function deleteBoard(formData: FormData): Promise<void> {
   const user = await requireUser();
   const boardId = String(formData.get("boardId"));
-  // Whoever manages the board: its owner, or the owners and admins of its organization
-  // (app/lib/access.ts). Without that role nothing happens. The service also deletes the
-  // attachment files.
+  // Whoever manages the board (its owner, or the owners and admins of its organization:
+  // app/lib/access.ts), or someone who can open it and holds "boards.delete" in its
+  // organization. Without that nothing happens. The service also deletes the attachment
+  // files.
   const role = await effectiveBoardRole(boardId, user.id);
-  const count =
-    role && canManageBoard(role) ? await deleteBoardWithAttachments({ id: boardId }) : 0;
+  const allowed =
+    role !== null && (canManageBoard(role) || (await holdsOnBoard(boardId, user.id, "boards.delete")));
+  const count = allowed ? await deleteBoardWithAttachments({ id: boardId }) : 0;
   if (count > 0) {
     await recordAudit({
       action: "board.deleted",

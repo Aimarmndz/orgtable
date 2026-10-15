@@ -82,7 +82,9 @@
     },
     "createdHere": "creada aquí",
     "joined": "se registró por su cuenta",
-    "newPassword": "Nueva contraseña"
+    "newPassword": "Nueva contraseña",
+    "customRoles": "Roles personalizados",
+    "memberAs": "Miembro · {role}"
   },
   "settings": {
     "metaTitle": "Ajustes de {name}",
@@ -118,8 +120,10 @@
     "backTo": "Volver a {name}",
     "hints": {
       "general": "Nombre, dirección, salir y zona de peligro",
-      "members": "Quién está en la organización y su rol"
-    }
+      "members": "Quién está en la organización y su rol",
+      "roles": "Qué puede hacer cada rol, y vuestros propios roles"
+    },
+    "roles": "Roles y permisos"
   },
   "general": {
     "title": "General",
@@ -139,5 +143,112 @@
     "hint": "Aquí viven tus tableros personales. Si la cambias, los enlaces con la dirección anterior dejan de funcionar.",
     "save": "Cambiar dirección",
     "saved": "Dirección cambiada."
+  },
+  "rolesPage": {
+    "title": "Roles y permisos",
+    "subtitle": "Los tres roles base no se pueden cambiar. Crea los vuestros para dar a cada persona justo los permisos que necesita.",
+    "new": "Nuevo rol",
+    "newTitle": "Nuevo rol",
+    "base": "Roles base",
+    "custom": "Personalizados",
+    "noCustom": "Aún no hay roles personalizados.",
+    "baseTag": "Base",
+    "customTag": "Personalizado",
+    "locked": "Los roles base no se pueden editar ni borrar.",
+    "readOnly": "Solo los propietarios y administradores editan roles.",
+    "holders": {
+      "one": "Lo tiene {count} persona:",
+      "other": "Lo tienen {count} personas:"
+    },
+    "holdersNone": "Aún no lo tiene nadie: dáselo desde Miembros.",
+    "name": "Nombre",
+    "color": "Color",
+    "description": "Descripción",
+    "permissionsTitle": "Permisos",
+    "count": "{count} de {total} permisos",
+    "baseOnly": "Solo Propietario y Administrador. No se puede dar a un rol personalizado.",
+    "unsaved": {
+      "one": "{count} cambio sin guardar",
+      "other": "{count} cambios sin guardar"
+    },
+    "newHint": "Ponle nombre al rol y elige qué puede hacer.",
+    "discard": "Descartar",
+    "save": "Guardar cambios",
+    "create": "Crear rol",
+    "saved": "Rol guardado.",
+    "duplicate": "Duplicar",
+    "delete": "Borrar rol",
+    "deleteConfirm": "Las personas que lo tienen pasan a ser miembros sin más. No se puede deshacer.",
+    "deleteSubmit": "Borrar definitivamente",
+    "rule": "Nadie puede crear ni editar un rol con permisos que él mismo no tenga, y un rol personalizado nunca puede cambiar roles ni borrar la organización.",
+    "back": "Todos los roles",
+    "groups": {
+      "boards": "Tableros",
+      "people": "Personas",
+      "integrations": "Integraciones",
+      "data": "Datos y seguridad"
+    },
+    "permissions": {
+      "boards.view_all": {
+        "label": "Ver todos los tableros de la organización",
+        "hint": "También los privados, en modo lectura, sin que le inviten."
+      },
+      "boards.create": {
+        "label": "Crear tableros",
+        "hint": ""
+      },
+      "boards.visibility": {
+        "label": "Cambiar quién ve un tablero",
+        "hint": "Pasar cualquier tablero que pueda abrir de toda la organización a privado y al revés."
+      },
+      "boards.delete": {
+        "label": "Borrar tableros",
+        "hint": "Cualquier tablero de la organización que pueda abrir."
+      },
+      "people.invite": {
+        "label": "Invitar y crear cuentas de empleado",
+        "hint": "Solo podrá darles el rol de Miembro."
+      },
+      "people.teams": {
+        "label": "Gestionar equipos",
+        "hint": ""
+      },
+      "people.roles": {
+        "label": "Cambiar el rol de otras personas",
+        "hint": ""
+      },
+      "people.remove": {
+        "label": "Quitar personas de la organización",
+        "hint": "Solo miembros, nunca administradores ni propietarios."
+      },
+      "integrations.manage": {
+        "label": "Gestionar webhooks y apps",
+        "hint": ""
+      },
+      "apikeys.manage": {
+        "label": "Gestionar las claves API de la organización",
+        "hint": ""
+      },
+      "audit.view": {
+        "label": "Ver el registro de actividad",
+        "hint": ""
+      },
+      "data.export": {
+        "label": "Exportar los datos de la organización",
+        "hint": ""
+      },
+      "backups.manage": {
+        "label": "Gestionar copias de seguridad",
+        "hint": "Programarlas, cambiar el destino y restaurar."
+      }
+    },
+    "colors": {
+      "blue": "Azul",
+      "green": "Verde",
+      "purple": "Ciruela",
+      "amber": "Ocre",
+      "rose": "Arcilla",
+      "teal": "Verde azulado"
+    }
   }
 }

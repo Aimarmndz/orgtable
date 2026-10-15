@@ -238,3 +238,27 @@ export function apiRequest(
 export function ctx<T extends Record<string, string>>(params: T) {
   return { params: Promise.resolve(params) };
 }
+
+// --- Server Actions -------------------------------------------------------------------------
+
+/** A FormData from plain fields; arrays become repeated fields (checkbox groups). */
+export function formOf(fields: Record<string, string | string[]>): FormData {
+  const fd = new FormData();
+  for (const [k, v] of Object.entries(fields)) {
+    if (Array.isArray(v)) for (const item of v) fd.append(k, item);
+    else fd.set(k, v);
+  }
+  return fd;
+}
+
+/** Runs a Server Action that may end in a redirect and returns the target (or null). */
+export async function redirectTarget(run: () => Promise<unknown>): Promise<string | null> {
+  try {
+    await run();
+    return null;
+  } catch (e) {
+    const digest = (e as { digest?: string }).digest;
+    if (!digest?.startsWith("NEXT_REDIRECT")) throw e;
+    return digest.split(";")[2] ?? null;
+  }
+}

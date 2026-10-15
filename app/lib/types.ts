@@ -66,6 +66,9 @@ export type BoardDTO = {
   // Where it lives (/<workspace.slug>/…) and who besides its members sees it.
   workspace: { slug: string; name: string; kind: "PERSONAL" | "ORGANIZATION" };
   visibility: "WORKSPACE" | "PRIVATE";
+  // The viewer may change `visibility`: they manage the board or hold "boards.visibility"
+  // in its organization (app/lib/permissions.ts). The action checks it again.
+  canChangeVisibility: boolean;
   lists: ListDTO[];
   labels: LabelDTO[];
 };
