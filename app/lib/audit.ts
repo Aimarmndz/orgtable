@@ -61,6 +61,7 @@ export type AuditAction =
   | "workspace.team_board_set"
   | "workspace.team_board_removed"
   | "workspace.export"
+  | "workspace.brand_updated"
   | "workspace.security_updated"
   | "workspace.security_sessions_revoked"
   | "workspace.security_two_factor_reset"

@@ -81,6 +81,20 @@ list of sections and every page has a "back" link instead of the menu):
 The pages only show what the person's role allows; the services check everything again. How
 the tenant boundary is enforced is in [authorization](./authorization.md#tenant-isolation).
 
+## Brand
+
+At `/<slug>/settings/general` owners and admins set the organization's **brand**
+(`app/lib/services/branding.ts`): a colour of the board palette (or automatic), a **logo** and
+its **time zone** (scheduled backups run at night there; empty means the instance's). Owners
+also change the name and the address there.
+
+The logo is PNG, JPEG or WebP up to 512 KB. Its type is read from the file's first bytes,
+never from its name or what the browser says, and SVG is refused (it can carry scripts). It is
+stored like attachments, under a random name in `ORGTABLE_UPLOAD_DIR`, and served by
+`GET /api/workspaces/<slug>/logo` only to people who can see the organization, with
+`X-Content-Type-Options: nosniff`. Replacing or removing it, or deleting the organization,
+deletes the file.
+
 ## Security
 
 Owners and admins set the organization's security policy at `/<slug>/settings/security`

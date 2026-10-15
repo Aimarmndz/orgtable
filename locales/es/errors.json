@@ -131,6 +131,9 @@
     "domainNotAllowed": "Esta organización solo acepta correos de sus dominios permitidos.",
     "actorNeeds2fa": "Activa primero la verificación en dos pasos en tu cuenta, o te quedarías fuera.",
     "badDomain": "Uno de los dominios no es válido (p. ej. acme.com).",
-    "tooManyDomains": "Hasta 20 dominios."
+    "tooManyDomains": "Hasta 20 dominios.",
+    "badLogo": "El logo tiene que ser una imagen PNG, JPEG o WebP.",
+    "logoTooBig": "El logo puede ocupar hasta 512 KB.",
+    "badTimezone": "Esa zona horaria no existe."
   }
 }

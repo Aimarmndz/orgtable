@@ -179,7 +179,8 @@
       "user.two_factor_reset": "Two-step verification reset",
       "workspace.security_updated": "Security policy changed",
       "workspace.security_sessions_revoked": "Sessions of an employee closed",
-      "workspace.security_two_factor_reset": "Two-step verification of an employee reset"
+      "workspace.security_two_factor_reset": "Two-step verification of an employee reset",
+      "workspace.brand_updated": "Brand changed"
     }
   },
   "workspaces": {

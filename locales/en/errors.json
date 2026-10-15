@@ -131,6 +131,9 @@
     "domainNotAllowed": "This organization only accepts email addresses of its allowed domains.",
     "actorNeeds2fa": "Turn on two-step verification on your own account first, or you would lock yourself out.",
     "badDomain": "One of the domains is not valid (e.g. acme.com).",
-    "tooManyDomains": "Up to 20 domains."
+    "tooManyDomains": "Up to 20 domains.",
+    "badLogo": "The logo must be a PNG, JPEG or WebP image.",
+    "logoTooBig": "The logo can be up to 512 KB.",
+    "badTimezone": "That time zone does not exist."
   }
 }

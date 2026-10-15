@@ -38,6 +38,7 @@ export function auditCategoryPrefixes(category: AuditCategory): string[] {
         "workspace.deleted",
         "workspace.suspended",
         "workspace.unsuspended",
+        "workspace.brand_",
       ];
   }
 }

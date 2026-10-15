@@ -136,7 +136,7 @@
   },
   "general": {
     "title": "General",
-    "subtitle": "The organization's name and address. Only owners can change them.",
+    "subtitle": "The organization's brand, name and address, and leaving it. Owners change the name and the address; owners and admins the brand.",
     "identity": "Identity",
     "addressHint": "If you change the address, old links to its boards stop working (links with a board's id keep working).",
     "leaveTitle": "Leave the organization",
@@ -346,5 +346,23 @@
     "no2fa": "no two-step",
     "closeAll": "Close all sessions",
     "reset2fa": "Reset 2FA"
+  },
+  "brand": {
+    "title": "Brand",
+    "description": "How the organization looks in orgtable: its logo, its colour and its time zone.",
+    "color": "Brand colour",
+    "auto": "Automatic",
+    "preview": "Preview",
+    "timezone": "Time zone",
+    "timezoneHint": "Scheduled backups run at night in this time zone.",
+    "instanceTimezone": "The instance's",
+    "save": "Save brand",
+    "saved": "Brand saved.",
+    "logo": "Logo",
+    "logoHint": "PNG, JPEG or WebP, up to 512 KB. Square looks best.",
+    "upload": "Upload logo",
+    "logoSaved": "Logo updated.",
+    "removeLogo": "Remove logo",
+    "ownerOnlyName": "Only owners change the name and the address."
   }
 }

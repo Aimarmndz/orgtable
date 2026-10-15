@@ -85,7 +85,15 @@ export async function getWorkspacesForUser(userId: string) {
       role: true,
       customRole: { select: { permissions: true } },
       workspace: {
-        select: { id: true, slug: true, name: true, kind: true, suspendedAt: true },
+        select: {
+          id: true,
+          slug: true,
+          name: true,
+          kind: true,
+          suspendedAt: true,
+          brandColor: true,
+          logoStoredName: true,
+        },
       },
     },
   });

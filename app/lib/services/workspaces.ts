@@ -5,6 +5,7 @@ import { prisma } from "@/app/lib/prisma";
 import { hashPassword } from "@/app/lib/auth";
 import { isUniqueViolation } from "@/app/lib/services/users";
 import { deleteBoardWithAttachments } from "@/app/lib/services/attachments";
+import { deleteAttachmentFile } from "@/app/lib/storage";
 import { isRegistrationOpen } from "@/app/lib/services/instance";
 import {
   RESERVED_BOARD_SLUGS,
@@ -601,6 +602,8 @@ export async function deleteOrganization(input: {
 
 /** Deletes a workspace, its boards one by one (with their files) and then the row. */
 export async function purgeWorkspace(workspaceId: string): Promise<number> {
+  const logo = await prisma.workspace.findUnique({ where: { id: workspaceId }, select: { logoStoredName: true } });
+  if (logo?.logoStoredName) await deleteAttachmentFile(logo.logoStoredName);
   let boardsDeleted = 0;
   for (let attempt = 0; attempt < 3; attempt++) {
     const boards = await prisma.board.findMany({

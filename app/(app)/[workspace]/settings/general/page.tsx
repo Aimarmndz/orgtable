@@ -2,7 +2,13 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { requireOrgSettings } from "@/app/lib/org-settings";
 import { removeMemberAction } from "@/app/lib/actions/workspaces";
-import { canOwnWorkspace } from "@/app/lib/roles";
+import { canManageWorkspace, canOwnWorkspace } from "@/app/lib/roles";
+import { BOARD_COLORS, pickBoardColor } from "@/app/lib/colors";
+import { instanceTimeZone } from "@/app/lib/format-date";
+import { removeLogoAction } from "@/app/lib/actions/branding";
+import { BrandForm, LogoForm } from "@/app/components/workspace/brand-forms";
+import { WorkspaceAvatar } from "@/app/components/workspace/workspace-avatar";
+import { SettingsCard } from "@/app/components/settings/page-header";
 import { prisma } from "@/app/lib/prisma";
 import { publicHost } from "@/app/lib/mail/config";
 import {
@@ -49,9 +55,39 @@ export default async function WorkspaceGeneralPage({
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 p-6 sm:p-8 lg:p-10">
       <PageHeader
         address={`/${workspace.slug}/settings/general`}
-        title={t.general.title}
+        title={t.nav.general}
         description={t.general.subtitle}
       />
+
+      {canManageWorkspace(role) && (
+        <SettingsCard title={t.brand.title} description={t.brand.description}>
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-wrap items-center gap-4">
+              <WorkspaceAvatar workspace={workspace} size={64} />
+              <div className="min-w-0 flex-1">
+                <LogoForm workspaceId={workspace.id} />
+              </div>
+              {workspace.logoStoredName && (
+                <form action={removeLogoAction}>
+                  <input type="hidden" name="workspaceId" value={workspace.id} />
+                  <Button type="submit" variant="dangerOutline" className="h-10">
+                    {t.brand.removeLogo}
+                  </Button>
+                </form>
+              )}
+            </div>
+            <BrandForm
+              workspaceId={workspace.id}
+              name={workspace.name}
+              brandColor={workspace.brandColor}
+              timezone={workspace.timezone}
+              timezones={Intl.supportedValuesOf("timeZone")}
+              instanceTimezone={instanceTimeZone()}
+              autoColor={BOARD_COLORS[pickBoardColor(workspace.id)]}
+            />
+          </div>
+        </SettingsCard>
+      )}
 
       {owner ? (
         <OrganizationSettingsForm

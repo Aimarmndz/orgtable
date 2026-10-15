@@ -6,6 +6,7 @@ import { AUDIT_CATEGORIES, auditCategory, auditCategoryPrefixes } from "@/app/li
 const SAMPLES = [
   "workspace.created",
   "workspace.updated",
+  "workspace.brand_updated",
   "workspace.member_created",
   "workspace.role_updated",
   "workspace.team_board_set",

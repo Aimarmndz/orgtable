@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requireUser } from "@/app/lib/dal";
 import { getWorkspacesForUser } from "@/app/lib/queries";
-import { BOARD_COLORS, pickBoardColor } from "@/app/lib/colors";
-import { initials } from "@/app/lib/initials";
+import { WorkspaceAvatar } from "@/app/components/workspace/workspace-avatar";
 import { CreateOrganizationForm } from "@/app/components/workspace/forms";
 import { PageHeader, SettingsCard, SettingsPage } from "@/app/components/settings/page-header";
 import { getI18n } from "@/app/i18n/server";
@@ -30,13 +29,7 @@ export default async function WorkspacesSettingsPage() {
         <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
           {workspaces.map((w) => (
             <li key={w.id} className="flex flex-wrap items-center gap-3 bg-surface px-4 py-3">
-              <span
-                aria-hidden
-                className="grid size-9 shrink-0 place-items-center rounded-lg text-xs font-bold text-white"
-                style={{ background: BOARD_COLORS[pickBoardColor(w.id)] }}
-              >
-                {initials(w.name)}
-              </span>
+              <WorkspaceAvatar workspace={w} />
               <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold">{w.name}</p>
                 <p className="truncate font-mono text-xs text-ink-muted">

@@ -56,3 +56,34 @@ export async function deleteAttachmentFile(storedName: string): Promise<void> {
     console.error("[storage] could not delete the attachment", { storedName, code });
   }
 }
+
+// --- Organization logos (docs/workspaces.md, "Brand") ------------------------------------
+
+export const MAX_LOGO_BYTES = 512 * 1024;
+
+const LOGO_TYPES: { mime: string; ext: string; magic: (b: Buffer) => boolean }[] = [
+  { mime: "image/png", ext: ".png", magic: (b) => b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) },
+  { mime: "image/jpeg", ext: ".jpg", magic: (b) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff },
+  {
+    mime: "image/webp",
+    ext: ".webp",
+    magic: (b) => b.subarray(0, 4).toString("latin1") === "RIFF" && b.subarray(8, 12).toString("latin1") === "WEBP",
+  },
+];
+
+/**
+ * The image type of a logo from its first bytes (never the name or the browser's word for
+ * it): PNG, JPEG or WebP. SVG is refused on purpose, it can carry scripts.
+ */
+export function sniffLogoType(bytes: Buffer): { mime: string; ext: string } | null {
+  const found = LOGO_TYPES.find((t) => t.magic(bytes));
+  return found ? { mime: found.mime, ext: found.ext } : null;
+}
+
+/** Saves a logo under a random name. */
+export async function saveLogoFile(bytes: Buffer, ext: string): Promise<string> {
+  await mkdir(UPLOAD_DIR, { recursive: true });
+  const storedName = `logo-${randomUUID()}${ext}`;
+  await writeFile(storedPath(storedName), bytes);
+  return storedName;
+}

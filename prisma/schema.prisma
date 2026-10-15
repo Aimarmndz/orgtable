@@ -95,6 +95,13 @@ model Workspace {
   // board invitations are limited to these email domains (empty = any).
   requireTwoFactor    Boolean       @default(false)
   allowedEmailDomains String[]      @default([])
+  // Brand (/<slug>/settings/general): a colour of BOARD_COLORS, a logo on disk (random name
+  // in ORGTABLE_UPLOAD_DIR, PNG/JPEG/WebP only, served by /api/workspaces/<slug>/logo) and the
+  // organization's time zone (IANA), used to schedule its backups.
+  brandColor      String?
+  logoStoredName  String?
+  logoMimeType    String?
+  timezone        String?
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
   members         WorkspaceMember[]

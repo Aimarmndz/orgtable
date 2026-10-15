@@ -28,6 +28,9 @@ export type OrgSettingsContext = {
     name: string;
     suspendedAt: Date | null;
     suspendedReason: string | null;
+    brandColor: string | null;
+    logoStoredName: string | null;
+    timezone: string | null;
   };
   role: WorkspaceRole;
   // The person's custom role, if they have one, and what they may do (permissions.ts).
@@ -45,6 +48,9 @@ export const requireOrgSettings = cache(async (slug: string): Promise<OrgSetting
       name: true,
       suspendedAt: true,
       suspendedReason: true,
+      brandColor: true,
+      logoStoredName: true,
+      timezone: true,
       members: {
         where: { userId: user.id },
         select: {
@@ -65,6 +71,9 @@ export const requireOrgSettings = cache(async (slug: string): Promise<OrgSetting
       name: workspace.name,
       suspendedAt: workspace.suspendedAt,
       suspendedReason: workspace.suspendedReason,
+      brandColor: workspace.brandColor,
+      logoStoredName: workspace.logoStoredName,
+      timezone: workspace.timezone,
     },
     role,
     customRole: customRole ? { id: customRole.id, name: customRole.name, color: customRole.color } : null,

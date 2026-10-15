@@ -4,8 +4,7 @@ import { personalWorkspaceOf } from "@/app/lib/services/workspaces";
 import { SideNav } from "@/app/components/settings/side-nav";
 import { NavIcon } from "@/app/components/settings/nav-icons";
 import { orgSettingsSections } from "@/app/components/settings/org-nav";
-import { BOARD_COLORS, pickBoardColor } from "@/app/lib/colors";
-import { initials } from "@/app/lib/initials";
+import { WorkspaceAvatar } from "@/app/components/workspace/workspace-avatar";
 import { getI18n } from "@/app/i18n/server";
 import { fmt, plural } from "@/app/i18n/format";
 
@@ -37,13 +36,7 @@ export default async function WorkspaceSettingsLayout({
           href={`/${workspace.slug}`}
           className="mb-4 hidden items-center gap-2.5 rounded-xl px-2 py-1.5 transition hover:bg-surface md:flex"
         >
-          <span
-            aria-hidden
-            className="grid size-9 shrink-0 place-items-center rounded-lg text-xs font-bold text-white"
-            style={{ background: BOARD_COLORS[pickBoardColor(workspace.id)] }}
-          >
-            {initials(workspace.name)}
-          </span>
+          <WorkspaceAvatar workspace={workspace} />
           <span className="min-w-0">
             <span className="block truncate font-display font-bold tracking-tight">{workspace.name}</span>
             <span className="block truncate font-mono text-xs text-ink-muted">

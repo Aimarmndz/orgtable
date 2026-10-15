@@ -136,7 +136,7 @@
   },
   "general": {
     "title": "General",
-    "subtitle": "El nombre y la dirección de la organización. Solo los propietarios pueden cambiarlos.",
+    "subtitle": "La marca, el nombre y la dirección de la organización, y salir de ella. Los propietarios cambian el nombre y la dirección; propietarios y administradores, la marca.",
     "identity": "Identidad",
     "addressHint": "Si cambias la dirección, los enlaces antiguos a sus tableros dejan de funcionar (los enlaces con el id del tablero siguen funcionando).",
     "leaveTitle": "Salir de la organización",
@@ -346,5 +346,23 @@
     "no2fa": "sin dos pasos",
     "closeAll": "Cerrar todas las sesiones",
     "reset2fa": "Restablecer 2FA"
+  },
+  "brand": {
+    "title": "Marca",
+    "description": "Cómo se ve la organización en orgtable: su logo, su color y su zona horaria.",
+    "color": "Color de la marca",
+    "auto": "Automático",
+    "preview": "Vista previa",
+    "timezone": "Zona horaria",
+    "timezoneHint": "Las copias programadas se hacen de madrugada en esta zona horaria.",
+    "instanceTimezone": "La de la instancia",
+    "save": "Guardar marca",
+    "saved": "Marca guardada.",
+    "logo": "Logo",
+    "logoHint": "PNG, JPEG o WebP, hasta 512 KB. Mejor cuadrado.",
+    "upload": "Subir logo",
+    "logoSaved": "Logo actualizado.",
+    "removeLogo": "Quitar logo",
+    "ownerOnlyName": "Solo los propietarios cambian el nombre y la dirección."
   }
 }

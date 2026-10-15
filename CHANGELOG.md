@@ -40,6 +40,9 @@ behind each decision is in [`docs/DECISIONES.md`](./docs/DECISIONES.md).
   for everyone who opens its boards, limit employee accounts and board invitations to some
   email domains, and see, close and reset the sessions and two-step verification of the
   accounts the organization created.
+- **Brand of an organization** (`/<slug>/settings/general`): logo (PNG/JPEG/WebP, type read
+  from the bytes, SVG refused), brand colour with a preview, and the organization's time zone.
+  The logo replaces the initials in the settings menu and the list of organizations.
 - **`ORGTABLE_SECRET_KEY`**: encrypts the secrets the app must read back (AES-256-GCM).
   `install.sh` generates it, also for existing installations. See `docs/security.md`.
 - **Public landing page** at `/` for visitors without a session, in a retro look: what
