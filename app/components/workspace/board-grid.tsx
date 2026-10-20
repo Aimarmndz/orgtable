@@ -24,7 +24,15 @@ export async function BoardGrid({ boards }: { boards: BoardSummary[] }) {
   return (
         <ul className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(15rem,1fr))]">
           {boards.map((board) => (
-            <li key={board.id} data-menu-scope="board" data-menu-title={board.title} className="group relative">
+            <li
+              key={board.id}
+              data-menu-scope="board"
+              data-menu-title={board.title}
+              data-menu-board={board.id}
+              data-menu-background={board.background ?? ""}
+              data-menu-manage={board.canManage ? "" : undefined}
+              className="group relative"
+            >
               <Link
                 href={boardPath(board.workspaceSlug, board.slug)}
                 style={{ background: boardBackgroundFor(board) }}

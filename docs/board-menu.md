@@ -47,6 +47,9 @@ pointer:
   buttons and links, named by `data-menu-label`, `aria-label` or their text, and run by
   clicking them, so every confirmation and permission stays as it is. `data-menu-title`
   titles the menu, `data-menu-skip` hides a control, `data-menu-copy` adds *Copy text*.
+- A board tile (`data-menu-board`) whose board the person manages also gets *Rename board*
+  and *Change background*, with the same form, swatches and Server Actions as the board's
+  own menu.
 - A link: Open, Open in a new tab (not for downloads) and Copy link.
 - Then, always: *This page* (go back, refresh, copy its link, switch the theme), the sections
   of the side menu when there is one (`data-menu-nav`, settings and administration), and

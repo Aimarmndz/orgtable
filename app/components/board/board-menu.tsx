@@ -867,7 +867,7 @@ export function BoardMenu({
   );
 }
 
-function Swatches({
+export function Swatches({
   current,
   names,
   onPick,
@@ -914,7 +914,7 @@ function Swatches({
   );
 }
 
-function RenameForm({
+export function RenameForm({
   label,
   initial,
   maxLength,
@@ -1021,7 +1021,7 @@ function icon(d: string): ReactNode {
     </svg>
   );
 }
-const icons = {
+export const icons = {
   plus: icon("M12 5v14M5 12h14"),
   palette: icon(
     "M12 3a9 9 0 1 0 0 18c1 0 1.5-.8 1.5-1.6 0-1.2-1-1.4-1-2.4 0-.8.7-1.5 1.5-1.5H16a5 5 0 0 0 5-5c0-4.1-4-7.5-9-7.5zM7.5 11.5h.01M10 7.5h.01M15 7.5h.01",

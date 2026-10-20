@@ -66,6 +66,9 @@ export async function getBoardSummariesForUser(userId: string, workspaceId?: str
       workspaceSlug: workspace.slug,
       // Who manages the board, or holds "boards.delete" in its organization (permissions.ts).
       canDelete: role !== null && (canManageBoard(role) || Boolean(perms?.has("boards.delete"))),
+      // Renaming and the background, from the tile's right-click menu (renameBoard and
+      // setBoardBackground check it again).
+      canManage: role !== null && canManageBoard(role),
       cardCount: lists.reduce((n, l) => n + l._count.cards, 0),
       members: members.map((m) => m.user),
     };

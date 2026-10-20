@@ -7,6 +7,23 @@ living log from 2026-09-24 onwards.
 
 ---
 
+## 2026-10-20 — Board tiles: rename and recolour from the right click
+
+**Context.** The owner asked for more of the app to be reachable from the right click. On a board
+tile the menu only had what the tile's corner buttons do (export, delete).
+
+**Decision.** Tiles carry the board's id, background and `canManage` (new in `BoardSummary`, the
+same rule as `renameBoard` and `setBoardBackground`), and the app menu adds *Rename board* and
+*Change background* with the board menu's own `RenameForm` and `Swatches`, now exported. Entries
+of the app menu get the board menu's icons.
+
+**Alternatives considered.** Visible rename and colour controls on each tile: more clutter on a
+grid that is meant to be scanned, for actions that are rare.
+
+**Consequences.** `canManage` only hides the entries; both actions check the role again.
+
+---
+
 ## 2026-10-20 — Profile photos: cropped in the browser, served only to people who share something
 
 **Context.** The owner asked for profile photos. Until now every person was their initials.

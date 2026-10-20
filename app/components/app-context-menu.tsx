@@ -3,6 +3,8 @@
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ContextMenu, type MenuEntry, type MenuItem } from "@/app/components/board/context-menu";
+import { icons, RenameForm, Swatches } from "@/app/components/board/board-menu";
+import { renameBoard, setBoardBackground } from "@/app/lib/actions/boards";
 import type { SwitcherWorkspace } from "@/app/components/workspace-switcher";
 import { useI18n } from "@/app/i18n/client";
 import { fmt } from "@/app/i18n/format";
@@ -66,6 +68,8 @@ export function AppContextMenu({ workspaces }: { workspaces: SwitcherWorkspace[]
       title = scope.dataset.menuTitle ?? firstLine(scope);
       const primary = scope.matches("a[href]") ? (scope as HTMLAnchorElement) : scope.querySelector<HTMLAnchorElement>("a[href]");
       if (primary) entries.push(...linkItems(primary, "scope"));
+      if (scope.dataset.menuBoard && scope.hasAttribute("data-menu-manage"))
+        entries.push(...boardTileItems(scope.dataset.menuBoard, title, scope.dataset.menuBackground || null));
       const seen = new Set<string>();
       for (const el of scope.querySelectorAll<HTMLElement>(CONTROL)) {
         if (el === primary || el.hasAttribute("data-menu-skip") || (el as HTMLButtonElement).disabled) continue;
@@ -73,11 +77,17 @@ export function AppContextMenu({ workspaces }: { workspaces: SwitcherWorkspace[]
         const label = controlLabel(el);
         if (!label || seen.has(label)) continue;
         seen.add(label);
+        const danger = el.hasAttribute("data-menu-danger") || /\b(text-danger|bg-danger)\b/.test(el.className);
         entries.push({
           kind: "item",
           id: `control-${entries.length}`,
           label,
-          danger: el.hasAttribute("data-menu-danger") || /\b(text-danger|bg-danger)\b/.test(el.className),
+          danger,
+          icon: danger
+            ? icons.trash
+            : el instanceof HTMLAnchorElement && el.pathname.startsWith("/api/")
+              ? icons.download
+              : undefined,
           onSelect: () => el.click(),
         });
       }
@@ -86,6 +96,7 @@ export function AppContextMenu({ workspaces }: { workspaces: SwitcherWorkspace[]
           kind: "item",
           id: "copy-text",
           label: t.copyText,
+          icon: icons.copy,
           onSelect: () => void copy(scope.dataset.menuCopy!, t.textCopied),
         });
     } else if (link) {
@@ -94,12 +105,13 @@ export function AppContextMenu({ workspaces }: { workspaces: SwitcherWorkspace[]
     }
 
     const page: MenuItem[] = [
-      { kind: "item", id: "back", label: t.goBack, onSelect: () => router.back() },
-      { kind: "item", id: "refresh", label: t.refresh, onSelect: () => router.refresh() },
+      { kind: "item", id: "back", label: t.goBack, icon: icons.left, onSelect: () => router.back() },
+      { kind: "item", id: "refresh", label: t.refresh, icon: icons.refresh, onSelect: () => router.refresh() },
       {
         kind: "item",
         id: "copy-page",
         label: t.copyPageLink,
+        icon: icons.link,
         onSelect: () => void copy(location.href, t.linkCopied),
       },
       {
@@ -126,6 +138,7 @@ export function AppContextMenu({ workspaces }: { workspaces: SwitcherWorkspace[]
           {
             kind: "item",
             id: "sections",
+            icon: icons.sliders,
             label: nav?.getAttribute("aria-label") ?? t.goTo,
             submenu: { id: "sections", title: nav?.getAttribute("aria-label") ?? t.goTo, entries: sections },
           },
@@ -136,6 +149,7 @@ export function AppContextMenu({ workspaces }: { workspaces: SwitcherWorkspace[]
       go.push({
         kind: "item",
         id: "go-workspace",
+        icon: icons.columns,
         label: current.kind === "PERSONAL" ? m.nav.switcher.personal : current.name,
         onSelect: () => router.push(`/${current.slug}`),
       });
@@ -143,14 +157,15 @@ export function AppContextMenu({ workspaces }: { workspaces: SwitcherWorkspace[]
         go.push({
           kind: "item",
           id: "go-org-settings",
+          icon: icons.sliders,
           label: fmt(m.nav.switcher.settingsOf, { name: current.name }),
           onSelect: () => router.push(`/${current.slug}/settings`),
         });
     }
     go.push(
-      { kind: "item", id: "go-boards", label: m.nav.switcher.allBoards, onSelect: () => router.push("/boards") },
-      { kind: "item", id: "go-search", label: t.search, onSelect: () => router.push("/search") },
-      { kind: "item", id: "go-settings", label: t.yourSettings, onSelect: () => router.push("/settings/profile") },
+      { kind: "item", id: "go-boards", label: m.nav.switcher.allBoards, icon: icons.columns, onSelect: () => router.push("/boards") },
+      { kind: "item", id: "go-search", label: t.search, icon: icons.filter, onSelect: () => router.push("/search") },
+      { kind: "item", id: "go-settings", label: t.yourSettings, icon: icons.people, onSelect: () => router.push("/settings/profile") },
     );
 
     if (entries.length === 0) {
@@ -161,7 +176,7 @@ export function AppContextMenu({ workspaces }: { workspaces: SwitcherWorkspace[]
           ...page,
           { kind: "separator", id: "sep-go" },
           ...sectionsItem,
-          { kind: "item", id: "go", label: t.goTo, submenu: { id: "go", title: t.goTo, entries: go } },
+          { kind: "item", id: "go", label: t.goTo, icon: icons.right, submenu: { id: "go", title: t.goTo, entries: go } },
         ],
       };
     }
@@ -170,11 +185,91 @@ export function AppContextMenu({ workspaces }: { workspaces: SwitcherWorkspace[]
       entries: [
         ...entries,
         { kind: "separator", id: "sep-page" },
-        { kind: "item", id: "page", label: t.page, submenu: { id: "page", title: t.page, entries: page } },
+        { kind: "item", id: "page", label: t.page, icon: icons.open, submenu: { id: "page", title: t.page, entries: page } },
         ...sectionsItem,
-        { kind: "item", id: "go", label: t.goTo, submenu: { id: "go", title: t.goTo, entries: go } },
+        { kind: "item", id: "go", label: t.goTo, icon: icons.right, submenu: { id: "go", title: t.goTo, entries: go } },
       ],
     };
+
+    // A board tile (board-grid.tsx) the person manages: rename it and change its background
+    // without opening it, through the same actions as the board's own menu.
+    function boardTileItems(boardId: string, boardTitle: string, background: string | null): MenuEntry[] {
+      const tb = m.boards.menu;
+      const done = async (result: Promise<{ ok: boolean }>) => {
+        try {
+          if (!(await result).ok) return setNotice(tb.failed);
+          router.refresh();
+        } catch {
+          setNotice(tb.failed);
+        }
+      };
+      return [
+        {
+          kind: "item",
+          id: "tile-rename",
+          label: tb.renameBoard,
+          icon: icons.pencil,
+          submenu: {
+            id: "tile-rename",
+            title: tb.renameBoard,
+            width: 280,
+            entries: [
+              {
+                kind: "custom",
+                id: "tile-rename-form",
+                render: ({ close }) => (
+                  <RenameForm
+                    label={tb.boardName}
+                    initial={boardTitle}
+                    maxLength={120}
+                    saveLabel={tb.save}
+                    onSave={(value) => {
+                      close();
+                      if (value !== boardTitle) void done(renameBoard({ boardId, title: value }));
+                    }}
+                  />
+                ),
+              },
+            ],
+          },
+        },
+        {
+          kind: "item",
+          id: "tile-background",
+          label: tb.background,
+          icon: icons.palette,
+          submenu: {
+            id: "tile-background",
+            title: tb.backgroundHeading,
+            width: 252,
+            entries: [
+              {
+                kind: "custom",
+                id: "tile-swatches",
+                render: ({ close }) => (
+                  <Swatches
+                    current={background}
+                    names={m.workspaces.rolesPage.colors}
+                    onPick={(color) => {
+                      close();
+                      void done(setBoardBackground({ boardId, background: color }));
+                    }}
+                  />
+                ),
+              },
+              {
+                kind: "item",
+                id: "tile-bg-auto",
+                label: tb.backgroundAuto,
+                icon: icons.refresh,
+                onSelect: () => void done(setBoardBackground({ boardId, background: null })),
+              },
+            ],
+          },
+        },
+        { kind: "separator", id: "tile-sep" },
+      ];
+    }
 
     function linkItems(a: HTMLAnchorElement, prefix: string): MenuItem[] {
       const href = a.href;
@@ -184,6 +279,7 @@ export function AppContextMenu({ workspaces }: { workspaces: SwitcherWorkspace[]
           kind: "item",
           id: `${prefix}-open`,
           label: t.open,
+          icon: icons.open,
           onSelect: () => a.click(),
         },
         ...(download
@@ -193,6 +289,7 @@ export function AppContextMenu({ workspaces }: { workspaces: SwitcherWorkspace[]
                 kind: "item" as const,
                 id: `${prefix}-new-tab`,
                 label: t.openNewTab,
+                icon: icons.right,
                 onSelect: () => window.open(href, "_blank", "noopener,noreferrer"),
               },
             ]),
@@ -200,6 +297,7 @@ export function AppContextMenu({ workspaces }: { workspaces: SwitcherWorkspace[]
           kind: "item",
           id: `${prefix}-copy`,
           label: t.copyLink,
+          icon: icons.link,
           onSelect: () => void copy(href, t.linkCopied),
         },
       ];
