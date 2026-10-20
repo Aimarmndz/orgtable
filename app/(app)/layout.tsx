@@ -11,6 +11,7 @@ import { SearchBox } from "@/app/components/search-box";
 import { NotificationsBell } from "@/app/components/notifications-bell";
 import { AccountMenu } from "@/app/components/account-menu";
 import { WorkspaceSwitcher } from "@/app/components/workspace-switcher";
+import { AppContextMenu } from "@/app/components/app-context-menu";
 import { getI18n } from "@/app/i18n/server";
 
 // The whole signed-in area depends on the session and the database, so it is never
@@ -89,6 +90,7 @@ export default async function AppLayout({
         </div>
       </header>
       <main className="flex flex-1 flex-col overflow-hidden">{children}</main>
+      <AppContextMenu workspaces={switcher} />
     </div>
   );
 }

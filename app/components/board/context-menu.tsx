@@ -407,6 +407,9 @@ export function ContextMenu({
     });
 
   if (typeof document === "undefined") return null;
+  // An open modal <dialog> (the card) sits in the top layer and makes the rest of the page
+  // inert: a menu in <body> would be drawn under it and could not be clicked.
+  const host = document.querySelector<HTMLDialogElement>("dialog[open]:modal") ?? document.body;
 
   if (mode === "sheet") {
     const showing = sub ?? panel;
@@ -497,7 +500,7 @@ export function ContextMenu({
           </div>
         </div>
       </div>,
-      document.body,
+      host,
     );
   }
 
@@ -547,7 +550,7 @@ export function ContextMenu({
         </div>
       )}
     </>,
-    document.body,
+    host,
   );
 }
 

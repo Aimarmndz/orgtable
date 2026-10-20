@@ -80,7 +80,7 @@ export default async function AdminUsersPage({
           </thead>
           <tbody className="divide-y divide-border">
             {users.map((u) => (
-              <tr key={u.id} className="bg-surface">
+              <tr key={u.id} data-menu-scope="row" data-menu-title={u.name} className="bg-surface">
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{u.name}</span>

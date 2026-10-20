@@ -9,7 +9,7 @@ import { fmt, plural } from "@/app/i18n/format";
 
 // Grid of board tiles, shared by /boards and each workspace's page. Each tile links to
 // /<workspace>/<board>; export and delete appear in a corner (delete only for whoever may
-// manage the board).
+// manage the board). A right click on a tile offers the same through the app menu.
 
 // Corner actions of each board. On desktop they appear on hover or when reached with
 // the keyboard; on screens without hover (touch) they are always visible, otherwise
@@ -23,7 +23,7 @@ export async function BoardGrid({ boards }: { boards: BoardSummary[] }) {
   return (
         <ul className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(15rem,1fr))]">
           {boards.map((board) => (
-            <li key={board.id} className="group relative">
+            <li key={board.id} data-menu-scope="board" data-menu-title={board.title} className="group relative">
               <Link
                 href={boardPath(board.workspaceSlug, board.slug)}
                 style={{ background: boardBackgroundFor(board) }}

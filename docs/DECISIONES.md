@@ -7,6 +7,30 @@ living log from 2026-09-24 onwards.
 
 ---
 
+## 2026-10-20 — A right-click menu everywhere, built from the controls that are already there
+
+**Context.** The owner wants the right click to answer wherever one clicks and to reach half of the
+app's functions. Only the board had one (board-menu.tsx); the card's modal, the board tiles, the
+settings and everything else gave the browser's menu.
+
+**Decision.** One global handler mounted in the signed-in layout (`app-context-menu.tsx`, the same
+`ContextMenu` component as the board). Under the pointer it looks for an element marked
+`data-menu-scope` and lists the buttons and links inside it, running each by clicking it; then link
+entries (open, new tab, copy) and the page (back, refresh, copy link, theme, the side menu's
+sections, *Go to*). The board keeps its own menu (`data-own-menu`); the open card's empty space
+opens the card's board menu; inside a modal `<dialog>` the menu is portalled into the dialog,
+since the rest of the page is inert. Fields and selected text keep the browser's menu.
+
+**Alternatives considered.** A hand-written menu per page: every action duplicated, and a menu
+entry could skip the confirmation or the permission check its button has. Clicking the control
+keeps a single path.
+
+**Consequences.** A new control reaches the menu only if its row carries `data-menu-scope` and the
+control has a name (text, `aria-label` or `data-menu-label`); icon-only buttons without one are
+left out. Danger styling is inferred from the button's classes or `data-menu-danger`.
+
+---
+
 ## 2026-10-20 — Labels: edit and delete them, and any colour with a picker
 
 **Context.** Labels could be created but not deleted (`deleteLabel` had no caller) nor renamed, and

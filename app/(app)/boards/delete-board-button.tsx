@@ -47,6 +47,7 @@ export function DeleteBoardButton({
         type="button"
         onClick={() => setConfirming(true)}
         className={className}
+        data-menu-danger=""
         aria-label={fmt(m.boards.index.deleteBoard, { title })}
       >
         ✕

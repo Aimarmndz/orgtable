@@ -59,8 +59,10 @@ export function SideNav({
           {mobileIndex.label}
         </Link>
       )}
+      {/* data-menu-nav: the app's right-click menu offers these sections too. */}
       <nav
         aria-label={label}
+        data-menu-nav=""
         className={`${mobileIndex ? "hidden md:flex" : "flex"} gap-1 overflow-x-auto md:flex-col md:overflow-visible`}
       >
         {groups.map((group, i) => (

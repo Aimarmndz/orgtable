@@ -114,7 +114,7 @@ export default async function SecuritySettingsPage() {
           {sessions.map((s) => {
             const current = s.id === session?.sessionId;
             return (
-              <li key={s.id} className="flex items-center gap-3 bg-surface px-4 py-3">
+              <li key={s.id} data-menu-scope="row" data-menu-title={describeUserAgent(s.userAgent, t.security)} className="flex items-center gap-3 bg-surface px-4 py-3">
                 <div className="min-w-0 flex-1">
                   <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
                     {describeUserAgent(s.userAgent, t.security)}

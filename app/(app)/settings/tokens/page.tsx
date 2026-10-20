@@ -55,7 +55,7 @@ export default async function TokensSettingsPage() {
         ) : (
           <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
             {tokens.map((tk) => (
-              <li key={tk.id} className="flex items-center gap-3 bg-surface px-4 py-3">
+              <li key={tk.id} data-menu-scope="row" data-menu-title={tk.name} className="flex items-center gap-3 bg-surface px-4 py-3">
                 <div className="min-w-0 flex-1">
                   <p className="flex items-center gap-2">
                     <span className="truncate text-sm font-medium">{tk.name}</span>

@@ -12,6 +12,7 @@ server.
 | **Background** (empty space, header) | Add list · Change background · Labels (rename, recolour, delete, create) · Rename board · View as calendar/board · Filter cards · Members and visibility · Copy link · Export to JSON · Organization settings |
 | **List** | Add card · Rename list · Move left / right · Sort by due date · Move all cards to… · Delete list (with an inline confirmation that says how many cards go with it) |
 | **Card** | Open · Rename · Labels · Due date (today, tomorrow, next Monday, in a week, a date, remove) · Assign · Move to (another list, top or bottom of its list) · Duplicate · Copy link · Delete (inline confirmation) |
+| **Open card** (its own space, not a label, item or comment) | The same as on the card |
 
 - **Change background**: the six board colours plus *Slate* and *Ink*, or *Automatic* (the
   colour derived from the board's id). Owners only; every member sees the change.
@@ -34,6 +35,26 @@ server.
   (`labelText`, WCAG contrast).
 - **Organization settings** is only listed for people who belong to the organization; a
   guest would get a 404 there.
+
+## Outside the board
+
+Everywhere else in the signed-in app, a right click (or a half-second press on touch) opens
+the same kind of menu, built by `app/components/app-context-menu.tsx` from what is under the
+pointer:
+
+- An element marked `data-menu-scope` (a board tile, a settings or administration row, a
+  label, a checklist item, an attachment, a comment, an assignee in the card): its own
+  buttons and links, named by `data-menu-label`, `aria-label` or their text, and run by
+  clicking them, so every confirmation and permission stays as it is. `data-menu-title`
+  titles the menu, `data-menu-skip` hides a control, `data-menu-copy` adds *Copy text*.
+- A link: Open, Open in a new tab (not for downloads) and Copy link.
+- Then, always: *This page* (go back, refresh, copy its link, switch the theme), the sections
+  of the side menu when there is one (`data-menu-nav`, settings and administration), and
+  *Go to* (the current workspace, its settings, all boards, search, your settings).
+
+The board (`data-own-menu`) and the open card keep their own menu; a link inside the board
+gets the link menu. Inside the card's `<dialog>`, which makes the rest of the page inert, the
+menu is drawn in the dialog itself.
 
 ## Mouse, keyboard and touch
 

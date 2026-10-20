@@ -35,5 +35,25 @@
     "allBoards": "All boards",
     "settingsOf": "{name} settings",
     "createOrg": "Create an organization"
+  },
+  "contextMenu": {
+    "label": "Actions",
+    "close": "Close the menu",
+    "back": "Back",
+    "page": "This page",
+    "goTo": "Go to",
+    "open": "Open",
+    "openNewTab": "Open in a new tab",
+    "copyLink": "Copy link",
+    "copyText": "Copy text",
+    "copyPageLink": "Copy this page's link",
+    "goBack": "Go back",
+    "refresh": "Refresh",
+    "search": "Search",
+    "yourSettings": "Your settings",
+    "theme": "Switch light / dark theme",
+    "linkCopied": "Link copied.",
+    "textCopied": "Text copied.",
+    "copyFailed": "Could not copy. Copy it by hand."
   }
 }

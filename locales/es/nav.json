@@ -35,5 +35,25 @@
     "allBoards": "Todos los tableros",
     "settingsOf": "Ajustes de {name}",
     "createOrg": "Crear una organización"
+  },
+  "contextMenu": {
+    "label": "Acciones",
+    "close": "Cerrar el menú",
+    "back": "Atrás",
+    "page": "Esta página",
+    "goTo": "Ir a",
+    "open": "Abrir",
+    "openNewTab": "Abrir en una pestaña nueva",
+    "copyLink": "Copiar enlace",
+    "copyText": "Copiar texto",
+    "copyPageLink": "Copiar el enlace de esta página",
+    "goBack": "Volver atrás",
+    "refresh": "Actualizar",
+    "search": "Buscar",
+    "yourSettings": "Tus ajustes",
+    "theme": "Cambiar entre tema claro y oscuro",
+    "linkCopied": "Enlace copiado.",
+    "textCopied": "Texto copiado.",
+    "copyFailed": "No se pudo copiar. Cópialo a mano."
   }
 }

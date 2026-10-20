@@ -18,6 +18,7 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={toggle}
+      data-theme-toggle=""
       aria-label={m.nav.theme.toggle}
       className="grid size-9 place-items-center rounded-lg text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
     >

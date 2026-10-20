@@ -110,6 +110,8 @@ export default async function WorkspaceMembersPage({ params }: { params: Params 
             return (
               <li
                 key={member.id}
+                data-menu-scope="row"
+                data-menu-title={member.name}
                 className="grid gap-3 px-5 py-4 md:grid-cols-[minmax(0,2fr)_minmax(15rem,1.3fr)_minmax(0,1.5fr)] md:items-center"
               >
                 <div className="flex min-w-0 items-center gap-3">

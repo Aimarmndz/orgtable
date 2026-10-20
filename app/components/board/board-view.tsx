@@ -438,6 +438,7 @@ export function BoardView({
               background: background === undefined ? board.background : background,
             }),
           }}
+          data-own-menu=""
           onContextMenu={handleContextMenu}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
@@ -608,6 +609,14 @@ export function BoardView({
 
       {selectedCard && (
         <CardModal
+          // Right click on the card's own space (not on a label, item, comment… which the
+          // app menu covers): the same menu as on the card in the column.
+          onContextMenu={(e) => {
+            const el = e.target as Element;
+            if (el.closest("[data-menu-scope]") || wantsNativeMenu(el, e.shiftKey)) return;
+            e.preventDefault();
+            openMenu({ kind: "card", cardId: selectedCard.id }, { x: e.clientX, y: e.clientY }, "popover");
+          }}
           card={selectedCard}
           boardId={board.id}
           boardLabels={board.labels}

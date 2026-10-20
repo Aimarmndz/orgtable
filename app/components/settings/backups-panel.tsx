@@ -98,7 +98,7 @@ export async function BackupsPanel({
               </thead>
               <tbody className="divide-y divide-border">
                 {backups.map((b) => (
-                  <tr key={b.id} className="align-top">
+                  <tr key={b.id} data-menu-scope="row" className="align-top">
                     <td className="py-2.5 pr-3 font-mono text-xs">{formatDateTime(b.createdAt, intl)}</td>
                     <td className="py-2.5 pr-3">
                       {t.history.kinds[b.kind]}

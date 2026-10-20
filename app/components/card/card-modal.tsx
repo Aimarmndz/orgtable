@@ -89,7 +89,9 @@ export function CardModal({
   members,
   currentUserId,
   onClose,
+  onContextMenu,
 }: {
+  onContextMenu?: (e: React.MouseEvent) => void;
   card: CardDTO;
   boardId: string;
   boardLabels: LabelDTO[];
@@ -147,6 +149,7 @@ export function CardModal({
       onClick={(e) => {
         if (e.target === dialogRef.current) onClose();
       }}
+      onContextMenu={onContextMenu}
       className="m-0 size-full max-h-none max-w-none overflow-y-auto overscroll-contain bg-transparent p-4 text-ink backdrop:bg-black/50 backdrop:motion-safe:animate-[overlay-in_150ms_ease-out] sm:p-8"
     >
       <div
@@ -491,7 +494,7 @@ function ChecklistBlock({
 
   return (
     <div>
-      <div className="flex items-center justify-between gap-2">
+      <div data-menu-scope="checklist" data-menu-title={checklist.title} className="flex items-center justify-between gap-2">
         <h4 className="text-sm font-semibold">{checklist.title}</h4>
         {canEdit && (
           <form action={deleteChecklist}>
@@ -515,7 +518,7 @@ function ChecklistBlock({
 
       <ul className="mt-2 space-y-1">
         {checklist.items.map((it) => (
-          <li key={it.id} className="group flex items-center gap-2">
+          <li key={it.id} data-menu-scope="item" data-menu-title={it.text} data-menu-copy={it.text} className="group flex items-center gap-2">
             <button
               onClick={() =>
                 canEdit &&
@@ -638,6 +641,8 @@ function AttachmentsSection({
           {attachments.map((a) => (
             <li
               key={a.id}
+              data-menu-scope="attachment"
+              data-menu-title={a.filename}
               className="group flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2"
             >
               <svg
@@ -780,6 +785,8 @@ function AssigneesSection({
           {assignees.map((a) => (
             <span
               key={a.id}
+              data-menu-scope="assignee"
+              data-menu-title={a.name}
               className="inline-flex items-center gap-1.5 rounded-full bg-surface-2 py-0.5 pl-0.5 pr-2.5 text-sm"
             >
               <Avatar name={a.name} size={6} />
@@ -854,7 +861,7 @@ function CommentsSection({
       {comments.length > 0 ? (
         <ul className="mt-3 space-y-3">
           {comments.map((c) => (
-            <li key={c.id} className="group flex gap-2.5">
+            <li key={c.id} data-menu-scope="comment" data-menu-title={c.authorName} data-menu-copy={c.text} className="group flex gap-2.5">
               <Avatar name={c.authorName} />
               <div className="min-w-0 flex-1">
                 <p className="flex items-baseline gap-2">

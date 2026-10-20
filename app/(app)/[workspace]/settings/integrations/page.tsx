@@ -92,7 +92,7 @@ export default async function IntegrationsPage({ params }: { params: Params }) {
         ) : (
           <ul className="divide-y divide-border">
             {incoming.map((hook) => (
-              <li key={hook.id} className="flex flex-wrap items-start gap-3 py-3">
+              <li key={hook.id} data-menu-scope="row" data-menu-title={hook.name} className="flex flex-wrap items-start gap-3 py-3">
                 <span className="min-w-0 flex-[1_1_14rem]">
                   <span className="block font-semibold">{hook.name}</span>
                   <span className="block text-xs text-ink-muted">

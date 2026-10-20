@@ -102,7 +102,7 @@ export default async function TeamPage({ params }: { params: Params }) {
           ) : (
             <ul className="divide-y divide-border">
               {team.members.map(({ member }) => (
-                <li key={member.user.id} className="flex items-center gap-3 py-2.5">
+                <li key={member.user.id} data-menu-scope="row" data-menu-title={member.user.name} className="flex items-center gap-3 py-2.5">
                   <span
                     aria-hidden
                     className="grid size-8 shrink-0 place-items-center rounded-full text-[11px] font-bold text-white"
@@ -158,7 +158,7 @@ export default async function TeamPage({ params }: { params: Params }) {
           ) : (
             <ul className="divide-y divide-border">
               {team.boards.map(({ board, role }) => (
-                <li key={board.id} className="flex flex-wrap items-center gap-3 py-2.5">
+                <li key={board.id} data-menu-scope="row" data-menu-title={board.title} className="flex flex-wrap items-center gap-3 py-2.5">
                   <span className="min-w-0 flex-[1_1_10rem]">
                     <Link href={boardPath(workspace.slug, board.slug)} className="block truncate text-sm font-semibold hover:underline">
                       {board.title}

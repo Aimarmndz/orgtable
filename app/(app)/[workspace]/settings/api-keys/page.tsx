@@ -47,7 +47,7 @@ export default async function ApiKeysPage({ params }: { params: Params }) {
         ) : (
           <ul className="divide-y divide-border">
             {keys.map((k) => (
-              <li key={k.id} className="flex flex-wrap items-center gap-3 py-3">
+              <li key={k.id} data-menu-scope="row" data-menu-title={k.name} className="flex flex-wrap items-center gap-3 py-3">
                 <span className="min-w-0 flex-[1_1_14rem]">
                   <span className="flex items-center gap-2">
                     <span className="truncate font-semibold">{k.name}</span>

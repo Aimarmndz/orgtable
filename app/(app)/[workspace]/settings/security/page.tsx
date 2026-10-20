@@ -92,7 +92,7 @@ export default async function OrgSecurityPage({ params }: { params: Params }) {
             {managed.map((p) => {
               const canAct = canActOnWorkspaceMember(role, p.role);
               return (
-                <li key={p.id} className="flex flex-col gap-2 py-3">
+                <li key={p.id} data-menu-scope="row" className="flex flex-col gap-2 py-3">
                   <div className="flex flex-wrap items-center gap-3">
                     <span
                       aria-hidden

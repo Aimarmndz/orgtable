@@ -146,6 +146,9 @@ access is decided only in `app/lib/access.ts`; cross-tenant cases get an integra
   `docs/workspaces.md`.
 - **Labels**: edited and deleted in the card and the board menu, with a palette key or a free
   `#rrggbb` colour (`app/components/ui/color-picker.tsx`). See `docs/board-menu.md`.
+- **Right click everywhere**: `app/components/app-context-menu.tsx` builds the menu from the
+  controls inside `data-menu-scope` elements, besides the board's own. New rows with actions
+  should carry `data-menu-scope` and `data-menu-title`. See `docs/board-menu.md`.
 - **Migrations**: generated with `prisma migrate dev` against the local development
   database (Postgres on port 5433, container `orgtable-dev-pg`) and applied with
   `migrate deploy` when the container starts. Some early migrations were written by hand;

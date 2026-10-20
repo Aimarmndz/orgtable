@@ -28,7 +28,7 @@ export default async function WorkspacesSettingsPage() {
       <SettingsCard title={t.listTitle}>
         <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
           {workspaces.map((w) => (
-            <li key={w.id} className="flex flex-wrap items-center gap-3 bg-surface px-4 py-3">
+            <li key={w.id} data-menu-scope="row" data-menu-title={w.name} className="flex flex-wrap items-center gap-3 bg-surface px-4 py-3">
               <WorkspaceAvatar workspace={w} />
               <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold">{w.name}</p>

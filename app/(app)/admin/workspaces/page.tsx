@@ -152,7 +152,7 @@ export default async function AdminWorkspacesPage({
             </thead>
             <tbody className="divide-y divide-border">
               {workspaces.map((w) => (
-                <tr key={w.id} className={`align-middle ${w.suspendedAt ? "bg-danger/[0.04]" : ""}`}>
+                <tr key={w.id} data-menu-scope="row" data-menu-title={w.name} className={`align-middle ${w.suspendedAt ? "bg-danger/[0.04]" : ""}`}>
                   <td className="px-4 py-3.5">
                     <p className="font-semibold">{w.name}</p>
                     <p className="font-mono text-xs text-ink-muted">/{w.slug}</p>
