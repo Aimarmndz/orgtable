@@ -24,6 +24,8 @@ server.
 - **Sort by due date** puts the soonest first and the cards without a date last.
 - A **viewer** gets Open card and Copy link on a card, and the board's menu elsewhere
   (calendar, filters, members, link, export).
+- **Organization settings** is only listed for people who belong to the organization; a
+  guest would get a 404 there.
 
 ## Mouse, keyboard and touch
 

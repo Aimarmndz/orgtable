@@ -1,18 +1,16 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import {
-  getInstanceConfig,
-  isSetupComplete,
-  requireUser,
-} from "@/app/lib/dal";
+import { isSetupComplete, requireUser } from "@/app/lib/dal";
 import {
   getNotificationsForUser,
   getUnreadNotificationCount,
+  getWorkspacesForUser,
 } from "@/app/lib/queries";
 import { ThemeToggle } from "@/app/components/theme-toggle";
 import { SearchBox } from "@/app/components/search-box";
 import { NotificationsBell } from "@/app/components/notifications-bell";
 import { AccountMenu } from "@/app/components/account-menu";
+import { WorkspaceSwitcher } from "@/app/components/workspace-switcher";
 import { getI18n } from "@/app/i18n/server";
 
 // The whole signed-in area depends on the session and the database, so it is never
@@ -27,28 +25,26 @@ export default async function AppLayout({
 }) {
   if (!(await isSetupComplete())) redirect("/setup");
   const user = await requireUser();
-  const [{ m }, config, notifications, unreadCount] = await Promise.all([
+  const [{ m }, workspaces, notifications, unreadCount] = await Promise.all([
     getI18n(),
-    getInstanceConfig(),
+    getWorkspacesForUser(user.id),
     getNotificationsForUser(user.id),
     getUnreadNotificationCount(user.id),
   ]);
 
+  const switcher = workspaces.map((w) => ({
+    id: w.id,
+    slug: w.slug,
+    name: w.name,
+    kind: w.kind,
+    brandColor: w.brandColor,
+    logoStoredName: w.logoStoredName,
+  }));
+
   return (
     <div className="flex flex-1 flex-col">
       <header className="relative z-20 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border bg-surface/80 px-3 backdrop-blur-sm sm:px-4">
-        <Link href="/boards" className="flex min-w-0 items-center gap-2.5">
-          <span className="grid size-7 shrink-0 place-items-center rounded-md bg-accent font-display text-sm font-extrabold text-accent-ink">
-            o
-          </span>
-          {/* title: the name allows 60 characters and is truncated on mobile. */}
-          <span
-            title={config?.instanceName ?? m.common.appName}
-            className="truncate font-display font-bold tracking-tight"
-          >
-            {config?.instanceName ?? m.common.appName}
-          </span>
-        </Link>
+        <WorkspaceSwitcher workspaces={switcher} />
 
         {/* Search: centred, and only from medium screens up; on mobile /search is
             reached from the icon on the right. */}
@@ -88,6 +84,7 @@ export default async function AppLayout({
             name={user.name}
             email={user.email}
             isAdmin={user.role === "ADMIN"}
+            organizations={workspaces.filter((w) => w.kind === "ORGANIZATION")}
           />
         </div>
       </header>

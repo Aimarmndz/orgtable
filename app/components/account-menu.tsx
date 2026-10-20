@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { logout } from "@/app/lib/actions/auth";
 import { initials } from "@/app/lib/initials";
+import { WorkspaceAvatar } from "@/app/components/workspace/workspace-avatar";
 import { fmt } from "@/app/i18n/format";
 import { getI18n } from "@/app/i18n/server";
 
-// Account menu in the top bar: who you are, settings, privacy, administration (admins
-// only) and sign out. Uses the browser's `popover` API: it opens and closes without our
-// own JavaScript, closes on outside click or Escape, and the button exposes its state to
-// screen readers. No "use client": it is plain HTML.
+// Account menu in the top bar: who you are, settings, privacy, the settings of each of your
+// organizations, administration (admins only) and sign out. Uses the browser's `popover`
+// API: it opens and closes without our own JavaScript, closes on outside click or Escape,
+// and the button exposes its state to screen readers. No "use client": it is plain HTML.
 
 const ITEM =
   "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm text-ink transition-colors hover:bg-surface-2 focus-visible:bg-surface-2 focus-visible:outline-none";
@@ -33,10 +34,12 @@ export async function AccountMenu({
   name,
   email,
   isAdmin,
+  organizations,
 }: {
   name: string;
   email: string;
   isAdmin: boolean;
+  organizations: { id: string; slug: string; name: string; brandColor: string | null; logoStoredName: string | null }[];
 }) {
   const { m } = await getI18n();
   return (
@@ -71,6 +74,21 @@ export async function AccountMenu({
           <Icon d={<path d="M12 3v12M7 10l5 5 5-5M5 21h14" />} />
           {m.nav.account.privacy}
         </Link>
+        {organizations.length > 0 && (
+          <>
+            <div className="my-1 h-px bg-border" />
+            <p className="px-2.5 pb-1 pt-1.5 text-[10.5px] font-bold uppercase tracking-[0.09em] text-ink-muted">
+              {m.nav.account.orgs}
+            </p>
+            {organizations.map((o) => (
+              <Link key={o.id} href={`/${o.slug}/settings`} className={ITEM}>
+                <WorkspaceAvatar workspace={o} size={20} />
+                <span className="min-w-0 flex-1 truncate">{fmt(m.nav.switcher.settingsOf, { name: o.name })}</span>
+              </Link>
+            ))}
+            <div className="my-1 h-px bg-border" />
+          </>
+        )}
         {isAdmin && (
           <Link href="/admin/users" className={ITEM}>
             <Icon d={<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />} />

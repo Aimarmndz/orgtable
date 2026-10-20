@@ -12,7 +12,8 @@
     "security": "Contraseña y sesiones",
     "privacy": "Privacidad y datos",
     "admin": "Administración",
-    "signOut": "Cerrar sesión"
+    "signOut": "Cerrar sesión",
+    "orgs": "Organizaciones"
   },
   "notifications": {
     "title": "Notificaciones",
@@ -26,5 +27,13 @@
       "yesterday": "ayer",
       "days": "hace {count} d"
     }
+  },
+  "switcher": {
+    "label": "Espacio: {name}. Cambiar de espacio",
+    "heading": "Espacios",
+    "personal": "Tableros personales",
+    "allBoards": "Todos los tableros",
+    "settingsOf": "Ajustes de {name}",
+    "createOrg": "Crear una organización"
   }
 }

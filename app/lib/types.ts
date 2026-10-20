@@ -69,6 +69,9 @@ export type BoardDTO = {
   // The viewer may change `visibility`: they manage the board or hold "boards.visibility"
   // in its organization (app/lib/permissions.ts). The action checks it again.
   canChangeVisibility: boolean;
+  // The viewer belongs to the board's organization, so its settings open for them (a guest
+  // added only to the board would get a 404 there).
+  inOrganization: boolean;
   lists: ListDTO[];
   labels: LabelDTO[];
 };

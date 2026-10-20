@@ -453,15 +453,40 @@ export function BoardView({
         >
           <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 px-4 pb-2 pt-4">
             <div className="min-w-0 max-w-full">
-              {/* Where the board lives: its workspace, one click back. */}
-              <Link
-                href={`/${board.workspace.slug}`}
-                className="text-xs font-semibold text-white/80 underline-offset-2 drop-shadow-sm hover:text-white hover:underline"
-              >
-                {board.workspace.kind === "PERSONAL"
-                  ? `/${board.workspace.slug}`
-                  : `${board.workspace.name} · /${board.workspace.slug}`}
-              </Link>
+              {/* Where the board lives: its workspace, one click back, and its settings
+                  for whoever belongs to the organization. */}
+              <div className="flex items-center gap-1.5">
+                <Link
+                  href={`/${board.workspace.slug}`}
+                  className="text-xs font-semibold text-white/80 underline-offset-2 drop-shadow-sm hover:text-white hover:underline"
+                >
+                  {board.workspace.kind === "PERSONAL"
+                    ? `/${board.workspace.slug}`
+                    : `${board.workspace.name} · /${board.workspace.slug}`}
+                </Link>
+                {board.inOrganization && (
+                  <Link
+                    href={`/${board.workspace.slug}/settings`}
+                    aria-label={fmt(m.nav.switcher.settingsOf, { name: board.workspace.name })}
+                    title={fmt(m.nav.switcher.settingsOf, { name: board.workspace.name })}
+                    className="grid size-6 place-items-center rounded-md text-white/80 drop-shadow-sm transition-colors hover:bg-white/20 hover:text-white"
+                  >
+                    <svg
+                      className="size-3.5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <circle cx="12" cy="12" r="3" />
+                      <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
+                    </svg>
+                  </Link>
+                )}
+              </div>
               <h1 className="truncate font-display text-2xl font-bold tracking-tight text-white drop-shadow-sm">
                 {board.title}
               </h1>

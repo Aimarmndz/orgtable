@@ -12,7 +12,8 @@
     "security": "Password and sessions",
     "privacy": "Privacy and data",
     "admin": "Administration",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "orgs": "Organizations"
   },
   "notifications": {
     "title": "Notifications",
@@ -26,5 +27,13 @@
       "yesterday": "yesterday",
       "days": "{count} d ago"
     }
+  },
+  "switcher": {
+    "label": "Workspace: {name}. Switch workspace",
+    "heading": "Workspaces",
+    "personal": "Personal boards",
+    "allBoards": "All boards",
+    "settingsOf": "{name} settings",
+    "createOrg": "Create an organization"
   }
 }

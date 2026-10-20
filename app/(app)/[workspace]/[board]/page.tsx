@@ -63,10 +63,10 @@ export default async function BoardPage({
   // every action checks it again on the server).
   const members: BoardMemberDTO[] = await getBoardPeople(id, user.id);
   const viewerRole: BoardRole = (await effectiveBoardRole(id, user.id)) ?? "VIEWER";
+  const orgAccess =
+    board.workspace.kind === "ORGANIZATION" ? await workspaceAccessOf(board.workspaceId, user.id) : null;
   const canChangeVisibility =
-    canManageBoard(viewerRole) ||
-    (board.workspace.kind === "ORGANIZATION" &&
-      Boolean((await workspaceAccessOf(board.workspaceId, user.id))?.permissions.has("boards.visibility")));
+    canManageBoard(viewerRole) || Boolean(orgAccess?.permissions.has("boards.visibility"));
 
   // Project to a minimal, serializable DTO (dates as ISO strings).
   const dto: BoardDTO = {
@@ -76,6 +76,7 @@ export default async function BoardPage({
     workspace: board.workspace,
     visibility: board.visibility,
     canChangeVisibility,
+    inOrganization: orgAccess !== null,
     labels: board.labels.map((l) => ({
       id: l.id,
       name: l.name,

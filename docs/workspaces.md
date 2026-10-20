@@ -61,9 +61,20 @@ API, search, real time, attachments and notifications use. The effective role is
 A suspended workspace gives nobody access. Someone outside the organization added to one board
 (a guest) sees that board only, and the names (not the emails) of the organization's people.
 
+### Moving between workspaces
+
+The top-left corner of the bar is the **workspace switcher**
+(`app/components/workspace-switcher.tsx`): it shows the workspace of the current address (its
+logo or initials and its name; "All boards" outside any) and opens a list of the person's
+workspaces, *All boards* (`/boards`), the settings of the current organization and *Create an
+organization*. It replaced a logo with the instance name that always led to `/boards`, out of
+the organization the person was in.
+
 ## Settings of an organization
 
-Every member of an organization opens its settings at `/<slug>/settings`. Each section is its
+Every member of an organization opens its settings at `/<slug>/settings`, reached from the
+switcher, from the account menu (one entry per organization), from the gear next to the
+organization's name on each of its boards and from the right-click menu. Each section is its
 own page with its own address, listed in a side menu (on a phone, `/<slug>/settings` is the
 list of sections and every page has a "back" link instead of the menu):
 

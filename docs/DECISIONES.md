@@ -7,6 +7,25 @@ living log from 2026-09-24 onwards.
 
 ---
 
+## 2026-10-20 — A workspace switcher instead of the instance name in the top bar
+
+**Context.** The top-left corner showed the instance name and always led to `/boards`, which took
+people out of the organization they were in, and an organization's settings were several hops away.
+
+**Decision.** A switcher from the first segment of the URL: the current workspace (logo or
+initials), a list of the person's workspaces, *All boards*, the current organization's settings
+and *Create an organization*. The account menu lists the settings of each organization, and each
+organization board shows a gear next to the organization's name. The gear, and the board menu's
+*Organization settings*, only appear for members (`BoardDTO.inOrganization`): a guest got a 404.
+
+**Alternatives considered.** Keeping the instance name and pointing it at the current workspace:
+still no way to switch, and the name said nothing about where one was.
+
+**Consequences.** The instance name is no longer in the signed-in top bar; it is still the
+two-factor issuer and appears on the legal pages.
+
+---
+
 ## 2026-10-15 — Backups in the app: a readable zip, S3 by hand, and atomic restores
 
 **Context.** The owner chose all four: organization export/import, scheduled backups, the

@@ -221,6 +221,26 @@ body::before {
   animation: dialog-in 160ms ease-out;
 }
 
+/* Workspace switcher (app/components/workspace-switcher.tsx): the same, on the left. */
+.workspace-switcher {
+  position: fixed;
+  inset: auto;
+  top: 3.75rem;
+  left: 0.75rem;
+  max-height: calc(100vh - 4.5rem);
+  overflow-y: auto;
+}
+@supports (position-anchor: --workspace-switcher) {
+  .workspace-switcher {
+    position-anchor: --workspace-switcher;
+    top: calc(anchor(bottom) + 0.4rem);
+    left: anchor(left);
+  }
+}
+.workspace-switcher:popover-open {
+  animation: dialog-in 160ms ease-out;
+}
+
 /* ───────────────────────────────────────────────────────────────────────────
    Landing (/, app/components/landing/): RETRO. The same warm palette, drawn like
    an old desktop: 2px outlines, hard offset shadows, pinstriped title bars, a

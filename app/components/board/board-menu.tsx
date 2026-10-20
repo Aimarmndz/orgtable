@@ -316,7 +316,7 @@ export function BoardMenu({
       icon: icons.download,
       onSelect: () => downloadFrom(`/api/boards/${board.id}/export`),
     });
-    if (board.workspace.kind === "ORGANIZATION") {
+    if (board.inOrganization) {
       entries.push({
         kind: "item",
         id: "org-settings",
