@@ -28,7 +28,7 @@ import type { BoardRole } from "@/app/lib/roles";
 import { canEditBoard, canManageBoard } from "@/app/lib/roles";
 import { moveCard } from "@/app/lib/actions/cards";
 import { reorderList } from "@/app/lib/actions/lists";
-import { boardBackgroundFor } from "@/app/lib/colors";
+import { boardBackgroundCss, boardNeedsScrim } from "@/app/lib/colors";
 import {
   boardCollisionDetection,
   boardKeyboardCoordinates,
@@ -109,6 +109,12 @@ export function BoardView({
 
   const canEdit = canEditBoard(viewerRole);
   const canManage = canManageBoard(viewerRole);
+  // What the board shows: the colour picked in the menu until the server confirms it.
+  const shownBackground = {
+    id: board.id,
+    background: background === undefined ? board.background : background,
+    backgroundImageStoredName: board.backgroundImageStoredName,
+  };
   const filtering = filtersActive(filters);
 
   // Resync with the server when new data arrives ("adjust state during render" pattern,
@@ -432,12 +438,7 @@ export function BoardView({
       >
         <div
           className="flex flex-1 flex-col overflow-hidden [-webkit-touch-callout:none]"
-          style={{
-            background: boardBackgroundFor({
-              id: board.id,
-              background: background === undefined ? board.background : background,
-            }),
-          }}
+          style={{ background: boardBackgroundCss(shownBackground) }}
           data-own-menu=""
           onContextMenu={handleContextMenu}
           onPointerDown={handlePointerDown}
@@ -452,7 +453,12 @@ export function BoardView({
             }
           }}
         >
-          <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 px-4 pb-2 pt-4">
+          {/* Over an image or a light colour, a dark veil keeps the white header readable. */}
+          <div
+            className={`flex shrink-0 flex-wrap items-center justify-between gap-3 px-4 pb-2 pt-4 ${
+              boardNeedsScrim(shownBackground) ? "bg-gradient-to-b from-black/55 via-black/30 to-transparent pb-5" : ""
+            }`}
+          >
             <div className="min-w-0 max-w-full">
               {/* Where the board lives: its workspace, one click back, and its settings
                   for whoever belongs to the organization. */}
@@ -630,7 +636,7 @@ export function BoardView({
         <BoardMenu
           key={menu.key}
           state={menu}
-          board={{ ...board, background: background === undefined ? board.background : background }}
+          board={{ ...board, background: shownBackground.background }}
           lists={lists}
           members={members}
           currentUserId={currentUserId}

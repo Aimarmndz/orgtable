@@ -34,6 +34,7 @@ export async function getBoardSummariesForUser(userId: string, workspaceId?: str
       title: true,
       slug: true,
       background: true,
+      backgroundImageStoredName: true,
       ownerId: true,
       visibility: true,
       workspace: {

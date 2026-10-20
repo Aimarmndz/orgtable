@@ -65,6 +65,8 @@ export type BoardDTO = {
   id: string;
   title: string;
   background: string | null;
+  // Uploaded image over the colour (boardImageUrl); the stored name is its cache key.
+  backgroundImageStoredName: string | null;
   // Where it lives (/<workspace.slug>/…) and who besides its members sees it.
   workspace: { slug: string; name: string; kind: "PERSONAL" | "ORGANIZATION" };
   visibility: "WORKSPACE" | "PRIVATE";

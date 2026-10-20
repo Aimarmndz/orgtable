@@ -305,6 +305,10 @@ model Board {
   title       String
   description String?
   background  String?
+  // Background image on disk (app/lib/storage.ts), over the colour above: the random stored
+  // name (also the cache key of its URL) and the type sniffed from its bytes.
+  backgroundImageStoredName String?
+  backgroundImageMimeType   String?
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
   lists       List[]

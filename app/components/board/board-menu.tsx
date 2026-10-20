@@ -4,19 +4,14 @@ import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { BoardDTO, CardDTO, ListDTO } from "@/app/lib/types";
 import type { BoardMemberDTO } from "./members-panel";
-import {
-  BOARD_COLORS,
-  BOARD_COLOR_KEYS,
-  labelBackground,
-  type BoardColor,
-} from "@/app/lib/colors";
+import { labelBackground } from "@/app/lib/colors";
 import {
   dueShortcuts,
   edgeKey,
   neighbourKey,
   type Point,
 } from "@/app/lib/board-menu";
-import { renameBoard, setBoardBackground } from "@/app/lib/actions/boards";
+import { renameBoard } from "@/app/lib/actions/boards";
 import {
   deleteList,
   moveAllCardsTo,
@@ -33,6 +28,7 @@ import {
 } from "@/app/lib/actions/cards";
 import { toggleCardLabel } from "@/app/lib/actions/labels";
 import { LabelManager } from "../card/label-editor";
+import { BackgroundPanel } from "./background-panel";
 import { assignMember, unassignMember } from "@/app/lib/actions/assignees";
 import {
   ContextMenu,
@@ -191,53 +187,20 @@ export function BoardMenu({
         submenu: {
           id: "background",
           title: t.backgroundHeading,
-          width: 252,
+          width: 300,
           entries: [
             {
               kind: "custom",
-              id: "swatches",
+              id: "background-panel",
               render: () => (
-                <Swatches
-                  current={board.background}
-                  names={m.workspaces.rolesPage.colors}
-                  onPick={(color) => {
-                    onBackground(color);
-                    void run(() =>
-                      setBoardBackground({
-                        boardId: board.id,
-                        background: color,
-                      }),
-                    );
-                  }}
+                <BackgroundPanel
+                  boardId={board.id}
+                  background={board.background}
+                  hasImage={Boolean(board.backgroundImageStoredName)}
+                  onPreview={onBackground}
+                  onDone={() => {}}
+                  onError={onNotice}
                 />
-              ),
-            },
-            sep("bg-sep"),
-            {
-              kind: "item",
-              id: "bg-auto",
-              role: "menuitemradio",
-              checked:
-                !board.background ||
-                !Object.hasOwn(BOARD_COLORS, board.background),
-              label: t.backgroundAuto,
-              hint: t.backgroundAutoHint,
-              icon: icons.refresh,
-              keepOpen: true,
-              onSelect: () => {
-                onBackground(null);
-                void run(() =>
-                  setBoardBackground({ boardId: board.id, background: null }),
-                );
-              },
-            },
-            {
-              kind: "custom",
-              id: "bg-note",
-              render: () => (
-                <p className="px-2.5 pb-2 pt-1 text-xs text-ink-muted">
-                  {t.backgroundNote}
-                </p>
               ),
             },
           ],
@@ -864,53 +827,6 @@ export function BoardMenu({
       backLabel={t.back}
       onClose={onClose}
     />
-  );
-}
-
-export function Swatches({
-  current,
-  names,
-  onPick,
-}: {
-  current: string | null;
-  names: Record<string, string>;
-  onPick: (color: BoardColor) => void;
-}) {
-  return (
-    <div className="grid grid-cols-4 gap-2 px-2 pb-2 pt-1">
-      {BOARD_COLOR_KEYS.map((key) => {
-        const selected = current === key;
-        return (
-          <button
-            key={key}
-            type="button"
-            data-menu-item=""
-            role="menuitemradio"
-            aria-checked={selected}
-            aria-label={names[key] ?? key}
-            title={names[key] ?? key}
-            onClick={() => onPick(key)}
-            style={{ background: BOARD_COLORS[key] }}
-            className={`grid h-11 place-items-center rounded-[10px] text-white outline-offset-2 focus-visible:outline-2 focus-visible:outline-ink ${selected ? "outline-2 outline-ink" : ""}`}
-          >
-            {selected && (
-              <svg
-                className="size-[18px]"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M5 12l5 5 9-10" />
-              </svg>
-            )}
-          </button>
-        );
-      })}
-    </div>
   );
 }
 

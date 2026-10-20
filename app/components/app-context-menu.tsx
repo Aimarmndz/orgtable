@@ -3,8 +3,9 @@
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ContextMenu, type MenuEntry, type MenuItem } from "@/app/components/board/context-menu";
-import { icons, RenameForm, Swatches } from "@/app/components/board/board-menu";
-import { renameBoard, setBoardBackground } from "@/app/lib/actions/boards";
+import { icons, RenameForm } from "@/app/components/board/board-menu";
+import { BackgroundPanel } from "@/app/components/board/background-panel";
+import { renameBoard } from "@/app/lib/actions/boards";
 import type { SwitcherWorkspace } from "@/app/components/workspace-switcher";
 import { useI18n } from "@/app/i18n/client";
 import { fmt } from "@/app/i18n/format";
@@ -69,7 +70,14 @@ export function AppContextMenu({ workspaces }: { workspaces: SwitcherWorkspace[]
       const primary = scope.matches("a[href]") ? (scope as HTMLAnchorElement) : scope.querySelector<HTMLAnchorElement>("a[href]");
       if (primary) entries.push(...linkItems(primary, "scope"));
       if (scope.dataset.menuBoard && scope.hasAttribute("data-menu-manage"))
-        entries.push(...boardTileItems(scope.dataset.menuBoard, title, scope.dataset.menuBackground || null));
+        entries.push(
+          ...boardTileItems(
+            scope.dataset.menuBoard,
+            title,
+            scope.dataset.menuBackground || null,
+            scope.hasAttribute("data-menu-image"),
+          ),
+        );
       const seen = new Set<string>();
       for (const el of scope.querySelectorAll<HTMLElement>(CONTROL)) {
         if (el === primary || el.hasAttribute("data-menu-skip") || (el as HTMLButtonElement).disabled) continue;
@@ -193,7 +201,12 @@ export function AppContextMenu({ workspaces }: { workspaces: SwitcherWorkspace[]
 
     // A board tile (board-grid.tsx) the person manages: rename it and change its background
     // without opening it, through the same actions as the board's own menu.
-    function boardTileItems(boardId: string, boardTitle: string, background: string | null): MenuEntry[] {
+    function boardTileItems(
+      boardId: string,
+      boardTitle: string,
+      background: string | null,
+      hasImage: boolean,
+    ): MenuEntry[] {
       const tb = m.boards.menu;
       const done = async (result: Promise<{ ok: boolean }>) => {
         try {
@@ -241,28 +254,20 @@ export function AppContextMenu({ workspaces }: { workspaces: SwitcherWorkspace[]
           submenu: {
             id: "tile-background",
             title: tb.backgroundHeading,
-            width: 252,
+            width: 300,
             entries: [
               {
                 kind: "custom",
-                id: "tile-swatches",
-                render: ({ close }) => (
-                  <Swatches
-                    current={background}
-                    names={m.workspaces.rolesPage.colors}
-                    onPick={(color) => {
-                      close();
-                      void done(setBoardBackground({ boardId, background: color }));
-                    }}
+                id: "tile-background-panel",
+                render: () => (
+                  <BackgroundPanel
+                    boardId={boardId}
+                    background={background}
+                    hasImage={hasImage}
+                    onDone={() => router.refresh()}
+                    onError={setNotice}
                   />
                 ),
-              },
-              {
-                kind: "item",
-                id: "tile-bg-auto",
-                label: tb.backgroundAuto,
-                icon: icons.refresh,
-                onSelect: () => void done(setBoardBackground({ boardId, background: null })),
               },
             ],
           },

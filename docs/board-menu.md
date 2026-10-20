@@ -14,10 +14,19 @@ server.
 | **Card** | Open · Rename · Labels · Due date (today, tomorrow, next Monday, in a week, a date, remove) · Assign · Move to (another list, top or bottom of its list) · Duplicate · Copy link · Delete (inline confirmation) |
 | **Open card** (its own space, not a label, item or comment) | The same as on the card |
 
-- **Change background**: the six board colours plus *Slate* and *Ink*, or *Automatic* (the
-  colour derived from the board's id). Owners only; every member sees the change.
-  `pickBoardColor` still draws from the original six, so boards that never chose a colour
-  keep theirs.
+- **Change background** (`app/components/board/background-panel.tsx`, also on the right
+  click of a board tile): the six board colours plus *Slate* and *Ink*, *Automatic* (the
+  colour derived from the board's id), any colour from the picker (`#rrggbb`), or an image.
+  Owners only; every member sees the change. `pickBoardColor` still draws from the original
+  six, so boards that never chose a colour keep theirs.
+  - The image is shrunk to 2560 px in the browser (WebP, or JPEG), checked by its bytes on the
+    server (PNG, JPEG or WebP, never SVG, 3 MB at most), stored on the uploads volume
+    (`background-<uuid>.<ext>`) and served by `/api/boards/<id>/background` only to people who
+    can open the board. It covers the colour, which shows while it loads. Removing it, or
+    deleting the board, deletes the file. Board exports and organization backups carry the
+    colour, not the image (instance backups copy the whole uploads volume).
+  - Over an image, or a free colour too light for white text, the header gets a dark veil
+    (`boardNeedsScrim`).
 - **Duplicate** copies the card right below itself, titled "<title> (copy)": description,
   due date, labels and checklists (with their ticks). Attachments, comments and assignees
   stay with the original.

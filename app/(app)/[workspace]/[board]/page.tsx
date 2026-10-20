@@ -73,6 +73,7 @@ export default async function BoardPage({
     id: board.id,
     title: board.title,
     background: board.background,
+    backgroundImageStoredName: board.backgroundImageStoredName,
     workspace: board.workspace,
     visibility: board.visibility,
     canChangeVisibility,

@@ -255,6 +255,15 @@
     "quickLink": "Link",
     "manageLabels": "Labels",
     "labelsHeading": "Board labels",
-    "noLabels": "No labels yet."
+    "noLabels": "No labels yet.",
+    "applyColour": "Use this colour",
+    "image": "Image",
+    "uploadImage": "Upload an image",
+    "changeImage": "Change the image",
+    "removeImage": "Remove the image",
+    "uploadingImage": "Uploading…",
+    "imageHint": "Shrunk to 2560 px in your browser. Everyone on the board sees it.",
+    "imageInvalid": "That file is not an image we can use. Try PNG, JPEG or WebP.",
+    "imageTooBig": "The image is still too big after shrinking it. Try another one."
   }
 }

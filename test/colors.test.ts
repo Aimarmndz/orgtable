@@ -4,6 +4,8 @@ import {
   boardBackgroundFor,
   labelBackground,
   labelText,
+  boardBackgroundCss,
+  boardNeedsScrim,
   BOARD_COLORS,
   BOARD_COLOR_KEYS,
   LABEL_COLORS,
@@ -36,6 +38,22 @@ describe("colors", () => {
     for (const bad of ["#f54", "f54927", "#f54927;background:url(x)", "red; x", "#gggggg"]) {
       expect(labelBackground(bad)).toBe(LABEL_COLORS.blue);
     }
+  });
+
+  it("boards take a free #rrggbb colour and an image on top of it", () => {
+    expect(boardBackgroundFor({ id: "x", background: "#3B6E8F" })).toBe("#3b6e8f");
+    expect(boardBackgroundFor({ id: "x", background: "#3b6e8f;x" })).toBe(BOARD_COLORS[pickBoardColor("x")]);
+    expect(boardBackgroundCss({ id: "b1", background: "teal", backgroundImageStoredName: "background-a.webp" })).toBe(
+      `center / cover no-repeat url("/api/boards/b1/background?v=background-a.webp"), ${BOARD_COLORS.teal}`,
+    );
+    expect(boardBackgroundCss({ id: "b1", background: "teal" })).toBe(BOARD_COLORS.teal);
+  });
+
+  it("boardNeedsScrim veils images and light free colours, not the palette", () => {
+    expect(boardNeedsScrim({ background: "teal" })).toBe(false);
+    expect(boardNeedsScrim({ background: "#1d3557" })).toBe(false);
+    expect(boardNeedsScrim({ background: "#ffe066" })).toBe(true);
+    expect(boardNeedsScrim({ background: null, backgroundImageStoredName: "background-a.webp" })).toBe(true);
   });
 
   it("labelText picks the text that contrasts more", () => {

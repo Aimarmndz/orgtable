@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { initials } from "@/app/lib/initials";
 import { UserPhoto } from "@/app/components/user-photo";
-import { boardBackgroundFor } from "@/app/lib/colors";
+import { boardBackgroundCss } from "@/app/lib/colors";
 import { boardPath } from "@/app/lib/slugs";
 import type { BoardSummary } from "@/app/lib/queries";
 import { DeleteBoardButton } from "@/app/(app)/boards/delete-board-button";
@@ -31,11 +31,12 @@ export async function BoardGrid({ boards }: { boards: BoardSummary[] }) {
               data-menu-board={board.id}
               data-menu-background={board.background ?? ""}
               data-menu-manage={board.canManage ? "" : undefined}
+              data-menu-image={board.backgroundImageStoredName ? "" : undefined}
               className="group relative"
             >
               <Link
                 href={boardPath(board.workspaceSlug, board.slug)}
-                style={{ background: boardBackgroundFor(board) }}
+                style={{ background: boardBackgroundCss(board) }}
                 className="relative flex h-36 flex-col justify-end overflow-hidden rounded-2xl p-4 text-white shadow-[0_4px_16px_-8px_oklch(0.27_0.022_52/0.3)] ring-1 ring-inset ring-black/10 transition-transform duration-150 ease-out hover:-translate-y-0.5"
               >
                 <span

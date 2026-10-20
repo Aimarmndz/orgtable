@@ -110,3 +110,16 @@ export async function saveAvatarFile(bytes: Buffer, ext: string): Promise<string
   await writeFile(storedPath(storedName), bytes);
   return storedName;
 }
+
+// --- Board background images (docs/board-menu.md, "Background") -------------------------
+
+// The browser shrinks the image to 2560 px before sending it; this is only the ceiling.
+export const MAX_BACKGROUND_BYTES = 3 * 1024 * 1024;
+
+/** Saves a board background image under a random name. Same types as a logo. */
+export async function saveBackgroundFile(bytes: Buffer, ext: string): Promise<string> {
+  await mkdir(UPLOAD_DIR, { recursive: true });
+  const storedName = `background-${randomUUID()}${ext}`;
+  await writeFile(storedPath(storedName), bytes);
+  return storedName;
+}

@@ -30,11 +30,16 @@ export function pickBoardColor(seed: string): BoardColor {
   return AUTO_BOARD_COLORS[h % AUTO_BOARD_COLORS.length];
 }
 
-/** A board's background: its chosen colour or, if none, a stable one based on its id. */
+/**
+ * A board's background: its chosen colour (a palette key or a free "#rrggbb" from the
+ * picker) or, if none, a stable one based on its id. An uploaded image goes on top of it
+ * (boardImageUrl).
+ */
 export function boardBackgroundFor(b: {
   id: string;
   background: string | null;
 }): string {
+  if (b.background && HEX_COLOR.test(b.background)) return b.background.toLowerCase();
   // Object.hasOwn rather than `in`: `in` accepts prototype keys ('constructor',
   // 'toString'…) and would return a function instead of a colour.
   if (b.background && Object.hasOwn(BOARD_COLORS, b.background)) {
@@ -91,4 +96,32 @@ function relativeLuminance(hex: string): number {
     return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
   };
   return 0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5);
+}
+
+/** URL of a board's background image, or null. The stored name is the cache key. */
+export function boardImageUrl(b: { id: string; backgroundImageStoredName?: string | null }): string | null {
+  return b.backgroundImageStoredName
+    ? `/api/boards/${b.id}/background?v=${encodeURIComponent(b.backgroundImageStoredName)}`
+    : null;
+}
+
+/**
+ * Whether the board's header needs a dark veil for its white text: always over an image
+ * (any photo), and over a free colour too light for white text (WCAG 4.5:1). The palette
+ * was built dark enough.
+ */
+export function boardNeedsScrim(b: { background: string | null; backgroundImageStoredName?: string | null }): boolean {
+  if (b.backgroundImageStoredName) return true;
+  return Boolean(b.background && HEX_COLOR.test(b.background) && 1.05 / (relativeLuminance(b.background) + 0.05) < 4.5);
+}
+
+/** The CSS `background` of a board: its image (covering, centred) over its colour. */
+export function boardBackgroundCss(b: {
+  id: string;
+  background: string | null;
+  backgroundImageStoredName?: string | null;
+}): string {
+  const colour = boardBackgroundFor(b);
+  const image = boardImageUrl(b);
+  return image ? `center / cover no-repeat url("${image}"), ${colour}` : colour;
 }

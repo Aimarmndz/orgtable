@@ -21,6 +21,7 @@ import { positionAtEnd } from "@/app/lib/ordering";
 import { deleteBoardWithAttachments } from "@/app/lib/services/attachments";
 import { getI18n } from "@/app/i18n/server";
 import { fmt } from "@/app/i18n/format";
+import { deleteAttachmentFile, MAX_BACKGROUND_BYTES, saveBackgroundFile, sniffLogoType } from "@/app/lib/storage";
 
 const IMPORT_MAX_MB = 5;
 
@@ -122,6 +123,48 @@ export async function setBoardBackground(input: {
   const parsed = boardBackgroundChoiceSchema.safeParse(input.background);
   if (!parsed.success) return { ok: false };
   await prisma.board.update({ where: { id: boardId }, data: { background: parsed.data } });
+  revalidateBoard(boardId);
+  return { ok: true };
+}
+
+/**
+ * Sets an uploaded image as the board's background (owners, like the colour). The browser
+ * already shrank it; here the type is read from the bytes (PNG, JPEG, WebP; never SVG).
+ */
+export async function setBoardBackgroundImage(
+  formData: FormData,
+): Promise<{ ok: true } | { ok: false; error: "forbidden" | "bad_image" | "too_big" }> {
+  const boardId = String(formData.get("boardId"));
+  const { role } = await requireBoardAccess(boardId);
+  if (!canManageBoard(role)) return { ok: false, error: "forbidden" };
+  const file = formData.get("image");
+  if (!(file instanceof File) || file.size === 0) return { ok: false, error: "bad_image" };
+  if (file.size > MAX_BACKGROUND_BYTES) return { ok: false, error: "too_big" };
+  const bytes = Buffer.from(await file.arrayBuffer());
+  const type = sniffLogoType(bytes);
+  if (!type) return { ok: false, error: "bad_image" };
+  const storedName = await saveBackgroundFile(bytes, type.ext);
+  const before = await prisma.board.findUniqueOrThrow({ where: { id: boardId }, select: { backgroundImageStoredName: true } });
+  await prisma.board.update({
+    where: { id: boardId },
+    data: { backgroundImageStoredName: storedName, backgroundImageMimeType: type.mime },
+  });
+  if (before.backgroundImageStoredName) await deleteAttachmentFile(before.backgroundImageStoredName);
+  revalidateBoard(boardId);
+  return { ok: true };
+}
+
+/** Removes the background image; the board goes back to its colour. */
+export async function removeBoardBackgroundImage(input: { boardId: string }): Promise<{ ok: boolean }> {
+  const boardId = String(input.boardId);
+  const { role } = await requireBoardAccess(boardId);
+  if (!canManageBoard(role)) return { ok: false };
+  const before = await prisma.board.findUniqueOrThrow({ where: { id: boardId }, select: { backgroundImageStoredName: true } });
+  await prisma.board.update({
+    where: { id: boardId },
+    data: { backgroundImageStoredName: null, backgroundImageMimeType: null },
+  });
+  if (before.backgroundImageStoredName) await deleteAttachmentFile(before.backgroundImageStoredName);
   revalidateBoard(boardId);
   return { ok: true };
 }

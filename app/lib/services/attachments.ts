@@ -74,11 +74,16 @@ export async function deleteBoardWithAttachments(where: {
       where: { card: { list: { board: where } } },
       select: { storedName: true },
     });
+    // The background image is a file too, outside the cascade.
+    const image = await tx.board.findFirst({ where, select: { backgroundImageStoredName: true } });
     const deleted = await tx.board.deleteMany({ where });
     return {
       count: deleted.count,
       // If nothing was deleted (not the owner), no file is touched.
-      storedNames: deleted.count > 0 ? rows.map((r) => r.storedName) : [],
+      storedNames:
+        deleted.count > 0
+          ? [...rows.map((r) => r.storedName), ...(image?.backgroundImageStoredName ? [image.backgroundImageStoredName] : [])]
+          : [],
     };
   });
   await removeFiles(storedNames);

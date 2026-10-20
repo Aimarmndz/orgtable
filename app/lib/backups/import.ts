@@ -153,6 +153,13 @@ export async function importOrganization(input: {
               select: { storedName: true },
             })
           ).map((a) => a.storedName);
+          // Background images go with the boards they belonged to (they are not in backups).
+          for (const b of await tx.board.findMany({
+            where: { workspaceId, backgroundImageStoredName: { not: null } },
+            select: { backgroundImageStoredName: true },
+          })) {
+            oldFiles.push(b.backgroundImageStoredName!);
+          }
           await tx.board.deleteMany({ where: { workspaceId } });
           await tx.team.deleteMany({ where: { workspaceId } });
           await tx.workspaceMember.updateMany({ where: { workspaceId }, data: { customRoleId: null } });

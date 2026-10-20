@@ -7,6 +7,32 @@ living log from 2026-09-24 onwards.
 
 ---
 
+## 2026-10-20 — Board backgrounds: any colour or an image
+
+**Context.** The owner wanted the board background to work like labels (any colour from the
+picker) or to be an image.
+
+**Decision.**
+- `Board.background` also takes a strict `#rrggbb`; the image lives in new columns
+  (`backgroundImageStoredName`/`MimeType`, migration `20261020130215_board_background_image`)
+  and goes over the colour. It follows the photo and the logo: shrunk to 2560 px in the browser,
+  bytes sniffed on the server (never SVG), 3 MB ceiling, an authorizing route
+  (`effectiveBoardRole`), and the file deleted with the board (`deleteBoardWithAttachments`, also
+  on a replacing restore).
+- One `BackgroundPanel` for the board menu and the tile menu. Its file field is created detached
+  from the menu: opening the file picker blurs the window, which closes the menu.
+- A dark veil on the header over images and over free colours below 4.5:1 with white text.
+
+**Alternatives considered.**
+- Re-encoding images on the server (`sharp`): a native dependency; the browser does it.
+- Choosing text colour per board instead of a veil: the header has many white controls; a veil
+  fixes them all.
+
+**Consequences.** Images are not in board exports nor in organization backups (only in instance
+backups). On a very light background the translucent "+ Add list" button stays hard to read.
+
+---
+
 ## 2026-10-20 — Board tiles: rename and recolour from the right click
 
 **Context.** The owner asked for more of the app to be reachable from the right click. On a board

@@ -86,10 +86,15 @@ export const labelColorChoiceSchema = z.union([
   z.string().regex(HEX_COLOR).transform((c) => c.toLowerCase()),
 ]);
 export const labelColorSchema = labelColorChoiceSchema.catch("blue");
-const boardBackgroundSchema = z.enum(BOARD_COLOR_KEYS).nullable().catch(null);
+// A palette key or a free "#rrggbb" (lower-cased), like labels; null = automatic.
+const boardColorSchema = z.union([
+  z.enum(BOARD_COLOR_KEYS),
+  z.string().regex(HEX_COLOR).transform((c) => c.toLowerCase()),
+]);
+const boardBackgroundSchema = boardColorSchema.nullable().catch(null);
 // Choosing one from the board menu is strict instead: an unknown colour is refused, not
 // silently turned into "automatic". null = automatic (the colour from the board's id).
-export const boardBackgroundChoiceSchema = z.enum(BOARD_COLOR_KEYS).nullable();
+export const boardBackgroundChoiceSchema = boardColorSchema.nullable();
 
 // Card comments.
 export const commentTextSchema = z

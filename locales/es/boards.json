@@ -255,6 +255,15 @@
     "quickLink": "Enlace",
     "manageLabels": "Etiquetas",
     "labelsHeading": "Etiquetas del tablero",
-    "noLabels": "Aún no hay etiquetas."
+    "noLabels": "Aún no hay etiquetas.",
+    "applyColour": "Usar este color",
+    "image": "Imagen",
+    "uploadImage": "Subir una imagen",
+    "changeImage": "Cambiar la imagen",
+    "removeImage": "Quitar la imagen",
+    "uploadingImage": "Subiendo…",
+    "imageHint": "Se reduce a 2560 px en tu navegador. La ve todo el tablero.",
+    "imageInvalid": "Ese archivo no es una imagen que podamos usar. Prueba con PNG, JPEG o WebP.",
+    "imageTooBig": "La imagen sigue siendo demasiado grande después de reducirla. Prueba con otra."
   }
 }
