@@ -46,6 +46,7 @@ import { assignMember, unassignMember } from "@/app/lib/actions/assignees";
 import { addComment, deleteComment } from "@/app/lib/actions/comments";
 import { Button } from "../ui/button";
 import { LabelEditor, NewLabelForm } from "./label-editor";
+import { UserPhoto, type PhotoUser } from "../user-photo";
 import { Input, Textarea } from "../ui/input";
 import { useBoardPerms } from "../board/board-perms";
 import type { BoardMemberDTO } from "../board/members-panel";
@@ -745,16 +746,18 @@ function NewChecklistForm({ cardId }: { cardId: string }) {
   );
 }
 
-// Simple avatar: a circle with the name's initial. No images (we don't have any).
-function Avatar({ name, size = 7 }: { name: string; size?: 6 | 7 | 8 }) {
+// The person's photo, or a circle with the initial of their name.
+function Avatar({ user, size = 7 }: { user: PhotoUser; size?: 6 | 7 | 8 }) {
   const cls = { 6: "size-6 text-[11px]", 7: "size-7 text-xs", 8: "size-8 text-sm" };
   return (
-    <span
-      className={`grid ${cls[size]} shrink-0 place-items-center rounded-full bg-surface-2 font-semibold uppercase text-ink-muted`}
-      aria-hidden
-    >
-      {name.charAt(0)}
-    </span>
+    <UserPhoto user={user} size={size * 4}>
+      <span
+        className={`grid ${cls[size]} shrink-0 place-items-center rounded-full bg-surface-2 font-semibold uppercase text-ink-muted`}
+        aria-hidden
+      >
+        {user.name.charAt(0)}
+      </span>
+    </UserPhoto>
   );
 }
 
@@ -789,7 +792,7 @@ function AssigneesSection({
               data-menu-title={a.name}
               className="inline-flex items-center gap-1.5 rounded-full bg-surface-2 py-0.5 pl-0.5 pr-2.5 text-sm"
             >
-              <Avatar name={a.name} size={6} />
+              <Avatar user={a} size={6} />
               {a.name}
               {canEdit && (
                 <form action={unassignMember} className="contents">
@@ -817,7 +820,7 @@ function AssigneesSection({
               <input type="hidden" name="cardId" value={cardId} />
               <input type="hidden" name="userId" value={m.id} />
               <button className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-border py-0.5 pl-0.5 pr-2.5 text-sm text-ink-muted transition-colors hover:border-accent hover:text-ink">
-                <Avatar name={m.name} size={6} />+ {m.name}
+                <Avatar user={m} size={6} />+ {m.name}
               </button>
             </form>
           ))}
@@ -862,7 +865,7 @@ function CommentsSection({
         <ul className="mt-3 space-y-3">
           {comments.map((c) => (
             <li key={c.id} data-menu-scope="comment" data-menu-title={c.authorName} data-menu-copy={c.text} className="group flex gap-2.5">
-              <Avatar name={c.authorName} />
+              <Avatar user={{ id: c.authorId, name: c.authorName, avatarStoredName: c.authorAvatar }} />
               <div className="min-w-0 flex-1">
                 <p className="flex items-baseline gap-2">
                   <span className="text-sm font-medium">{c.authorName}</span>

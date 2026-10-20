@@ -13,11 +13,13 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { useI18n } from "@/app/i18n/client";
 import { fmt } from "@/app/i18n/format";
+import { UserPhoto } from "../user-photo";
 
 export type BoardMemberDTO = {
   id: string;
   name: string;
   email: string;
+  avatarStoredName: string | null;
   role: BoardRole;
   isOwner: boolean;
   // Has access through the board's organization (app/lib/access.ts), not as a member of
@@ -215,9 +217,11 @@ export function MembersPanel({
         <ul className="mt-6 divide-y divide-border">
           {members.map((member) => (
             <li key={member.id} className="flex items-center gap-3 py-3">
-              <div className="grid size-9 shrink-0 place-items-center rounded-full bg-surface-2 text-sm font-semibold uppercase">
-                {member.name.charAt(0)}
-              </div>
+              <UserPhoto user={member} size={36}>
+                <div className="grid size-9 shrink-0 place-items-center rounded-full bg-surface-2 text-sm font-semibold uppercase">
+                  {member.name.charAt(0)}
+                </div>
+              </UserPhoto>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{member.name}</p>
                 <p className="truncate text-xs text-ink-muted">

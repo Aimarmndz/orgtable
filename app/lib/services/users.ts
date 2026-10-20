@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/app/lib/prisma";
+import { deleteAttachmentFile } from "@/app/lib/storage";
 import { hashPassword } from "@/app/lib/auth";
 import type { GlobalRole } from "@/app/lib/roles";
 import {
@@ -133,13 +134,18 @@ export async function deleteUserAccount(
   // so an administrator cannot leave an organization without an owner either.
   const prepared = await prepareAccountDeletion(userId);
   if (!prepared.ok) return { ok: false, error: "sole_owner" };
+  const photo = await prisma.user.findUnique({ where: { id: userId }, select: { avatarStoredName: true } });
   const count = await prisma.$transaction(async (tx) => {
     if ((await soleOwnedOrganizations(tx, userId)).length > 0) return -1;
     const deleted = await tx.user.deleteMany({ where: { id: userId, boards: { none: {} } } });
     return deleted.count;
   });
   if (count === -1) return { ok: false, error: "sole_owner" };
-  if (count > 0) return { ok: true };
+  if (count > 0) {
+    // The profile photo is a file, not a row: it does not go with the cascade.
+    if (photo?.avatarStoredName) await deleteAttachmentFile(photo.avatarStoredName);
+    return { ok: true };
+  }
   const exists = await prisma.user.findUnique({
     where: { id: userId },
     select: { id: true },

@@ -54,6 +54,7 @@ At `/register`:
 | Data | Legal basis | Retention |
 |---|---|---|
 | Account: name, email, bcrypt hash, role, `termsAcceptedAt`, interface language | Contract (6.1.b). For the acceptance date, legitimate interest in being able to prove it (6.1.f) | Until the account is deleted |
+| Profile photo (optional), a 256 px square file on disk | Consent: the person uploads it and can remove it (6.1.a) | Until removed or the account is deleted |
 | Content: boards, lists, cards, comments, assignments, attachments | Contract (6.1.b) | Until deleted |
 | Sessions: user agent, dates | Contract (6.1.b) | Valid for 7 days; once closed or expired, 30 more days |
 | Notifications | Contract (6.1.b) | 180 days |
@@ -63,6 +64,18 @@ At `/register`:
 The retention periods come from constants in the code (`app/lib/services/maintenance.ts`
 and `SESSION_MAX_AGE_DAYS` in `app/lib/session.ts`). The privacy policy reads them from
 there, so it cannot drift out of sync.
+
+### Profile photo
+
+Optional, from *Settings › Profile*. The browser crops the chosen image to its centre square
+and shrinks it to 256 px before sending it (WebP, or JPEG where the browser cannot encode
+WebP), so the original photo, with its EXIF data and GPS position, does not reach the server
+from the app. The server does not re-encode what it gets (a request made by hand is stored as
+sent). It takes PNG, JPEG or WebP read from the bytes (never SVG) up to 512 KB, stores it
+next to the attachments (`avatar-<uuid>.<ext>`) and serves it from `/api/users/<id>/avatar`
+only to the person and to whoever shares an organization or a board with them
+(`canSeeAvatar` in `app/lib/services/avatars.ts`); anyone else gets a 404. Removing it, or
+deleting the account, deletes the file.
 
 ### Periodic cleanup
 
@@ -83,7 +96,7 @@ Users exercise all of them on their own, from **Settings**:
 
 - **Access and portability** (arts. 15 and 20). *Privacy and data › Download .json*
   (`GET /api/account/export`, only with a browser session, not with tokens). It includes:
-  - the account;
+  - the account (with whether there is a profile photo; the image itself is not in the JSON);
   - the boards the person owns, complete, with attachment metadata;
   - membership of other people's boards;
   - the person's own comments and assignments;
@@ -97,6 +110,7 @@ Users exercise all of them on their own, from **Settings**:
   deletes:
   - the boards the person created, with their lists, cards and the attachment files on
     disk;
+  - their profile photo file;
   - in cascade, their sessions, tokens, memberships, assignments, comments and
     notifications;
   - the `detail` of the audit rows that targeted them; those rows remain without a user.

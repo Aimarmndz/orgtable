@@ -217,6 +217,10 @@ model User {
   // until they pick one: then the browser decides. Notifications for them are written in
   // this language.
   locale               String?
+  // Profile photo on disk (app/lib/storage.ts), like an organization's logo: the random
+  // stored name (also the cache key of its URL) and the type sniffed from its bytes.
+  avatarStoredName     String?
+  avatarMimeType       String?
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
   boards               Board[]

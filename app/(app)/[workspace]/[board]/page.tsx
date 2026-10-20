@@ -115,12 +115,14 @@ export default async function BoardPage({
         assignees: card.assignees.map((a) => ({
           id: a.user.id,
           name: a.user.name,
+          avatarStoredName: a.user.avatarStoredName,
         })),
         comments: card.comments.map((c) => ({
           id: c.id,
           text: c.text,
           authorId: c.author.id,
           authorName: c.author.name,
+          authorAvatar: c.author.avatarStoredName,
           createdAt: c.createdAt.toISOString(),
         })),
       })),

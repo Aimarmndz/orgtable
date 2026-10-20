@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { initials } from "@/app/lib/initials";
+import { UserPhoto } from "@/app/components/user-photo";
 import { boardBackgroundFor } from "@/app/lib/colors";
 import { boardPath } from "@/app/lib/slugs";
 import type { BoardSummary } from "@/app/lib/queries";
@@ -52,13 +53,14 @@ export async function BoardGrid({ boards }: { boards: BoardSummary[] }) {
                         })}
                       </span>
                       {board.members.slice(0, 4).map((member) => (
-                        <span
-                          key={member.id}
-                          aria-hidden
-                          className="grid size-6 place-items-center rounded-full bg-white/90 text-[10px] font-bold text-ink ring-2 ring-black/10"
-                        >
-                          {initials(member.name)}
-                        </span>
+                        <UserPhoto key={member.id} user={member} size={24} className="ring-2 ring-black/10">
+                          <span
+                            aria-hidden
+                            className="grid size-6 place-items-center rounded-full bg-white/90 text-[10px] font-bold text-ink ring-2 ring-black/10"
+                          >
+                            {initials(member.name)}
+                          </span>
+                        </UserPhoto>
                       ))}
                       {board.members.length > 4 && (
                         <span

@@ -85,6 +85,7 @@ export default async function AppLayout({
             name={user.name}
             email={user.email}
             isAdmin={user.role === "ADMIN"}
+            photo={{ id: user.id, name: user.name, avatarStoredName: user.avatarStoredName }}
             organizations={workspaces.filter((w) => w.kind === "ORGANIZATION")}
           />
         </div>

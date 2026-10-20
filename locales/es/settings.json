@@ -24,7 +24,14 @@
     "currentPassword": "Contraseña actual",
     "currentPasswordHint": "Solo hace falta si cambias el email.",
     "save": "Guardar perfil",
-    "cardTitle": "Nombre y email"
+    "cardTitle": "Nombre y email",
+    "photoTitle": "Foto de perfil",
+    "photoHint": "Se recorta en cuadrado y se muestra junto a tu nombre en tableros, tarjetas y comentarios. Solo la ven las personas con las que compartes una organización o un tablero.",
+    "choosePhoto": "Elegir una foto",
+    "changePhoto": "Cambiar foto",
+    "removePhoto": "Quitar foto",
+    "preparing": "Preparando…",
+    "uploading": "Subiendo…"
   },
   "security": {
     "description": "Al cambiar la contraseña se cierran tus otras sesiones.",

@@ -1,12 +1,16 @@
 "use client";
 
-import { useActionState, useId } from "react";
+import { useActionState, useId, useRef, useState, useTransition } from "react";
 import {
   changePassword,
   deleteAccount,
+  removeAvatarAction,
   updateProfile,
+  uploadAvatarAction,
   type AccountFormState,
 } from "@/app/lib/actions/account";
+import { initials } from "@/app/lib/initials";
+import { UserPhoto, type PhotoUser } from "@/app/components/user-photo";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { useI18n } from "@/app/i18n/client";
@@ -246,4 +250,107 @@ export function DeleteAccountForm() {
       <FormFeedback state={state} pending={pending} id={feedbackId} />
     </form>
   );
+}
+
+/**
+ * Profile photo: the chosen image is cropped to its centre square and shrunk to 256 px in the
+ * browser (a phone photo of several MB becomes a few KB), then sent as WebP, or JPEG where
+ * the browser cannot encode WebP. The server checks the bytes again.
+ */
+export function AvatarForm({ user }: { user: PhotoUser }) {
+  const { m } = useI18n();
+  const t = m.settings.profile;
+  const [state, action, pending] = useActionState<AccountFormState, FormData>(uploadAvatarAction, {});
+  const [preparing, setPreparing] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
+  const input = useRef<HTMLInputElement>(null);
+  const feedbackId = useId();
+
+  async function pick(file: File) {
+    setLocalError(null);
+    setPreparing(true);
+    try {
+      const blob = await squarePhoto(file, 256);
+      const data = new FormData();
+      data.set("photo", blob, blob.type === "image/webp" ? "photo.webp" : "photo.jpg");
+      startTransition(() => action(data));
+    } catch {
+      // The browser could not decode it (HEIC on some browsers, a broken file…).
+      setLocalError(m.errors.account.photoInvalid);
+    } finally {
+      setPreparing(false);
+      if (input.current) input.current.value = "";
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-4">
+        <UserPhoto user={user} size={72}>
+          <span
+            aria-hidden
+            className="grid size-[72px] shrink-0 place-items-center rounded-full bg-accent font-display text-2xl font-bold text-accent-ink"
+          >
+            {initials(user.name)}
+          </span>
+        </UserPhoto>
+        <div className="flex flex-wrap gap-2">
+          <input
+            ref={input}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/*"
+            className="sr-only"
+            // The button below is the control; this field only opens the file picker.
+            tabIndex={-1}
+            aria-label={t.choosePhoto}
+            aria-describedby={feedbackId}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void pick(file);
+            }}
+          />
+          <Button type="button" variant="subtle" disabled={preparing || pending} onClick={() => input.current?.click()}>
+            {preparing ? t.preparing : pending ? t.uploading : user.avatarStoredName ? t.changePhoto : t.choosePhoto}
+          </Button>
+          {user.avatarStoredName && (
+            <form action={removeAvatarAction}>
+              <Button type="submit" variant="danger" disabled={preparing || pending}>
+                {t.removePhoto}
+              </Button>
+            </form>
+          )}
+        </div>
+      </div>
+      <p className="text-sm text-ink-muted">{t.photoHint}</p>
+      {localError ? (
+        <p role="alert" id={feedbackId} className="rounded-lg border border-danger/20 bg-danger/10 px-3 py-2 text-sm text-danger">
+          {localError}
+        </p>
+      ) : (
+        <FormFeedback state={state} pending={pending} id={feedbackId} />
+      )}
+    </div>
+  );
+}
+
+async function squarePhoto(file: File, size: number): Promise<Blob> {
+  const bitmap = await createImageBitmap(file);
+  const side = Math.min(bitmap.width, bitmap.height);
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("No 2D canvas");
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, size, size);
+  bitmap.close();
+  const encode = (type: string) =>
+    new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, 0.88));
+  // Safari before 17 returns PNG when asked for WebP: then JPEG, which is smaller.
+  const webp = await encode("image/webp");
+  if (webp && webp.type === "image/webp") return webp;
+  const jpeg = await encode("image/jpeg");
+  if (!jpeg) throw new Error("Could not encode the photo");
+  return jpeg;
 }

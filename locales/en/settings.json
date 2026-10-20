@@ -24,7 +24,14 @@
     "currentPassword": "Current password",
     "currentPasswordHint": "Only needed if you change your email.",
     "save": "Save profile",
-    "cardTitle": "Name and email"
+    "cardTitle": "Name and email",
+    "photoTitle": "Profile photo",
+    "photoHint": "It is cropped to a square and shown next to your name on boards, cards and comments. Only people who share an organization or a board with you can see it.",
+    "choosePhoto": "Choose a photo",
+    "changePhoto": "Change photo",
+    "removePhoto": "Remove photo",
+    "preparing": "Preparing…",
+    "uploading": "Uploading…"
   },
   "security": {
     "description": "Changing your password signs out your other sessions.",

@@ -7,6 +7,31 @@ living log from 2026-09-24 onwards.
 
 ---
 
+## 2026-10-20 — Profile photos: cropped in the browser, served only to people who share something
+
+**Context.** The owner asked for profile photos. Until now every person was their initials.
+
+**Decision.** The photo follows the organization logo: bytes sniffed (PNG, JPEG or WebP, never
+SVG), 512 KB at most, a file on the uploads volume (`avatar-<uuid>.<ext>`, columns
+`User.avatarStoredName`/`avatarMimeType`) and an authorizing route, `/api/users/<id>/avatar`. The
+browser crops it to its centre square and shrinks it to 256 px before sending it, so phone photos
+fit the limit and their EXIF data does not travel. Only the person and people who already see each
+other in the app (a shared organization or board, or a guest and the organization's people) get
+it; anyone else a 404, the same as a person without a photo. Removing it, or deleting the account
+(own or by the administrator), deletes the file. Places that showed initials keep them as the
+fallback (`UserPhoto`).
+
+**Alternatives considered.**
+- `sharp` to resize and strip metadata on the server: a native dependency for one feature.
+- Any signed-in person may see any photo: on an instance with open sign-up, anyone could collect
+  them by trying ids.
+
+**Consequences.** The server does not re-encode: a photo uploaded by hand (not from the app) keeps
+its metadata. HEIC only works where the browser decodes it (Safari). The export JSON says whether
+there is a photo, not the image, like attachments. Migration `20261020120011_user_avatar`.
+
+---
+
 ## 2026-10-20 — A right-click menu everywhere, built from the controls that are already there
 
 **Context.** The owner wants the right click to answer wherever one clicks and to reach half of the

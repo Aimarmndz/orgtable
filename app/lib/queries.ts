@@ -46,7 +46,7 @@ export async function getBoardSummariesForUser(userId: string, workspaceId?: str
       lists: { select: { _count: { select: { cards: true } } } },
       members: {
         orderBy: { addedAt: "asc" },
-        select: { role: true, user: { select: { id: true, name: true } } },
+        select: { role: true, user: { select: { id: true, name: true, avatarStoredName: true } } },
       },
       teams: { where: { team: { members: { some: { userId } } } }, select: { role: true } },
     },
@@ -175,13 +175,14 @@ export async function getWorkspaceMembers(workspaceId: string) {
       role: true,
       addedAt: true,
       customRole: { select: { id: true, name: true, color: true } },
-      user: { select: { id: true, name: true, email: true, managedById: true } },
+      user: { select: { id: true, name: true, email: true, managedById: true, avatarStoredName: true } },
     },
   });
   return rows.map((r) => ({
     id: r.user.id,
     name: r.user.name,
     email: r.user.email,
+    avatarStoredName: r.user.avatarStoredName,
     role: r.role,
     customRole: r.customRole,
     addedAt: r.addedAt,
@@ -313,7 +314,7 @@ export async function getBoardPeople(boardId: string, viewerId: string) {
       visibility: true,
       members: {
         orderBy: { addedAt: "asc" },
-        select: { role: true, user: { select: { id: true, name: true, email: true } } },
+        select: { role: true, user: { select: { id: true, name: true, email: true, avatarStoredName: true } } },
       },
       workspace: {
         select: {
@@ -322,7 +323,7 @@ export async function getBoardPeople(boardId: string, viewerId: string) {
             select: {
               role: true,
               customRole: { select: { permissions: true } },
-              user: { select: { id: true, name: true, email: true } },
+              user: { select: { id: true, name: true, email: true, avatarStoredName: true } },
             },
           },
         },
@@ -540,11 +541,11 @@ export async function getBoardWithLists(boardId: string, userId: string) {
               },
               attachments: { orderBy: { createdAt: "asc" } },
               assignees: {
-                include: { user: { select: { id: true, name: true } } },
+                include: { user: { select: { id: true, name: true, avatarStoredName: true } } },
               },
               comments: {
                 orderBy: { createdAt: "asc" },
-                include: { author: { select: { id: true, name: true } } },
+                include: { author: { select: { id: true, name: true, avatarStoredName: true } } },
               },
             },
           },

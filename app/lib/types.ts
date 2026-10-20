@@ -29,6 +29,7 @@ export type AttachmentDTO = {
 export type AssigneeDTO = {
   id: string;
   name: string;
+  avatarStoredName: string | null;
 };
 
 export type CommentDTO = {
@@ -36,6 +37,7 @@ export type CommentDTO = {
   text: string;
   authorId: string;
   authorName: string;
+  authorAvatar: string | null;
   createdAt: string;
 };
 

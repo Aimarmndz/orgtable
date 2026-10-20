@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/app/lib/prisma";
+import { deleteAttachmentFile } from "@/app/lib/storage";
 import { prepareAccountDeletion, soleOwnedOrganizations } from "@/app/lib/services/workspaces";
 import { hashPassword, verifyPassword } from "@/app/lib/auth";
 import { deleteBoardWithAttachments } from "@/app/lib/services/attachments";
@@ -143,7 +144,7 @@ export async function deleteOwnAccount(
 ): Promise<DeleteOwnAccountResult> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { passwordHash: true, role: true },
+    select: { passwordHash: true, role: true, avatarStoredName: true },
   });
   if (!user) return { ok: false, error: "not_found" };
   if (!(await verifyPassword(password, user.passwordHash))) {
@@ -202,7 +203,11 @@ export async function deleteOwnAccount(
       const again = await prepareAccountDeletion(userId);
       return { ok: false, error: "sole_owner", organizations: again.ok ? [] : again.organizations };
     }
-    if (result === "deleted") return { ok: true, boardsDeleted };
+    if (result === "deleted") {
+      // The profile photo is a file, not a row: it does not go with the cascade.
+      if (user.avatarStoredName) await deleteAttachmentFile(user.avatarStoredName);
+      return { ok: true, boardsDeleted };
+    }
   }
   throw new Error("Could not delete the account: new boards keep appearing");
 }
@@ -224,6 +229,9 @@ export async function exportUserData(userId: string) {
       createdAt: true,
       updatedAt: true,
       termsAcceptedAt: true,
+      // Whether there is a profile photo (its type); the image itself, like attachments, is not
+      // in the JSON.
+      avatarMimeType: true,
     },
   });
   if (!user) return null;

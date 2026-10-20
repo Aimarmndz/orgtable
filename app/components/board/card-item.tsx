@@ -9,6 +9,7 @@ import { formatDueDay, isOverdue } from "@/app/lib/board-filters";
 import { useBoardPerms } from "./board-perms";
 import { useI18n } from "@/app/i18n/client";
 import { fmt } from "@/app/i18n/format";
+import { UserPhoto } from "../user-photo";
 
 // Empty subscription: useSyncExternalStore is only used to know whether we hydrated.
 const subscribeNothing = () => () => {};
@@ -212,13 +213,14 @@ export function CardItem({
           {card.assignees.length > 0 && (
             <div className="flex -space-x-1.5">
               {card.assignees.slice(0, 4).map((a) => (
-                <span
-                  key={a.id}
-                  title={a.name}
-                  className="grid size-5 place-items-center rounded-full bg-surface-2 text-[10px] font-semibold uppercase text-ink-muted ring-2 ring-surface"
-                >
-                  {a.name.charAt(0)}
-                </span>
+                <UserPhoto key={a.id} user={a} size={20} className="ring-2 ring-surface">
+                  <span
+                    title={a.name}
+                    className="grid size-5 place-items-center rounded-full bg-surface-2 text-[10px] font-semibold uppercase text-ink-muted ring-2 ring-surface"
+                  >
+                    {a.name.charAt(0)}
+                  </span>
+                </UserPhoto>
               ))}
               {card.assignees.length > 4 && (
                 <span className="grid size-5 place-items-center rounded-full bg-surface-2 text-[9px] font-semibold text-ink-muted ring-2 ring-surface">

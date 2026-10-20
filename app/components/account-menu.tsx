@@ -2,6 +2,7 @@ import Link from "next/link";
 import { logout } from "@/app/lib/actions/auth";
 import { initials } from "@/app/lib/initials";
 import { WorkspaceAvatar } from "@/app/components/workspace/workspace-avatar";
+import { UserPhoto, type PhotoUser } from "@/app/components/user-photo";
 import { fmt } from "@/app/i18n/format";
 import { getI18n } from "@/app/i18n/server";
 
@@ -35,7 +36,9 @@ export async function AccountMenu({
   email,
   isAdmin,
   organizations,
+  photo,
 }: {
+  photo: PhotoUser;
   name: string;
   email: string;
   isAdmin: boolean;
@@ -50,7 +53,9 @@ export async function AccountMenu({
         aria-label={fmt(m.nav.account.label, { name })}
         className="ml-1 grid size-9 place-items-center rounded-full bg-accent text-xs font-bold text-accent-ink transition hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent [anchor-name:--account-menu]"
       >
-        {initials(name)}
+        <UserPhoto user={photo} size={36}>
+          {initials(name)}
+        </UserPhoto>
       </button>
       <div
         id="account-menu"

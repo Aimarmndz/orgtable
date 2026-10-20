@@ -46,7 +46,7 @@ describe("board-filters", () => {
   });
 
   it("filters by assignee", () => {
-    const c = card({ assignees: [{ id: "U1", name: "Ana" }] });
+    const c = card({ assignees: [{ id: "U1", name: "Ana", avatarStoredName: null }] });
     expect(cardMatchesFilters(c, f({ assigneeIds: ["U1"] }), NOW)).toBe(true);
     expect(cardMatchesFilters(c, f({ assigneeIds: ["U2"] }), NOW)).toBe(false);
   });
@@ -54,7 +54,7 @@ describe("board-filters", () => {
   it("combines dimensions with AND", () => {
     const c = card({
       labels: [{ id: "L1", name: "a", color: "blue" }],
-      assignees: [{ id: "U1", name: "Ana" }],
+      assignees: [{ id: "U1", name: "Ana", avatarStoredName: null }],
     });
     expect(
       cardMatchesFilters(c, f({ labelIds: ["L1"], assigneeIds: ["U1"] }), NOW),

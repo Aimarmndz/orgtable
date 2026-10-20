@@ -12,6 +12,7 @@ import {
   updateOwnProfile,
 } from "@/app/lib/services/account";
 import { recordAudit } from "@/app/lib/audit";
+import { removeAvatar, setAvatar } from "@/app/lib/services/avatars";
 import { getI18n, issueMessage } from "@/app/i18n/server";
 import { fmt, plural } from "@/app/i18n/format";
 import {
@@ -198,4 +199,29 @@ export async function deleteAccount(
   // Sessions were deleted in cascade; the cookie is no longer valid, but it is removed anyway.
   (await cookies()).delete("session");
   redirect("/login?account=deleted");
+}
+
+/** Sets the profile photo (docs/privacy.md, "Profile photo"). The browser already cropped it. */
+export async function uploadAvatarAction(
+  _prev: AccountFormState,
+  formData: FormData,
+): Promise<AccountFormState> {
+  const user = await requireUser();
+  const { m } = await getI18n();
+  const file = formData.get("photo");
+  if (!(file instanceof File) || file.size === 0) return { error: m.errors.account.photoInvalid };
+  const result = await setAvatar(user.id, Buffer.from(await file.arrayBuffer()));
+  if (!result.ok) {
+    return { error: result.error === "too_big" ? m.errors.account.photoTooBig : m.errors.account.photoInvalid };
+  }
+  await recordAudit({ action: "account.updated", userId: user.id, detail: "photo" });
+  revalidatePath("/", "layout");
+  return { message: m.errors.account.photoSaved };
+}
+
+export async function removeAvatarAction(): Promise<void> {
+  const user = await requireUser();
+  await removeAvatar(user.id);
+  await recordAudit({ action: "account.updated", userId: user.id, detail: "photo removed" });
+  revalidatePath("/", "layout");
 }

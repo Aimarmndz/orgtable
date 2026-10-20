@@ -66,7 +66,11 @@
     "soleOwner": "Eres la única persona propietaria de {organizations}. Haz propietaria a otra persona, o borra la organización, antes de borrar tu cuenta.",
     "twoFactorBadCode": "Ese código no es válido. Escribe el que muestra ahora tu app.",
     "twoFactorNoSetup": "Vuelve a empezar: el código QR ha caducado.",
-    "twoFactorNoKey": "La verificación en dos pasos necesita ORGTABLE_SECRET_KEY en el servidor. Pídeselo a quien administra esta instancia."
+    "twoFactorNoKey": "La verificación en dos pasos necesita ORGTABLE_SECRET_KEY en el servidor. Pídeselo a quien administra esta instancia.",
+    "photoInvalid": "Ese archivo no es una foto que podamos usar. Prueba con una imagen PNG, JPEG o WebP.",
+    "photoTooBig": "La foto sigue siendo demasiado grande después de reducirla. Prueba con otra.",
+    "photoSaved": "Foto guardada.",
+    "photoRemoved": "Foto quitada."
   },
   "admin": {
     "emailTaken": "Ya existe un usuario con ese email.",

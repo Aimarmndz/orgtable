@@ -100,3 +100,13 @@ export async function saveAttachmentBytes(bytes: Buffer, ext: string): Promise<s
   await writeFile(storedPath(storedName), bytes);
   return storedName;
 }
+
+// --- Profile photos (docs/privacy.md, "Profile photo") ----------------------------------
+
+/** Saves a profile photo under a random name. Same types and limit as a logo. */
+export async function saveAvatarFile(bytes: Buffer, ext: string): Promise<string> {
+  await mkdir(UPLOAD_DIR, { recursive: true });
+  const storedName = `avatar-${randomUUID()}${ext}`;
+  await writeFile(storedPath(storedName), bytes);
+  return storedName;
+}

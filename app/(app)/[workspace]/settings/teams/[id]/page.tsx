@@ -12,6 +12,7 @@ import {
 } from "@/app/lib/actions/teams";
 import { BOARD_COLORS, pickBoardColor } from "@/app/lib/colors";
 import { initials } from "@/app/lib/initials";
+import { UserPhoto } from "@/app/components/user-photo";
 import { boardPath } from "@/app/lib/slugs";
 import { PageHeader, SettingsCard, SettingsPage } from "@/app/components/settings/page-header";
 import { TeamBoardForm, TeamForm } from "@/app/components/workspace/team-forms";
@@ -36,7 +37,7 @@ async function findTeam(workspaceId: string, id: string) {
       description: true,
       members: {
         orderBy: { addedAt: "asc" },
-        select: { member: { select: { role: true, user: { select: { id: true, name: true, email: true } } } } },
+        select: { member: { select: { role: true, user: { select: { id: true, name: true, email: true, avatarStoredName: true } } } } },
       },
       boards: {
         orderBy: { addedAt: "asc" },
@@ -103,13 +104,15 @@ export default async function TeamPage({ params }: { params: Params }) {
             <ul className="divide-y divide-border">
               {team.members.map(({ member }) => (
                 <li key={member.user.id} data-menu-scope="row" data-menu-title={member.user.name} className="flex items-center gap-3 py-2.5">
-                  <span
-                    aria-hidden
-                    className="grid size-8 shrink-0 place-items-center rounded-full text-[11px] font-bold text-white"
-                    style={{ background: BOARD_COLORS[pickBoardColor(member.user.id)] }}
-                  >
-                    {initials(member.user.name)}
-                  </span>
+                  <UserPhoto user={member.user} size={32}>
+                    <span
+                      aria-hidden
+                      className="grid size-8 shrink-0 place-items-center rounded-full text-[11px] font-bold text-white"
+                      style={{ background: BOARD_COLORS[pickBoardColor(member.user.id)] }}
+                    >
+                      {initials(member.user.name)}
+                    </span>
+                  </UserPhoto>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-semibold">{member.user.name}</span>
                     <span className="block truncate text-xs text-ink-muted">{m.workspaces.roles[member.role]}</span>

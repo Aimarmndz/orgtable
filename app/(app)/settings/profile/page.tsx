@@ -6,9 +6,9 @@ import { publicHost } from "@/app/lib/mail/config";
 import { HandleForm } from "@/app/components/workspace/forms";
 import { PageHeader, SettingsCard, SettingsPage } from "@/app/components/settings/page-header";
 import { getI18n } from "@/app/i18n/server";
-import { ProfileForm } from "../account-forms";
+import { AvatarForm, ProfileForm } from "../account-forms";
 
-// /settings/profile: name, email and the handle of the personal boards.
+// /settings/profile: photo, name, email and the handle of the personal boards.
 
 export async function generateMetadata(): Promise<Metadata> {
   const { m } = await getI18n();
@@ -22,6 +22,9 @@ export default async function ProfileSettingsPage() {
   return (
     <SettingsPage>
       <PageHeader address="/settings/profile" title={t.nav.profile} description={t.profile.description} />
+      <SettingsCard title={t.profile.photoTitle}>
+        <AvatarForm user={{ id: user.id, name: user.name, avatarStoredName: user.avatarStoredName }} />
+      </SettingsCard>
       <SettingsCard title={t.profile.cardTitle}>
         <ProfileForm name={user.name} email={user.email} />
       </SettingsCard>

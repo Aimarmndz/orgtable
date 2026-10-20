@@ -12,6 +12,7 @@ import {
 } from "@/app/lib/roles";
 import { BOARD_COLORS, pickBoardColor, type BoardColor } from "@/app/lib/colors";
 import { initials } from "@/app/lib/initials";
+import { UserPhoto } from "@/app/components/user-photo";
 import { ResetEmployeePasswordForm } from "@/app/components/workspace/forms";
 import { roleOptions } from "@/app/components/workspace/role-options";
 import { PageHeader, SettingsPage } from "@/app/components/settings/page-header";
@@ -115,13 +116,15 @@ export default async function WorkspaceMembersPage({ params }: { params: Params 
                 className="grid gap-3 px-5 py-4 md:grid-cols-[minmax(0,2fr)_minmax(15rem,1.3fr)_minmax(0,1.5fr)] md:items-center"
               >
                 <div className="flex min-w-0 items-center gap-3">
-                  <span
-                    aria-hidden
-                    className="grid size-9 shrink-0 place-items-center rounded-full text-xs font-bold text-white"
-                    style={{ background: BOARD_COLORS[pickBoardColor(member.id)] }}
-                  >
-                    {initials(member.name)}
-                  </span>
+                  <UserPhoto user={member} size={36}>
+                    <span
+                      aria-hidden
+                      className="grid size-9 shrink-0 place-items-center rounded-full text-xs font-bold text-white"
+                      style={{ background: BOARD_COLORS[pickBoardColor(member.id)] }}
+                    >
+                      {initials(member.name)}
+                    </span>
+                  </UserPhoto>
                   <div className="min-w-0">
                     <p className="truncate font-semibold">
                       {member.name}

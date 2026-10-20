@@ -66,7 +66,11 @@
     "soleOwner": "You are the only owner of {organizations}. Make another member an owner, or delete the organization, before deleting your account.",
     "twoFactorBadCode": "That code is not valid. Type the one your app shows now.",
     "twoFactorNoSetup": "Start the setup again: the QR code expired.",
-    "twoFactorNoKey": "Two-step verification needs ORGTABLE_SECRET_KEY on the server. Ask whoever runs this instance."
+    "twoFactorNoKey": "Two-step verification needs ORGTABLE_SECRET_KEY on the server. Ask whoever runs this instance.",
+    "photoInvalid": "That file is not a photo we can use. Try a PNG, JPEG or WebP image.",
+    "photoTooBig": "The photo is too big even after shrinking it. Try another one.",
+    "photoSaved": "Photo saved.",
+    "photoRemoved": "Photo removed."
   },
   "admin": {
     "emailTaken": "A user with that email already exists.",
