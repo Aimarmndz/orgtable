@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { BOARD_COLOR_KEYS, LABEL_COLOR_KEYS } from "@/app/lib/colors";
+import { BOARD_COLOR_KEYS, HEX_COLOR, LABEL_COLOR_KEYS } from "@/app/lib/colors";
 import { CARD_DESCRIPTION_MAX } from "@/app/lib/limits";
 
 // Shared validation schemas (zod), used by the Server Actions and the API to validate input
@@ -80,7 +80,12 @@ export const cardDetailsSchema = z.object({
 // Label and board background colours. Validated against the palette with z.enum (not with
 // the `in` operator, which accepts prototype keys such as 'constructor'). `.catch` keeps
 // the old tolerance: an unknown colour falls back to the default instead of failing.
-export const labelColorSchema = z.enum(LABEL_COLOR_KEYS).catch("blue");
+// A palette key or a free "#rrggbb" (lower-cased); anything else is stored as "blue".
+export const labelColorChoiceSchema = z.union([
+  z.enum(LABEL_COLOR_KEYS),
+  z.string().regex(HEX_COLOR).transform((c) => c.toLowerCase()),
+]);
+export const labelColorSchema = labelColorChoiceSchema.catch("blue");
 const boardBackgroundSchema = z.enum(BOARD_COLOR_KEYS).nullable().catch(null);
 // Choosing one from the board menu is strict instead: an unknown colour is refused, not
 // silently turned into "automatic". null = automatic (the colour from the board's id).

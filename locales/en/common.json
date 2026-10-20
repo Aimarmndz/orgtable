@@ -23,5 +23,14 @@
     "title": "Nothing here",
     "body": "This page does not exist, or you do not have access to it.",
     "cta": "Go to your boards"
+  },
+  "colorPicker": {
+    "label": "Colour",
+    "area": "Saturation and brightness",
+    "areaValue": "saturation {s}%, brightness {v}%",
+    "hue": "Hue",
+    "hex": "Hex code",
+    "presets": "Quick colours",
+    "custom": "Custom colour"
   }
 }

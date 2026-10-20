@@ -3,6 +3,7 @@ import {
   pickBoardColor,
   boardBackgroundFor,
   labelBackground,
+  labelText,
   BOARD_COLORS,
   BOARD_COLOR_KEYS,
   LABEL_COLORS,
@@ -28,6 +29,20 @@ describe("colors", () => {
     expect(boardBackgroundFor({ id: "y", background: "missing" })).toBe(
       BOARD_COLORS[pickBoardColor("y")],
     );
+  });
+
+  it("labelBackground takes a free #rrggbb colour and nothing looser", () => {
+    expect(labelBackground("#F54927")).toBe("#f54927");
+    for (const bad of ["#f54", "f54927", "#f54927;background:url(x)", "red; x", "#gggggg"]) {
+      expect(labelBackground(bad)).toBe(LABEL_COLORS.blue);
+    }
+  });
+
+  it("labelText picks the text that contrasts more", () => {
+    expect(labelText("red")).toBe("#ffffff");
+    expect(labelText("#1d3557")).toBe("#ffffff");
+    expect(labelText("#ffe066")).not.toBe("#ffffff");
+    expect(labelText("#ffffff")).not.toBe("#ffffff");
   });
 
   it("labelBackground resolves and falls back to blue by default", () => {

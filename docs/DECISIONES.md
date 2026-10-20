@@ -7,6 +7,28 @@ living log from 2026-09-24 onwards.
 
 ---
 
+## 2026-10-20 — Labels: edit and delete them, and any colour with a picker
+
+**Context.** Labels could be created but not deleted (`deleteLabel` had no caller) nor renamed, and
+the owner found eight colours too few.
+
+**Decision.** `updateLabel` (name and colour) and an object-based `deleteLabel`, owners only,
+returning `{ ok }` so the UI can say when it failed. One `LabelEditor`, from a pencil next to each
+label in the card and from a *Labels* panel in the board menu. A colour is a palette key or a
+strict `#rrggbb` (`labelColorChoiceSchema`; createLabel still turns an unknown value into blue);
+the text on it is white or ink by WCAG contrast (`labelText`). The picker (saturation/brightness
+square, hue range, hex) is written without a library; the palette's oklch is converted to hex for it
+(`app/lib/color-math.ts`, unit tested).
+
+**Alternatives considered.**
+- Any CSS colour: the value ends up in a `style` attribute; `#rrggbb` only.
+- A colour-picker package: a dependency for ~150 lines.
+
+**Consequences.** Exports and imports carry hex colours as they are; older instances read an unknown
+colour as blue.
+
+---
+
 ## 2026-10-20 — A workspace switcher instead of the instance name in the top bar
 
 **Context.** The top-left corner showed the instance name and always led to `/boards`, which took

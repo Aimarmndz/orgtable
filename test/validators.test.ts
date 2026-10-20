@@ -86,6 +86,12 @@ describe("validators (zod)", () => {
     expect(labelColorSchema.parse(undefined)).toBe("blue");
   });
 
+  it("labelColorSchema keeps a free #rrggbb colour, lower-cased, and nothing looser", () => {
+    expect(labelColorSchema.parse("#F54927")).toBe("#f54927");
+    expect(labelColorSchema.parse("#f54")).toBe("blue");
+    expect(labelColorSchema.parse("#f54927;x")).toBe("blue");
+  });
+
   it("addMemberSchema and assignableBoardRoleSchema do not allow assigning OWNER", () => {
     expect(assignableBoardRoleSchema.safeParse("OWNER").success).toBe(false);
     expect(assignableBoardRoleSchema.safeParse("EDITOR").success).toBe(true);

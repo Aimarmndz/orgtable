@@ -32,6 +32,7 @@ import {
   setCardDueDate,
 } from "@/app/lib/actions/cards";
 import { toggleCardLabel } from "@/app/lib/actions/labels";
+import { LabelManager } from "../card/label-editor";
 import { assignMember, unassignMember } from "@/app/lib/actions/assignees";
 import {
   ContextMenu,
@@ -238,6 +239,25 @@ export function BoardMenu({
                   {t.backgroundNote}
                 </p>
               ),
+            },
+          ],
+        },
+      });
+      entries.push({
+        kind: "item",
+        id: "manage-labels",
+        label: t.manageLabels,
+        icon: icons.tag,
+        hint: board.labels.length ? String(board.labels.length) : undefined,
+        submenu: {
+          id: "manage-labels",
+          title: t.labelsHeading,
+          width: 320,
+          entries: [
+            {
+              kind: "custom",
+              id: "label-manager",
+              render: () => <LabelManager boardId={board.id} labels={board.labels} />,
             },
           ],
         },

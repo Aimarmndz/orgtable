@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
-import { labelBackground } from "@/app/lib/colors";
+import { labelBackground, labelText } from "@/app/lib/colors";
 import {
   type BoardFilters,
   type DueFilter,
@@ -137,12 +137,12 @@ export function FilterBar({
                         onClick={() => toggle("labelIds", l.id)}
                         style={
                           on
-                            ? { background: color, borderColor: color }
+                            ? { background: color, borderColor: color, color: labelText(l.color) }
                             : { borderColor: color }
                         }
                         className={`inline-flex items-center gap-1 rounded-full border-2 px-2.5 py-0.5 text-xs font-medium transition ${
                           on
-                            ? "text-white ring-2 ring-ink/40 ring-offset-1 ring-offset-surface"
+                            ? "ring-2 ring-ink/40 ring-offset-1 ring-offset-surface"
                             : "text-ink hover:bg-surface-2"
                         }`}
                       >

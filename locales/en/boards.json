@@ -168,7 +168,14 @@
     "comment": "Comment",
     "deleteCard": "Delete card",
     "deleteCardPrompt": "Delete the card?",
-    "confirmDeleteCard": "Yes, delete"
+    "confirmDeleteCard": "Yes, delete",
+    "editLabel": "Edit the label {name}",
+    "labelName": "Label name",
+    "deleteLabel": "Delete label",
+    "deleteLabelPrompt": "Delete it? It is removed from every card that has it.",
+    "labelSaveFailed": "The label could not be saved. Try again.",
+    "labelOn": "Add to this card",
+    "labelOff": "Remove from this card"
   },
   "menu": {
     "label": "Actions",
@@ -245,6 +252,9 @@
     "deleteKey": "Del",
     "quickOpen": "Open",
     "quickMove": "Move",
-    "quickLink": "Link"
+    "quickLink": "Link",
+    "manageLabels": "Labels",
+    "labelsHeading": "Board labels",
+    "noLabels": "No labels yet."
   }
 }

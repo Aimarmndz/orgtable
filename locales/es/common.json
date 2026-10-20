@@ -23,5 +23,14 @@
     "title": "Aquí no hay nada",
     "body": "Esta página no existe, o no tienes acceso a ella.",
     "cta": "Ir a tus tableros"
+  },
+  "colorPicker": {
+    "label": "Color",
+    "area": "Saturación y brillo",
+    "areaValue": "saturación {s} %, brillo {v} %",
+    "hue": "Tono",
+    "hex": "Código hexadecimal",
+    "presets": "Colores rápidos",
+    "custom": "Color personalizado"
   }
 }

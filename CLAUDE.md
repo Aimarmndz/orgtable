@@ -144,6 +144,8 @@ access is decided only in `app/lib/access.ts`; cross-tenant cases get an integra
 - **Navigation**: the workspace switcher in the top bar (`app/components/workspace-switcher.tsx`)
   shows the workspace of the URL; the account menu lists each organization's settings. See
   `docs/workspaces.md`.
+- **Labels**: edited and deleted in the card and the board menu, with a palette key or a free
+  `#rrggbb` colour (`app/components/ui/color-picker.tsx`). See `docs/board-menu.md`.
 - **Migrations**: generated with `prisma migrate dev` against the local development
   database (Postgres on port 5433, container `orgtable-dev-pg`) and applied with
   `migrate deploy` when the container starts. Some early migrations were written by hand;

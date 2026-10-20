@@ -9,7 +9,7 @@ server.
 
 | Where | Options |
 | --- | --- |
-| **Background** (empty space, header) | Add list · Change background · Rename board · View as calendar/board · Filter cards · Members and visibility · Copy link · Export to JSON · Organization settings |
+| **Background** (empty space, header) | Add list · Change background · Labels (rename, recolour, delete, create) · Rename board · View as calendar/board · Filter cards · Members and visibility · Copy link · Export to JSON · Organization settings |
 | **List** | Add card · Rename list · Move left / right · Sort by due date · Move all cards to… · Delete list (with an inline confirmation that says how many cards go with it) |
 | **Card** | Open · Rename · Labels · Due date (today, tomorrow, next Monday, in a week, a date, remove) · Assign · Move to (another list, top or bottom of its list) · Duplicate · Copy link · Delete (inline confirmation) |
 
@@ -24,6 +24,14 @@ server.
 - **Sort by due date** puts the soonest first and the cards without a date last.
 - A **viewer** gets Open card and Copy link on a card, and the board's menu elsewhere
   (calendar, filters, members, link, export).
+
+- **Labels**: owners rename a label, change its colour or delete it (inline confirmation; it
+  leaves every card that had it) from this panel or from the pencil next to each label in the
+  card (`app/components/card/label-editor.tsx`). Besides the eight palette colours, a label
+  takes any colour from the picker (`app/components/ui/color-picker.tsx`: a
+  saturation/brightness square, a hue bar and the hex code), stored as `#rrggbb` and validated
+  strictly (`labelColorChoiceSchema`). The text on it turns dark when the colour is light
+  (`labelText`, WCAG contrast).
 - **Organization settings** is only listed for people who belong to the organization; a
   guest would get a 404 there.
 

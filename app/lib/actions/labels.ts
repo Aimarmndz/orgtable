@@ -5,7 +5,7 @@ import { revalidateBoard } from "@/app/lib/realtime/notify";
 import { requireBoardAccess } from "@/app/lib/dal";
 import { canEditBoard, canManageBoard } from "@/app/lib/roles";
 import { z } from "zod";
-import { labelColorSchema } from "@/app/lib/validators";
+import { labelColorChoiceSchema, labelColorSchema } from "@/app/lib/validators";
 import { labelBelongsToBoard } from "@/app/lib/services/labels";
 
 const toggleCardLabelSchema = z.object({
@@ -34,18 +34,52 @@ export async function createLabel(formData: FormData): Promise<void> {
   revalidateBoard(boardId);
 }
 
-export async function deleteLabel(formData: FormData): Promise<void> {
-  const labelId = String(formData.get("labelId"));
+const updateLabelSchema = z.object({
+  labelId: z.string().min(1),
+  name: z.string().trim().min(1).max(40),
+  // Strict, unlike createLabel: an edit with an unknown colour is refused, not turned blue.
+  color: labelColorChoiceSchema,
+});
+
+/** Renames a label and/or changes its colour. Owners only, like creating one. */
+export async function updateLabel(input: {
+  labelId: string;
+  name: string;
+  color: string;
+}): Promise<{ ok: boolean }> {
+  const parsed = updateLabelSchema.safeParse(input);
+  if (!parsed.success) return { ok: false };
+  const { labelId, name, color } = parsed.data;
   const label = await prisma.label.findUnique({
     where: { id: labelId },
     select: { boardId: true },
   });
-  if (!label) return;
+  if (!label) return { ok: false };
   const { role } = await requireBoardAccess(label.boardId);
-  if (!canManageBoard(role)) return;
+  if (!canManageBoard(role)) return { ok: false };
 
-  await prisma.label.delete({ where: { id: labelId } });
+  await prisma.label.update({ where: { id: labelId }, data: { name, color } });
   revalidateBoard(label.boardId);
+  return { ok: true };
+}
+
+/** Deletes a label from the board; the cards that had it lose it (cascade). Owners only. */
+export async function deleteLabel(input: {
+  labelId: string;
+}): Promise<{ ok: boolean }> {
+  const parsed = z.object({ labelId: z.string().min(1) }).safeParse(input);
+  if (!parsed.success) return { ok: false };
+  const label = await prisma.label.findUnique({
+    where: { id: parsed.data.labelId },
+    select: { boardId: true },
+  });
+  if (!label) return { ok: false };
+  const { role } = await requireBoardAccess(label.boardId);
+  if (!canManageBoard(role)) return { ok: false };
+
+  await prisma.label.delete({ where: { id: parsed.data.labelId } });
+  revalidateBoard(label.boardId);
+  return { ok: true };
 }
 
 /** Adds or removes a label on a card (toggle). */

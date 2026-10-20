@@ -168,7 +168,14 @@
     "comment": "Comentar",
     "deleteCard": "Borrar tarjeta",
     "deleteCardPrompt": "¿Borrar la tarjeta?",
-    "confirmDeleteCard": "Sí, borrar"
+    "confirmDeleteCard": "Sí, borrar",
+    "editLabel": "Editar la etiqueta {name}",
+    "labelName": "Nombre de la etiqueta",
+    "deleteLabel": "Borrar etiqueta",
+    "deleteLabelPrompt": "¿Borrarla? Se quita de todas las tarjetas que la tienen.",
+    "labelSaveFailed": "No se pudo guardar la etiqueta. Inténtalo de nuevo.",
+    "labelOn": "Poner en esta tarjeta",
+    "labelOff": "Quitar de esta tarjeta"
   },
   "menu": {
     "label": "Acciones",
@@ -245,6 +252,9 @@
     "deleteKey": "Supr",
     "quickOpen": "Abrir",
     "quickMove": "Mover",
-    "quickLink": "Enlace"
+    "quickLink": "Enlace",
+    "manageLabels": "Etiquetas",
+    "labelsHeading": "Etiquetas del tablero",
+    "noLabels": "Aún no hay etiquetas."
   }
 }

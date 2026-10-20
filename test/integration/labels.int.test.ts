@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import { prisma } from "@/app/lib/prisma";
 import { labelBelongsToBoard } from "@/app/lib/services/labels";
-import { toggleCardLabel, createLabel } from "@/app/lib/actions/labels";
+import { toggleCardLabel, createLabel, updateLabel, deleteLabel } from "@/app/lib/actions/labels";
 import {
   resetDb,
   disconnect,
@@ -9,6 +9,7 @@ import {
   seedBoard,
   seedList,
   seedCard,
+  addMember,
   loginAs,
 } from "./helpers";
 
@@ -103,5 +104,60 @@ describe("labels: color validated against the palette", () => {
 
     const label = await prisma.label.findFirstOrThrow({ where: { boardId: board.id } });
     expect(label.color).toBe("teal");
+  });
+});
+
+// Editing and deleting a label from the card or the board menu (docs/board-menu.md).
+describe("labels: edit and delete", () => {
+  async function scenario() {
+    const { owner, boardA, cardA, labelA, labelB } = await seedTwoBoards();
+    const editor = await seedUser();
+    await addMember(boardA.id, editor.id, "EDITOR");
+    await prisma.cardLabel.create({ data: { cardId: cardA.id, labelId: labelA.id } });
+    return { owner, editor, boardA, cardA, labelA, labelB };
+  }
+
+  it("updateLabel lets the owner rename it and change its colour", async () => {
+    const { owner, labelA } = await scenario();
+    await loginAs(owner.id);
+
+    expect(await updateLabel({ labelId: labelA.id, name: "  Blocked ", color: "amber" })).toEqual({ ok: true });
+    const label = await prisma.label.findUniqueOrThrow({ where: { id: labelA.id } });
+    expect(label).toMatchObject({ name: "Blocked", color: "amber" });
+  });
+
+  it("updateLabel refuses editors, empty names and colours outside the palette", async () => {
+    const { owner, editor, labelA } = await scenario();
+    await loginAs(editor.id);
+    expect(await updateLabel({ labelId: labelA.id, name: "Mine", color: "red" })).toEqual({ ok: false });
+    await loginAs(owner.id);
+    expect(await updateLabel({ labelId: labelA.id, name: "   ", color: "red" })).toEqual({ ok: false });
+    expect(await updateLabel({ labelId: labelA.id, name: "Odd", color: "constructor" })).toEqual({ ok: false });
+    expect(await updateLabel({ labelId: labelA.id, name: "x".repeat(41), color: "red" })).toEqual({ ok: false });
+    expect(await prisma.label.findUniqueOrThrow({ where: { id: labelA.id } })).toMatchObject({
+      name: "Urgent",
+      color: "red",
+    });
+  });
+
+  it("deleteLabel removes it from the board and from its cards", async () => {
+    const { owner, labelA, labelB } = await scenario();
+    await loginAs(owner.id);
+
+    expect(await deleteLabel({ labelId: labelA.id })).toEqual({ ok: true });
+    expect(await prisma.label.findUnique({ where: { id: labelA.id } })).toBeNull();
+    expect(await prisma.cardLabel.count()).toBe(0);
+    // The other board's label is untouched.
+    expect(await prisma.label.findUnique({ where: { id: labelB.id } })).not.toBeNull();
+  });
+
+  it("deleteLabel refuses editors and a missing id", async () => {
+    const { owner, editor, labelA } = await scenario();
+    await loginAs(editor.id);
+    expect(await deleteLabel({ labelId: labelA.id })).toEqual({ ok: false });
+    await loginAs(owner.id);
+    expect(await deleteLabel({ labelId: "does-not-exist" })).toEqual({ ok: false });
+    expect(await prisma.label.findUnique({ where: { id: labelA.id } })).not.toBeNull();
+    expect(await prisma.cardLabel.count()).toBe(1);
   });
 });

@@ -21,9 +21,7 @@ import type {
 } from "@/app/lib/types";
 import {
   labelBackground,
-  LABEL_COLORS,
-  LABEL_COLOR_KEYS,
-  type LabelColor,
+  labelText,
 } from "@/app/lib/colors";
 import {
   updateCard,
@@ -31,7 +29,7 @@ import {
   type CardDetailsState,
 } from "@/app/lib/actions/cards";
 import { CARD_DESCRIPTION_MAX } from "@/app/lib/limits";
-import { toggleCardLabel, createLabel } from "@/app/lib/actions/labels";
+import { toggleCardLabel } from "@/app/lib/actions/labels";
 import {
   createChecklist,
   deleteChecklist,
@@ -47,6 +45,7 @@ import {
 import { assignMember, unassignMember } from "@/app/lib/actions/assignees";
 import { addComment, deleteComment } from "@/app/lib/actions/comments";
 import { Button } from "../ui/button";
+import { LabelEditor, NewLabelForm } from "./label-editor";
 import { Input, Textarea } from "../ui/input";
 import { useBoardPerms } from "../board/board-perms";
 import type { BoardMemberDTO } from "../board/members-panel";
@@ -103,6 +102,9 @@ export function CardModal({
   const { canEdit, canManage } = useBoardPerms();
   const [, startTransition] = useTransition();
   const [labelError, setLabelError] = useState<string | null>(null);
+  // The board label being renamed, recoloured or deleted under the chips.
+  const [editingLabel, setEditingLabel] = useState<string | null>(null);
+  const editingLabelDTO = boardLabels.find((l) => l.id === editingLabel) ?? null;
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const descId = useId();
@@ -178,36 +180,61 @@ export function CardModal({
                 {boardLabels.map((l) => {
                   const on = assigned.has(l.id);
                   return (
-                    <button
-                      key={l.id}
-                      aria-pressed={on}
-                      onClick={() =>
-                        startTransition(async () => {
-                          setLabelError(
-                            await runToggle(
-                              () =>
-                                toggleCardLabel({
-                                  cardId: card.id,
-                                  labelId: l.id,
-                                }),
-                              t.labelToggleFailed,
-                              "toggleCardLabel",
-                            ),
-                          );
-                        })
-                      }
-                      style={{ background: labelBackground(l.color) }}
-                      // No opacity-55 when unselected: it dropped the white text to
-                      // ~2.2:1. The state shows through the ✓, the ring and aria-pressed.
-                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium text-white transition ${
-                        on
-                          ? "ring-2 ring-ink/40 ring-offset-1 ring-offset-surface"
-                          : ""
-                      }`}
-                    >
-                      {l.name}
-                      {on && " ✓"}
-                    </button>
+                    <span key={l.id} data-menu-scope="label" data-menu-title={l.name} className="inline-flex items-center gap-0.5">
+                      <button
+                        aria-pressed={on}
+                        data-menu-label={on ? t.labelOff : t.labelOn}
+                        onClick={() =>
+                          startTransition(async () => {
+                            setLabelError(
+                              await runToggle(
+                                () =>
+                                  toggleCardLabel({
+                                    cardId: card.id,
+                                    labelId: l.id,
+                                  }),
+                                t.labelToggleFailed,
+                                "toggleCardLabel",
+                              ),
+                            );
+                          })
+                        }
+                        style={{ background: labelBackground(l.color), color: labelText(l.color) }}
+                        // No opacity-55 when unselected: it dropped the white text to
+                        // ~2.2:1. The state shows through the ✓, the ring and aria-pressed.
+                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition ${
+                          on
+                            ? "ring-2 ring-ink/40 ring-offset-1 ring-offset-surface"
+                            : ""
+                        }`}
+                      >
+                        {l.name}
+                        {on && " ✓"}
+                      </button>
+                      {canManage && (
+                        <button
+                          type="button"
+                          onClick={() => setEditingLabel(editingLabel === l.id ? null : l.id)}
+                          aria-label={fmt(t.editLabel, { name: l.name })}
+                          aria-expanded={editingLabel === l.id}
+                          title={fmt(t.editLabel, { name: l.name })}
+                          className="grid size-6 place-items-center rounded-full text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
+                        >
+                          <svg
+                            className="size-3.5"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden="true"
+                          >
+                            <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+                          </svg>
+                        </button>
+                      )}
+                    </span>
                   );
                 })}
               </div>
@@ -221,8 +248,8 @@ export function CardModal({
               {card.labels.map((l) => (
                 <span
                   key={l.id}
-                  style={{ background: labelBackground(l.color) }}
-                  className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium text-white"
+                  style={{ background: labelBackground(l.color), color: labelText(l.color) }}
+                  className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium"
                 >
                   {l.name}
                 </span>
@@ -240,6 +267,15 @@ export function CardModal({
             >
               {labelError}
             </p>
+          )}
+          {canManage && editingLabelDTO && (
+            <div className="mt-3">
+              <LabelEditor
+                key={editingLabelDTO.id}
+                label={editingLabelDTO}
+                onDone={() => setEditingLabel(null)}
+              />
+            </div>
           )}
           {canManage && <NewLabelForm boardId={boardId} />}
         </section>
@@ -430,55 +466,6 @@ function DeleteCardForm({
         onClick={() => setConfirming(false)}
       >
         {m.boards.confirm.no}
-      </Button>
-    </form>
-  );
-}
-
-function NewLabelForm({ boardId }: { boardId: string }) {
-  const { m } = useI18n();
-  const t = m.boards.cardModal;
-  const ref = useRef<HTMLFormElement>(null);
-  const [color, setColor] = useState<LabelColor>(LABEL_COLOR_KEYS[0]);
-
-  return (
-    <form
-      ref={ref}
-      action={async (formData) => {
-        await createLabel(formData);
-        ref.current?.reset();
-      }}
-      className="mt-3 flex flex-wrap items-center gap-2"
-    >
-      <input type="hidden" name="boardId" value={boardId} />
-      <input type="hidden" name="color" value={color} />
-      <div className="flex gap-1">
-        {LABEL_COLOR_KEYS.map((k) => (
-          <button
-            type="button"
-            key={k}
-            onClick={() => setColor(k)}
-            aria-label={fmt(t.labelColor, { color: t.colors[k] })}
-            aria-pressed={color === k}
-            style={{ background: LABEL_COLORS[k] }}
-            className={`size-5 rounded-full transition ${
-              color === k
-                ? "ring-2 ring-ink/40 ring-offset-1 ring-offset-surface"
-                : ""
-            }`}
-          />
-        ))}
-      </div>
-      <input
-        name="name"
-        required
-        maxLength={40}
-        placeholder={t.newLabel}
-        aria-label={t.newLabelName}
-        className={`${smallInput} min-w-32 flex-1`}
-      />
-      <Button type="submit" variant="subtle" className="px-3 py-1.5">
-        {t.add}
       </Button>
     </form>
   );
