@@ -36,8 +36,9 @@ server.
   (calendar, filters, members, link, export).
 
 - **Labels**: owners rename a label, change its colour or delete it (inline confirmation; it
-  leaves every card that had it) from this panel or from the pencil next to each label in the
-  card (`app/components/card/label-editor.tsx`). Besides the eight palette colours, a label
+  leaves every card that had it) from this panel or from the right click (or long press) on a
+  label in the card, which offers *Edit* (`app/components/card/label-editor.tsx`; there is no
+  visible pencil, by the owner's choice; Shift+F10 opens the menu from the keyboard). Besides the eight palette colours, a label
   takes any colour from the picker (`app/components/ui/color-picker.tsx`: a
   saturation/brightness square, a hue bar and the hex code), stored as `#rrggbb` and validated
   strictly (`labelColorChoiceSchema`). The text on it turns dark when the colour is light

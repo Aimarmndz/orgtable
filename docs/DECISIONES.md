@@ -7,6 +7,23 @@ living log from 2026-09-24 onwards.
 
 ---
 
+## 2026-10-20 — Labels: edited from the right click, without a pencil
+
+**Context.** The owner found the pencil next to each label in the card redundant: the right click
+on a label already offers to edit it.
+
+**Decision.** The pencil button stays in the DOM with `hidden`: the app menu reads it and runs it
+as *Edit the label*, the long press does the same on touch, and Shift+F10 on the focused label
+opens that menu from the keyboard.
+
+**Alternatives considered.** Removing the button and adding a dedicated menu entry: a second path
+to the same editor, to keep in sync.
+
+**Consequences.** Editing a label is no longer visible at a glance in the card; the board menu's
+*Labels* panel keeps a visible *Edit* for each one.
+
+---
+
 ## 2026-10-20 — Board backgrounds: any colour or an image
 
 **Context.** The owner wanted the board background to work like labels (any colour from the

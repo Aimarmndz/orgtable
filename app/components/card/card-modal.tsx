@@ -215,9 +215,13 @@ export function CardModal({
                         {l.name}
                         {on && " ✓"}
                       </button>
+                      {/* No visible pencil (the owner's choice): the right click or a long
+                          press on the label offers "Edit" through this hidden button, and
+                          Shift+F10 on the focused label opens that menu from the keyboard. */}
                       {canManage && (
                         <button
                           type="button"
+                          hidden
                           onClick={() => setEditingLabel(editingLabel === l.id ? null : l.id)}
                           aria-label={fmt(t.editLabel, { name: l.name })}
                           aria-expanded={editingLabel === l.id}
