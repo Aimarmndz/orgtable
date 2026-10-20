@@ -7,8 +7,14 @@ behind each decision is in [`docs/DECISIONES.md`](./docs/DECISIONES.md).
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-10-20
+
 ### Changed
 
+- **The top-left corner is a workspace switcher**: it shows the organization (or personal
+  boards) you are in and lists your workspaces, all boards, the organization's settings and
+  "Create an organization". It replaces the instance name, which always led to `/boards`.
+- `deleteLabel` takes `{ labelId }` and returns `{ ok }` instead of taking `FormData`.
 - `renameBoard` takes `{ boardId, title }` and returns `{ ok, path }` (the board's new
   address) instead of taking `FormData`.
 - `ORGTABLE_WEBHOOKS_ALLOW_PRIVATE` (never released) is now `ORGTABLE_ALLOW_PRIVATE_TARGETS`
@@ -25,6 +31,24 @@ behind each decision is in [`docs/DECISIONES.md`](./docs/DECISIONES.md).
 
 ### Added
 
+- **Right click everywhere.** Outside the board too: board tiles (open, new tab, copy link,
+  rename, change background, export, delete), settings and administration rows, and labels,
+  checklist items, attachments, comments and assignees in the card, with the actions their
+  buttons already have; on any page, back, refresh, copy the link, theme, the settings
+  sections and "Go to". On the open card's empty space, the card's menu. See
+  `docs/board-menu.md`.
+- **Organization settings in one click**: from the switcher, from the account menu (one
+  entry per organization) and from a gear next to the organization's name on its boards.
+- **Labels can be renamed, recoloured and deleted**, from the right click on a label in the
+  card or from the board menu's Labels panel, and take **any colour** from a colour picker
+  (saturation/brightness square, hue and hex) besides the palette; the text on them turns
+  dark on light colours.
+- **Board backgrounds**: any colour from the same picker, or an **uploaded image** (shrunk to
+  2560 px in the browser, PNG/JPEG/WebP), with a veil that keeps the header readable.
+- **Profile photos** (Settings › Profile), cropped and shrunk in the browser and shown to the
+  people who share an organization or a board with you.
+- The `20261020120011_user_avatar` and `20261020130215_board_background_image` migrations are
+  applied automatically on startup.
 - **Right-click menu inside a board.** On the background: add a list, change the
   background (two new colours, Slate and Ink), rename the board, switch to the calendar,
   filter, members, copy the link, export. On a list: add a card, rename, move left or
